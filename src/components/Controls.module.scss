@@ -1,0 +1,164 @@
+@use '../styles/tokens' as *;
+
+.field {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(200px, 1.4fr);
+  align-items: center;
+  gap: 6px 18px;
+  padding: 10px 0;
+  border-bottom: 1px solid $line;
+}
+
+.fieldLabel {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.fieldControl {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.fieldHint {
+  grid-column: 1 / -1;
+  font-family: $font-text;
+  font-size: 15px;
+  color: $text-muted;
+}
+
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+
+  input {
+    flex: 1;
+    appearance: none;
+    height: 10px;
+    background: linear-gradient(90deg, $yellow 0 var(--fill), $line var(--fill) 100%);
+    border: 0;
+    cursor: pointer;
+
+    &::-webkit-slider-thumb {
+      appearance: none;
+      width: 16px;
+      height: 22px;
+      background: $text;
+      border: 2px solid $background;
+    }
+
+    &::-moz-range-thumb {
+      width: 16px;
+      height: 22px;
+      border-radius: 0;
+      background: $text;
+      border: 2px solid $background;
+    }
+  }
+}
+
+.sliderValue {
+  min-width: 56px;
+  text-align: right;
+  @include numeric;
+  font-size: 17px;
+  color: $yellow;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 96px;
+  height: 34px;
+  padding: 0 10px;
+  border: 2px solid $line-strong;
+  background: $background;
+  cursor: pointer;
+  font-family: $font-text;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.toggleKnob {
+  width: 16px;
+  height: 16px;
+  background: $text-dim;
+  transition: background $transition-fast;
+}
+
+.toggleOn {
+  border-color: $yellow;
+
+  .toggleKnob {
+    background: $yellow;
+  }
+}
+
+.toggleText {
+  color: $text-muted;
+}
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.segment {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 2px solid $line-strong;
+  background: $background;
+  cursor: pointer;
+  font-family: $font-text;
+  font-weight: 700;
+  font-size: 16px;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+}
+
+.segmentActive {
+  background: $yellow;
+  border-color: $yellow;
+  color: $background;
+}
+
+.meter {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+.meterFill {
+  position: absolute;
+  inset: 2px auto 2px 2px;
+  max-width: calc(100% - 4px);
+  transition: width 140ms linear;
+}
+
+.meter_yellow .meterFill {
+  background: $energy;
+}
+
+.meter_red .meterFill {
+  background: $health;
+}
+
+.meter_blue .meterFill {
+  background: $voice;
+}
+
+.meter_green .meterFill {
+  background: $ok;
+}

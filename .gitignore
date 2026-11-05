@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-server
+release
+.env
+*.log
+.DS_Store
+.dev-postgres/
+.dev-mail/

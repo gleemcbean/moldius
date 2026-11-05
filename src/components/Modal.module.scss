@@ -1,0 +1,67 @@
+@use '../styles/tokens' as *;
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 8, 6, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: $background-raised;
+  box-shadow:
+    0 0 0 2px $yellow,
+    0 0 0 6px $background,
+    0 24px 80px rgba(0, 0, 0, 0.6);
+}
+
+.wide {
+  width: min(1040px, 100%);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 2px solid $line;
+
+  h2 {
+    margin: 0;
+    @include title(34px);
+    color: $yellow;
+  }
+}
+
+.close {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: $text;
+  cursor: pointer;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    color: $yellow;
+  }
+}
+
+.body {
+  overflow: auto;
+  padding: 10px 22px 22px;
+}

@@ -1,0 +1,317 @@
+@use '../../styles/tokens' as *;
+
+$parchment: #e2cfa4;
+$parchment-deep: #cdb27d;
+$ink: #2a1a0e;
+$ink-soft: #5b4129;
+$ink-faint: rgba(42, 26, 14, 0.18);
+$rubric: #8c2a1c;
+
+.layout {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 18px;
+  height: min(640px, calc(100vh - 170px));
+  padding-top: 8px;
+}
+
+.index {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: $line-strong transparent;
+  padding: 6px 6px 6px 2px;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px 5px 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: $text-muted;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color $transition-fast,
+    background $transition-fast,
+    border-color $transition-fast;
+
+  &:hover {
+    color: $text;
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+.entryActive {
+  color: $yellow;
+  border-color: $line-strong;
+  background: $background-panel;
+
+  &:hover {
+    color: $yellow;
+    background: $background-panel;
+  }
+}
+
+.thumb {
+  width: 44px;
+  height: 44px;
+  display: block;
+  background: radial-gradient(circle at 50% 40%, $parchment, $parchment-deep);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+.entryName {
+  font-family: $font-book;
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.entryPoints {
+  @include numeric;
+  font-size: 15px;
+  color: $text-dim;
+}
+
+.page {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(42, 26, 14, 0.45) transparent;
+  padding: 26px 34px 30px;
+  background:
+    radial-gradient(ellipse at 30% 0%, rgba(255, 246, 220, 0.5), transparent 60%),
+    radial-gradient(ellipse at 100% 100%, rgba(120, 80, 30, 0.22), transparent 55%),
+    linear-gradient(180deg, $parchment, $parchment-deep);
+  box-shadow:
+    inset 0 0 0 1px rgba(60, 36, 14, 0.4),
+    inset 0 0 60px rgba(90, 55, 20, 0.35);
+  color: $ink;
+  font-family: $font-book;
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.heading {
+  text-align: center;
+  padding-bottom: 14px;
+  border-bottom: 1px solid $ink-faint;
+}
+
+.plate {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: $ink-soft;
+}
+
+.name {
+  margin: 4px 0 2px;
+  font-family: $font-book-title;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1.05;
+  color: $rubric;
+}
+
+.portrait {
+  display: grid;
+  grid-template-columns: minmax(180px, 250px) 1fr;
+  gap: 24px;
+  align-items: center;
+  padding: 18px 0 8px;
+}
+
+.figure {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 0 rgba(255, 246, 220, 0.4));
+  }
+}
+
+.sketching {
+  font-style: italic;
+  color: $ink-soft;
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.points {
+  margin: 0;
+  font-weight: 800;
+  font-size: 22px;
+  color: $rubric;
+}
+
+.facts {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  align-items: center;
+  gap: 10px;
+
+  dt {
+    font-weight: 700;
+    font-size: 15px;
+    color: $ink-soft;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.damage {
+  font-weight: 700;
+}
+
+.gauge {
+  display: flex;
+  gap: 5px;
+}
+
+.spoken {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.pip,
+.pipOn {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid $ink-soft;
+  transform: rotate(45deg) scale(0.8);
+}
+
+.pipOn {
+  background: $ink;
+  border-color: $ink;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 1px 10px;
+    border: 1px solid rgba(42, 26, 14, 0.4);
+    font-size: 14px;
+    font-weight: 700;
+    color: $ink-soft;
+  }
+}
+
+.section {
+  padding-top: 12px;
+
+  h4 {
+    margin: 0 0 4px;
+    font-family: $font-book-title;
+    font-weight: 400;
+    font-size: 22px;
+    color: $rubric;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.criteria {
+  margin: 0;
+  padding-left: 20px;
+
+  li::marker {
+    color: $rubric;
+  }
+}
+
+.formula {
+  margin: 18px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid $ink-faint;
+  font-size: 15px;
+  font-style: italic;
+  color: $ink-soft;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height: calc(100vh - 140px);
+  }
+
+  .index {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .entry {
+    grid-template-columns: 44px;
+    padding: 4px;
+  }
+
+  .entryName,
+  .entryPoints {
+    display: none;
+  }
+
+  .page {
+    padding: 20px 18px 24px;
+  }
+
+  .portrait {
+    grid-template-columns: 1fr;
+  }
+
+  .figure {
+    width: min(220px, 70%);
+    justify-self: center;
+  }
+}

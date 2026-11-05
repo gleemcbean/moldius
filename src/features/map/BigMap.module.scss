@@ -1,0 +1,169 @@
+@use '../../styles/tokens' as *;
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 5, 4, 0.72);
+  pointer-events: auto;
+  cursor: default;
+  text-shadow: none;
+}
+
+.frame {
+  width: min(1280px, calc(100% - 40px));
+  height: calc(100% - 60px);
+  display: flex;
+  flex-direction: column;
+  background: #0d100d;
+  box-shadow:
+    0 0 0 2px $yellow,
+    0 0 0 6px $background;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 2px solid $line;
+
+  h2 {
+    margin: 0;
+    @include title(32px);
+    color: $map-label;
+  }
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.levels {
+  display: flex;
+  gap: 4px;
+  margin-right: 10px;
+}
+
+.zoom {
+  min-width: 48px;
+  text-align: center;
+  @include numeric;
+  font-size: 18px;
+  color: $yellow;
+}
+
+.canvas {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  cursor: grab;
+  touch-action: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 16px;
+  border-top: 2px solid $line;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: $font-text;
+  font-size: 15px;
+  color: #efe3b8;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  span {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+  }
+}
+
+.you {
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 14px solid $yellow;
+}
+
+.other {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #3fb8a4;
+  box-shadow: 0 0 0 2px #0b0d0b;
+}
+
+.elsewhere {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #3fb8a4;
+  background: rgba(11, 13, 11, 0.82);
+  color: #3fb8a4;
+  font-family: $font-title;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.current {
+  width: 22px;
+  height: 14px;
+  border: 2px dashed rgba(220, 229, 77, 0.85);
+  background: #33301f;
+}
+
+.door {
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: $yellow;
+}
+
+.window {
+  width: 18px;
+  height: 3px;
+  background: #8fd3e6;
+}
+
+.stairs {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(170, 190, 255, 0.85);
+  background: rgba(11, 13, 11, 0.82);
+  color: rgba(170, 190, 255, 0.95);
+  font-family: $font-title;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.hint {
+  margin: 0;
+  @include label;
+  font-size: 11px;
+}

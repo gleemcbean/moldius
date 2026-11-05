@@ -1,0 +1,13 @@
+export const STAIR_PRELOAD_RANGE = 10;
+export const HAZE_NEAR = 7;
+export const HAZE_FAR = 14;
+export const HAZE_DENSITY = 0.75;
+export const HAZE_COLOR = 0x07080a;
+export const CLOCK_WARNING_MS = 30_000;
+export const LANTERN_PENDULUM_STIFFNESS = 40;
+export const LANTERN_PENDULUM_DAMPING = 3.2;
+export const LANTERN_AIR_DRAG_TURN = 0.04;
+export const LANTERN_AIR_DRAG_TILT = 0.035;
+export const LANTERN_AIR_DRAG_WALK = 0.02;
+export const LANTERN_MAX_TURN_RATE = 12;
+export const MOUSE_LOOK_SCALE = 0.0022;

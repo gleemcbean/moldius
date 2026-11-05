@@ -1,0 +1,223 @@
+@use '../../styles/tokens' as *;
+.page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: #0c110f;
+  color: $text;
+  user-select: text;
+  scroll-behavior: smooth;
+}
+.glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 65% 40% at 80% 5%, rgba(158, 180, 68, 0.1), transparent 75%);
+}
+.shell {
+  position: relative;
+  width: min(1160px, calc(100% - 64px));
+  margin: 0 auto;
+}
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-height: 92px;
+  border-bottom: 1px solid #2f392d;
+}
+.brand {
+  font: 800 28px/1 $font-title;
+  letter-spacing: 0.11em;
+  text-decoration: none;
+  color: $text;
+  white-space: nowrap;
+}
+.brandMark {
+  color: $yellow;
+  font-size: 18px;
+  vertical-align: top;
+  padding-left: 7px;
+}
+.navLinks {
+  display: flex;
+  gap: 28px;
+  margin: auto;
+}
+.navLinks a,
+.language a {
+  font: 500 15px/1.5 $font-text;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  color: #a8b29f;
+}
+.navLinks a[aria-current='page'],
+.language a[aria-current='true'] {
+  color: $yellow;
+}
+.navLinks a:hover,
+.language a:hover {
+  color: #fff;
+}
+.language {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+}
+.language span {
+  color: #46543f;
+}
+.hero {
+  padding: 104px 0 72px;
+  border-bottom: 1px solid #2f392d;
+}
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: $yellow;
+  font: 700 15px $font-text;
+  letter-spacing: 0.04em;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+  background: $yellow;
+  transform: rotate(45deg);
+}
+.edition {
+  color: #667461;
+}
+.hero h1 {
+  max-width: 800px;
+  font: 400 clamp(48px, 7vw, 100px) / 1 $font-book-title;
+  letter-spacing: 0.01em;
+  margin: 27px 0 24px;
+}
+.lead {
+  max-width: 690px;
+  font: 21px/1.6 $font-book;
+  color: #bac4b4;
+  margin: 0;
+}
+.date {
+  font: 500 14px $font-text;
+  letter-spacing: 0.01em;
+  color: #8b9788;
+  margin: 34px 0 0;
+}
+.content {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 75px;
+  padding: 65px 0 110px;
+}
+.toc {
+  position: sticky;
+  align-self: start;
+  top: 35px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.tocHeading {
+  font: 700 15px $font-text;
+  letter-spacing: 0.04em;
+  color: $yellow;
+  padding-bottom: 10px;
+}
+.toc a {
+  font: 500 15px/1.5 $font-text;
+  color: #8c9889;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.toc a:hover {
+  color: $yellow;
+}
+.article {
+  min-width: 0;
+}
+.section {
+  border-bottom: 1px solid #283329;
+  padding: 0 0 36px;
+  margin: 0 0 40px;
+  scroll-margin-top: 25px;
+}
+.section h2 {
+  font: 400 30px/1.2 $font-book-title;
+  color: #e5ebdc;
+  letter-spacing: 0.025em;
+  margin: 0 0 19px;
+}
+.section p {
+  font: 18px/1.75 $font-book;
+  color: #aebbac;
+  margin: 0 0 15px;
+  overflow-wrap: anywhere;
+}
+.section p:last-child {
+  margin-bottom: 0;
+}
+.bottomLinks {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  font: 700 15px $font-text;
+}
+.bottomLinks a {
+  text-decoration: none;
+}
+.footer {
+  padding: 30px 0 45px;
+  border-top: 1px solid #2f392d;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  color: #74816f;
+  font: 500 14px $font-text;
+  letter-spacing: 0.01em;
+}
+@media (max-width: 760px) {
+  .shell {
+    width: min(100% - 36px, 650px);
+  }
+  .navigation {
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 22px 0;
+  }
+  .brand {
+    width: 100%;
+  }
+  .navLinks {
+    margin: 0 auto 0 0;
+    gap: 15px;
+  }
+  .hero {
+    padding: 64px 0 48px;
+  }
+  .hero h1 {
+    font-size: clamp(46px, 12vw, 75px);
+  }
+  .lead {
+    font-size: 18px;
+  }
+  .content {
+    display: block;
+    padding-top: 45px;
+  }
+  .toc {
+    position: static;
+    display: none;
+  }
+  .section h2 {
+    font-size: 24px;
+  }
+  .section p {
+    font-size: 17px;
+  }
+}

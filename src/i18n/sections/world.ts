@@ -1,0 +1,133 @@
+import { ROOM_TYPES } from "@shared/manor/roomCatalog";
+import type { RoomType } from "@shared/manor/types";
+import type { ManorSize } from "@shared/matchConfig";
+
+export const HIDEABLE_KINDS = [
+	"wardrobe",
+	"lockers",
+	"confessional",
+	"trunk",
+	"curtainAlcove",
+	"cask",
+	"standingCoffin",
+] as const;
+
+export type HideableKind = (typeof HIDEABLE_KINDS)[number];
+
+const ROOM_NAMES_FR = Object.fromEntries(
+	(Object.keys(ROOM_TYPES) as RoomType[]).map((type) => [
+		type,
+		ROOM_TYPES[type].names,
+	]),
+) as Record<RoomType, readonly string[]>;
+
+export const worldFr = {
+	rooms: ROOM_NAMES_FR,
+	roomChips: Object.fromEntries(
+		(Object.keys(ROOM_TYPES) as RoomType[]).map((type) => [
+			type,
+			ROOM_TYPES[type].names[0]!,
+		]),
+	) as Record<RoomType, string>,
+	stairwellLabel: "Escalier",
+	manorSizes: {
+		small: "Petit",
+		medium: "Moyen",
+		large: "Grand",
+	} satisfies Record<ManorSize, string>,
+	furniture: {
+		wardrobe: "armoire",
+		lockers: "casiers",
+		confessional: "confessionnal",
+		trunk: "malle",
+		curtainAlcove: "rideaux",
+		cask: "grand tonneau",
+		standingCoffin: "cercueil",
+	} satisfies Record<HideableKind, string>,
+	hidingPlace: "cachette",
+};
+
+export const worldEn: typeof worldFr = {
+	rooms: {
+		hall: ["Great Hall", "Vestibule", "Hall of Echoes", "Rotunda"],
+		salon: ["Drawing Room", "Parlour", "Smoking Room", "Boudoir"],
+		gallery: ["Portrait Gallery", "Gallery", "Ancestors' Gallery"],
+		corridor: ["Hallway", "Passage", "Corridor", "Narrow Hallway"],
+		library: ["Library", "Forbidden Library"],
+		cellar: ["Cellar", "Wine Cellar", "Storeroom"],
+		kitchen: ["Kitchen", "Pantry", "Great Kitchen"],
+		toilets: ["Toilets", "Water Closet"],
+		bedroom: ["Bedroom", "Guest Room", "Mage's Bedroom", "Blue Room"],
+		bathroom: ["Bathroom", "Washroom"],
+		study: ["Study", "Workroom", "Master's Study"],
+		greenhouse: ["Greenhouse", "Winter Garden", "Orangery"],
+		alchemy: ["Alchemy Lab", "Apothecary", "Distillery"],
+		ritual: ["Ritual Chamber", "Sanctuary", "Inner Circle"],
+		music: ["Music Room", "Music Hall"],
+		dining: ["Dining Room", "Banquet Hall"],
+		workshop: ["Workshop", "Artificer's Workshop", "Forge"],
+		chapel: ["Chapel", "Oratory"],
+		closet: ["Storage Room", "Broom Cupboard"],
+		observatory: ["Observatory", "Star Chamber"],
+		curiosities: ["Cabinet of Curiosities", "Trophy Room"],
+		nursery: ["Nursery", "Children's Room", "Playroom"],
+		laundry: ["Laundry", "Linen Room"],
+		crypt: ["Crypt", "Family Vault"],
+		dungeon: ["Dungeon", "Oubliette", "Gaol"],
+		pond: ["Lake Room", "Ornamental Pool", "Pool Garden"],
+		ballroom: ["Ballroom", "Grand Ballroom", "Banqueting Hall"],
+		theater: ["Little Theatre", "Playhouse", "Puppet Theatre"],
+		armory: ["Armoury", "Weapons Room", "Arsenal"],
+		billiard: ["Billiard Room", "Games Room", "Gentlemen's Club"],
+		attic: ["Attic", "Loft", "Garret"],
+		undercroft: ["Undercroft", "Vaulted Cellar", "Low Gallery"],
+		stairwell: ["Staircase", "Stairwell"],
+	},
+	roomChips: {
+		hall: "Great Hall",
+		salon: "Drawing Room",
+		gallery: "Portrait Gallery",
+		corridor: "Hallway",
+		library: "Library",
+		cellar: "Cellar",
+		kitchen: "Kitchen",
+		toilets: "Toilets",
+		bedroom: "Bedroom",
+		bathroom: "Bathroom",
+		study: "Study",
+		greenhouse: "Greenhouse",
+		alchemy: "Alchemy Lab",
+		ritual: "Ritual Chamber",
+		music: "Music Room",
+		dining: "Dining Room",
+		workshop: "Workshop",
+		chapel: "Chapel",
+		closet: "Storage Room",
+		observatory: "Observatory",
+		curiosities: "Cabinet of Curiosities",
+		nursery: "Nursery",
+		laundry: "Laundry",
+		crypt: "Crypt",
+		dungeon: "Dungeon",
+		pond: "Lake Room",
+		ballroom: "Ballroom",
+		theater: "Little Theatre",
+		armory: "Armoury",
+		billiard: "Billiard Room",
+		attic: "Attic",
+		undercroft: "Undercroft",
+		stairwell: "Staircase",
+	},
+	stairwellLabel: "Stairs",
+	manorSizes: { small: "Small", medium: "Medium", large: "Large" },
+	furniture: {
+		wardrobe: "wardrobe",
+		lockers: "lockers",
+		confessional: "confessional",
+		trunk: "trunk",
+		curtainAlcove: "curtains",
+		cask: "large cask",
+		standingCoffin: "coffin",
+	},
+	hidingPlace: "hiding place",
+};

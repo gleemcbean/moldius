@@ -1,0 +1,1672 @@
+import { isGazingAt } from "@shared/anomalies/gaze";
+import {
+	ALTAR_INTERACT_RANGE,
+	CAPTURE_VOICE_ACTIVITY_LEVEL,
+	CLIENT_INTERPOLATION_DELAY_MS,
+	CLIENT_STATE_INTERVAL_MS,
+	ENERGY_MAX,
+	GORGON_GAZE_DECAY,
+	GORGON_GAZE_LIMIT_MS,
+	JUMP_ENERGY_COST,
+	LANTERN_LIGHT_INTENSITY,
+	LANTERN_LIGHT_RANGE,
+	LEVEL_HEIGHT,
+	type MaterialId,
+	OCCULT_IDS,
+	OCCULT_RECIPES,
+	type OccultId,
+	PUSH_COOLDOWN_MS,
+	SHOUT_COOLDOWN_MS,
+	SLIME_SPEED_FACTOR,
+	WATER_SPEED_FACTOR,
+} from "@shared/config/index";
+import { levelForHeight } from "@shared/manor/levels";
+import type { Level } from "@shared/manor/types";
+import { pullBackToSight } from "@shared/physics/lineOfSight";
+import {
+	type CastResult,
+	type ForcedMove,
+	type GameEvent,
+	type MatchBegin,
+	type MatchInit,
+	PLAYER_FLAG,
+	type PlayerInventory,
+	type WorldSnapshot,
+} from "@shared/protocol/game";
+import { TEAM_COLORS, teamStandings } from "@shared/teams";
+import * as THREE from "three";
+import {
+	CLOCK_WARNING_MS,
+	HAZE_COLOR,
+	HAZE_DENSITY,
+	HAZE_FAR,
+	HAZE_NEAR,
+	STAIR_PRELOAD_RANGE,
+} from "../../../config/feel";
+import { QUALITY_PRESETS } from "../../../config/graphics";
+import { currentMessages } from "../../../i18n";
+import { romanNumeral } from "../../../utils/format";
+import { releaseKeyboardLock } from "../../../utils/fullscreen";
+import { audioEngine } from "../../audio/audioEngine";
+import { soundBank } from "../../audio/soundBank";
+import { type FrameInput, InputManager } from "../../engine/input/InputManager";
+import type { DynamicLight } from "../../engine/lighting/LightPool";
+import { FIRST_PERSON_LAYER } from "../../engine/player/FirstPersonRig";
+import {
+	InteractionFinder,
+	type InteractionTarget,
+} from "../../engine/player/Interaction";
+import {
+	type LocalContext,
+	type LocalControls,
+	LocalPlayer,
+} from "../../engine/player/LocalPlayer";
+import { SpottedDetector } from "../../engine/player/SpottedDetector";
+import { hudStore, pushFeedback } from "../../hud/hudStore";
+import { type MapMarker, MapRenderer } from "../../map/MapRenderer";
+import { mapStore, panMap, resetMap, zoomMap } from "../../map/mapStore";
+import { clockSync } from "../../network/clockSync";
+import { type GameSocket, getSocket } from "../../network/socket";
+import { activeDevModes, devModesStore } from "../../settings/devModesStore";
+import { settingsStore } from "../../settings/settingsStore";
+import { micManager } from "../../voice/micManager";
+import { voiceChat } from "../../voice/voiceChat";
+import { CastController } from "../CastController";
+import {
+	type LoadedWorld,
+	type LoadStepId,
+	loadSession,
+} from "./SessionLoader";
+import { TutorialController } from "./TutorialController";
+
+const HUD_INTERVAL_MS = 80;
+const DOOR_PREDICTION_MS = 900;
+const LANTERN_RECONCILE_MS = 700;
+const LANTERN_COLOR = 0xffb060;
+const JUMP_ENERGY_SETTLE_MS = 600;
+const HIDDEN_GLOW = { color: 0x7d8aa0, intensity: 0.55, range: 1.4 };
+
+function wrapIndex(index: number, length: number): number {
+	return ((index % length) + length) % length;
+}
+
+export class GameSession {
+	private loadedWorld: LoadedWorld | null = null;
+	private player: LocalPlayer | null = null;
+	private input: InputManager | null = null;
+	private finder: InteractionFinder | null = null;
+	private spotted: SpottedDetector | null = null;
+	private mapRenderer: MapRenderer | null = null;
+	private readonly cast: CastController;
+	private stopDevModes: () => void = () => {};
+	private readonly hazeColor = new THREE.Color(HAZE_COLOR);
+	private container: HTMLElement | null = null;
+	private minimap: HTMLCanvasElement | null = null;
+	private frameHandle = 0;
+	private clockSecond = -1;
+	private lastFrame = 0;
+	private lastRender = 0;
+	private fpsFrames = 0;
+	private fpsTime = 0;
+	private fps = 0;
+	private beginInfo: MatchBegin | null = null;
+	private seq = 0;
+	private lastSendAt = 0;
+	private voicePeak = 0;
+	private voiceActiveMs = 0;
+	private lanternIntent = false;
+	private lanternChangedAt = -Infinity;
+	private pushReadyAt = 0;
+	private shoutReadyAt = 0;
+	private carriedBy: number | null = null;
+	private wasPetrified = false;
+	private hideSpot = -1;
+	private gaze = 0;
+	private readonly gorgonGaze = new Map<number, number>();
+	private jumpSpentAt: number[] = [];
+	private haze = 0;
+	private clearAir: { density: number; color: THREE.Color } | null = null;
+	private mapOpen = false;
+	private intentionalUnlock = false;
+	private hudPublishedAt = 0;
+	private interaction: InteractionTarget | null = null;
+	private tutorial: TutorialController | null = null;
+	private altarId: number | null = null;
+	private altarSelected = 0;
+	private heldSlot = 0;
+	private inventory: PlayerInventory | null = null;
+	private lookAccumulator = { x: 0, y: 0 };
+	private interpolationDelay = CLIENT_INTERPOLATION_DELAY_MS;
+	private disposed = false;
+	private started = false;
+	private readonly dynamicLights: DynamicLight[] = [];
+	private readonly selfDamageAt = { value: 0 };
+
+	constructor(
+		readonly init: MatchInit,
+		readonly selfId: string,
+	) {
+		this.cast = new CastController(
+			{
+				begin: () => getSocket().emit("game:castBegin"),
+				cancel: () => getSocket().emit("game:castCancel"),
+				cast: (transcripts) =>
+					getSocket().emit("game:cast", { transcripts, method: "speech" }),
+			},
+			{
+				entries: () =>
+					init.roster.map((entry) => ({
+						id: entry.id,
+						label: this.anomalyLabel(entry.id) ?? entry.species,
+						words: entry.formula,
+					})),
+			},
+			init.dev,
+			init.tutorial,
+		);
+		if (init.dev) {
+			this.stopDevModes = devModesStore.subscribe((modes) =>
+				getSocket().emit("game:devModes", modes),
+			);
+			getSocket().emit("game:devModes", devModesStore.get());
+		}
+	}
+
+	get matchId(): string {
+		return this.init.matchId;
+	}
+
+	get isLoaded(): boolean {
+		return this.loadedWorld !== null;
+	}
+
+	async load(
+		progress: (step: LoadStepId, fraction: number) => void,
+	): Promise<void> {
+		const loaded = await loadSession(this.init, this.selfId, progress);
+		if (this.disposed) {
+			this.disposeWorld(loaded);
+			return;
+		}
+		this.loadedWorld = loaded;
+		const spawn = this.init.players.find((player) => player.id === this.selfId)
+			?.spawn ?? {
+			x: 0,
+			y: 0,
+			z: 0,
+			yaw: 0,
+		};
+		this.player = new LocalPlayer(loaded.world, spawn);
+		this.finder = new InteractionFinder(
+			loaded.layout,
+			loaded.world,
+			loaded.doors,
+			loaded.state,
+			loaded.pickups,
+			this.init.tutorial,
+		);
+		if (this.init.tutorial) {
+			this.tutorial = new TutorialController(this.init, loaded, () =>
+				getSocket().emit("game:tutorialSummon"),
+			);
+		}
+		this.spotted = new SpottedDetector(loaded.world);
+		this.mapRenderer = new MapRenderer(loaded.layout);
+		loaded.state.listeners.add((event) => this.onEvent(event));
+		hudStore.set({
+			remainingMs: this.init.durationMs,
+			anomaliesInMs: this.init.anomalySpawnDelayMs,
+			score: 0,
+			health: 100,
+			energy: 100,
+		});
+	}
+
+	get layout() {
+		return this.loadedWorld?.layout ?? null;
+	}
+
+	get renderer(): MapRenderer | null {
+		return this.mapRenderer;
+	}
+
+	begin(info: MatchBegin): void {
+		this.beginInfo = info;
+	}
+
+	attach(container: HTMLElement): void {
+		const loaded = this.loadedWorld;
+		if (!loaded || this.container) {
+			return;
+		}
+		this.container = container;
+		const canvas = loaded.renderer.domElement;
+		canvas.tabIndex = 0;
+		container.appendChild(canvas);
+		this.resize();
+		window.addEventListener("resize", this.resize);
+		this.input = new InputManager(canvas);
+		this.input.attach();
+		this.input.onPointerLockChange = (locked) => this.onPointerLock(locked);
+		canvas.addEventListener("click", this.onCanvasClick);
+		voiceChat.setMode("game");
+		if (!this.started) {
+			this.started = true;
+			loaded.ambientAudio.start();
+		}
+		this.lastFrame = performance.now();
+		this.frameHandle = requestAnimationFrame(this.frame);
+		this.input.requestPointerLock();
+	}
+
+	detach(): void {
+		cancelAnimationFrame(this.frameHandle);
+		window.removeEventListener("resize", this.resize);
+		this.input?.detach();
+		this.input = null;
+		const canvas = this.loadedWorld?.renderer.domElement;
+		canvas?.removeEventListener("click", this.onCanvasClick);
+		canvas?.remove();
+		this.container = null;
+	}
+
+	setMinimap(canvas: HTMLCanvasElement | null): void {
+		this.minimap = canvas;
+	}
+
+	resumePointer(): void {
+		hudStore.set({ paused: false });
+		this.input?.requestPointerLock();
+	}
+
+	private readonly onCanvasClick = () => {
+		if (!this.mapOpen) {
+			this.input?.requestPointerLock();
+		}
+	};
+
+	private onPointerLock(locked: boolean): void {
+		if (locked) {
+			hudStore.set({ paused: false, needsPointer: false });
+			return;
+		}
+		if (this.intentionalUnlock || this.mapOpen) {
+			this.intentionalUnlock = false;
+			return;
+		}
+		hudStore.set({ paused: true, needsPointer: true });
+	}
+
+	private readonly resize = () => {
+		const loaded = this.loadedWorld;
+		if (!loaded || !this.container) {
+			return;
+		}
+		const settings = settingsStore.get();
+		const preset = QUALITY_PRESETS[settings.quality];
+		const width = this.container.clientWidth || window.innerWidth;
+		const height = this.container.clientHeight || window.innerHeight;
+		loaded.renderer.setPixelRatio(preset.pixelRatio * settings.renderScale);
+		loaded.particles.setPixelRatio(loaded.renderer.getPixelRatio());
+		loaded.renderer.setSize(width, height, false);
+		loaded.renderer.domElement.style.width = "100%";
+		loaded.renderer.domElement.style.height = "100%";
+		loaded.camera.aspect = width / Math.max(1, height);
+		loaded.camera.updateProjectionMatrix();
+	};
+
+	handleSnapshot(snapshot: WorldSnapshot): void {
+		const loaded = this.loadedWorld;
+		if (!loaded) {
+			return;
+		}
+		const arrival = clockSync.rawServerNow();
+		const lag = arrival - snapshot.t;
+		const target = Math.min(
+			320,
+			Math.max(
+				CLIENT_INTERPOLATION_DELAY_MS,
+				100 + clockSync.jitter * 2 + Math.max(0, lag),
+			),
+		);
+		this.interpolationDelay += (target - this.interpolationDelay) * 0.1;
+		loaded.state.applySnapshot(snapshot);
+	}
+
+	handleEvents(events: GameEvent[], serverTime: number): void {
+		this.loadedWorld?.state.applyEvents(events, serverTime);
+	}
+
+	handleForcedMove(move: ForcedMove): void {
+		if (move.playerId !== this.selfId || !this.player) {
+			return;
+		}
+		this.player.applyForcedMove(move);
+		if (move.kind === "hide") {
+			this.hideSpot = move.hideSpot;
+			soundBank.play("hide", { volume: 0.6 });
+			this.lanternIntent = false;
+		} else if (
+			move.kind === "unhide" ||
+			move.kind === "extract" ||
+			move.kind === "respawn" ||
+			move.kind === "drop" ||
+			move.kind === "spawn"
+		) {
+			this.hideSpot = -1;
+		}
+		if (move.kind === "drop" || move.kind === "respawn") {
+			this.carriedBy = null;
+		}
+	}
+
+	handleInventory(inventory: PlayerInventory): void {
+		this.inventory = inventory;
+		hudStore.set({ inventory });
+	}
+
+	private setAltar(altarId: number | null): void {
+		this.altarId = altarId;
+		if (altarId !== null) {
+			const craftable = OCCULT_IDS.findIndex((object) => this.canCraft(object));
+			this.altarSelected = Math.max(0, craftable);
+		}
+		hudStore.set({
+			altarOpen: altarId !== null,
+			altarSelected: this.altarSelected,
+		});
+	}
+
+	private canCraft(object: OccultId): boolean {
+		const materials = this.inventory?.materials;
+		return (
+			materials !== undefined &&
+			(Object.entries(OCCULT_RECIPES[object]) as [MaterialId, number][]).every(
+				([material, count]) => materials[material] >= count,
+			)
+		);
+	}
+
+	private selectAltarRow(index: number): void {
+		this.altarSelected = wrapIndex(index, OCCULT_IDS.length);
+		hudStore.set({ altarSelected: this.altarSelected });
+	}
+
+	private craftSelected(): void {
+		const object = OCCULT_IDS[this.altarSelected];
+		if (this.altarId !== null && this.canCraft(object)) {
+			getSocket().emit("game:craft", { altarId: this.altarId, object });
+		}
+	}
+
+	private updateAltar(frame: FrameInput, player: LocalPlayer): void {
+		const altar =
+			this.altarId === null
+				? undefined
+				: (this.loadedWorld as LoadedWorld).layout.altars[this.altarId];
+		if (!altar) {
+			return;
+		}
+		if (
+			frame.escape ||
+			Math.hypot(player.character.x - altar.x, player.character.z - altar.z) >
+				ALTAR_INTERACT_RANGE + 0.5
+		) {
+			this.setAltar(null);
+			return;
+		}
+		for (const digit of frame.digits) {
+			if (OCCULT_IDS[digit - 1]) {
+				this.selectAltarRow(digit - 1);
+				this.craftSelected();
+			}
+		}
+	}
+
+	private altarPrompt(): string {
+		const object = OCCULT_IDS[this.altarSelected];
+		const messages = currentMessages();
+		return this.canCraft(object)
+			? messages.game.interaction.craft(messages.grimoire.objects[object])
+			: messages.game.interaction.missingMaterials;
+	}
+
+	private selectHeldSlot(index: number): void {
+		this.heldSlot = wrapIndex(index, OCCULT_IDS.length);
+		hudStore.set({ heldSlot: this.heldSlot });
+	}
+
+	private heldObject(): OccultId | null {
+		const object = OCCULT_IDS[this.heldSlot];
+		return (this.inventory?.objects[object] ?? 0) > 0 ? object : null;
+	}
+
+	private handleWheelAndDigits(frame: FrameInput): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const step = Math.sign(frame.wheel);
+		if (this.altarId !== null) {
+			if (step !== 0 && !loaded.grimoire.isOpen) {
+				this.selectAltarRow(this.altarSelected + step);
+			}
+			return;
+		}
+		if (step !== 0 && !loaded.grimoire.isOpen) {
+			this.selectHeldSlot(this.heldSlot + step);
+		}
+		for (const digit of frame.digits) {
+			if (OCCULT_IDS[digit - 1]) {
+				this.selectHeldSlot(digit - 1);
+			}
+		}
+	}
+
+	handleCastResult(result: CastResult): void {
+		if (result.ok) {
+			this.tutorial?.notify("captured");
+		}
+		this.cast.handleResult(
+			result,
+			(anomalyId) => this.anomalyLabel(anomalyId) ?? "Anomalie",
+		);
+	}
+
+	closeMap(): void {
+		if (!this.mapOpen) {
+			return;
+		}
+		this.mapOpen = false;
+		if (this.input) {
+			this.input.mode = "game";
+		}
+		hudStore.set({ showMap: false });
+		this.input?.requestPointerLock();
+	}
+
+	private readonly frame = (time: number) => {
+		this.frameHandle = requestAnimationFrame(this.frame);
+		const settings = settingsStore.get();
+		if (
+			settings.fpsLimit > 0 &&
+			time - this.lastRender < 1000 / settings.fpsLimit - 1
+		) {
+			return;
+		}
+		this.lastRender = time;
+		const dt = Math.min(0.1, Math.max(0.001, (time - this.lastFrame) / 1000));
+		this.lastFrame = time;
+		this.trackFps(dt);
+		this.step(dt);
+	};
+
+	private trackFps(dt: number): void {
+		this.fpsFrames += 1;
+		this.fpsTime += dt;
+		if (this.fpsTime >= 0.5) {
+			this.fps = Math.round(this.fpsFrames / this.fpsTime);
+			this.fpsFrames = 0;
+			this.fpsTime = 0;
+		}
+	}
+
+	private step(dt: number): void {
+		const loaded = this.loadedWorld;
+		const player = this.player;
+		const input = this.input;
+		if (!loaded || !player || !input) {
+			return;
+		}
+		const settings = settingsStore.get();
+		const serverNow = clockSync.serverNow();
+		const renderTime = serverNow - this.interpolationDelay;
+		const frame = input.frame();
+		const self = loaded.state.self?.latest ?? null;
+		const flags = self?.flags ?? 0;
+		const alive = (flags & PLAYER_FLAG.dead) === 0;
+		const restrained =
+			this.carriedBy !== null || (flags & PLAYER_FLAG.carried) !== 0;
+		this.reconcileLantern(flags, serverNow);
+		this.handleActions(frame, alive, restrained, serverNow);
+
+		const context = this.localContext(settings, flags, alive, renderTime);
+		const petrified = (flags & PLAYER_FLAG.petrified) !== 0;
+		if (petrified && !this.wasPetrified) {
+			pushFeedback(currentMessages().game.hud.petrified, "error");
+		}
+		this.wasPetrified = petrified;
+		const controls = this.controls(frame, alive && !petrified);
+		player.update(dt, controls, context);
+		for (const event of player.events.splice(0)) {
+			if (event.kind === "jump") {
+				this.jumpSpentAt.push(performance.now());
+				soundBank.play("jump", {
+					volume: 0.32,
+					rate: 0.95 + Math.random() * 0.1,
+				});
+			} else if (event.speed > 2.5) {
+				soundBank.play("land", {
+					volume: Math.min(0.9, 0.15 + event.speed * 0.08),
+					rate: 0.9 + Math.random() * 0.15,
+				});
+			}
+		}
+		this.updateCamera(dt, context, settings);
+
+		loaded.camera.updateMatrixWorld(true);
+		const eye = loaded.camera.getWorldPosition(new THREE.Vector3());
+		const forward = loaded.camera.getWorldDirection(new THREE.Vector3());
+		this.dynamicLights.length = 0;
+		loaded.remotePlayers.update(dt, renderTime, eye, eye, this.dynamicLights);
+		loaded.anomalies.update(dt, renderTime, eye, this.dynamicLights);
+		loaded.doors.update(dt);
+		this.reconcileDoors(serverNow);
+		loaded.hazards.update(dt, serverNow, this.dynamicLights);
+		loaded.particles.update(dt);
+		loaded.motes.update(dt, loaded.camera.position);
+		loaded.pickups.update(dt, loaded.camera.position);
+		loaded.altars.update(dt, loaded.camera.position);
+		this.tutorial?.update({
+			frame,
+			feet: {
+				x: player.character.x,
+				y: player.character.y,
+				z: player.character.z,
+			},
+			yaw: player.yaw,
+			hidden: this.hideSpot >= 0,
+			inventory: this.inventory,
+			heldObject: this.heldObject(),
+			lanternOpen: this.lanternIntent,
+			dt,
+		});
+
+		this.updateRig(dt, frame, player, settings, eye);
+		loaded.lights.update(eye, this.dynamicLights, dt);
+		this.cullRooms(eye);
+		this.updateTargets(eye, forward, serverNow, player, restrained || !alive);
+		const spotted = (this.spotted as SpottedDetector).update(
+			dt,
+			loaded.camera,
+			this.selfId,
+			loaded.anomalies.infos(),
+			serverNow - loaded.state.latestSnapshotTime,
+			performance.now(),
+		);
+		this.gaze = this.updateGorgonGaze(dt, eye, player);
+		this.updateHaze(dt, eye);
+		this.updateAudio(dt, eye, forward, player, spotted, serverNow, flags);
+		this.cast.update(
+			this.beginInfo !== null && alive && !restrained && this.hideSpot < 0,
+		);
+		this.sampleVoice(dt);
+		this.sendState(serverNow, player);
+		this.publishHud(
+			serverNow,
+			spotted,
+			flags,
+			self?.hp ?? 100,
+			self?.en ?? 100,
+		);
+		this.updateClock(serverNow);
+		this.drawMinimap(player);
+		const wounded = alive && (self?.hp ?? 100) < 30 ? 0.5 : 0;
+		loaded.post.render(
+			{
+				dt,
+				strength: settings.ambiance,
+				tension: Math.max(spotted, wounded, this.gaze * 0.8, this.haze * 0.5),
+				animated: !settings.reduceMotion,
+				levels: settings.colorLevels,
+			},
+			() => this.render(loaded),
+		);
+	}
+
+	private updateClock(serverNow: number): void {
+		const endsAt = this.beginInfo?.endsAt;
+		if (!endsAt) {
+			return;
+		}
+		const remaining = endsAt - serverNow;
+		if (remaining <= 0 || remaining > CLOCK_WARNING_MS) {
+			return;
+		}
+		const second = Math.ceil(remaining / 1000);
+		if (second === this.clockSecond) {
+			return;
+		}
+		this.clockSecond = second;
+		soundBank.play("clock-tick", {
+			bus: "effects",
+			variant: second % 2,
+			volume: second <= 10 ? 0.8 : 0.55,
+		});
+	}
+
+	private inWater(position: { x: number; y: number; z: number }): boolean {
+		const loaded = this.loadedWorld as LoadedWorld;
+		return loaded.layout.furniture.some((item) => {
+			if (item.kind !== "pond" || Math.abs(position.y - item.y) > 0.3) {
+				return false;
+			}
+			const dx = position.x - item.x;
+			const dz = position.z - item.z;
+			const cos = Math.cos(-item.rotation);
+			const sin = Math.sin(-item.rotation);
+			const localX = dx * cos - dz * sin;
+			const localZ = dx * sin + dz * cos;
+			return (
+				(localX / (item.width / 2 - 0.15)) ** 2 +
+					(localZ / (item.depth / 2 - 0.15)) ** 2 <=
+				1
+			);
+		});
+	}
+
+	private localContext(
+		settings: ReturnType<typeof settingsStore.get>,
+		flags: number,
+		alive: boolean,
+		renderTime: number,
+	): LocalContext {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const player = this.player as LocalPlayer;
+		const spot =
+			this.hideSpot >= 0 ? loaded.layout.hideSpots[this.hideSpot] : undefined;
+		let carriedAnchor = null;
+		if (this.carriedBy !== null) {
+			const info = loaded.anomalies.info(this.carriedBy);
+			carriedAnchor = info
+				? { x: info.position.x, y: info.position.y + 0.2, z: info.position.z }
+				: null;
+		}
+		const position = player.position;
+		const slimed = loaded.state.isPuddleUnder(
+			position.x,
+			position.y,
+			position.z,
+			player.character.grounded,
+		);
+		const wading = this.inWater(position);
+		return {
+			sensitivity: settings.mouseSensitivity,
+			invertY: settings.invertY,
+			sprintAllowed: (flags & PLAYER_FLAG.sprintLocked) === 0,
+			jumpAllowed: this.availableEnergy() >= JUMP_ENERGY_COST,
+			speedFactor: slimed
+				? SLIME_SPEED_FACTOR
+				: wading
+					? WATER_SPEED_FACTOR
+					: 1,
+			pull: this.archivistPull(position, renderTime),
+			alive,
+			carriedAnchor,
+			hideInterior: spot ? spot.interior : null,
+			hideFacing: spot?.facing ?? 0,
+			devModes: activeDevModes(this.init.dev),
+		};
+	}
+
+	private availableEnergy(): number {
+		const now = performance.now();
+		this.jumpSpentAt = this.jumpSpentAt.filter(
+			(time) => now - time < JUMP_ENERGY_SETTLE_MS,
+		);
+		const energy = this.loadedWorld?.state.self?.latest?.en ?? ENERGY_MAX;
+		return energy - this.jumpSpentAt.length * JUMP_ENERGY_COST;
+	}
+
+	private archivistPull(
+		position: { x: number; y: number; z: number },
+		renderTime: number,
+	): { x: number; z: number } {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const room = loaded.world.roomAt(
+			{ x: position.x, z: position.z },
+			position.y,
+		);
+		if (!room) {
+			return { x: 0, z: 0 };
+		}
+		for (const anomaly of loaded.state.anomalies.values()) {
+			if (!anomaly.active || anomaly.roster.species !== "archiviste") {
+				continue;
+			}
+			const sample = anomaly.buffer.sample(renderTime);
+			if (!sample) {
+				continue;
+			}
+			const anomalyRoom = loaded.world.roomAt(
+				{ x: sample.x, z: sample.z },
+				sample.y + 0.1,
+			);
+			if (anomalyRoom?.id !== room.id) {
+				continue;
+			}
+			const dx = sample.x - position.x;
+			const dz = sample.z - position.z;
+			const distance = Math.hypot(dx, dz);
+			if (distance < 0.4) {
+				return { x: 0, z: 0 };
+			}
+			return { x: (dx / distance) * 1.15, z: (dz / distance) * 1.15 };
+		}
+		return { x: 0, z: 0 };
+	}
+
+	private controls(frame: FrameInput, alive: boolean): LocalControls {
+		const active =
+			alive && !this.mapOpen && (this.input?.pointerLocked ?? false);
+		const held = frame.held;
+		const axis = (positive: boolean, negative: boolean) =>
+			(positive ? 1 : 0) - (negative ? 1 : 0);
+		return {
+			forward: active
+				? axis(held.has("moveForward"), held.has("moveBackward"))
+				: 0,
+			strafe: active ? axis(held.has("moveRight"), held.has("moveLeft")) : 0,
+			sprint: active && held.has("sprint"),
+			crouch: held.has("crouch"),
+			jump: active && frame.pressed.has("jump"),
+			rise: active ? axis(held.has("jump"), held.has("crouch")) : 0,
+			lookX: this.input?.pointerLocked && !this.mapOpen ? frame.mouseX : 0,
+			lookY: this.input?.pointerLocked && !this.mapOpen ? frame.mouseY : 0,
+		};
+	}
+
+	private handleActions(
+		frame: FrameInput,
+		alive: boolean,
+		restrained: boolean,
+		serverNow: number,
+	): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const socket = getSocket();
+		let escapeConsumed = false;
+		if (frame.escape && this.mapOpen) {
+			this.closeMap();
+			escapeConsumed = true;
+		}
+		if (frame.pressed.has("map") && !escapeConsumed) {
+			if (this.mapOpen) {
+				this.closeMap();
+			} else {
+				this.mapOpen = true;
+				(this.input as InputManager).mode = "map";
+				this.intentionalUnlock = true;
+				resetMap(this.currentLevel());
+				hudStore.set({ showMap: true });
+				(this.input as InputManager).releasePointerLock();
+			}
+		}
+		hudStore.set({ showLeaderboard: frame.held.has("leaderboard") });
+		if (this.mapOpen) {
+			this.handleMapInput(frame);
+			return;
+		}
+		const grimoire = loaded.grimoire;
+		if (frame.pressed.has("grimoire") && !restrained) {
+			grimoire.setOpen(!grimoire.isOpen);
+		}
+		if (grimoire.isOpen) {
+			if (frame.pressed.has("pageNext") || frame.wheel > 0) {
+				grimoire.next();
+			}
+			if (frame.pressed.has("pagePrevious") || frame.wheel < 0) {
+				grimoire.previous();
+			}
+		}
+		if (!alive || restrained) {
+			if (this.altarId !== null) {
+				this.setAltar(null);
+			}
+			return;
+		}
+		if (frame.pressed.has("lantern") && this.hideSpot < 0) {
+			this.lanternIntent = !this.lanternIntent;
+			this.lanternChangedAt = serverNow;
+			soundBank.play(this.lanternIntent ? "lantern-open" : "lantern-close", {
+				volume: 0.6,
+			});
+			socket.emit("game:lantern", { open: this.lanternIntent });
+		}
+		this.updateAltar(frame, this.player as LocalPlayer);
+		this.handleWheelAndDigits(frame);
+		if (frame.pressed.has("interact")) {
+			if (this.altarId !== null) {
+				if (this.canCraft(OCCULT_IDS[this.altarSelected])) {
+					this.craftSelected();
+				} else {
+					this.setAltar(null);
+				}
+			} else if (this.interaction) {
+				this.interact(this.interaction, serverNow);
+			}
+		}
+		if (frame.pressed.has("push") && serverNow >= this.pushReadyAt) {
+			(socket as GameSocket).emit("game:push", {
+				yaw: (this.player as LocalPlayer).yaw,
+			});
+			this.pushReadyAt = serverNow + PUSH_COOLDOWN_MS;
+			soundBank.play("push", { volume: 0.5 });
+		}
+		if (frame.pressed.has("shout") && serverNow >= this.shoutReadyAt) {
+			socket.emit("game:shout");
+			this.shoutReadyAt = serverNow + SHOUT_COOLDOWN_MS;
+		}
+	}
+
+	private handleMapInput(frame: FrameInput): void {
+		const state = mapStore.get();
+		const step = 6 / state.zoom;
+		if (frame.arrows.x !== 0 || frame.arrows.y !== 0) {
+			panMap(
+				frame.arrows.x * step * 0.08 * 3,
+				frame.arrows.y * step * 0.08 * 3,
+			);
+		}
+		if (frame.wheel !== 0) {
+			zoomMap(-frame.wheel);
+		}
+		if (frame.zoomKeys !== 0) {
+			zoomMap(frame.zoomKeys);
+		}
+		if (frame.digits.includes(0)) {
+			resetMap();
+		}
+	}
+
+	private interact(target: InteractionTarget, serverNow: number): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		if (target.kind === "altar") {
+			this.setAltar(target.id);
+			return;
+		}
+		getSocket().emit("game:interact", { kind: target.kind, id: target.id });
+		if (target.kind === "door") {
+			this.tutorial?.notify("door");
+			const door = loaded.doors.doors.get(target.id);
+			if (door) {
+				const open = !door.targetOpen;
+				loaded.doors.setOpen(target.id, open, serverNow + DOOR_PREDICTION_MS);
+				loaded.world.setDoorClosed(target.id, !open);
+			}
+		}
+	}
+
+	private reconcileDoors(serverNow: number): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		for (const door of loaded.doors.doors.values()) {
+			const authoritative = loaded.state.doors.get(door.doorId);
+			if (!authoritative || serverNow < door.predictedUntil) {
+				continue;
+			}
+			if (door.targetOpen !== authoritative.open) {
+				loaded.doors.setOpen(door.doorId, authoritative.open);
+			}
+			loaded.world.setDoorClosed(door.doorId, !authoritative.open);
+		}
+	}
+
+	private reconcileLantern(flags: number, serverNow: number): void {
+		const server = (flags & PLAYER_FLAG.lantern) !== 0;
+		if (
+			server !== this.lanternIntent &&
+			serverNow - this.lanternChangedAt > LANTERN_RECONCILE_MS
+		) {
+			this.lanternIntent = server;
+		}
+	}
+
+	private updateCamera(
+		dt: number,
+		context: LocalContext,
+		settings: ReturnType<typeof settingsStore.get>,
+	): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const player = this.player as LocalPlayer;
+		const eye = player.eyePosition(context, dt);
+		const camera = loaded.camera;
+		camera.position.set(eye.x, eye.y, eye.z);
+		let roll = player.deathRoll;
+		if (
+			settings.headBob &&
+			!settings.reduceMotion &&
+			player.character.grounded
+		) {
+			const speed = player.speed;
+			const time = performance.now() / 1000;
+			camera.position.y +=
+				Math.sin(time * (6 + speed * 1.6)) * 0.012 * Math.min(1, speed / 3);
+			roll +=
+				Math.sin(time * (3 + speed * 0.8)) * 0.004 * Math.min(1, speed / 3);
+		}
+		camera.rotation.set(player.pitch, player.yaw, roll, "YXZ");
+		if (camera.fov !== settings.fov) {
+			camera.fov = settings.fov;
+			camera.updateProjectionMatrix();
+		}
+		loaded.renderer.toneMappingExposure = settings.brightness;
+		if (
+			loaded.renderer.getPixelRatio() !==
+			QUALITY_PRESETS[settings.quality].pixelRatio * settings.renderScale
+		) {
+			this.resize();
+		}
+	}
+
+	private updateRig(
+		dt: number,
+		frame: FrameInput,
+		player: LocalPlayer,
+		settings: ReturnType<typeof settingsStore.get>,
+		eye: THREE.Vector3,
+	): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const self = loaded.state.self?.latest;
+		const alive = self ? (self.flags & PLAYER_FLAG.dead) === 0 : true;
+		this.lookAccumulator.x = frame.mouseX;
+		this.lookAccumulator.y = frame.mouseY;
+		loaded.rig.update(dt, {
+			grimoireOpen: loaded.grimoire.isOpen,
+			heldObject: this.heldObject(),
+			lanternOpen: this.lanternIntent && this.hideSpot < 0,
+			speed: player.speed,
+			crouch: player.character.crouch,
+			lookDeltaX: settings.reduceMotion ? 0 : this.lookAccumulator.x,
+			lookDeltaY: settings.reduceMotion ? 0 : this.lookAccumulator.y,
+			yaw: player.yaw,
+			pitch: player.pitch,
+			swing: settings.reduceMotion ? 0.35 : 1,
+			headBob: settings.headBob && !settings.reduceMotion,
+			visible: alive && this.carriedBy === null && this.hideSpot < 0,
+			fov: settings.fov,
+			aspect: loaded.camera.aspect,
+		});
+		loaded.body.update(dt, {
+			x: eye.x,
+			y: player.position.y,
+			z: eye.z,
+			yaw: player.yaw,
+			speed: player.speed,
+			crouch: player.character.crouch,
+			grounded: player.character.grounded,
+			visible: alive && this.carriedBy === null && this.hideSpot < 0,
+		});
+		const lantern = loaded.worldLantern;
+		if (this.hideSpot >= 0) {
+			lantern.position.copy(eye);
+			lantern.color.setHex(HIDDEN_GLOW.color);
+			lantern.intensity = HIDDEN_GLOW.intensity;
+			lantern.distance = HIDDEN_GLOW.range;
+			return;
+		}
+		const local = loaded.rig.lanternLocalPosition();
+		const held = loaded.camera.localToWorld(local.clone());
+		lantern.position.copy(pullBackToSight(loaded.world, eye, held, 0.06));
+		lantern.color.setHex(LANTERN_COLOR);
+		lantern.intensity = LANTERN_LIGHT_INTENSITY * loaded.rig.lanternLevelValue;
+		lantern.distance = LANTERN_LIGHT_RANGE;
+	}
+
+	private cullRooms(eye: THREE.Vector3): void {
+		for (const room of (this.loadedWorld as LoadedWorld).rooms) {
+			const dx = Math.max(
+				room.room.bounds.minX - eye.x,
+				0,
+				eye.x - room.room.bounds.maxX,
+			);
+			const dz = Math.max(
+				room.room.bounds.minZ - eye.z,
+				0,
+				eye.z - room.room.bounds.maxZ,
+			);
+			const verticalGap =
+				room.room.type === "stairwell"
+					? 0
+					: Math.max(0, Math.abs(room.room.floorY + 1.5 - eye.y) - 3.2);
+			const distance = Math.hypot(dx, dz);
+			room.group.visible =
+				distance < 42 &&
+				(verticalGap < 0.1 ||
+					(distance < STAIR_PRELOAD_RANGE && verticalGap < LEVEL_HEIGHT));
+		}
+	}
+
+	private updateTargets(
+		eye: THREE.Vector3,
+		forward: THREE.Vector3,
+		serverNow: number,
+		player: LocalPlayer,
+		restrained: boolean,
+	): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		if (restrained) {
+			this.interaction = null;
+			loaded.grimoire.refresh();
+			return;
+		}
+		const finder = this.finder as InteractionFinder;
+		const feet = new THREE.Vector3(
+			player.character.x,
+			player.character.y,
+			player.character.z,
+		);
+		this.interaction = finder.find(
+			eye,
+			forward,
+			feet,
+			this.hideSpot,
+			serverNow,
+		);
+		loaded.grimoire.refresh();
+	}
+
+	private updateAudio(
+		dt: number,
+		eye: THREE.Vector3,
+		forward: THREE.Vector3,
+		player: LocalPlayer,
+		spotted: number,
+		serverNow: number,
+		flags: number,
+	): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		audioEngine.setListener({
+			x: eye.x,
+			y: eye.y,
+			z: eye.z,
+			forwardX: forward.x,
+			forwardY: forward.y,
+			forwardZ: forward.z,
+		});
+		const room = loaded.world.roomAt(
+			{ x: player.character.x, z: player.character.z },
+			player.character.y,
+		);
+		const jets = loaded.hazards.activeJets(serverNow);
+		const nearestJet =
+			jets
+				.map((jet) => jet.position)
+				.sort((a, b) => a.distanceTo(eye) - b.distanceTo(eye))[0] ?? null;
+		const self = loaded.state.self?.latest;
+		loaded.ambientAudio.update(dt, eye, room, {
+			stepSpeed:
+				this.hideSpot >= 0 || this.carriedBy !== null ? 0 : player.speed,
+			grounded: player.character.grounded,
+			crouching: player.character.crouch > 0.5,
+			slimed: (flags & PLAYER_FLAG.slimed) !== 0,
+			tension: spotted,
+			lowHealth: (self?.hp ?? 100) < 30 && (flags & PLAYER_FLAG.dead) === 0,
+			waterAt:
+				nearestJet && nearestJet.distanceTo(eye) < 18 ? nearestJet : null,
+		});
+	}
+
+	private sampleVoice(dt: number): void {
+		const level = micManager.measure();
+		this.voicePeak = Math.max(this.voicePeak, level);
+		if (level >= CAPTURE_VOICE_ACTIVITY_LEVEL) {
+			this.voiceActiveMs += dt * 1000;
+		}
+	}
+
+	private sendState(serverNow: number, player: LocalPlayer): void {
+		if (serverNow - this.lastSendAt < CLIENT_STATE_INTERVAL_MS) {
+			return;
+		}
+		this.lastSendAt = serverNow;
+		this.seq += 1;
+		const character = player.character;
+		const input = player.lastInput;
+		getSocket().emit("game:state", {
+			seq: this.seq,
+			x: character.x,
+			y: character.y,
+			z: character.z,
+			yaw: player.yaw,
+			pitch: player.pitch,
+			vx: character.vx,
+			vy: character.vy,
+			vz: character.vz,
+			grounded: character.grounded,
+			crouch: character.crouch,
+			sprint: input.sprint,
+			moveInput: Math.abs(input.forward) > 0 || Math.abs(input.strafe) > 0,
+			grimoire: (this.loadedWorld as LoadedWorld).grimoire.isOpen,
+			voiceLevel: Math.min(1, this.voicePeak),
+			voicePeakMs: Math.min(2000, Math.round(this.voiceActiveMs)),
+			held: this.heldSlot,
+			moveAck: player.moveAck,
+		});
+		this.voicePeak = 0;
+		this.voiceActiveMs = 0;
+	}
+
+	private anomalyLabel(anomalyId: number): string | null {
+		const entry = this.init.roster.find(
+			(candidate) => candidate.id === anomalyId,
+		);
+		if (!entry) {
+			return null;
+		}
+		const suffix =
+			entry.exemplarCount > 1 ? ` ${romanNumeral(entry.exemplar)}` : "";
+		return `${currentMessages().grimoire.species[entry.species].name}${suffix}`;
+	}
+
+	private updateHaze(dt: number, eye: THREE.Vector3): void {
+		const { scene } = this.loadedWorld as LoadedWorld;
+		const fog = scene.fog;
+		if (!(fog instanceof THREE.FogExp2)) {
+			return;
+		}
+		this.clearAir ??= { density: fog.density, color: fog.color.clone() };
+		let wanted = 0;
+		for (const info of (this.loadedWorld as LoadedWorld).anomalies.infos()) {
+			if (info.species !== "brume" || info.targetId !== this.selfId) {
+				continue;
+			}
+			const near =
+				1 -
+				THREE.MathUtils.smoothstep(
+					info.center.distanceTo(eye),
+					HAZE_NEAR,
+					HAZE_FAR,
+				);
+			wanted = Math.max(wanted, info.extra * near);
+		}
+		const rate = (wanted > this.haze ? 0.9 : 0.45) * dt;
+		this.haze += THREE.MathUtils.clamp(wanted - this.haze, -rate, rate);
+		const amount = this.haze * this.haze * (3 - 2 * this.haze);
+		fog.density = THREE.MathUtils.lerp(
+			this.clearAir.density,
+			HAZE_DENSITY,
+			amount,
+		);
+		fog.color.lerpColors(this.clearAir.color, this.hazeColor, amount);
+		const shown = hudStore.get().haze;
+		if (Math.abs(shown - amount) > 0.02 || (amount === 0 && shown !== 0)) {
+			hudStore.set({ haze: amount });
+		}
+		if (scene.background instanceof THREE.Color) {
+			scene.background.copy(fog.color);
+		}
+	}
+
+	private updateGorgonGaze(
+		dt: number,
+		eye: THREE.Vector3,
+		player: LocalPlayer,
+	): number {
+		const loaded = this.loadedWorld as LoadedWorld;
+		let highest = 0;
+		for (const info of loaded.anomalies.infos()) {
+			if (info.species !== "gorgone") {
+				continue;
+			}
+			const enraged =
+				info.state === "special" ||
+				info.state === "chase" ||
+				info.state === "windup";
+			if (enraged) {
+				this.gorgonGaze.set(info.id, 0);
+				if (info.targetId === this.selfId) {
+					highest = 1;
+				}
+				continue;
+			}
+			const looking =
+				this.hideSpot < 0 &&
+				isGazingAt(loaded.world, eye, player.yaw, player.pitch, info.center);
+			const current = this.gorgonGaze.get(info.id) ?? 0;
+			const next = looking
+				? current + dt * 1000
+				: Math.max(0, current - dt * 1000 * GORGON_GAZE_DECAY);
+			this.gorgonGaze.set(info.id, next);
+			highest = Math.max(highest, next / GORGON_GAZE_LIMIT_MS);
+		}
+		return Math.min(1, highest);
+	}
+
+	private currentLevel(): Level {
+		const player = this.player;
+		const layout = this.loadedWorld?.layout;
+		if (!player || !layout) {
+			return 0;
+		}
+		return levelForHeight(player.character.y, Math.max(...layout.levels), 1.8);
+	}
+
+	private publishHud(
+		serverNow: number,
+		spotted: number,
+		flags: number,
+		health: number,
+		energy: number,
+	): void {
+		const now = performance.now();
+		if (now - this.hudPublishedAt < HUD_INTERVAL_MS) {
+			return;
+		}
+		this.hudPublishedAt = now;
+		const loaded = this.loadedWorld as LoadedWorld;
+		const rows = [...loaded.state.players.values()].map((player) => ({
+			id: player.id,
+			name: player.name,
+			color: player.color,
+			score: player.latest?.score ?? 0,
+			health: player.latest?.hp ?? 100,
+			energy: player.latest?.en ?? 100,
+			alive: player.latest
+				? (player.latest.flags & PLAYER_FLAG.dead) === 0
+				: true,
+			connected: true,
+			self: player.id === this.selfId,
+			team: player.team,
+		}));
+		rows.sort((a, b) => b.score - a.score);
+		const rank = rows.findIndex((row) => row.self) + 1;
+		const team = loaded.state.players.get(this.selfId)?.team ?? null;
+		const standings = teamStandings(
+			rows.map((row) => ({
+				playerId: row.id,
+				team: row.team,
+				score: row.score,
+				captures: 0,
+				deaths: 0,
+			})),
+		);
+		const startedAt = this.beginInfo?.startedAt ?? serverNow;
+		const howlerNearby = this.howlerNearby(serverNow);
+		const respawnAt = this.respawnAt;
+		hudStore.set({
+			remainingMs: this.beginInfo
+				? Math.max(0, this.beginInfo.endsAt - serverNow)
+				: loaded.state.remainingMs,
+			anomaliesInMs: Math.max(
+				0,
+				startedAt + this.init.anomalySpawnDelayMs - serverNow,
+			),
+			health,
+			energy,
+			sprintLocked: (flags & PLAYER_FLAG.sprintLocked) !== 0,
+			lanternOpen: this.lanternIntent,
+			crouching: (this.player?.character.crouch ?? 0) > 0.5,
+			score:
+				team === null
+					? (rows.find((row) => row.self)?.score ?? 0)
+					: (standings.find((standing) => standing.team === team)?.score ?? 0),
+			rank: Math.max(1, rank),
+			team,
+			teamRank: 1 + standings.findIndex((standing) => standing.team === team),
+			teamCount: standings.length,
+			prompt:
+				this.altarId !== null
+					? this.altarPrompt()
+					: (this.interaction?.label ?? null),
+			dead: (flags & PLAYER_FLAG.dead) !== 0,
+			respawnAt,
+			hidden: this.hideSpot >= 0,
+			carried: this.carriedBy !== null,
+			spotted,
+			gaze: this.gaze,
+			howlerNearby,
+			slimed: (flags & PLAYER_FLAG.slimed) !== 0,
+			damageAt: this.selfDamageAt.value,
+			protectedUntil:
+				(flags & PLAYER_FLAG.protected) !== 0 ? serverNow + 500 : 0,
+			pushReadyAt: this.pushReadyAt,
+			shoutReadyAt: this.shoutReadyAt,
+			voiceLevel: micManager.measure(),
+			voiceTransmitting: micManager.voiceActive(),
+			leaderboard: rows,
+			fps: this.fps,
+			level: this.currentLevel(),
+			serverNow,
+		});
+	}
+
+	private respawnAt = 0;
+
+	private howlerNearby(serverNow: number): boolean {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const eye = loaded.camera.position;
+		for (const anomaly of loaded.state.anomalies.values()) {
+			if (
+				anomaly.active &&
+				anomaly.roster.species === "hurleur" &&
+				anomaly.screamUntil > serverNow
+			) {
+				const info = loaded.anomalies.info(anomaly.id);
+				if (info && info.center.distanceTo(eye) < 7.5) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private drawMinimap(player: LocalPlayer): void {
+		const canvas = this.minimap;
+		const renderer = this.mapRenderer;
+		if (!canvas || !renderer) {
+			return;
+		}
+		const context = canvas.getContext("2d");
+		if (!context) {
+			return;
+		}
+		const ratio = window.devicePixelRatio || 1;
+		const width = canvas.clientWidth;
+		const height = canvas.clientHeight;
+		if (
+			canvas.width !== Math.round(width * ratio) ||
+			canvas.height !== Math.round(height * ratio)
+		) {
+			canvas.width = Math.round(width * ratio);
+			canvas.height = Math.round(height * ratio);
+		}
+		renderer.draw(
+			context,
+			{
+				centerX: player.character.x,
+				centerZ: player.character.z,
+				scale: 8,
+				width,
+				height,
+				level: this.currentLevel(),
+			},
+			{
+				labels: true,
+				labelSize: 13,
+				grid: false,
+				compass: false,
+				scaleBar: false,
+				player: {
+					x: player.character.x,
+					z: player.character.z,
+					yaw: player.yaw,
+				},
+				others: this.mapMarkers(),
+				names: false,
+				pinToEdge: true,
+				currentRoomId: this.currentRoomId(player),
+				levelBadge: currentMessages().game.map.levelName(this.currentLevel()),
+				pixelRatio: ratio,
+			},
+		);
+	}
+
+	private mapMarkers(): MapMarker[] {
+		const loaded = this.loadedWorld;
+		if (!loaded) {
+			return [];
+		}
+		const top = Math.max(...loaded.layout.levels);
+		const markers: MapMarker[] = [];
+		for (const player of loaded.state.players.values()) {
+			const latest = player.latest;
+			if (player.id === loaded.state.selfId || !latest) {
+				continue;
+			}
+			const color =
+				player.team === null ? player.color : TEAM_COLORS[player.team];
+			markers.push({
+				x: latest.x,
+				z: latest.z,
+				yaw: latest.yaw,
+				level: levelForHeight(latest.y, top, 1.8),
+				color: `#${color.toString(16).padStart(6, "0")}`,
+				name: player.name,
+				dead: (latest.flags & PLAYER_FLAG.dead) !== 0,
+			});
+		}
+		return markers;
+	}
+
+	private currentRoomId(player: LocalPlayer): number | null {
+		const loaded = this.loadedWorld;
+		if (!loaded) {
+			return null;
+		}
+		return (
+			loaded.world.roomAt(
+				{ x: player.character.x, z: player.character.z },
+				player.character.y + 0.1,
+			)?.id ?? null
+		);
+	}
+
+	drawBigMap(canvas: HTMLCanvasElement): void {
+		const renderer = this.mapRenderer;
+		const player = this.player;
+		if (!renderer || !player) {
+			return;
+		}
+		const context = canvas.getContext("2d");
+		if (!context) {
+			return;
+		}
+		const ratio = window.devicePixelRatio || 1;
+		const width = canvas.clientWidth;
+		const height = canvas.clientHeight;
+		if (
+			canvas.width !== Math.round(width * ratio) ||
+			canvas.height !== Math.round(height * ratio)
+		) {
+			canvas.width = Math.round(width * ratio);
+			canvas.height = Math.round(height * ratio);
+		}
+		const state = mapStore.get();
+		const fit = renderer.fitView(width, height, state.level);
+		const view = {
+			...fit,
+			scale: fit.scale * state.zoom,
+			centerX: fit.centerX + state.panX,
+			centerZ: fit.centerZ + state.panZ,
+		};
+		const showPlayer = this.currentLevel() === state.level;
+		renderer.draw(context, view, {
+			labels: true,
+			labelSize: Math.min(22, 11 + view.scale * 0.6),
+			grid: true,
+			compass: true,
+			scaleBar: true,
+			player: showPlayer
+				? { x: player.character.x, z: player.character.z, yaw: player.yaw }
+				: null,
+			others: this.mapMarkers(),
+			names: true,
+			pinToEdge: false,
+			currentRoomId: showPlayer ? this.currentRoomId(player) : null,
+			levelBadge: null,
+			pixelRatio: ratio,
+		});
+	}
+
+	private render(loaded: LoadedWorld): void {
+		const { renderer, scene, camera } = loaded;
+		renderer.clear();
+		camera.layers.set(0);
+		renderer.render(scene, camera);
+		renderer.clearDepth();
+		const background = scene.background;
+		const fog = scene.fog;
+		scene.background = null;
+		scene.fog = null;
+		camera.layers.set(FIRST_PERSON_LAYER);
+		renderer.render(scene, camera);
+		camera.layers.set(0);
+		scene.background = background;
+		scene.fog = fog;
+	}
+
+	private onEvent(event: GameEvent): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		switch (event.type) {
+			case "door": {
+				const door = loaded.doors.doors.get(event.doorId);
+				if (
+					door &&
+					(door.predictedUntil < clockSync.serverNow() ||
+						event.by !== this.selfId)
+				) {
+					loaded.doors.setOpen(event.doorId, event.open);
+				} else if (door) {
+					door.predictedUntil = 0;
+					loaded.doors.setOpen(event.doorId, event.open);
+				}
+				if (door) {
+					const position = new THREE.Vector3(
+						door.geometry.center.x,
+						door.geometry.floorY + 1.1,
+						door.geometry.center.z,
+					);
+					soundBank.play(event.open ? "door-creak" : "door-shut", {
+						position,
+						refDistance: 2,
+						maxDistance: 28,
+					});
+				}
+				break;
+			}
+			case "pickup":
+				loaded.pickups.setTaken(event.id, true);
+				if (event.playerId === this.selfId) {
+					soundBank.play("page-turn", { volume: 0.5, rate: 1.5 });
+				}
+				break;
+			case "pickupBack":
+				loaded.pickups.setTaken(event.id, false);
+				break;
+			case "craft": {
+				const altar = loaded.layout.altars[event.altarId];
+				if (event.playerId === this.selfId) {
+					this.setAltar(null);
+				}
+				if (altar) {
+					soundBank.play("capture", { position: altar, volume: 0.5 });
+				}
+				break;
+			}
+			case "valve": {
+				const valve = loaded.layout.valves[event.valveId];
+				if (valve) {
+					soundBank.play("valve-turn", { position: valve.valve });
+				}
+				break;
+			}
+			case "damage":
+				if (event.playerId === this.selfId) {
+					if (event.periodic) {
+						soundBank.play("hurt", { volume: 0.25, rate: 1.25 });
+					} else {
+						this.selfDamageAt.value = performance.now();
+						soundBank.play("hurt", { volume: 0.8 });
+					}
+				}
+				break;
+			case "death":
+				if (event.playerId === this.selfId) {
+					this.respawnAt = event.respawnAt;
+					this.cast.cancel();
+					loaded.grimoire.setOpen(false);
+					this.carriedBy = null;
+					this.hideSpot = -1;
+					soundBank.play("death", { volume: 0.9 });
+				}
+				break;
+			case "respawn":
+				if (event.playerId === this.selfId) {
+					this.respawnAt = 0;
+					soundBank.play("respawn", { volume: 0.7 });
+					this.lanternIntent = false;
+				}
+				break;
+			case "carry":
+				if (event.playerId === this.selfId) {
+					this.carriedBy = event.active ? event.anomalyId : null;
+					if (event.active) {
+						this.cast.cancel();
+						loaded.grimoire.setOpen(false);
+						this.lanternIntent = false;
+					}
+				}
+				break;
+			case "castInterrupted":
+				if (event.playerId === this.selfId) {
+					this.cast.interrupted();
+				}
+				break;
+			case "shout": {
+				if (event.playerId !== this.selfId) {
+					soundBank.play("shout", {
+						position: { x: event.x, y: event.y + 1.5, z: event.z },
+						volume: 1.2,
+						refDistance: 3,
+					});
+				} else {
+					soundBank.play("shout", { volume: 0.8 });
+				}
+				break;
+			}
+			case "extractWarning":
+				if (event.playerId === this.selfId) {
+					soundBank.play("door-creak", { volume: 1, rate: 0.6 });
+				}
+				break;
+			case "explosion":
+				if (event.killed.includes(this.selfId)) {
+					this.selfDamageAt.value = performance.now();
+				}
+				break;
+			default:
+				break;
+		}
+	}
+
+	dispose(): void {
+		this.tutorial?.dispose();
+		this.tutorial = null;
+		if (this.disposed) {
+			return;
+		}
+		this.disposed = true;
+		this.stopDevModes();
+		releaseKeyboardLock();
+		this.detach();
+		this.cast.dispose();
+		voiceChat.setMode("lobby");
+		soundBank.stopAll();
+		if (this.loadedWorld) {
+			this.disposeWorld(this.loadedWorld);
+			this.loadedWorld = null;
+		}
+	}
+
+	private disposeWorld(loaded: LoadedWorld): void {
+		loaded.ambientAudio.dispose();
+		loaded.anomalies.dispose();
+		loaded.remotePlayers.dispose();
+		loaded.hazards.dispose();
+		loaded.pickups.dispose();
+		loaded.altars.dispose();
+		loaded.particles.dispose();
+		loaded.motes.dispose();
+		loaded.grimoire.dispose();
+		loaded.rig.dispose();
+		loaded.body.dispose();
+		loaded.lights.dispose(loaded.scene);
+		loaded.scene.traverse((object) => {
+			if (object instanceof THREE.Mesh) {
+				object.geometry.dispose();
+			}
+		});
+		loaded.materials.dispose();
+		loaded.textures.dispose();
+		loaded.post.dispose();
+		loaded.renderer.dispose();
+		loaded.renderer.forceContextLoss();
+		loaded.renderer.domElement.remove();
+	}
+}

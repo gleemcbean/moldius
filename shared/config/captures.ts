@@ -1,0 +1,7 @@
+export const CAPTURE_MAX_RANGE = 5;
+export const CAPTURE_AIM_TOLERANCE_RAD = 0.11;
+export const CAPTURE_VOICE_ACTIVITY_LEVEL = 0.08;
+export const CAPTURE_VOICE_ACTIVITY_MS = 450;
+export const CAPTURE_VOICE_WINDOW_MS = 7_000;
+export const CAST_LISTEN_MAX_MS = 7_000;
+export const AIM_TARGET_MEMORY_MS = 4_000;

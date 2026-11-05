@@ -1,0 +1,55 @@
+@use '../styles/tokens' as *;
+
+.group {
+  position: relative;
+}
+
+.selector {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 20;
+  border: 2px solid $yellow;
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 180ms ease-out;
+}
+
+%corner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: $yellow;
+  border-style: solid;
+}
+
+.cornerTopLeft {
+  @extend %corner;
+  top: -6px;
+  left: -6px;
+  border-width: 4px 0 0 4px;
+}
+
+.cornerTopRight {
+  @extend %corner;
+  top: -6px;
+  right: -6px;
+  border-width: 4px 4px 0 0;
+}
+
+.cornerBottomLeft {
+  @extend %corner;
+  bottom: -6px;
+  left: -6px;
+  border-width: 0 0 4px 4px;
+}
+
+.cornerBottomRight {
+  @extend %corner;
+  bottom: -6px;
+  right: -6px;
+  border-width: 0 4px 4px 0;
+}

@@ -1,0 +1,65 @@
+$yellow: #dce54d;
+$yellow-bright: #eef46a;
+$yellow-deep: #b9c22f;
+$map-label: #f9e55d;
+$background: #111512;
+$background-raised: #191e1a;
+$background-panel: #1d231f;
+$line: #2f3a31;
+$line-strong: #46543f;
+$text: #ecefe2;
+$text-muted: #9fa894;
+$text-dim: #6c7566;
+$danger: #e5533d;
+$danger-soft: #7a2c22;
+$health: #d9493a;
+$energy: #dce54d;
+$ok: #8fd36a;
+$voice: #63c6e8;
+
+$font-title: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+$font-text: 'Alegreya', 'Georgia', 'Times New Roman', serif;
+$font-code: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+$font-book: 'Alegreya', 'Georgia', 'Times New Roman', serif;
+$font-book-title: 'IM Fell English SC', 'Alegreya', 'Georgia', serif;
+
+$radius: 0;
+$gap: 12px;
+$transition-fast: 120ms ease-out;
+$transition: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+@mixin pixel-border($color: $line-strong) {
+  box-shadow:
+    0 0 0 2px $color,
+    0 0 0 4px $background;
+}
+
+@mixin title($size: 28px) {
+  font-family: $font-book-title;
+  font-weight: 400;
+  font-size: $size;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+
+@mixin figures($size: 28px) {
+  font-family: $font-title;
+  font-weight: 700;
+  font-size: $size;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+@mixin label {
+  font-family: $font-text;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: $text-muted;
+}
+
+@mixin numeric {
+  font-family: $font-title;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}

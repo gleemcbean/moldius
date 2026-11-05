@@ -1,0 +1,302 @@
+@use '../../styles/tokens' as *;
+
+.home {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(10, 12, 10, 0.92) 0%,
+      rgba(10, 12, 10, 0.55) 34%,
+      rgba(10, 12, 10, 0) 62%
+    ),
+    radial-gradient(ellipse at 70% 50%, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+.panel {
+  position: absolute;
+  top: 50%;
+  left: clamp(20px, 6vw, 96px);
+  transform: translateY(-50%);
+  width: min(460px, calc(100% - 40px));
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  margin: 0;
+  @include title(clamp(64px, 9vw, 112px));
+  color: $yellow;
+  letter-spacing: 0.02em;
+  text-shadow:
+    4px 4px 0 #3b4115,
+    8px 8px 0 rgba(0, 0, 0, 0.6);
+}
+
+
+.nameBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  @include label;
+}
+
+.nameInput,
+.codeInput {
+  height: 50px;
+  padding: 0 16px;
+  border: 2px solid $line-strong;
+  background: rgba(10, 12, 10, 0.86);
+  font-family: $font-text;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: 0.03em;
+  color: $text;
+  outline: none;
+
+  &:focus {
+    border-color: $yellow;
+  }
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chip {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  padding: 4px 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid $line-strong;
+  background: rgba(10, 12, 10, 0.7);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  color: $text-muted;
+
+  &:hover {
+    color: $yellow;
+    border-color: $yellow;
+  }
+
+  &:last-child {
+    flex-shrink: 0;
+  }
+}
+
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.patternRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.patternChoice {
+  width: 36px;
+  padding: 2px 2px 1px;
+  border: 2px solid transparent;
+  background: rgba(10, 12, 10, 0.6);
+  cursor: pointer;
+  transition:
+    transform $transition-fast,
+    border-color $transition-fast;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.patternActive {
+  border-color: $yellow;
+  transform: translateY(-2px);
+}
+
+.colorLabel {
+  @include label;
+  flex-shrink: 0;
+  width: 70px;
+}
+
+.swatch {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid rgba(10, 12, 10, 0.9);
+  box-shadow: 0 0 0 1px $line-strong;
+  cursor: pointer;
+  transition: transform $transition-fast;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 248, 230, 0.85);
+    box-shadow: 8px 6px 0 -1px rgba(255, 248, 230, 0.85);
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 1px $yellow;
+  }
+}
+
+.swatchActive {
+  box-shadow:
+    0 0 0 2px $yellow,
+    0 0 0 4px rgba(10, 12, 10, 0.9);
+  transform: translateY(-2px);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.codeRow {
+  display: grid;
+  grid-template-columns: 158px 1fr;
+  gap: 10px;
+}
+
+.codeInput {
+  min-width: 0;
+  padding: 0 10px;
+  text-align: center;
+  font-family: $font-code;
+  font-size: 22px;
+  letter-spacing: 0.3em;
+}
+
+.more {
+  display: flex;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(70, 84, 63, 0.7);
+}
+
+.tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  min-height: 60px;
+  min-width: 60px;
+  padding: 4px 12px;
+  border: 2px solid $line-strong;
+  background: rgba(10, 12, 10, 0.78);
+  cursor: pointer;
+  text-align: center;
+  color: $text;
+  transition:
+    border-color $transition-fast,
+    transform $transition-fast;
+
+  &:hover,
+  &:focus-visible {
+    border-color: $yellow;
+    transform: translateY(-2px);
+
+    .tileTitle,
+    .tileIcon {
+      color: $yellow;
+    }
+  }
+}
+
+.tileIcon {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  color: $text-muted;
+  transition: color $transition-fast;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.tileTitle {
+  @include title(18px);
+  text-wrap: balance;
+  color: $text;
+  transition: color $transition-fast;
+}
+
+@media (max-width: 420px) {
+  .more {
+    gap: 8px;
+  }
+
+  .tileTitle {
+    font-size: 16px;
+  }
+}
+
+.legal {
+  position: absolute;
+  right: clamp(16px, 3vw, 40px);
+  bottom: clamp(14px, 2.4vh, 28px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 20px;
+  font-family: $font-text;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+
+  a {
+    color: $text-muted;
+    text-decoration: none;
+    transition: color $transition-fast;
+
+    &:hover,
+    &:focus-visible {
+      color: $yellow;
+      text-decoration: underline;
+    }
+  }
+}
+
+.offline {
+  margin: 0;
+  @include label;
+  color: $danger;
+}

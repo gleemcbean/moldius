@@ -1,0 +1,79 @@
+@use '../../styles/tokens' as *;
+
+.tabs {
+  position: sticky;
+  top: -10px;
+  z-index: 3;
+  padding: 10px 0 12px;
+  background: $background-raised;
+}
+
+.section {
+  margin: 18px 0 4px;
+  @include title(22px);
+  color: $yellow;
+}
+
+.row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.notice {
+  margin: 10px 0 0;
+  padding: 10px 14px;
+  background: rgba(220, 229, 77, 0.1);
+  box-shadow: inset 3px 0 0 $yellow;
+  font-size: 16px;
+}
+
+.hint {
+  margin: 6px 0 0;
+  font-family: $font-text;
+  font-size: 15px;
+  color: $text-muted;
+  line-height: 1.5;
+}
+
+.keyButton {
+  min-width: 150px;
+  height: 36px;
+  padding: 0 12px;
+  border: 2px solid $line-strong;
+  background: $background;
+  cursor: pointer;
+  font-family: $font-title;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: $text;
+
+  &:hover {
+    border-color: $yellow;
+  }
+}
+
+.listening {
+  border-color: $yellow;
+  color: $yellow;
+  animation: blink 900ms steps(2) infinite;
+}
+
+.select {
+  height: 36px;
+  min-width: 220px;
+  max-width: 100%;
+  padding: 0 8px;
+  border: 2px solid $line-strong;
+  background: $background;
+  font-family: $font-text;
+  font-size: 15px;
+}
+
+@keyframes blink {
+  50% {
+    border-color: $line-strong;
+  }
+}

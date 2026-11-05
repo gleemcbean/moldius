@@ -1,0 +1,43 @@
+@use '../styles/tokens' as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 100%;
+  padding: 32px 20px;
+  background: $background;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  @include title(clamp(48px, 16vw, 88px));
+  color: $yellow;
+  text-shadow:
+    3px 3px 0 #3b4115,
+    6px 6px 0 rgba(0, 0, 0, 0.6);
+}
+
+.heading {
+  margin: 0;
+  @include title(24px);
+  color: $text;
+}
+
+.text {
+  max-width: 420px;
+  margin: 0;
+  font-family: $font-text;
+  font-size: 18px;
+  line-height: 1.45;
+  color: $text-muted;
+}
+
+.link {
+  font-family: $font-text;
+  font-size: 15px;
+  color: $text-muted;
+}
