@@ -13,9 +13,20 @@ import {
 } from "../geometryUtils";
 import type { MaterialOptions } from "../MaterialLibrary";
 
+/** Pivot et axe sont exprimés dans le repère du meuble. */
+export interface PartAnimation {
+	kind: "swing" | "spin";
+	pivot: [number, number, number];
+	axis: [number, number, number];
+	speed: number;
+	amplitude: number;
+	phase: number;
+}
+
 export interface Part {
 	geometry: THREE.BufferGeometry;
 	material: MaterialOptions;
+	animation?: PartAnimation;
 }
 
 export interface FurnitureContext {
@@ -259,7 +270,10 @@ export const FLAME: MaterialOptions = {
 	side: THREE.DoubleSide,
 	fixedRepeat: true,
 	depthWrite: false,
+	wave: "flame",
 };
+
+export const FIRE: MaterialOptions = { ...FLAME, wave: "fire" };
 export const WAX: MaterialOptions = { texture: "wax", roughness: 0.6 };
 export const IRON: MaterialOptions = {
 	texture: "iron",
@@ -290,6 +304,42 @@ export const STONE: MaterialOptions = {
 	roughness: 0.95,
 };
 export const MARBLE: MaterialOptions = { texture: "marble", roughness: 0.5 };
+const CARVED_STONES: readonly MaterialOptions[] = [
+	MARBLE,
+	{ texture: "marbleBlack", roughness: 0.3 },
+	{ texture: "marbleRose", roughness: 0.42 },
+	{ texture: "marbleGreen", roughness: 0.36 },
+	{ texture: "marbleGold", roughness: 0.44 },
+	STONE,
+	{ texture: "limestone", roughness: 0.98 },
+	{ texture: "sandstone", roughness: 1 },
+	{ texture: "granite", roughness: 0.7 },
+	{ texture: "basalt", roughness: 0.85 },
+	{ texture: "slate", roughness: 0.8 },
+];
+const CAST_STATUARY: readonly MaterialOptions[] = [
+	{ texture: "copper", color: 0x7fb098, roughness: 0.55, metalness: 0.45 },
+	{ texture: "brass", color: 0x8a6c3e, roughness: 0.5, metalness: 0.5 },
+	{ texture: "iron", color: 0x6a6a70, roughness: 0.6, metalness: 0.4 },
+	{ texture: "terracotta", roughness: 0.95 },
+];
+
+export function pickCarved(rng: {
+	pick<T>(items: readonly T[]): T;
+}): MaterialOptions {
+	return rng.pick(CARVED_STONES);
+}
+
+export function pickStatuary(rng: {
+	pick<T>(items: readonly T[]): T;
+}): MaterialOptions {
+	return rng.pick([...CARVED_STONES, ...CAST_STATUARY]);
+}
+
+export function carvedForSeed(seed: number): MaterialOptions {
+	return CARVED_STONES[Math.abs(seed) % CARVED_STONES.length];
+}
+
 export const LINEN: MaterialOptions = { texture: "linen", roughness: 0.95 };
 export const DARK: MaterialOptions = { color: 0x0b0907, roughness: 1 };
 

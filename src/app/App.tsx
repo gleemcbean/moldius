@@ -1,10 +1,13 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { loadKeyboardLayout } from "../config/controls";
 import { AccountModal } from "../features/account/AccountModal";
 import { initAccount } from "../features/account/accountStore";
 import { audioEngine } from "../features/audio/audioEngine";
 import { music } from "../features/audio/music";
 import { BestiaryModal } from "../features/bestiary/BestiaryModal";
+import { FriendInvites } from "../features/friends/FriendInvites";
+import { FriendsModal } from "../features/friends/FriendsModal";
+import { initFriends } from "../features/friends/friendsStore";
 import { GameScreen } from "../features/game/GameScreen";
 import { initMatchController } from "../features/game/matchController";
 import { HomeScreen } from "../features/home/HomeScreen";
@@ -25,10 +28,17 @@ import { DesktopOnly } from "./DesktopOnly";
 import { hasDesktopInput } from "./desktopOnly";
 import { Toasts } from "./Toasts";
 
+const AdminPage = lazy(() =>
+	import("../features/admin/AdminPage").then((module) => ({
+		default: module.AdminPage,
+	})),
+);
+
 function useGlobalSetup(): void {
 	useEffect(() => {
 		initConnection();
 		initAccount();
+		initFriends();
 		listenLobbyUpdates();
 		initMatchController();
 		initVoiceController();
@@ -64,6 +74,13 @@ export function App() {
 	if (pathname === "/terms" || pathname === "/privacy") {
 		return <LegalPage document={pathname === "/terms" ? "terms" : "privacy"} />;
 	}
+	if (pathname === "/admin") {
+		return (
+			<Suspense fallback={null}>
+				<AdminPage />
+			</Suspense>
+		);
+	}
 	if (!hasDesktopInput()) {
 		return <DesktopOnly />;
 	}
@@ -84,6 +101,8 @@ function GameApp() {
 			{overlay === "settings" ? <SettingsModal onClose={closeOverlay} /> : null}
 			{overlay === "account" ? <AccountModal onClose={closeOverlay} /> : null}
 			{overlay === "bestiary" ? <BestiaryModal onClose={closeOverlay} /> : null}
+			{overlay === "friends" ? <FriendsModal onClose={closeOverlay} /> : null}
+			{screen === "home" || screen === "lobby" ? <FriendInvites /> : null}
 			<Toasts />
 		</>
 	);

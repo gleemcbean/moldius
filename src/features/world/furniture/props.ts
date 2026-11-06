@@ -6,6 +6,7 @@ import {
 	boxAt,
 	CERAMIC,
 	candle,
+	carvedForSeed,
 	cylinder,
 	cylinderBetween,
 	DARK,
@@ -14,12 +15,20 @@ import {
 	IRON,
 	lathe,
 	type Part,
+	pickCarved,
 	pickWood,
-	STONE,
 	sphere,
 	texturedPlane,
 	torus,
 } from "./parts";
+import {
+	curvedLeaf,
+	flowerHead,
+	leafMaterial,
+	leafyBush,
+	potMaterial,
+	stem,
+} from "./plants";
 
 const POTION_COLORS = [0x6dff7a, 0xff4fd8, 0x4fa8ff, 0xffb84f, 0xd04040];
 
@@ -191,110 +200,119 @@ export const barrel: FurnitureBuilder = ({ item }) => {
 export const pottedPlant: FurnitureBuilder = ({ item, rng }) => {
 	const potRadius = Math.min(item.width, item.depth) * 0.32;
 	const potHeight = Math.min(0.5, item.height * 0.3);
-	const leaves: MaterialOptions = {
-		texture: rng.pick(["foliage", "foliageDark", "foliageWarm"] as const),
-		roughness: 1,
-		side: THREE.DoubleSide,
-	};
+	const soilY = potHeight * 0.86;
 	const parts: Part[] = [
 		lathe(
-			{ texture: "greenhouseTiles", color: 0xd8a080, roughness: 0.9 },
+			potMaterial(),
 			[
 				[0.001, 0],
-				[potRadius * 0.75, 0],
-				[potRadius, potHeight * 0.9],
+				[potRadius * 0.72, 0],
+				[potRadius * 0.95, potHeight * 0.8],
+				[potRadius * 1.08, potHeight * 0.82],
 				[potRadius * 1.1, potHeight],
-				[potRadius * 0.95, potHeight],
-				[0.001, potHeight * 0.85],
+				[potRadius * 0.94, potHeight],
+				[potRadius * 0.9, soilY - 0.01],
+				[0.001, soilY - 0.01],
 			],
 			0,
 			0,
 			0,
-			14,
+			16,
 		),
 		cylinder(
 			{ texture: "soil", roughness: 1 },
-			potRadius * 0.95,
-			potRadius * 0.95,
-			0.01,
+			potRadius * 0.92,
+			potRadius * 0.92,
+			0.012,
 			0,
-			potHeight * 0.88,
+			soilY - 0.012,
 			0,
-			14,
+			16,
 		),
 	];
+	const root = new THREE.Vector3(0, soilY, 0);
 	if (item.variant === 1 || item.variant === 3) {
-		const trunkHeight = item.height * 0.55;
+		const trunkHeight = item.height * (item.variant === 3 ? 0.5 : 0.56);
 		parts.push(
 			cylinder(
 				{ texture: "bark", roughness: 1 },
-				0.035,
-				0.05,
+				0.028,
+				0.046,
 				trunkHeight,
 				0,
-				potHeight * 0.85,
+				soilY,
 				0,
 				8,
 			),
 		);
-		const crown = item.variant === 3 ? 0.45 : 0.35;
-		for (let index = 0; index < 7; index += 1) {
-			const angle = (index / 7) * Math.PI * 2;
-			const leaf = new THREE.PlaneGeometry(0.22, item.height * 0.32);
-			leaf.translate(0, item.height * 0.16, 0);
-			leaf.rotateX(-0.9 - rng.next() * 0.3);
-			leaf.rotateY(angle);
-			leaf.translate(0, potHeight + trunkHeight - 0.05, 0);
-			parts.push({ geometry: leaf, material: leaves });
+		const top = new THREE.Vector3(0, soilY + trunkHeight, 0);
+		if (item.variant === 1) {
+			const frond = leafMaterial(rng, "palmFrond");
+			const count = 9;
+			for (let index = 0; index < count; index += 1) {
+				parts.push(
+					curvedLeaf(
+						frond,
+						top,
+						item.height * 0.27,
+						item.height * (0.3 + rng.next() * 0.1),
+						(index / count) * Math.PI * 2 + rng.next() * 0.3,
+						0.32 + rng.next() * 0.3,
+						0.75 + rng.next() * 0.35,
+					),
+				);
+			}
+			return parts;
 		}
-		if (item.variant === 3) {
-			parts.push(
-				sphere(
-					leaves,
-					crown,
-					0,
-					potHeight + trunkHeight + 0.25,
-					0,
-					1,
-					0.8,
-					1,
-					10,
-				),
-			);
-		}
+		const crown = Math.min(0.42, item.height * 0.2);
+		parts.push(
+			...leafyBush(
+				leafMaterial(rng, "leafSprig"),
+				{ texture: "foliageDark", roughness: 1 },
+				top.clone().add(new THREE.Vector3(0, crown * 0.72, 0)),
+				crown,
+				rng,
+				46,
+				0.95,
+			),
+		);
 		return parts;
 	}
-	const count = item.variant === 2 ? 6 : 10;
+	const blade = leafMaterial(rng, "leafBlade");
+	const count = item.variant === 2 ? 11 : 15;
 	for (let index = 0; index < count; index += 1) {
-		const angle = (index / count) * Math.PI * 2 + rng.next() * 0.4;
-		const length = (item.height - potHeight) * (0.6 + rng.next() * 0.45);
-		const frond = new THREE.PlaneGeometry(0.14, length, 1, 3);
-		const positions = frond.getAttribute("position") as THREE.BufferAttribute;
-		for (let vertex = 0; vertex < positions.count; vertex += 1) {
-			const y = positions.getY(vertex) + length / 2;
-			positions.setZ(vertex, (y / length) ** 2 * length * 0.45);
-			positions.setY(vertex, y);
-		}
-		frond.computeVertexNormals();
-		frond.rotateX(-0.25);
-		frond.rotateY(angle);
-		frond.translate(0, potHeight * 0.85, 0);
-		parts.push({ geometry: frond, material: leaves });
+		const inner = index % 3 === 0;
+		parts.push(
+			curvedLeaf(
+				blade,
+				root,
+				0.07 + rng.next() * 0.04,
+				(item.height - soilY) *
+					(inner ? 0.86 + rng.next() * 0.14 : 0.55 + rng.next() * 0.26),
+				(index / count) * Math.PI * 2 + rng.next() * 0.5,
+				inner ? 0.06 + rng.next() * 0.1 : 0.22 + rng.next() * 0.22,
+				inner ? 0.14 + rng.next() * 0.14 : 0.42 + rng.next() * 0.4,
+			),
+		);
 	}
 	if (item.variant === 2) {
+		const stemMaterial: MaterialOptions = { color: 0x4d7a3a, roughness: 0.9 };
+		const petal: MaterialOptions = {
+			color: rng.pick([0xc8344a, 0xe0b83a, 0xd468b4]),
+			roughness: 0.8,
+		};
+		const heart: MaterialOptions = { color: 0xf0d04a, roughness: 0.7 };
 		for (let index = 0; index < 5; index += 1) {
+			const angle = (index / 5) * Math.PI * 2 + rng.next() * 0.5;
+			const spread = 0.04 + rng.next() * potRadius * 0.9;
+			const head = new THREE.Vector3(
+				Math.cos(angle) * spread,
+				soilY + (item.height - soilY) * (0.72 + rng.next() * 0.26),
+				Math.sin(angle) * spread,
+			);
 			parts.push(
-				sphere(
-					{ color: rng.pick([0xd8344a, 0xf0d04a, 0xe878c8]), roughness: 0.8 },
-					0.05,
-					(rng.next() - 0.5) * 0.25,
-					item.height * (0.7 + rng.next() * 0.25),
-					(rng.next() - 0.5) * 0.25,
-					1,
-					0.7,
-					1,
-					8,
-				),
+				stem(stemMaterial, root, head),
+				...flowerHead(petal, heart, head, 0.05 + rng.next() * 0.012),
 			);
 		}
 	}
@@ -330,21 +348,16 @@ export const planterBed: FurnitureBuilder = ({ item, rng }) => {
 		const x =
 			-width / 2 + 0.15 + index * ((width - 0.3) / Math.max(1, plants - 1));
 		const z = (rng.next() - 0.5) * (depth - 0.35);
-		const material: MaterialOptions = {
-			texture: rng.pick(["foliage", "foliageDark", "foliageWarm"] as const),
-			roughness: 1,
-		};
+		const size = 0.13 + rng.next() * 0.08;
 		parts.push(
-			sphere(
-				material,
-				0.12 + rng.next() * 0.08,
-				x,
-				height + 0.1,
-				z,
-				1,
-				1.2 + rng.next() * 0.6,
-				1,
-				8,
+			...leafyBush(
+				leafMaterial(rng, "leafSprig"),
+				{ texture: "foliageDark", roughness: 1 },
+				new THREE.Vector3(x, height + size * 0.85, z),
+				size,
+				rng,
+				16,
+				1.1,
 			),
 		);
 		if (rng.chance(0.4)) {
@@ -369,10 +382,7 @@ export const planterBed: FurnitureBuilder = ({ item, rng }) => {
 export const pillar: FurnitureBuilder = ({ item, room }) => {
 	const radius = item.width / 2 - 0.04;
 	const height = item.height;
-	const material: MaterialOptions =
-		room.style.wall === "stoneBlocks"
-			? STONE
-			: { texture: "marble", roughness: 0.5 };
+	const material = carvedForSeed(room.seed);
 	return [
 		box(material, item.width, 0.2, item.depth, 0, 0, 0, 0, 0.02),
 		lathe(
@@ -415,17 +425,27 @@ export const globe: FurnitureBuilder = ({ item, rng }) => {
 			0,
 			12,
 		),
-		sphere(
-			{ texture: "paintingLandscape", color: 0xc8b08a, roughness: 0.6 },
-			radius,
-			0,
-			center,
-			0,
-			1,
-			1,
-			1,
-			20,
-		),
+		{
+			...sphere(
+				{ texture: "paintingLandscape", color: 0xc8b08a, roughness: 0.6 },
+				radius,
+				0,
+				center,
+				0,
+				1,
+				1,
+				1,
+				20,
+			),
+			animation: {
+				kind: "spin",
+				pivot: [0, center, 0],
+				axis: [0.26, 0.97, 0],
+				speed: 0.22,
+				amplitude: 0,
+				phase: rng.next() * Math.PI * 2,
+			},
+		},
 		torus(BRASS, radius + 0.03, 0.012, 0, center, 0, 0.4, 0, Math.PI * 1.4),
 	];
 };
@@ -517,9 +537,9 @@ export const musicStand: FurnitureBuilder = ({ item }) => [
 
 export const grandPiano: FurnitureBuilder = ({ item }) => {
 	const black: MaterialOptions = {
-		color: 0x111111,
-		roughness: 0.25,
-		metalness: 0.1,
+		color: 0x141414,
+		roughness: 0.55,
+		metalness: 0,
 	};
 	const { width, depth, height } = item;
 	const shape = new THREE.Shape();
@@ -529,6 +549,13 @@ export const grandPiano: FurnitureBuilder = ({ item }) => {
 	shape.quadraticCurveTo(width / 2, -depth / 2, 0, -depth / 2);
 	shape.quadraticCurveTo(-width / 2, -depth / 2, -width / 2, 0);
 	shape.lineTo(-width / 2, depth / 2);
+	const lidShape = new THREE.Shape();
+	lidShape.moveTo(-width / 2, depth / 2 - 0.28);
+	lidShape.lineTo(width / 2, depth / 2 - 0.28);
+	lidShape.lineTo(width / 2, -depth * 0.1);
+	lidShape.quadraticCurveTo(width / 2, -depth / 2, 0, -depth / 2);
+	lidShape.quadraticCurveTo(-width / 2, -depth / 2, -width / 2, 0);
+	lidShape.closePath();
 	const body = new THREE.ExtrudeGeometry(shape, {
 		depth: 0.32,
 		bevelEnabled: true,
@@ -538,13 +565,28 @@ export const grandPiano: FurnitureBuilder = ({ item }) => {
 	});
 	body.rotateX(Math.PI / 2);
 	body.translate(0, height - 0.32 + 0.32, 0);
-	const lid = new THREE.ShapeGeometry(shape);
-	lid.rotateX(-Math.PI / 2);
-	lid.rotateX(-0.45);
-	lid.translate(0, height + 0.05, 0.1);
+	const lidAngle = 0.45;
+	const lid = new THREE.ShapeGeometry(lidShape);
+	lid.rotateX(Math.PI / 2);
+	lid.translate(-width / 2, 0, 0);
+	lid.rotateZ(-lidAngle);
+	lid.translate(width / 2, height + 0.02, 0);
+	const propX = -width * 0.12;
 	const parts: Part[] = [
 		{ geometry: body, material: black },
 		{ geometry: lid, material: { ...black, side: THREE.DoubleSide } },
+		cylinderBetween(
+			black,
+			new THREE.Vector3(propX, height, -depth * 0.05),
+			new THREE.Vector3(
+				propX,
+				height + 0.02 + (width / 2 - propX) * Math.tan(lidAngle),
+				-depth * 0.05,
+			),
+			0.012,
+			6,
+		),
+		box(black, width * 0.92, 0.08, 0.24, 0, height - 0.38, depth / 2 + 0.08),
 		box(
 			{ color: 0xf0ece0, roughness: 0.4 },
 			width * 0.9,
@@ -1290,6 +1332,6 @@ export const cobweb: FurnitureBuilder = ({ item }) => {
 	];
 };
 
-export const stoneSlab: FurnitureBuilder = ({ item }) => [
-	box(STONE, item.width, item.height, item.depth, 0, 0, 0),
+export const stoneSlab: FurnitureBuilder = ({ item, rng }) => [
+	box(pickCarved(rng), item.width, item.height, item.depth, 0, 0, 0),
 ];

@@ -1,3 +1,7 @@
+import {
+	MEZZANINE_POST_RADIUS,
+	MEZZANINE_RAIL_COLLIDER,
+} from "../config/index.js";
 import { doorGeometry, doorPanelBox } from "../manor/doors.js";
 import { openingPassage, stairHeightAt } from "../manor/layoutBuilder.js";
 import {
@@ -103,6 +107,7 @@ export class CollisionWorld {
 	readonly walls: WallCollider[] = [];
 	readonly boxes: BoxCollider[] = [];
 	readonly regions: FloorRegion[] = [];
+	readonly decks: FloorRegion[] = [];
 	readonly doorBoxIds = new Map<number, number>();
 	private readonly wallHash = new SpatialHash();
 	private readonly boxHash = new SpatialHash();
@@ -127,6 +132,7 @@ export class CollisionWorld {
 				openingId: null,
 				stair: room.stair,
 			});
+			this.addMezzanine(room);
 		}
 		for (const opening of layout.openings) {
 			this.addOpeningGeometry(opening.id);
@@ -351,6 +357,79 @@ export class CollisionWorld {
 		});
 	}
 
+	private addMezzanine(room: Room): void {
+		const spec = room.mezzanine;
+		if (!spec) {
+			return;
+		}
+		this.decks.push(
+			this.addRegion({
+				polygon: spec.deck,
+				floorY: spec.floorY,
+				ceilingY: room.ceilingY,
+				level: (room.level + 1) as Level,
+				roomId: room.id,
+				openingId: null,
+				stair: null,
+			}),
+		);
+		this.addRegion({
+			polygon: spec.stairPolygon,
+			floorY: room.floorY,
+			ceilingY: room.ceilingY,
+			level: room.level,
+			roomId: room.id,
+			openingId: null,
+			stair: spec.stair,
+		});
+		const railTop = spec.floorY + MEZZANINE_RAIL_COLLIDER;
+		for (const rail of spec.rails) {
+			this.addWall(rail.a, rail.b, spec.floorY, railTop, room.id, true);
+		}
+		this.addWall(
+			spec.stairSide.a,
+			spec.stairSide.b,
+			room.floorY,
+			railTop,
+			room.id,
+			true,
+		);
+		if (spec.stairSideOuter) {
+			this.addWall(
+				spec.stairSideOuter.a,
+				spec.stairSideOuter.b,
+				room.floorY,
+				railTop,
+				room.id,
+				true,
+			);
+		}
+		this.addWall(
+			spec.stairEnd.a,
+			spec.stairEnd.b,
+			room.floorY,
+			spec.floorY - 0.02,
+			room.id,
+		);
+		for (const post of spec.posts) {
+			this.addBox({
+				cx: post.x,
+				cz: post.z,
+				hx: MEZZANINE_POST_RADIUS,
+				hz: MEZZANINE_POST_RADIUS,
+				rotation: 0,
+				yMin: room.floorY,
+				yMax: room.ceilingY,
+				walkable: false,
+				occludes: true,
+				kind: "furniture",
+				ownerId: -1,
+				enabled: true,
+				soft: false,
+			});
+		}
+	}
+
 	private addOpeningGeometry(openingId: number): void {
 		const opening = this.layout.openings[openingId];
 		const passage = openingPassage(opening);
@@ -432,11 +511,13 @@ export class CollisionWorld {
 		return id;
 	}
 
-	private addRegion(region: Omit<FloorRegion, "id" | "bounds">): void {
+	private addRegion(region: Omit<FloorRegion, "id" | "bounds">): FloorRegion {
 		const id = this.regions.length;
 		const bounds = polygonBounds(region.polygon);
-		this.regions.push({ ...region, id, bounds });
+		const added: FloorRegion = { ...region, id, bounds };
+		this.regions.push(added);
 		this.regionHash.insert(id, bounds);
+		return added;
 	}
 
 	distanceToWalls(

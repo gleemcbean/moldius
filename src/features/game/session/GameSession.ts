@@ -8,6 +8,7 @@ import {
 	GORGON_GAZE_DECAY,
 	GORGON_GAZE_LIMIT_MS,
 	JUMP_ENERGY_COST,
+	JUMP_MIN_ENERGY,
 	LANTERN_LIGHT_INTENSITY,
 	LANTERN_LIGHT_RANGE,
 	LEVEL_HEIGHT,
@@ -33,7 +34,7 @@ import {
 	type PlayerInventory,
 	type WorldSnapshot,
 } from "@shared/protocol/game";
-import { TEAM_COLORS, teamStandings } from "@shared/teams";
+import { TEAM_COLORS } from "@shared/teams";
 import * as THREE from "three";
 import {
 	CLOCK_WARNING_MS,
@@ -62,8 +63,9 @@ import {
 	LocalPlayer,
 } from "../../engine/player/LocalPlayer";
 import { SpottedDetector } from "../../engine/player/SpottedDetector";
+import { MINIMAP_SIZE } from "../../hud/HudCanvas";
 import { hudStore, pushFeedback } from "../../hud/hudStore";
-import { type MapMarker, MapRenderer } from "../../map/MapRenderer";
+import { type MapMarker, MapRenderer, roomLabel } from "../../map/MapRenderer";
 import { mapStore, panMap, resetMap, zoomMap } from "../../map/mapStore";
 import { clockSync } from "../../network/clockSync";
 import { type GameSocket, getSocket } from "../../network/socket";
@@ -101,7 +103,6 @@ export class GameSession {
 	private stopDevModes: () => void = () => {};
 	private readonly hazeColor = new THREE.Color(HAZE_COLOR);
 	private container: HTMLElement | null = null;
-	private minimap: HTMLCanvasElement | null = null;
 	private frameHandle = 0;
 	private clockSecond = -1;
 	private lastFrame = 0;
@@ -127,6 +128,10 @@ export class GameSession {
 	private haze = 0;
 	private clearAir: { density: number; color: THREE.Color } | null = null;
 	private mapOpen = false;
+	private mapScale = 1;
+	private mezzanineNeighbors: Set<number> | null = null;
+	private mapDrag: { x: number; y: number } | null = null;
+	private pointerEverLocked = false;
 	private intentionalUnlock = false;
 	private hudPublishedAt = 0;
 	private interaction: InteractionTarget | null = null;
@@ -206,9 +211,10 @@ export class GameSession {
 			this.init.tutorial,
 		);
 		if (this.init.tutorial) {
-			this.tutorial = new TutorialController(this.init, loaded, () =>
-				getSocket().emit("game:tutorialSummon"),
-			);
+			this.tutorial = new TutorialController(this.init, loaded, {
+				summon: () => getSocket().emit("game:tutorialSummon"),
+				wound: () => getSocket().emit("game:tutorialWound"),
+			});
 		}
 		this.spotted = new SpottedDetector(loaded.world);
 		this.mapRenderer = new MapRenderer(loaded.layout);
@@ -216,7 +222,6 @@ export class GameSession {
 		hudStore.set({
 			remainingMs: this.init.durationMs,
 			anomaliesInMs: this.init.anomalySpawnDelayMs,
-			score: 0,
 			health: 100,
 			energy: 100,
 		});
@@ -248,7 +253,15 @@ export class GameSession {
 		this.input = new InputManager(canvas);
 		this.input.attach();
 		this.input.onPointerLockChange = (locked) => this.onPointerLock(locked);
-		canvas.addEventListener("click", this.onCanvasClick);
+		window.addEventListener("keydown", this.onUserGesture);
+		window.addEventListener("pointerdown", this.onUserGesture);
+		canvas.addEventListener("pointerdown", this.onMapPointerDown);
+		canvas.addEventListener("pointermove", this.onMapPointerMove);
+		canvas.addEventListener("pointerup", this.onMapPointerUp);
+		canvas.addEventListener("pointercancel", this.onMapPointerUp);
+		loaded.hud.onMapClose = () => this.closeMap();
+		this.pointerEverLocked = false;
+		hudStore.set({ paused: false });
 		voiceChat.setMode("game");
 		if (!this.started) {
 			this.started = true;
@@ -265,13 +278,14 @@ export class GameSession {
 		this.input?.detach();
 		this.input = null;
 		const canvas = this.loadedWorld?.renderer.domElement;
-		canvas?.removeEventListener("click", this.onCanvasClick);
+		window.removeEventListener("keydown", this.onUserGesture);
+		window.removeEventListener("pointerdown", this.onUserGesture);
+		canvas?.removeEventListener("pointerdown", this.onMapPointerDown);
+		canvas?.removeEventListener("pointermove", this.onMapPointerMove);
+		canvas?.removeEventListener("pointerup", this.onMapPointerUp);
+		canvas?.removeEventListener("pointercancel", this.onMapPointerUp);
 		canvas?.remove();
 		this.container = null;
-	}
-
-	setMinimap(canvas: HTMLCanvasElement | null): void {
-		this.minimap = canvas;
 	}
 
 	resumePointer(): void {
@@ -279,22 +293,109 @@ export class GameSession {
 		this.input?.requestPointerLock();
 	}
 
-	private readonly onCanvasClick = () => {
-		if (!this.mapOpen) {
-			this.input?.requestPointerLock();
+	private readonly onUserGesture = (event: Event) => {
+		const { input } = this;
+		if (
+			!input ||
+			input.pointerLocked ||
+			this.mapOpen ||
+			hudStore.get().paused ||
+			(event instanceof KeyboardEvent &&
+				(event.code === "Escape" || event.repeat))
+		) {
+			return;
 		}
+		input.requestPointerLock();
 	};
 
 	private onPointerLock(locked: boolean): void {
 		if (locked) {
-			hudStore.set({ paused: false, needsPointer: false });
+			this.pointerEverLocked = true;
+			hudStore.set({ paused: false });
 			return;
 		}
 		if (this.intentionalUnlock || this.mapOpen) {
 			this.intentionalUnlock = false;
 			return;
 		}
-		hudStore.set({ paused: true, needsPointer: true });
+		if (this.pointerEverLocked) {
+			hudStore.set({ paused: true });
+		}
+	}
+
+	private syncPointer(): void {
+		const { input } = this;
+		if (!input) {
+			return;
+		}
+		input.reconcilePointerLock();
+		const { paused } = hudStore.get();
+		if (input.pointerLocked && paused) {
+			hudStore.set({ paused: false });
+		}
+		input.freePlay = !input.pointerLocked && !this.mapOpen && !paused;
+	}
+
+	private readonly onMapPointerDown = (event: PointerEvent) => {
+		const hud = this.loadedWorld?.hud;
+		if (!this.mapOpen || !hud || event.button !== 0) {
+			return;
+		}
+		const canvas = event.currentTarget as HTMLCanvasElement;
+		const point = hud.pointer(event.clientX, event.clientY, canvas);
+		if (hud.pressMap(point)) {
+			return;
+		}
+		if (hud.inMapArea(point)) {
+			this.mapDrag = point;
+			canvas.setPointerCapture(event.pointerId);
+			canvas.style.cursor = "grabbing";
+		}
+	};
+
+	private readonly onMapPointerMove = (event: PointerEvent) => {
+		const hud = this.loadedWorld?.hud;
+		if (!this.mapOpen || !hud) {
+			return;
+		}
+		const canvas = event.currentTarget as HTMLCanvasElement;
+		const point = hud.pointer(event.clientX, event.clientY, canvas);
+		if (this.mapDrag) {
+			panMap(
+				-(point.x - this.mapDrag.x) / this.mapScale,
+				-(point.y - this.mapDrag.y) / this.mapScale,
+			);
+			this.mapDrag = point;
+			return;
+		}
+		this.updateMapCursor(canvas, hud, point);
+	};
+
+	private readonly onMapPointerUp = (event: PointerEvent) => {
+		const hud = this.loadedWorld?.hud;
+		this.mapDrag = null;
+		if (!this.mapOpen || !hud) {
+			return;
+		}
+		const canvas = event.currentTarget as HTMLCanvasElement;
+		this.updateMapCursor(
+			canvas,
+			hud,
+			hud.pointer(event.clientX, event.clientY, canvas),
+		);
+	};
+
+	private updateMapCursor(
+		canvas: HTMLCanvasElement,
+		hud: LoadedWorld["hud"],
+		point: { x: number; y: number },
+	): void {
+		const hover = hud.hoverMap(point);
+		canvas.style.cursor = hover
+			? "pointer"
+			: hud.inMapArea(point)
+				? "grab"
+				: "default";
 	}
 
 	private readonly resize = () => {
@@ -313,6 +414,12 @@ export class GameSession {
 		loaded.renderer.domElement.style.height = "100%";
 		loaded.camera.aspect = width / Math.max(1, height);
 		loaded.camera.updateProjectionMatrix();
+		loaded.hud.resize(width, height);
+		loaded.post.setHud(
+			loaded.hud.texture,
+			loaded.hud.pixelWidth,
+			loaded.hud.pixelHeight,
+		);
 	};
 
 	handleSnapshot(snapshot: WorldSnapshot): void {
@@ -478,7 +585,13 @@ export class GameSession {
 		if (this.input) {
 			this.input.mode = "game";
 		}
+		this.mapDrag = null;
 		hudStore.set({ showMap: false });
+		const loaded = this.loadedWorld;
+		if (loaded) {
+			loaded.hud.hoverMap(null);
+			loaded.renderer.domElement.style.cursor = "";
+		}
 		this.input?.requestPointerLock();
 	}
 
@@ -495,6 +608,7 @@ export class GameSession {
 		const dt = Math.min(0.1, Math.max(0.001, (time - this.lastFrame) / 1000));
 		this.lastFrame = time;
 		this.trackFps(dt);
+		this.syncPointer();
 		this.step(dt);
 	};
 
@@ -542,6 +656,9 @@ export class GameSession {
 					volume: 0.32,
 					rate: 0.95 + Math.random() * 0.1,
 				});
+			} else if (event.kind === "tired") {
+				hudStore.set({ energyDeniedAt: performance.now() });
+				soundBank.play("jump", { volume: 0.12, rate: 0.6 });
 			} else if (event.speed > 2.5) {
 				soundBank.play("land", {
 					volume: Math.min(0.9, 0.15 + event.speed * 0.08),
@@ -560,6 +677,7 @@ export class GameSession {
 		loaded.doors.update(dt);
 		this.reconcileDoors(serverNow);
 		loaded.hazards.update(dt, serverNow, this.dynamicLights);
+		loaded.decor.update(dt, loaded.camera.position);
 		loaded.particles.update(dt);
 		loaded.motes.update(dt, loaded.camera.position);
 		loaded.pickups.update(dt, loaded.camera.position);
@@ -576,10 +694,15 @@ export class GameSession {
 			inventory: this.inventory,
 			heldObject: this.heldObject(),
 			lanternOpen: this.lanternIntent,
+			health: loaded.state.self?.latest?.hp ?? 100,
+			serverNow,
 			dt,
 		});
 
 		this.updateRig(dt, frame, player, settings, eye);
+		if (loaded.rig.heldGlow.intensity > 0) {
+			this.dynamicLights.push(loaded.rig.heldGlow);
+		}
 		loaded.lights.update(eye, this.dynamicLights, dt);
 		this.cullRooms(eye);
 		this.updateTargets(eye, forward, serverNow, player, restrained || !alive);
@@ -607,7 +730,14 @@ export class GameSession {
 			self?.en ?? 100,
 		);
 		this.updateClock(serverNow);
-		this.drawMinimap(player);
+		const now = performance.now();
+		if (loaded.hud.due(now)) {
+			this.drawMinimap(player);
+			if (this.mapOpen) {
+				this.drawBigMap(player, loaded.hud);
+			}
+			loaded.hud.paint(now);
+		}
 		const wounded = alive && (self?.hp ?? 100) < 30 ? 0.5 : 0;
 		loaded.post.render(
 			{
@@ -616,6 +746,7 @@ export class GameSession {
 				tension: Math.max(spotted, wounded, this.gaze * 0.8, this.haze * 0.5),
 				animated: !settings.reduceMotion,
 				levels: settings.colorLevels,
+				desaturate: spotted,
 			},
 			() => this.render(loaded),
 		);
@@ -691,7 +822,7 @@ export class GameSession {
 			sensitivity: settings.mouseSensitivity,
 			invertY: settings.invertY,
 			sprintAllowed: (flags & PLAYER_FLAG.sprintLocked) === 0,
-			jumpAllowed: this.availableEnergy() >= JUMP_ENERGY_COST,
+			jumpAllowed: this.availableEnergy() >= JUMP_MIN_ENERGY,
 			speedFactor: slimed
 				? SLIME_SPEED_FACTOR
 				: wading
@@ -754,8 +885,7 @@ export class GameSession {
 	}
 
 	private controls(frame: FrameInput, alive: boolean): LocalControls {
-		const active =
-			alive && !this.mapOpen && (this.input?.pointerLocked ?? false);
+		const active = alive && !this.mapOpen && (this.input?.capturing ?? false);
 		const held = frame.held;
 		const axis = (positive: boolean, negative: boolean) =>
 			(positive ? 1 : 0) - (negative ? 1 : 0);
@@ -768,8 +898,8 @@ export class GameSession {
 			crouch: held.has("crouch"),
 			jump: active && frame.pressed.has("jump"),
 			rise: active ? axis(held.has("jump"), held.has("crouch")) : 0,
-			lookX: this.input?.pointerLocked && !this.mapOpen ? frame.mouseX : 0,
-			lookY: this.input?.pointerLocked && !this.mapOpen ? frame.mouseY : 0,
+			lookX: this.input?.capturing && !this.mapOpen ? frame.mouseX : 0,
+			lookY: this.input?.capturing && !this.mapOpen ? frame.mouseY : 0,
 		};
 	}
 
@@ -786,6 +916,14 @@ export class GameSession {
 			this.closeMap();
 			escapeConsumed = true;
 		}
+		if (
+			frame.escape &&
+			!escapeConsumed &&
+			this.altarId === null &&
+			!this.input?.pointerLocked
+		) {
+			hudStore.set({ paused: true });
+		}
 		if (frame.pressed.has("map") && !escapeConsumed) {
 			if (this.mapOpen) {
 				this.closeMap();
@@ -795,10 +933,11 @@ export class GameSession {
 				this.intentionalUnlock = true;
 				resetMap(this.currentLevel());
 				hudStore.set({ showMap: true });
+				loaded.hud.mapLevels = this.layout?.levels ?? [0];
+				loaded.renderer.domElement.style.cursor = "default";
 				(this.input as InputManager).releasePointerLock();
 			}
 		}
-		hudStore.set({ showLeaderboard: frame.held.has("leaderboard") });
 		if (this.mapOpen) {
 			this.handleMapInput(frame);
 			return;
@@ -978,6 +1117,7 @@ export class GameSession {
 			pitch: player.pitch,
 			swing: settings.reduceMotion ? 0.35 : 1,
 			headBob: settings.headBob && !settings.reduceMotion,
+			reduceMotion: settings.reduceMotion,
 			visible: alive && this.carriedBy === null && this.hideSpot < 0,
 			fov: settings.fov,
 			aspect: loaded.camera.aspect,
@@ -1008,7 +1148,22 @@ export class GameSession {
 		lantern.distance = LANTERN_LIGHT_RANGE;
 	}
 
+	private roomsAroundMezzanines(): Set<number> {
+		if (!this.mezzanineNeighbors) {
+			const { rooms, openings } = (this.loadedWorld as LoadedWorld).layout;
+			this.mezzanineNeighbors = new Set(
+				openings.flatMap((opening) =>
+					rooms[opening.roomA].mezzanine || rooms[opening.roomB].mezzanine
+						? [opening.roomA, opening.roomB]
+						: [],
+				),
+			);
+		}
+		return this.mezzanineNeighbors;
+	}
+
 	private cullRooms(eye: THREE.Vector3): void {
+		const aroundMezzanines = this.roomsAroundMezzanines();
 		for (const room of (this.loadedWorld as LoadedWorld).rooms) {
 			const dx = Math.max(
 				room.room.bounds.minX - eye.x,
@@ -1021,7 +1176,7 @@ export class GameSession {
 				eye.z - room.room.bounds.maxZ,
 			);
 			const verticalGap =
-				room.room.type === "stairwell"
+				room.room.type === "stairwell" || aroundMezzanines.has(room.room.id)
 					? 0
 					: Math.max(0, Math.abs(room.room.floorY + 1.5 - eye.y) - 3.2);
 			const distance = Math.hypot(dx, dz);
@@ -1250,32 +1405,6 @@ export class GameSession {
 		}
 		this.hudPublishedAt = now;
 		const loaded = this.loadedWorld as LoadedWorld;
-		const rows = [...loaded.state.players.values()].map((player) => ({
-			id: player.id,
-			name: player.name,
-			color: player.color,
-			score: player.latest?.score ?? 0,
-			health: player.latest?.hp ?? 100,
-			energy: player.latest?.en ?? 100,
-			alive: player.latest
-				? (player.latest.flags & PLAYER_FLAG.dead) === 0
-				: true,
-			connected: true,
-			self: player.id === this.selfId,
-			team: player.team,
-		}));
-		rows.sort((a, b) => b.score - a.score);
-		const rank = rows.findIndex((row) => row.self) + 1;
-		const team = loaded.state.players.get(this.selfId)?.team ?? null;
-		const standings = teamStandings(
-			rows.map((row) => ({
-				playerId: row.id,
-				team: row.team,
-				score: row.score,
-				captures: 0,
-				deaths: 0,
-			})),
-		);
 		const startedAt = this.beginInfo?.startedAt ?? serverNow;
 		const howlerNearby = this.howlerNearby(serverNow);
 		const respawnAt = this.respawnAt;
@@ -1292,14 +1421,6 @@ export class GameSession {
 			sprintLocked: (flags & PLAYER_FLAG.sprintLocked) !== 0,
 			lanternOpen: this.lanternIntent,
 			crouching: (this.player?.character.crouch ?? 0) > 0.5,
-			score:
-				team === null
-					? (rows.find((row) => row.self)?.score ?? 0)
-					: (standings.find((standing) => standing.team === team)?.score ?? 0),
-			rank: Math.max(1, rank),
-			team,
-			teamRank: 1 + standings.findIndex((standing) => standing.team === team),
-			teamCount: standings.length,
 			prompt:
 				this.altarId !== null
 					? this.altarPrompt()
@@ -1319,7 +1440,6 @@ export class GameSession {
 			shoutReadyAt: this.shoutReadyAt,
 			voiceLevel: micManager.measure(),
 			voiceTransmitting: micManager.voiceActive(),
-			leaderboard: rows,
 			fps: this.fps,
 			level: this.currentLevel(),
 			serverNow,
@@ -1347,24 +1467,17 @@ export class GameSession {
 	}
 
 	private drawMinimap(player: LocalPlayer): void {
-		const canvas = this.minimap;
 		const renderer = this.mapRenderer;
-		if (!canvas || !renderer) {
+		const { hud } = this.loadedWorld as LoadedWorld;
+		const context = hud.minimap.getContext("2d");
+		const roomId = this.currentRoomId(player);
+		const room = roomId === null ? null : this.layout?.rooms[roomId];
+		hud.minimapRoom = room ? roomLabel(room) : "";
+		hud.minimapLabel = currentMessages().game.map.levelName(
+			this.currentLevel(),
+		);
+		if (!context || !renderer) {
 			return;
-		}
-		const context = canvas.getContext("2d");
-		if (!context) {
-			return;
-		}
-		const ratio = window.devicePixelRatio || 1;
-		const width = canvas.clientWidth;
-		const height = canvas.clientHeight;
-		if (
-			canvas.width !== Math.round(width * ratio) ||
-			canvas.height !== Math.round(height * ratio)
-		) {
-			canvas.width = Math.round(width * ratio);
-			canvas.height = Math.round(height * ratio);
 		}
 		renderer.draw(
 			context,
@@ -1372,13 +1485,13 @@ export class GameSession {
 				centerX: player.character.x,
 				centerZ: player.character.z,
 				scale: 8,
-				width,
-				height,
+				width: MINIMAP_SIZE,
+				height: MINIMAP_SIZE,
 				level: this.currentLevel(),
 			},
 			{
-				labels: true,
-				labelSize: 13,
+				labels: false,
+				labelSize: 0,
 				grid: false,
 				compass: false,
 				scaleBar: false,
@@ -1391,8 +1504,9 @@ export class GameSession {
 				names: false,
 				pinToEdge: true,
 				currentRoomId: this.currentRoomId(player),
-				levelBadge: currentMessages().game.map.levelName(this.currentLevel()),
-				pixelRatio: ratio,
+				levelBadge: null,
+				pixelRatio: hud.minimapRatio(),
+				silhouette: true,
 			},
 		);
 	}
@@ -1437,38 +1551,26 @@ export class GameSession {
 		);
 	}
 
-	drawBigMap(canvas: HTMLCanvasElement): void {
+	private drawBigMap(player: LocalPlayer, hud: LoadedWorld["hud"]): void {
 		const renderer = this.mapRenderer;
-		const player = this.player;
-		if (!renderer || !player) {
+		const context = hud.bigMap.getContext("2d");
+		if (!renderer || !context) {
 			return;
 		}
-		const context = canvas.getContext("2d");
-		if (!context) {
-			return;
-		}
-		const ratio = window.devicePixelRatio || 1;
-		const width = canvas.clientWidth;
-		const height = canvas.clientHeight;
-		if (
-			canvas.width !== Math.round(width * ratio) ||
-			canvas.height !== Math.round(height * ratio)
-		) {
-			canvas.width = Math.round(width * ratio);
-			canvas.height = Math.round(height * ratio);
-		}
+		const area = hud.mapArea();
 		const state = mapStore.get();
-		const fit = renderer.fitView(width, height, state.level);
+		const fit = renderer.fitView(area.width, area.height, state.level);
 		const view = {
 			...fit,
 			scale: fit.scale * state.zoom,
 			centerX: fit.centerX + state.panX,
 			centerZ: fit.centerZ + state.panZ,
 		};
+		this.mapScale = view.scale;
 		const showPlayer = this.currentLevel() === state.level;
 		renderer.draw(context, view, {
 			labels: true,
-			labelSize: Math.min(22, 11 + view.scale * 0.6),
+			labelSize: Math.min(28, 18 + view.scale * 0.6),
 			grid: true,
 			compass: true,
 			scaleBar: true,
@@ -1480,7 +1582,8 @@ export class GameSession {
 			pinToEdge: false,
 			currentRoomId: showPlayer ? this.currentRoomId(player) : null,
 			levelBadge: null,
-			pixelRatio: ratio,
+			pixelRatio: area.ratio,
+			silhouette: false,
 		});
 	}
 
@@ -1536,9 +1639,15 @@ export class GameSession {
 					soundBank.play("page-turn", { volume: 0.5, rate: 1.5 });
 				}
 				break;
-			case "pickupBack":
+			case "pickupBack": {
+				const pickup = loaded.layout.pickups[event.id];
+				if (pickup && pickup.material !== event.material) {
+					pickup.material = event.material;
+					loaded.pickups.setMaterial(event.id, event.material);
+				}
 				loaded.pickups.setTaken(event.id, false);
 				break;
+			}
 			case "craft": {
 				const altar = loaded.layout.altars[event.altarId];
 				if (event.playerId === this.selfId) {
@@ -1650,6 +1759,7 @@ export class GameSession {
 		loaded.remotePlayers.dispose();
 		loaded.hazards.dispose();
 		loaded.pickups.dispose();
+		loaded.hud.dispose();
 		loaded.altars.dispose();
 		loaded.particles.dispose();
 		loaded.motes.dispose();

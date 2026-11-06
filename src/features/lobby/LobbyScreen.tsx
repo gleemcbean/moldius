@@ -5,6 +5,7 @@ import { Icon } from "../../components/Icon";
 import { SelectorGroup } from "../../components/SelectorGroup";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
+import { accountStore } from "../account/accountStore";
 import { sessionStore } from "../network/sessionStore";
 import { micIsUsable, micStore } from "../voice/micManager";
 import { voiceChat } from "../voice/voiceChat";
@@ -27,6 +28,7 @@ export function LobbyScreen() {
 	const lobby = useStore(lobbyStore, (state) => state.lobby);
 	const playerId = useStore(sessionStore, (state) => state.playerId);
 	const micStatus = useStore(micStore, (state) => state.status);
+	const accountStatus = useStore(accountStore, (state) => state.status);
 
 	useEffect(() => {
 		initVoiceController();
@@ -91,6 +93,16 @@ export function LobbyScreen() {
 					>
 						{t.lobby.settings}
 					</Button>
+					{accountStatus === "loading" ||
+					accountStatus === "disabled" ? null : (
+						<Button
+							variant="ghost"
+							icon={<Icon name="users" />}
+							onClick={() => openOverlay("friends")}
+						>
+							{t.friends.lobbyButton}
+						</Button>
+					)}
 					<div className={styles.spacer} />
 					{lobby.phase === "countdown" && lobby.countdownEndsAt ? (
 						<Countdown endsAt={lobby.countdownEndsAt} />

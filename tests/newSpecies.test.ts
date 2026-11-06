@@ -123,7 +123,7 @@ describe("Colosse", () => {
 });
 
 function dodgeScenario(talkWhileMoving: boolean) {
-	const sim = quietSimulation();
+	const sim = quietSimulation(7);
 	const line = findClearLine(sim, 6, 0, 2);
 	placeBot(sim, "p1", line.origin, line.yaw);
 	sim.run(2.2);
@@ -511,12 +511,15 @@ describe("Brume", () => {
 			)
 			.filter((node): node is number => node !== null)
 			.map((node) => sim.match.grid.nodePosition(node))
-			.find(
-				(point) =>
-					Math.hypot(point.x - player.position.x, point.z - player.position.z) >
-					20,
-			);
-		if (!far) {
+			.sort(
+				(a, b) =>
+					Math.hypot(b.x - player.position.x, b.z - player.position.z) -
+					Math.hypot(a.x - player.position.x, a.z - player.position.z),
+			)[0];
+		if (
+			!far ||
+			Math.hypot(far.x - player.position.x, far.z - player.position.z) < 20
+		) {
 			throw new Error("No distant room found for the test.");
 		}
 		placeBot(sim, "p1", far, 0);
@@ -542,6 +545,7 @@ describe("Collecteur", () => {
 		sim.run(2.2);
 		const player = sim.match.players.get("p1") as MatchPlayer;
 		player.protectedUntil = 0;
+		sim.bot("p1").lantern = true;
 		const entity = installAnomaly(
 			sim,
 			0,

@@ -13,7 +13,7 @@ export const QUALITY_PRESETS: Record<GraphicsQuality, QualityPreset> = {
 	low: {
 		lightPool: 4,
 		shadowMapSize: 256,
-		pixelRatio: 0.5,
+		pixelRatio: 0.6,
 		antialias: false,
 		particleScale: 0.5,
 		textureAnisotropy: 1,
@@ -21,7 +21,7 @@ export const QUALITY_PRESETS: Record<GraphicsQuality, QualityPreset> = {
 	medium: {
 		lightPool: 6,
 		shadowMapSize: 512,
-		pixelRatio: 0.6,
+		pixelRatio: 0.72,
 		antialias: true,
 		particleScale: 0.8,
 		textureAnisotropy: 4,
@@ -29,7 +29,7 @@ export const QUALITY_PRESETS: Record<GraphicsQuality, QualityPreset> = {
 	high: {
 		lightPool: 8,
 		shadowMapSize: 1024,
-		pixelRatio: 0.7,
+		pixelRatio: 0.85,
 		antialias: true,
 		particleScale: 1,
 		textureAnisotropy: 8,

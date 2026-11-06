@@ -115,6 +115,7 @@ describe("répartition des anomalies", () => {
 
 	it("une anomalie qui a lâché un joueur ne revient pas aussitôt sur lui", () => {
 		const { sim, line, player } = watchedRoom(4242);
+		player.lanternOpen = true;
 		const hunter = installAnomaly(
 			sim,
 			0,

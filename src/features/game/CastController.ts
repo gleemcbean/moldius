@@ -217,10 +217,7 @@ export class CastController {
 		const labels = currentMessages().game.cast;
 		if (result.ok) {
 			soundBank.play("capture", { volume: 0.9 });
-			pushFeedback(
-				labels.captured(labelFor(result.anomalyId), result.points),
-				"success",
-			);
+			pushFeedback(labels.captured(labelFor(result.anomalyId)), "success");
 			return;
 		}
 		soundBank.play("capture-fail", { volume: 0.6 });

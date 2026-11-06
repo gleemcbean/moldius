@@ -15,12 +15,11 @@ type Add = (
 ) => void;
 
 const BRASS: MaterialOptions = {
-	texture: "brass",
-	color: 0xffd98a,
-	roughness: 0.4,
-	metalness: 0.35,
+	color: 0xd9a94c,
+	roughness: 0.34,
+	metalness: 0.4,
 	emissive: 0x7a5410,
-	emissiveIntensity: 0.7,
+	emissiveIntensity: 0.55,
 };
 const DARK_IRON: MaterialOptions = {
 	texture: "iron",
@@ -42,19 +41,11 @@ const BONE_SHADE: MaterialOptions = {
 };
 const BONE_DARK: MaterialOptions = { color: 0xa8976f, roughness: 0.9 };
 const SOOT: MaterialOptions = { color: 0x241a12, roughness: 0.9 };
-const LEATHER: MaterialOptions = { texture: "leather", roughness: 0.8 };
 const SILVER: MaterialOptions = {
 	color: 0xdcecf6,
 	roughness: 0.15,
 	metalness: 0.45,
 	emissive: 0x4d6a7c,
-	emissiveIntensity: 0.6,
-};
-const BLACK_GLASS: MaterialOptions = {
-	color: 0x12101c,
-	roughness: 0.1,
-	metalness: 0.3,
-	emissive: 0x1a1030,
 	emissiveIntensity: 0.6,
 };
 
@@ -184,10 +175,6 @@ function shard(
 		points.map(([x, y]) => new THREE.Vector2(x, y)),
 	);
 	return new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
-}
-
-function pentagon(radius: number, depth: number): THREE.BufferGeometry {
-	return new THREE.CylinderGeometry(radius, radius, depth, 5);
 }
 
 function amethyst(add: Add): void {
@@ -468,151 +455,259 @@ function bone(add: Add): void {
 	);
 }
 
+const OBSIDIAN: MaterialOptions = {
+	color: 0x08060e,
+	roughness: 0.06,
+	metalness: 0.5,
+	emissive: 0x140a26,
+	emissiveIntensity: 0.5,
+};
+const HORN: MaterialOptions = {
+	color: 0x8f7555,
+	roughness: 0.5,
+	emissive: 0x3a2c1c,
+	emissiveIntensity: 0.3,
+};
+const BLADE: MaterialOptions = {
+	color: 0xc4ced8,
+	roughness: 0.3,
+	metalness: 0.35,
+	emissive: 0x39424c,
+	emissiveIntensity: 0.35,
+};
+const SCLERA: MaterialOptions = {
+	color: 0xd9d4b4,
+	roughness: 0.3,
+	emissive: 0x6a7a5a,
+	emissiveIntensity: 0.2,
+};
+const IRIS: MaterialOptions = {
+	texture: "occultIris",
+	alphaTest: 0.5,
+	roughness: 0.12,
+	emissive: 0xffffff,
+	emissiveIntensity: 0.6,
+};
+const PENTACLE: MaterialOptions = {
+	texture: "occultPentacle",
+	color: 0x7ab0ff,
+	emissive: 0x7ab0ff,
+	emissiveIntensity: 1.2,
+	roughness: 0.8,
+	alphaTest: 0.45,
+	side: THREE.DoubleSide,
+};
+const AMETHYST_GLOW = gem(0xa45cff, 0.65);
+const RUBY_GLOW = gem(0xff2a4d, 0.6);
+const BLADE_GLOW = gem(0xff2a4d, 1.2);
+const EYE_GLOW = gem(0xff4a1e, 1.6);
+const OBJECT_BRASS: MaterialOptions = { ...BRASS, emissiveIntensity: 0.3 };
+const OBJECT_BONE: MaterialOptions = { ...BONE, emissiveIntensity: 0.25 };
+const OBJECT_BONE_SHADE: MaterialOptions = {
+	...BONE_SHADE,
+	emissiveIntensity: 0.25,
+};
+
+function ring(radius: number, tube: number): THREE.BufferGeometry {
+	return new THREE.TorusGeometry(radius, tube, 6, 20);
+}
+
+function diamond(radius: number, height: number): THREE.BufferGeometry {
+	return faceted(
+		new THREE.LatheGeometry(
+			[
+				[0.001, 0],
+				[radius, height * 0.62],
+				[0.001, height],
+			].map(([x, y]) => new THREE.Vector2(x, y)),
+			6,
+		),
+	);
+}
+
+function horn(side: number): THREE.BufferGeometry {
+	const curve = new THREE.CatmullRomCurve3([
+		new THREE.Vector3(side * 0.08, 0.2, 0),
+		new THREE.Vector3(side * 0.14, 0.245, 0),
+		new THREE.Vector3(side * 0.165, 0.335, -0.01),
+	]);
+	const segments = 8;
+	const radial = 6;
+	const geometry = new THREE.TubeGeometry(curve, segments, 1, radial, false);
+	const position = geometry.getAttribute("position") as THREE.BufferAttribute;
+	const center = new THREE.Vector3();
+	const vertex = new THREE.Vector3();
+	for (let step = 0; step <= segments; step += 1) {
+		const t = step / segments;
+		curve.getPointAt(t, center);
+		for (let around = 0; around <= radial; around += 1) {
+			const index = step * (radial + 1) + around;
+			vertex.fromBufferAttribute(position, index);
+			vertex
+				.sub(center)
+				.multiplyScalar(0.024 * (1 - t) + 0.002 * t)
+				.add(center);
+			position.setXYZ(index, vertex.x, vertex.y, vertex.z);
+		}
+	}
+	geometry.computeVertexNormals();
+	return geometry;
+}
+
+function irisDome(radius: number, cap: number): THREE.BufferGeometry {
+	const geometry = new THREE.SphereGeometry(
+		radius,
+		18,
+		6,
+		0,
+		Math.PI * 2,
+		0,
+		cap,
+	);
+	geometry.rotateX(Math.PI / 2);
+	const position = geometry.getAttribute("position") as THREE.BufferAttribute;
+	const uv = geometry.getAttribute("uv") as THREE.BufferAttribute;
+	const span = radius * Math.sin(cap) * 2;
+	for (let index = 0; index < position.count; index += 1) {
+		uv.setXY(
+			index,
+			0.5 + position.getX(index) / span,
+			0.5 + position.getY(index) / span,
+		);
+	}
+	return geometry;
+}
+
 function pendulum(add: Add): void {
-	add(new THREE.TorusGeometry(0.03, 0.006, 6, 16), BRASS, 0, 0.42, 0);
-	add(new THREE.CylinderGeometry(0.003, 0.003, 0.26, 5), BRASS, 0, 0.27, 0);
-	add(new THREE.ConeGeometry(0.02, 0.03, 6), BRASS, 0, 0.13, 0, Math.PI, 0, 0);
-	add(crystal(0.05, 0.13), AMETHYST, 0, 0.12, 0, Math.PI, 0, 0);
+	add(ring(0.045, 0.009), OBJECT_BRASS, 0, 0.4, 0);
+	add(
+		new THREE.CylinderGeometry(0.004, 0.004, 0.2, 5),
+		OBJECT_BRASS,
+		0,
+		0.255,
+		0,
+	);
+	add(new THREE.ConeGeometry(0.03, 0.04, 6), OBJECT_BRASS, 0, 0.145, 0);
+	add(diamond(0.056, 0.135), AMETHYST_GLOW);
 }
 
 function blackMirror(add: Add): void {
+	const center = 0.25;
 	add(
-		new THREE.CylinderGeometry(0.13, 0.13, 0.012, 24),
-		BLACK_GLASS,
+		new THREE.CylinderGeometry(0.13, 0.13, 0.016, 24),
+		OBSIDIAN,
 		0,
-		0.26,
-		0.004,
+		center,
+		0,
 		Math.PI / 2,
 		0,
 		0,
 	);
-	add(new THREE.TorusGeometry(0.135, 0.016, 8, 24), BRASS, 0, 0.26, 0);
-	add(new THREE.CylinderGeometry(0.016, 0.022, 0.13, 10), LEATHER, 0, 0.07, 0);
-	add(new THREE.SphereGeometry(0.024, 10, 8), BRASS, 0, 0.13, 0);
-	add(crystal(0.016, 0.03), gem(0xe8dfc4, 0.5), 0, 0.395, 0);
-}
-
-function boneBell(add: Add): void {
+	add(new THREE.CircleGeometry(0.114, 24), PENTACLE, 0, center, 0.0095);
+	add(new THREE.TorusGeometry(0.135, 0.016, 6, 24), OBJECT_BRASS, 0, center, 0);
 	add(
-		new THREE.LatheGeometry(
-			[
-				[0.1, 0],
-				[0.085, 0.02],
-				[0.06, 0.09],
-				[0.05, 0.15],
-				[0.02, 0.18],
-				[0.001, 0.18],
-			].map(([x, y]) => new THREE.Vector2(x, y)),
-			16,
-		),
-		{ ...BONE, side: THREE.DoubleSide },
+		new THREE.CylinderGeometry(0.017, 0.024, 0.125, 8),
+		OBJECT_BONE,
 		0,
-		0.05,
+		0.0625,
 		0,
 	);
-	add(
-		new THREE.TorusGeometry(0.076, 0.004, 4, 16),
-		SOOT,
-		0,
-		0.1,
-		0,
-		Math.PI / 2,
-	);
-	add(new THREE.CylinderGeometry(0.008, 0.008, 0.06, 6), BONE, 0, 0.255, 0);
-	add(new THREE.TorusGeometry(0.024, 0.006, 6, 12), BRASS, 0, 0.3, 0);
-	add(new THREE.SphereGeometry(0.018, 8, 6), BRASS, 0, 0.04, 0);
 }
 
-function rubySeal(add: Add): void {
-	add(new THREE.CylinderGeometry(0.11, 0.12, 0.03, 16), BRASS, 0, 0.015, 0);
-	add(new THREE.CylinderGeometry(0.03, 0.05, 0.1, 8), DARK_IRON, 0, 0.08, 0);
-	add(new THREE.SphereGeometry(0.04, 10, 8), BRASS, 0, 0.15, 0);
-	add(brilliant(0.05), RUBY, 0, 0.215, 0);
-	add(pentagon(0.05, 0.012), JADE, 0, 0.034, 0.05);
+function runeSkull(add: Add): void {
+	const cranium = new THREE.SphereGeometry(0.105, 12, 10);
+	cranium.scale(1, 0.98, 1.12);
+	add(cranium, OBJECT_BONE, 0, 0.15, 0);
+	add(
+		new THREE.BoxGeometry(0.1, 0.06, 0.09),
+		OBJECT_BONE_SHADE,
+		0,
+		0.045,
+		0.045,
+	);
+	add(new THREE.ConeGeometry(0.016, 0.03, 3), SOOT, 0, 0.09, 0.106);
+	for (const side of [-1, 1]) {
+		const socket = new THREE.SphereGeometry(0.03, 8, 6);
+		socket.scale(1, 0.95, 0.5);
+		add(socket, SOOT, side * 0.04, 0.128, 0.098);
+		add(
+			new THREE.SphereGeometry(0.011, 6, 5),
+			EYE_GLOW,
+			side * 0.04,
+			0.128,
+			0.106,
+		);
+		add(horn(side), HORN);
+	}
+}
+
+function athame(add: Add): void {
+	const blade = new THREE.ConeGeometry(0.032, 0.34, 4);
+	blade.scale(1, 1, 0.24);
+	add(blade, BLADE, 0, 0.35, 0);
+	const fuller = new THREE.ConeGeometry(0.008, 0.27, 4);
+	fuller.scale(1, 1, 1.1);
+	add(fuller, BLADE_GLOW, 0, 0.315, 0);
+	add(
+		new THREE.TorusGeometry(0.052, 0.011, 6, 12, Math.PI),
+		OBJECT_BRASS,
+		0,
+		0.225,
+		0,
+		0,
+		0,
+		Math.PI,
+	);
+	add(new THREE.CylinderGeometry(0.016, 0.016, 0.12, 6), JADE_DARK, 0, 0.11, 0);
+	add(faceted(new THREE.IcosahedronGeometry(0.03, 0)), RUBY_GLOW, 0, 0.03, 0);
 }
 
 function jadeEye(add: Add): void {
-	add(
-		new THREE.SphereGeometry(0.1, 16, 12),
-		{ ...JADE, emissiveIntensity: 0.3 },
-		0,
-		0.13,
-		0,
-	);
-	add(
-		new THREE.CircleGeometry(0.052, 18),
-		gem(0xe8f6c8, 0.5),
-		0,
-		0.15,
-		0.094,
-		-0.2,
-	);
-	add(
-		new THREE.CircleGeometry(0.024, 14),
-		{ color: 0x051a10, roughness: 0.1 },
-		0,
-		0.152,
-		0.098,
-		-0.2,
-	);
-	add(
-		new THREE.TorusGeometry(0.104, 0.008, 6, 22),
-		BRASS,
-		0,
-		0.13,
-		0,
-		Math.PI / 2 - 0.5,
-	);
-	add(new THREE.CylinderGeometry(0.06, 0.08, 0.04, 10), DARK_IRON, 0, 0.02, 0);
+	add(new THREE.CylinderGeometry(0.07, 0.085, 0.03, 8), DARK_IRON, 0, 0.015, 0);
+	add(new THREE.SphereGeometry(0.092, 14, 10), SCLERA, 0, 0.115, 0);
+	add(irisDome(0.0935, 0.72), IRIS, 0, 0.115, 0);
 }
 
 function censer(add: Add): void {
 	add(
+		new THREE.CylinderGeometry(0.04, 0.06, 0.03, 8),
+		OBJECT_BRASS,
+		0,
+		0.015,
+		0,
+	);
+	add(
 		new THREE.SphereGeometry(
-			0.09,
-			14,
+			0.112,
 			10,
+			5,
 			0,
 			Math.PI * 2,
 			Math.PI / 2,
 			Math.PI / 2,
 		),
-		{ ...BRASS, side: THREE.DoubleSide },
-		0,
-		0.13,
-		0,
-	);
-	add(
-		new THREE.SphereGeometry(0.086, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2.4),
-		{ ...DARK_IRON, side: THREE.DoubleSide },
+		OBJECT_BRASS,
 		0,
 		0.135,
 		0,
 	);
 	add(
-		new THREE.TorusGeometry(0.09, 0.007, 6, 18),
-		BRASS,
+		new THREE.CylinderGeometry(0.114, 0.114, 0.036, 10),
+		RUBY_GLOW,
 		0,
-		0.13,
+		0.153,
 		0,
-		Math.PI / 2,
 	);
-	add(new THREE.CylinderGeometry(0.03, 0.05, 0.03, 10), BRASS, 0, 0.03, 0);
-	for (const angle of [0, 2.09, 4.19]) {
-		add(
-			new THREE.CylinderGeometry(0.0024, 0.0024, 0.27, 4),
-			BRASS,
-			Math.cos(angle) * 0.045,
-			0.3,
-			Math.sin(angle) * 0.045,
-			Math.sin(angle) * 0.3,
-			0,
-			-Math.cos(angle) * 0.3,
-		);
-	}
-	add(new THREE.TorusGeometry(0.018, 0.005, 6, 10), BRASS, 0, 0.44, 0);
-	add(new THREE.OctahedronGeometry(0.018), RUBY, 0.05, 0.13, 0.078);
-	add(new THREE.OctahedronGeometry(0.018), AMETHYST, -0.05, 0.13, 0.078);
+	add(new THREE.ConeGeometry(0.114, 0.09, 10), OBJECT_BRASS, 0, 0.216, 0);
+	add(diamond(0.026, 0.075), AMETHYST_GLOW, 0, 0.245, 0);
+	add(
+		new THREE.CylinderGeometry(0.004, 0.004, 0.17, 5),
+		OBJECT_BRASS,
+		0,
+		0.405,
+		0,
+	);
+	add(ring(0.024, 0.005), OBJECT_BRASS, 0, 0.51, 0);
 }
 
 const MATERIAL_BUILDERS: Record<MaterialId, (add: Add) => void> = {
@@ -627,8 +722,8 @@ const MATERIAL_BUILDERS: Record<MaterialId, (add: Add) => void> = {
 const OCCULT_BUILDERS: Record<OccultId, (add: Add) => void> = {
 	pendulum,
 	blackMirror,
-	boneBell,
-	rubySeal,
+	runeSkull,
+	athame,
 	jadeEye,
 	censer,
 };

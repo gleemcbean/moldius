@@ -4,7 +4,10 @@ import {
 	SLAB_THICKNESS,
 } from "../config/index.js";
 import { levelForHeight } from "../manor/levels.js";
-import { segmentIntersectionParameter } from "../manor/polygon.js";
+import {
+	pointInPolygon,
+	segmentIntersectionParameter,
+} from "../manor/polygon.js";
 import type { OrientedBox } from "../manor/types.js";
 import { rotate2, type Vec2, type Vec3 } from "../math.js";
 import type { CollisionWorld } from "./collisionWorld.js";
@@ -146,6 +149,21 @@ function crossesLevelsLegally(
 						region.floorY < slabBottom - 0.01 && region.ceilingY > top + 0.01,
 				);
 			if (!open) {
+				return false;
+			}
+		}
+	}
+	for (const deck of world.decks) {
+		for (const y of [deck.floorY - SLAB_THICKNESS, deck.floorY]) {
+			if (y <= low || y >= high) {
+				continue;
+			}
+			const t = (y - from.y) / (to.y - from.y);
+			const point = {
+				x: from.x + (to.x - from.x) * t,
+				z: from.z + (to.z - from.z) * t,
+			};
+			if (pointInPolygon(point, deck.polygon)) {
 				return false;
 			}
 		}

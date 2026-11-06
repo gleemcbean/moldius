@@ -2,21 +2,30 @@ import { describe, expect, it } from "vitest";
 import { planRoster } from "../server/game/roster.js";
 import {
 	ALTAR_MAX_PER_LEVEL,
+	DEFAULT_ITEMS_PER_PLAYER,
 	MATERIAL_IDS,
+	MAX_ITEMS_PER_PLAYER,
+	MIN_ITEMS_PER_PLAYER,
 	OCCULT_IDS,
 	OCCULT_RECIPES,
 	PICKUP_MIN_PER_LEVEL,
-	PICKUP_PER_ROOM,
 } from "../shared/config/index.js";
 import { ENABLED_SPECIES_IDS } from "../shared/config/monsters.js";
 import { SPECIES_IDS, type SpeciesId } from "../shared/config/species.js";
-import { generateManor } from "../shared/manor/generateManor.js";
+import {
+	generateManor,
+	layoutChecksum,
+} from "../shared/manor/generateManor.js";
 import {
 	type ManorSize,
 	PUBLIC_MATCH_CONFIG,
+	pickupTotal,
+	sanitizeMatchConfig,
 	TUTORIAL_MATCH_CONFIG,
 	TUTORIAL_SEED,
+	TUTORIAL_WOUNDED_HEALTH,
 } from "../shared/matchConfig.js";
+import { lineOfSight } from "../shared/physics/lineOfSight.js";
 import { SeededRandom } from "../shared/random.js";
 import {
 	castAt,
@@ -27,6 +36,49 @@ import {
 	silenceAnomalies,
 } from "./helpers/scenarios.js";
 import { MatchSimulation } from "./helpers/simulation.js";
+
+function pointWithinWalk(
+	sim: MatchSimulation,
+	from: { x: number; y: number; z: number },
+	minimum = 18,
+	maximum = 28,
+	longestWalk = 40,
+): { x: number; y: number; z: number } | null {
+	const { match } = sim;
+	const level = match.gridLevelOf(from);
+	for (let cell = 0; cell < match.grid.cellsPerLevel; cell += 7) {
+		const node = level * match.grid.cellsPerLevel + cell;
+		if (!match.grid.walkable[node] || !match.grid.isInMainComponent(node)) {
+			continue;
+		}
+		const point = match.grid.nodePosition(node);
+		const distance = Math.hypot(point.x - from.x, point.z - from.z);
+		if (distance <= minimum || distance >= maximum) {
+			continue;
+		}
+		const path = match.finder.findPath(point, from, {
+			canOpenDoors: true,
+			isDoorClosed: () => false,
+		});
+		if (!path) {
+			continue;
+		}
+		let walked = 0;
+		let previous = point;
+		for (const step of path) {
+			walked += Math.hypot(
+				step.x - previous.x,
+				step.y - previous.y,
+				step.z - previous.z,
+			);
+			previous = step;
+		}
+		if (walked <= longestWalk) {
+			return point;
+		}
+	}
+	return null;
+}
 
 function quiet(seed = 4242): MatchSimulation {
 	const sim = new MatchSimulation({ seed, players: 1 });
@@ -73,15 +125,11 @@ describe("manoir : autels et matériaux", () => {
 		}
 	});
 
-	it("place peu de matériaux, équilibrés, au sol, sur les meubles et dans les contenants", () => {
+	it("place des matériaux équilibrés, au sol, sur les meubles et dans les contenants", () => {
 		const spots = new Set<string>();
 		for (const seed of [11, 202, 3003]) {
 			const layout = roomsOnLevel("medium", seed);
 			const rooms = layout.rooms.filter((room) => room.type !== "stairwell");
-			expect(layout.pickups.length).toBeLessThanOrEqual(
-				Math.ceil(rooms.length * PICKUP_PER_ROOM) +
-					layout.levels.length * PICKUP_MIN_PER_LEVEL,
-			);
 			for (const level of new Set(rooms.map((room) => room.level))) {
 				expect(
 					layout.pickups.filter((pickup) => pickup.level === level).length,
@@ -105,6 +153,84 @@ describe("manoir : autels et matériaux", () => {
 	});
 });
 
+describe("nombre d'items réglable", () => {
+	it("pose le nombre demandé par joueur, même au-delà du nombre de salles", () => {
+		for (const [perPlayer, players] of [
+			[DEFAULT_ITEMS_PER_PLAYER, 3],
+			[MIN_ITEMS_PER_PLAYER, 4],
+			[MAX_ITEMS_PER_PLAYER, 4],
+		]) {
+			const sim = new MatchSimulation({
+				seed: 202,
+				players,
+				config: { itemsPerPlayer: perPlayer },
+			});
+			const expected = perPlayer * players;
+			const placed = sim.match.layout.pickups.length;
+			expect(sim.match.initPayload().pickupTotal).toBe(expected);
+			expect(placed).toBeGreaterThanOrEqual(
+				Math.min(expected, PICKUP_MIN_PER_LEVEL * 2) - 1,
+			);
+			expect(Math.abs(placed - expected)).toBeLessThanOrEqual(
+				PICKUP_MIN_PER_LEVEL * 2 + 1,
+			);
+		}
+	});
+
+	it("adapte le nombre de morceaux à la taille du manoir", () => {
+		const total = (config: Partial<typeof PUBLIC_MATCH_CONFIG>) =>
+			pickupTotal({ ...PUBLIC_MATCH_CONFIG, ...config }, 4);
+		const reference = PUBLIC_MATCH_CONFIG.itemsPerPlayer * 4;
+		expect(total({})).toBe(reference);
+		expect(total({ manorSize: "small" })).toBeLessThan(reference);
+		expect(total({ manorSize: "large" })).toBeGreaterThan(reference);
+		expect(total({ floors: 0 })).toBeLessThan(reference);
+		expect(total({ floors: 3 })).toBeGreaterThan(reference);
+		expect(total({ upperFloorSize: "large" })).toBeGreaterThan(reference);
+
+		const placed = (manorSize: ManorSize) =>
+			generateManor(202, {
+				...PUBLIC_MATCH_CONFIG,
+				manorSize,
+				pickupTotal: pickupTotal({ ...PUBLIC_MATCH_CONFIG, manorSize }, 4),
+			}).pickups.length;
+		expect(placed("small")).toBeLessThan(placed("medium"));
+		expect(placed("medium")).toBeLessThan(placed("large"));
+	});
+
+	it("ne met jamais deux items dans le même meuble", () => {
+		const layout = generateManor(202, {
+			...PUBLIC_MATCH_CONFIG,
+			pickupTotal: 80,
+		});
+		const furniture = layout.pickups
+			.map((pickup) => pickup.furnitureId)
+			.filter((id) => id !== null);
+		expect(new Set(furniture).size).toBe(furniture.length);
+	});
+
+	it("borne le réglage du lobby", () => {
+		const fallback = PUBLIC_MATCH_CONFIG;
+		const read = (itemsPerPlayer: unknown) =>
+			sanitizeMatchConfig({ ...fallback, itemsPerPlayer }, fallback)
+				.itemsPerPlayer;
+		expect(read(999)).toBe(MAX_ITEMS_PER_PLAYER);
+		expect(read(0)).toBe(MIN_ITEMS_PER_PLAYER);
+		expect(read(6.4)).toBe(6);
+		expect(read("beaucoup")).toBe(DEFAULT_ITEMS_PER_PLAYER);
+	});
+
+	it("garde la même disposition à somme de contrôle égale", () => {
+		const options = { ...PUBLIC_MATCH_CONFIG, pickupTotal: 24 };
+		expect(layoutChecksum(generateManor(7, options))).toBe(
+			layoutChecksum(generateManor(7, options)),
+		);
+		expect(layoutChecksum(generateManor(7, options))).not.toBe(
+			layoutChecksum(generateManor(7, { ...options, pickupTotal: 40 })),
+		);
+	});
+});
+
 describe("objets occultes", () => {
 	it("donne à une espèce un seul objet, partagé par ses exemplaires", () => {
 		const plan = planRoster(new SeededRandom(5), 12, new Set());
@@ -125,7 +251,15 @@ describe("objets occultes", () => {
 		const player = match.players.get("p1") as NonNullable<
 			ReturnType<typeof match.players.get>
 		>;
-		const pickup = match.layout.pickups.find((entry) => entry.spot === "floor");
+		const pickup = match.layout.pickups.find(
+			(entry) =>
+				entry.spot === "floor" &&
+				lineOfSight(
+					match.world,
+					{ x: entry.x + 0.5, y: entry.y + 0.8, z: entry.z },
+					entry,
+				),
+		);
 		expect(pickup).toBeDefined();
 		if (!pickup) {
 			return;
@@ -144,8 +278,35 @@ describe("objets occultes", () => {
 		expect(player.materials[pickup.material]).toBe(1);
 		sim.run(91);
 		expect(match.loot.returnsAt.has(pickup.id)).toBe(false);
+		const respawned = match.loot.materialOf(match, pickup.id);
+		const before = player.materials[respawned];
 		match.handleInteract("p1", { kind: "pickup", id: pickup.id });
-		expect(player.materials[pickup.material]).toBe(2);
+		expect(player.materials[respawned]).toBe(before + 1);
+	});
+
+	it("tire un matériau au hasard à chaque réapparition", () => {
+		const sim = quiet();
+		const { match } = sim;
+		const pickupId = match.layout.pickups[0].id;
+		const checksum = layoutChecksum(match.layout);
+		const seen = new Set<string>();
+		for (let round = 0; round < 40; round += 1) {
+			match.loot.returnsAt.set(pickupId, match.now);
+			match.loot.update(match);
+			seen.add(match.loot.materialOf(match, pickupId));
+		}
+		expect(seen.size).toBeGreaterThan(1);
+		expect(layoutChecksum(match.layout)).toBe(checksum);
+		const events = match
+			.currentStateEvents()
+			.filter((event) => event.type === "pickupBack" && event.id === pickupId);
+		expect(events).toEqual([
+			{
+				type: "pickupBack",
+				id: pickupId,
+				material: match.loot.materialOf(match, pickupId),
+			},
+		]);
 	});
 
 	it("fabrique sur un autel en consommant la recette", () => {
@@ -177,7 +338,7 @@ describe("objets occultes", () => {
 		placeBot(sim, "p1", line.origin, line.yaw);
 		prepareCaster(sim, "p1", {});
 		const entity = installAnomaly(sim, 0, "crache-cendre", line.target);
-		entity.occult = "rubySeal";
+		entity.occult = "athame";
 		const player = sim.match.players.get("p1") as NonNullable<
 			ReturnType<typeof sim.match.players.get>
 		>;
@@ -186,11 +347,11 @@ describe("objets occultes", () => {
 		player.objects.jadeEye = 1;
 		bot.held = OCCULT_IDS.indexOf("jadeEye");
 		expect(castAt(sim, "p1", entity).reason).toBe("missing-occult");
-		player.objects.rubySeal = 1;
+		player.objects.athame = 1;
 		expect(castAt(sim, "p1", entity).reason).toBe("missing-occult");
-		bot.held = OCCULT_IDS.indexOf("rubySeal");
+		bot.held = OCCULT_IDS.indexOf("athame");
 		expect(castAt(sim, "p1", entity).ok).toBe(true);
-		expect(player.objects.rubySeal).toBe(0);
+		expect(player.objects.athame).toBe(0);
 		expect(player.objects.jadeEye).toBe(1);
 	});
 });
@@ -210,25 +371,11 @@ describe("cri", () => {
 		const player = match.players.get("p1") as NonNullable<
 			ReturnType<typeof match.players.get>
 		>;
+		const line = findClearLine(sim, 3);
+		placeBot(sim, "p1", line.origin, line.yaw);
 		sim.run(0.2);
 		player.protectedUntil = 0;
-		const level = match.gridLevelOf(player.position);
-		let far: { x: number; y: number; z: number } | null = null;
-		for (let cell = 0; cell < match.grid.cellsPerLevel; cell += 1) {
-			const node = level * match.grid.cellsPerLevel + cell;
-			if (!match.grid.walkable[node] || !match.grid.isInMainComponent(node)) {
-				continue;
-			}
-			const point = match.grid.nodePosition(node);
-			const distance = Math.hypot(
-				point.x - player.position.x,
-				point.z - player.position.z,
-			);
-			if (distance > 18 && distance < 28) {
-				far = point;
-				break;
-			}
-		}
+		const far = pointWithinWalk(sim, player.position);
 		expect(far).not.toBeNull();
 		const entity = installAnomaly(
 			sim,
@@ -242,11 +389,11 @@ describe("cri", () => {
 		const remaining = () =>
 			Math.hypot(entity.position.x - shoutAt.x, entity.position.z - shoutAt.z);
 		let seconds = 0;
-		while (remaining() > 4 && seconds < 8) {
+		while (remaining() > 6 && seconds < 8) {
 			sim.run(0.5);
 			seconds += 0.5;
 		}
-		expect(remaining()).toBeLessThanOrEqual(4);
+		expect(remaining()).toBeLessThanOrEqual(6);
 	});
 });
 
@@ -257,23 +404,12 @@ describe("monstre attiré par un cri", () => {
 		const player = match.players.get("p1") as NonNullable<
 			ReturnType<typeof match.players.get>
 		>;
+		const line = findClearLine(sim, 3);
+		placeBot(sim, "p1", line.origin, line.yaw);
 		sim.run(0.2);
 		player.protectedUntil = Infinity;
-		const level = match.gridLevelOf(player.position);
-		let far: { x: number; y: number; z: number } | null = null;
-		for (let cell = 0; cell < match.grid.cellsPerLevel && !far; cell += 1) {
-			const node = level * match.grid.cellsPerLevel + cell;
-			if (match.grid.walkable[node] && match.grid.isInMainComponent(node)) {
-				const point = match.grid.nodePosition(node);
-				const distance = Math.hypot(
-					point.x - player.position.x,
-					point.z - player.position.z,
-				);
-				if (distance > 12 && distance < 20) {
-					far = point;
-				}
-			}
-		}
+		const far = pointWithinWalk(sim, player.position, 12, 20, 30);
+		expect(far).not.toBeNull();
 		const entity = installAnomaly(
 			sim,
 			0,
@@ -306,6 +442,8 @@ describe("monstre attiré par un cri", () => {
 		const player = match.players.get("p1") as NonNullable<
 			ReturnType<typeof match.players.get>
 		>;
+		const line = findClearLine(sim, 3, 30, 2.4);
+		placeBot(sim, "p1", line.origin, line.yaw);
 		sim.run(0.2);
 		player.protectedUntil = Infinity;
 		const entity = installAnomaly(sim, 0, "murmure", { ...player.position });
@@ -352,6 +490,19 @@ describe("tutoriel", () => {
 		});
 	}
 
+	it("garde les matériaux de la recette au tutoriel, même après réapparition", () => {
+		const { match } = tutorialSim();
+		const wanted = Object.keys(
+			OCCULT_RECIPES[match.anomalies[0].occult as "pendulum"],
+		);
+		const pickupId = match.layout.pickups[0].id;
+		for (let round = 0; round < 40; round += 1) {
+			match.loot.returnsAt.set(pickupId, match.now);
+			match.loot.update(match);
+			expect(wanted).toContain(match.loot.materialOf(match, pickupId));
+		}
+	});
+
 	it("a un manoir fixe avec tout ce que demandent les étapes", () => {
 		const { match } = tutorialSim();
 		expect(match.anomalies).toHaveLength(1);
@@ -363,6 +514,32 @@ describe("tutoriel", () => {
 		).toBeGreaterThanOrEqual(PICKUP_MIN_PER_LEVEL);
 		expect(match.layout.hideSpots.length).toBeGreaterThan(0);
 		expect(match.layout.levels.length).toBeGreaterThan(1);
+	});
+
+	it("blesse le joueur sur demande sans le tuer, et l'eau verte le soigne", () => {
+		const sim = tutorialSim();
+		const { match } = sim;
+		const player = match.players.get("p1") as NonNullable<
+			ReturnType<typeof match.players.get>
+		>;
+		expect(match.layout.valves.length).toBeGreaterThan(0);
+		match.handleTutorialWound("p1");
+		expect(player.health).toBe(TUTORIAL_WOUNDED_HEALTH);
+		expect(player.alive).toBe(true);
+		const valve = match.layout.valves[0];
+		placeBot(sim, "p1", { x: valve.jet.x, y: valve.floorY, z: valve.jet.z }, 0);
+		expect(match.valves.activate(valve.id, match.now)).not.toBeNull();
+		sim.run(3);
+		expect(player.health).toBeGreaterThanOrEqual(TUTORIAL_WOUNDED_HEALTH + 16);
+	});
+
+	it("ne blesse personne hors du tutoriel", () => {
+		const sim = new MatchSimulation({ seed: 4242, players: 1 });
+		const player = sim.match.players.get("p1") as NonNullable<
+			ReturnType<typeof sim.match.players.get>
+		>;
+		sim.match.handleTutorialWound("p1");
+		expect(player.health).toBe(100);
 	});
 
 	it("n'éveille le monstre que sur demande, et le joueur ne prend aucun dégât", () => {

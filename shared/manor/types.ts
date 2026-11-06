@@ -123,6 +123,53 @@ export interface StairSpec {
 	topY: number;
 }
 
+export interface MezzanineSegment {
+	a: Vec2;
+	b: Vec2;
+}
+
+export type MezzanineShape =
+	| "corner"
+	| "gallery"
+	| "diagonal"
+	| "crescent"
+	| "pier"
+	| "horseshoe"
+	| "bridge";
+
+export interface MezzaninePodium {
+	center: Vec2;
+	rotation: number;
+	width: number;
+	depth: number;
+}
+
+export interface MezzanineSpec {
+	shape: MezzanineShape;
+	floorY: number;
+	deck: Vec2[];
+	deckEdges: number[];
+	rails: MezzanineSegment[];
+	posts: Vec2[];
+	stair: StairSpec;
+	stairPolygon: Vec2[];
+	stairSide: MezzanineSegment;
+	/** Second flanc d'un escalier central, null pour un escalier contre un mur. */
+	stairSideOuter: MezzanineSegment | null;
+	stairEnd: MezzanineSegment;
+	/** Mur longé par l'escalier, -1 pour un escalier central. */
+	stairEdge: number;
+	stairEdgeFrom: number;
+	stairEdgeTo: number;
+	corner: Vec2;
+	clearCenter: Vec2;
+	clearWidth: number;
+	clearDepth: number;
+	clearRotation: number;
+	deckKeepClear: Vec2[] | null;
+	podium: MezzaninePodium | null;
+}
+
 export interface EdgeOpeningSlot {
 	openingId: number;
 	from: number;
@@ -149,6 +196,7 @@ export interface Room {
 	exteriorEdges: boolean[];
 	style: RoomStyle;
 	stair: StairSpec | null;
+	mezzanine: MezzanineSpec | null;
 	seed: number;
 }
 

@@ -321,20 +321,18 @@ function wicker(): TextureRecipe {
 		size: [16, 16],
 		tile: 0.25,
 		draw: (p) => {
-			p.fill(hexToRgb(0x8a6a3a));
+			p.fill(hexToRgb(0x6d5430));
 			for (let y = 0; y < 16; y += 4) {
 				for (let x = 0; x < 16; x += 4) {
-					const horizontal = ((x + y) / 4) % 2 === 0;
-					p.rect(
-						x,
-						y,
-						horizontal ? 4 : 2,
-						horizontal ? 2 : 4,
-						hexToRgb(0xc8a060),
-					);
+					const tone = shade(hexToRgb(0x9c7f4c), 0.92 + p.rng.next() * 0.14);
+					if (((x + y) / 4) % 2 === 0) {
+						p.rect(x, y + 1, 4, 2, tone);
+					} else {
+						p.rect(x + 1, y, 2, 4, tone);
+					}
 				}
 			}
-			p.noise(0.12);
+			p.noise(0.06);
 		},
 	};
 }

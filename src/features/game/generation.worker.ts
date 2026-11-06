@@ -3,7 +3,7 @@ import type { MatchConfig } from "@shared/matchConfig";
 
 interface GenerationRequest {
 	seed: number;
-	config: MatchConfig;
+	config: MatchConfig & { pickupTotal: number };
 }
 
 self.onmessage = (event: MessageEvent<GenerationRequest>) => {

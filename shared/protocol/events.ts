@@ -1,6 +1,11 @@
 import type { DevModes } from "../devModes.js";
 import type { MatchConfig } from "../matchConfig.js";
 import type {
+	FriendInvite,
+	FriendsOverview,
+	PublicLobbyPreview,
+} from "./friends.js";
+import type {
 	CastRequest,
 	CastResult,
 	ClientStateMessage,
@@ -39,10 +44,30 @@ export interface ClientToServerEvents {
 		payload: JoinPrivateRequest,
 		ack: Ack<LobbyState>,
 	) => void;
+	"lobby:joinPublic": (
+		payload: JoinRequest & { lobbyId: string },
+		ack: Ack<LobbyState>,
+	) => void;
+	"lobby:peekPublic": (ack: Ack<PublicLobbyPreview>) => void;
 	"lobby:startTutorial": (
 		payload: { name: string },
 		ack: Ack<LobbyState>,
 	) => void;
+	"friends:list": (ack: Ack<FriendsOverview>) => void;
+	"friends:add": (payload: { code: string }, ack: Ack<FriendsOverview>) => void;
+	"friends:respond": (
+		payload: { accountId: string; accept: boolean },
+		ack: Ack<FriendsOverview>,
+	) => void;
+	"friends:remove": (
+		payload: { accountId: string },
+		ack: Ack<FriendsOverview>,
+	) => void;
+	"friends:setOffline": (
+		payload: { offline: boolean },
+		ack: Ack<FriendsOverview>,
+	) => void;
+	"friends:invite": (payload: { accountId: string }, ack: Ack<null>) => void;
 	"lobby:leave": () => void;
 	"lobby:ready": (payload: { ready: boolean }) => void;
 	"lobby:microphone": (payload: { ready: boolean }) => void;
@@ -66,6 +91,7 @@ export interface ClientToServerEvents {
 	"game:shout": () => void;
 	"game:craft": (payload: { altarId: number; object: string }) => void;
 	"game:tutorialSummon": () => void;
+	"game:tutorialWound": () => void;
 	"game:devModes": (payload: DevModes) => void;
 	"game:leave": () => void;
 }
@@ -74,6 +100,8 @@ export type AbortReason = "all-left" | "all-disconnected" | "layout-mismatch";
 
 export interface ServerToClientEvents {
 	"lobby:state": (state: LobbyState) => void;
+	"friends:changed": () => void;
+	"friends:invited": (invite: FriendInvite) => void;
 	"voice:signal": (payload: VoiceSignalEnvelope) => void;
 	"time:pong": (payload: TimeSyncPong) => void;
 	"game:init": (payload: MatchInit) => void;

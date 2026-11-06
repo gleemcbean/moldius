@@ -98,7 +98,7 @@ describe("perception des anomalies", () => {
 			);
 			const eye = entity.eye();
 			return (
-				distance < 12 &&
+				distance < 20 &&
 				!lineOfSight(sim.match.world, eye, {
 					x: room.labelPoint.x,
 					y: room.floorY + 1,

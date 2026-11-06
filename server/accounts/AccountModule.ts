@@ -1,3 +1,4 @@
+import type { AdminLiveStats } from "../../shared/protocol/admin.js";
 import {
 	type AccountRevocation,
 	AccountService,
@@ -5,13 +6,16 @@ import {
 	type AuthenticatedSession,
 } from "./AccountService.js";
 import type { MatchRecord } from "./AccountStore.js";
+import { AdminStore } from "./AdminStore.js";
 import { readCookie, sessionCookieName } from "./cookies.js";
 import type { Database } from "./database.js";
 import type { DiscordClient } from "./discord.js";
+import { FriendStore } from "./FriendStore.js";
 import { migrate } from "./migrations.js";
 
 const RETRY_MS = 30_000;
 const PURGE_MS = 60 * 60_000;
+const PRESENCE_SAMPLE_MS = 5 * 60_000;
 
 export interface AccountModuleOptions
 	extends Omit<AccountServiceOptions, "onRevoke"> {
@@ -22,9 +26,13 @@ export interface AccountModuleOptions
 
 export class AccountModule {
 	service: AccountService | null = null;
+	friends: FriendStore | null = null;
+	admin: AdminStore | null = null;
+	liveStats: (() => AdminLiveStats | null) | null = null;
 	onRevoke: (revocation: AccountRevocation) => void = () => undefined;
 	private retryTimer: NodeJS.Timeout | null = null;
 	private purgeTimer: NodeJS.Timeout | null = null;
+	private presenceTimer: NodeJS.Timeout | null = null;
 	private closed = false;
 
 	constructor(
@@ -75,6 +83,20 @@ export class AccountModule {
 				});
 			}, PURGE_MS);
 			this.purgeTimer.unref();
+			this.friends = new FriendStore(database, this.options.now);
+			this.admin = new AdminStore(database, this.options.now);
+			this.presenceTimer = setInterval(() => {
+				const live = this.liveStats?.();
+				if (live) {
+					this.admin?.samplePresence(live).catch((error: unknown) => {
+						console.error(
+							"Admin : relevé de présence impossible",
+							describe(error),
+						);
+					});
+				}
+			}, PRESENCE_SAMPLE_MS);
+			this.presenceTimer.unref();
 		} catch (error) {
 			console.error(
 				`Comptes : base PostgreSQL injoignable (${describe(error)}), nouvel essai dans ${RETRY_MS / 1000} s`,
@@ -127,7 +149,12 @@ export class AccountModule {
 		if (this.purgeTimer) {
 			clearInterval(this.purgeTimer);
 		}
+		if (this.presenceTimer) {
+			clearInterval(this.presenceTimer);
+		}
 		this.service = null;
+		this.friends = null;
+		this.admin = null;
 		await this.database?.close();
 	}
 }

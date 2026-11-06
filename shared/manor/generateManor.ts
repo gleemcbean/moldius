@@ -1,4 +1,6 @@
 import {
+	DEFAULT_ITEMS_PER_PLAYER,
+	MANOR_GRAND_ROOMS,
 	MANOR_GROUND_ROOM_COUNT,
 	MANOR_HALF_EXTENT,
 	MANOR_LAYOUT_RETRIES,
@@ -10,10 +12,12 @@ import {
 	MAX_UPPER_FLOORS,
 } from "../config/index.js";
 import type { MatchConfig } from "../matchConfig.js";
+import { NavGrid } from "../navigation/navGrid.js";
+import { CollisionWorld } from "../physics/collisionWorld.js";
 import { hashNumbers, hashString, SeededRandom } from "../random.js";
 import { furnishManor } from "./furnish/furnishManor.js";
 import { placePickups } from "./furnish/pickups.js";
-import { ManorLayoutBuilder } from "./layoutBuilder.js";
+import { isHanging, ManorLayoutBuilder } from "./layoutBuilder.js";
 import { mergeBounds } from "./polygon.js";
 import { ROOM_TYPES } from "./roomCatalog.js";
 import type { Level, ManorLayout, Room, RoomType } from "./types.js";
@@ -21,7 +25,7 @@ import type { Level, ManorLayout, Room, RoomType } from "./types.js";
 export type ManorOptions = Pick<
 	MatchConfig,
 	"manorSize" | "roomTypes" | "floors" | "upperFloorSize" | "stairCount"
->;
+> & { pickupTotal?: number };
 
 const TOP_UP_TYPES: RoomType[] = [
 	"corridor",
@@ -86,6 +90,24 @@ const UPPER_EXTRA: readonly (readonly [RoomType, number])[] = [
 	["theater", 0.5],
 ];
 
+const GRAND_ROOM_TYPES: RoomType[] = [
+	"library",
+	"ballroom",
+	"hall",
+	"dining",
+	"salon",
+	"gallery",
+];
+
+const MEZZANINE_ROOM_TYPES: RoomType[] = [
+	"study",
+	"closet",
+	"bathroom",
+	"toilets",
+	"nursery",
+	"bedroom",
+];
+
 const GENERIC_GROUND: RoomType[] = ["hall", "salon", "gallery", "bedroom"];
 const GENERIC_UPPER: RoomType[] = ["salon", "gallery", "bedroom", "hall"];
 
@@ -125,11 +147,13 @@ export function generateManor(
 	const levels = [
 		...new Set(
 			rooms.flatMap((room) =>
-				room.type === "stairwell" ? [room.level, room.level + 1] : [room.level],
+				room.type === "stairwell" || room.mezzanine
+					? [room.level, room.level + 1]
+					: [room.level],
 			),
 		),
 	].sort((first, second) => first - second) as Level[];
-	return {
+	return withoutCutOffHideSpots({
 		seed,
 		rooms,
 		openings,
@@ -137,7 +161,12 @@ export function generateManor(
 		hideSpots: furnished.hideSpots,
 		lights: furnished.lights,
 		valves: furnished.valves,
-		pickups: placePickups(rooms, furnished.furniture, rng.fork("pickups")),
+		pickups: placePickups(
+			rooms,
+			furnished.furniture,
+			rng.fork("pickups"),
+			options.pickupTotal ?? DEFAULT_ITEMS_PER_PLAYER * 2,
+		),
 		altars: furnished.furniture
 			.filter((item) => item.kind === "occultAltar")
 			.map((item, id) => ({
@@ -151,6 +180,39 @@ export function generateManor(
 			})),
 		bounds,
 		levels,
+	});
+}
+
+function withoutCutOffHideSpots(layout: ManorLayout): ManorLayout {
+	const grid = new NavGrid(new CollisionWorld(layout));
+	const reachable = new Set(
+		layout.hideSpots
+			.filter((spot) => {
+				const node = grid.nearestNode(
+					{
+						x: spot.entry.x,
+						y: layout.furniture[spot.furnitureId].y,
+						z: spot.entry.z,
+					},
+					2,
+				);
+				return node !== null;
+			})
+			.map((spot) => spot.id),
+	);
+	if (reachable.size === layout.hideSpots.length) {
+		return layout;
+	}
+	const hideSpots = layout.hideSpots.filter((spot) => reachable.has(spot.id));
+	const ids = new Map(hideSpots.map((spot, index) => [spot.id, index]));
+	return {
+		...layout,
+		hideSpots: hideSpots.map((spot, index) => ({ ...spot, id: index })),
+		furniture: layout.furniture.map((item) => ({
+			...item,
+			hideSpotId:
+				item.hideSpotId === null ? null : (ids.get(item.hideSpotId) ?? null),
+		})),
 	};
 }
 
@@ -165,6 +227,9 @@ function buildRooms(
 	const plan = planRooms(rng.fork("plan"), options);
 
 	builder.createFirstRoom("hall");
+	if (options.floors > 0) {
+		placeGrandRooms(builder, rng.fork("grand"), options);
+	}
 	placeLevel(builder, rng.fork("ground"), plan.ground, 0);
 	builder.addLoops(0, MANOR_LOOPS[options.manorSize]);
 
@@ -188,6 +253,64 @@ function buildRooms(
 		);
 	}
 	return builder;
+}
+
+function placeGrandRooms(
+	builder: ManorLayoutBuilder,
+	rng: SeededRandom,
+	options: ManorOptions,
+): void {
+	const allowed = new Set(options.roomTypes);
+	const usable = (type: RoomType) =>
+		!ROOM_TYPES[type].optional || allowed.has(type);
+	const types = rng.shuffle(GRAND_ROOM_TYPES.filter(usable));
+	const smallRooms = MEZZANINE_ROOM_TYPES.filter(
+		(type) => usable(type) && ROOM_TYPES[type].allowUpper,
+	);
+	for (
+		let index = 0;
+		index < MANOR_GRAND_ROOMS[options.manorSize];
+		index += 1
+	) {
+		const type = types[index % types.length];
+		if (!type) {
+			return;
+		}
+		const parents = builder.rooms.filter(
+			(room) =>
+				room.area > 0 && room.level === 0 && !ROOM_TYPES[room.type].singleDoor,
+		);
+		for (let attempt = 0; attempt < 10; attempt += 1) {
+			const room = builder.tryAttachGrandRoom(rng.pick(parents), type);
+			if (room) {
+				placeMezzanineRooms(
+					builder,
+					rng.fork(`rooms-${index}`),
+					room,
+					smallRooms,
+				);
+				break;
+			}
+		}
+	}
+}
+
+function placeMezzanineRooms(
+	builder: ManorLayoutBuilder,
+	rng: SeededRandom,
+	grandRoom: Room,
+	types: RoomType[],
+): void {
+	const target = rng.int(2, 3);
+	let placed = 0;
+	for (const type of [...rng.shuffle(types), ...rng.shuffle(types)]) {
+		if (placed >= target) {
+			return;
+		}
+		if (builder.tryAttachRoom(grandRoom, type, 1, 10)) {
+			placed += 1;
+		}
+	}
 }
 
 function hasSparseFloor(builder: ManorLayoutBuilder): boolean {
@@ -387,6 +510,7 @@ function attachSomewhere(
 		(room) =>
 			room.area > 0 &&
 			!ROOM_TYPES[room.type].singleDoor &&
+			!isHanging(room) &&
 			(room.level === level ||
 				(room.type === "stairwell" && room.level === level - 1)),
 	);
@@ -444,7 +568,10 @@ function placeStairwells(
 	];
 	const levelRooms = builder.rooms.filter(
 		(room) =>
-			room.level === fromLevel && room.area > 0 && room.type !== "stairwell",
+			room.level === fromLevel &&
+			room.area > 0 &&
+			room.type !== "stairwell" &&
+			!isHanging(room),
 	);
 	if (levelRooms.length === 0) {
 		return placed;

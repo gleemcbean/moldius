@@ -988,6 +988,92 @@ export function createRoomShape(
 	}
 }
 
+/**
+ * Contour d'une grande salle à mezzanine : mêmes familles que les autres salles
+ * (pans coupés, arrondis, abside, équerre), à l'échelle d'une grande salle.
+ */
+export function createGrandRoomShape(
+	rng: SeededRandom,
+	width: number,
+	depth: number,
+	plain: boolean,
+): RoomShape {
+	const family = plain
+		? "rect"
+		: rng.weighted([
+				["rect", 3],
+				["octagon", 2],
+				["heptagon", 2],
+				["apse", 2],
+				["lshape", 1.5],
+			] as const);
+	switch (family) {
+		case "rect": {
+			const corners = [0, 1, 2, 3].map(() =>
+				plain ? SQUARE : randomCorner(rng, 3, [0.3, 0.35, 0.35]),
+			);
+			return {
+				family,
+				edges: outlineFromVertices(rectangleVertices(width, depth), corners),
+			};
+		}
+		case "octagon":
+		case "heptagon": {
+			const chamfer: CornerTreatment = {
+				kind: "chamfer",
+				size: snap(rng.range(2, 3)),
+			};
+			const squareIndex = family === "heptagon" ? rng.int(0, 3) : -1;
+			return {
+				family,
+				edges: outlineFromVertices(
+					rectangleVertices(width, depth),
+					[0, 1, 2, 3].map((index) =>
+						index === squareIndex ? SQUARE : chamfer,
+					),
+				),
+			};
+		}
+		case "apse": {
+			const narrow = snap(Math.min(width, depth + 1));
+			const long = snap(Math.max(depth + 4, narrow * 1.25));
+			const round: CornerTreatment = { kind: "round", size: narrow / 2 };
+			return {
+				family,
+				edges: outlineFromVertices(rectangleVertices(narrow, long), [
+					randomCorner(rng, 1.25, [0.6, 0.4, 0]),
+					randomCorner(rng, 1.25, [0.6, 0.4, 0]),
+					round,
+					round,
+				]),
+			};
+		}
+		case "lshape": {
+			const wide = snap(width * 1.15);
+			const deep = snap(depth * 1.15);
+			const notchWidth = snap(wide * rng.range(0.25, 0.33));
+			const notchDepth = snap(deep * rng.range(0.25, 0.33));
+			const inner: CornerTreatment = rng.chance(0.5)
+				? { kind: "round", size: snap(rng.range(1, 2)) }
+				: SQUARE;
+			return {
+				family,
+				edges: outlineFromVertices(
+					lShapeVertices(wide, deep, notchWidth, notchDepth),
+					[
+						randomCorner(rng, 2.5, [0.4, 0.3, 0.3]),
+						randomCorner(rng, 2.5, [0.4, 0.3, 0.3]),
+						SQUARE,
+						inner,
+						SQUARE,
+						randomCorner(rng, 2.5, [0.4, 0.3, 0.3]),
+					],
+				),
+			};
+		}
+	}
+}
+
 export function pickRoomStyle(
 	definition: RoomTypeDefinition,
 	rng: SeededRandom,

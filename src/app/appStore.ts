@@ -2,7 +2,7 @@ import { createStore } from "../utils/store";
 
 export type Screen = "home" | "lobby" | "loading" | "game" | "results";
 
-export type Overlay = "settings" | "account" | "bestiary" | null;
+export type Overlay = "settings" | "account" | "bestiary" | "friends" | null;
 
 export interface Toast {
 	id: number;

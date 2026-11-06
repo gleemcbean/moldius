@@ -1,3 +1,4 @@
+import { DAIS_STEP_RISE, DAIS_STEP_RUN } from "../../config/index.js";
 import { rotate2 } from "../../math.js";
 import {
 	furnitureDefinition,
@@ -101,6 +102,19 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 		case "fireplace":
 		case "pillar":
 			return [{ ...full, yMax: roomCeilingY - item.y, walkable: false }];
+		case "dais":
+			return Array.from(
+				{ length: Math.round(height / DAIS_STEP_RISE) },
+				(_, tier) => ({
+					x: 0,
+					z: 0,
+					width: width - tier * DAIS_STEP_RUN * 2,
+					depth: depth - tier * DAIS_STEP_RUN * 2,
+					yMin: 0,
+					yMax: (tier + 1) * DAIS_STEP_RISE,
+					walkable: true,
+				}),
+			);
 		case "chair":
 			return [
 				{
@@ -111,6 +125,15 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 					yMin: 0,
 					yMax: 0.48,
 					walkable: true,
+				},
+				{
+					x: 0,
+					z: -depth / 2 + 0.05,
+					width: width * 0.92,
+					depth: 0.08,
+					yMin: 0.48,
+					yMax: height,
+					walkable: false,
 				},
 			];
 		case "pond":
@@ -132,10 +155,10 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 				{
 					x: 0,
 					z: 0,
-					width: width * 0.62,
-					depth: depth * 0.62,
+					width: width * 0.72,
+					depth: depth * 0.72,
 					yMin: 0,
-					yMax: 0.55,
+					yMax: height,
 					walkable: false,
 				},
 			];

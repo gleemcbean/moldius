@@ -15,7 +15,6 @@ export const ACTION_IDS = [
 	"push",
 	"shout",
 	"map",
-	"leaderboard",
 	"pagePrevious",
 	"pageNext",
 ] as const;

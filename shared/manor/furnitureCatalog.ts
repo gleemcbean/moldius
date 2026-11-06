@@ -451,6 +451,34 @@ const DEFINITIONS: FurnitureDefinition[] = [
 		),
 	),
 	define(
+		"palmTree",
+		"Palmier",
+		"floor",
+		variants([0.9, 0.9, 3.1], [0.8, 0.8, 2.6]),
+	),
+	define(
+		"ivyWall",
+		"Lierre",
+		"wall",
+		variants([1.6, 0.12, 2.2], [2.4, 0.12, 2.6], [1.1, 0.12, 1.7]),
+		{ collides: false, mountHeight: [0.5, 0.9] },
+	),
+	define("railVine", "Plante retombante", "wall", variants([1.6, 0.2, 1.1]), {
+		collides: false,
+	}),
+	define("climbingVine", "Liane", "floor", variants([0.46, 0.46, 3]), {
+		collides: false,
+	}),
+	define(
+		"hangingFern",
+		"Fougère suspendue",
+		"ceiling",
+		variants([0.9, 0.9, 1.6]),
+		{
+			collides: false,
+		},
+	),
+	define(
 		"planterBed",
 		"Jardinière",
 		"floor",
@@ -494,6 +522,15 @@ const DEFINITIONS: FurnitureDefinition[] = [
 		"Estrade",
 		"floor",
 		variants([2.4, 1.8, 0.3], [3.2, 2.2, 0.3], [2.0, 2.0, 0.22]),
+		{
+			walkableTop: true,
+		},
+	),
+	define(
+		"dais",
+		"Gradins",
+		"floor",
+		variants([5, 4, 0.54], [6, 4.5, 0.72], [4.5, 3.5, 0.36]),
 		{
 			walkableTop: true,
 		},
@@ -574,9 +611,7 @@ const DEFINITIONS: FurnitureDefinition[] = [
 		"Panier à linge",
 		"floor",
 		variants([0.6, 0.45, 0.48]),
-		{
-			collides: false,
-		},
+		{},
 	),
 	define(
 		"sarcophagus",
@@ -640,9 +675,7 @@ const DEFINITIONS: FurnitureDefinition[] = [
 		"Pile de livres",
 		"floor",
 		variants([0.4, 0.3, 0.45], [0.35, 0.28, 0.3]),
-		{
-			collides: false,
-		},
+		{},
 	),
 	define("vialCluster", "Fioles", "floor", variants([0.45, 0.35, 0.3]), {
 		collides: false,
@@ -930,9 +963,7 @@ const DEFINITIONS: FurnitureDefinition[] = [
 		"Porte-parapluies",
 		"floor",
 		variants([0.32, 0.32, 0.62]),
-		{
-			collides: false,
-		},
+		{},
 	),
 	define(
 		"stool",
@@ -1026,21 +1057,27 @@ const DEFINITIONS: FurnitureDefinition[] = [
 			},
 		},
 	),
-	define("logBasket", "Panier à bûches", "floor", variants([0.55, 0.4, 0.5]), {
-		collides: false,
-	}),
+	define(
+		"logBasket",
+		"Panier à bûches",
+		"floor",
+		variants([0.55, 0.4, 0.5]),
+		{},
+	),
 	define(
 		"grainSacks",
 		"Sacs de grain",
 		"floor",
 		variants([0.9, 0.5, 0.55], [0.6, 0.45, 0.55]),
 	),
-	define("milkChurns", "Bidons de lait", "floor", variants([0.55, 0.3, 0.62]), {
-		collides: false,
-	}),
-	define("butterChurn", "Baratte", "floor", variants([0.38, 0.38, 1.0]), {
-		collides: false,
-	}),
+	define(
+		"milkChurns",
+		"Bidons de lait",
+		"floor",
+		variants([0.55, 0.3, 0.62]),
+		{},
+	),
+	define("butterChurn", "Baratte", "floor", variants([0.38, 0.38, 1.0]), {}),
 	define("pillory", "Pilori", "floor", variants([1.2, 0.5, 1.6])),
 	define("dollhouse", "Maison de poupée", "floor", variants([0.85, 0.5, 0.95])),
 	define("wheelchair", "Fauteuil roulant", "floor", variants([0.7, 0.9, 1.0])),

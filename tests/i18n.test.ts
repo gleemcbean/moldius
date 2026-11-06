@@ -13,6 +13,7 @@ const SECTIONS: [string, string, string][] = [
 	["lobby", "lobbyFr", "lobbyEn"],
 	["settings", "settingsFr", "settingsEn"],
 	["account", "accountFr", "accountEn"],
+	["friends", "friendsFr", "friendsEn"],
 	["game", "gameFr", "gameEn"],
 	["grimoire", "grimoireFr", "grimoireEn"],
 	["world", "worldFr", "worldEn"],

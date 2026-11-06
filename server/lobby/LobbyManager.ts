@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Server } from "socket.io";
+import { LOBBY_CAPACITY } from "../../shared/config/index.js";
 import type { HatPattern } from "../../shared/hatPatterns.js";
 import {
 	TUTORIAL_MATCH_CONFIG,
@@ -9,6 +10,7 @@ import type {
 	ClientToServerEvents,
 	ServerToClientEvents,
 } from "../../shared/protocol/events.js";
+import type { PublicLobbyPreview } from "../../shared/protocol/friends.js";
 import type { MatchResults } from "../../shared/protocol/game.js";
 import type { LobbyError, LobbyState } from "../../shared/protocol/lobby.js";
 import type { MatchRecord } from "../accounts/AccountStore.js";
@@ -134,6 +136,45 @@ export class LobbyManager {
 			this.leave(session);
 		}
 		return this.join(session, lobby, name, color, pattern);
+	}
+
+	joinPublic(
+		session: Session,
+		name: string,
+		lobbyId: string,
+		color: number | null = null,
+		pattern: HatPattern | null = null,
+	): LobbyResult {
+		if (this.accountBusy(session)) {
+			return { ok: false, error: ALREADY_PLAYING };
+		}
+		const lobby = this.lobbies.get(lobbyId);
+		if (!lobby || lobby.visibility !== "public") {
+			return {
+				ok: false,
+				error: { code: "not-found", message: "Ce lobby n'existe plus." },
+			};
+		}
+		if (session.lobbyId !== lobby.id) {
+			this.leave(session);
+		}
+		return this.join(session, lobby, name, color, pattern);
+	}
+
+	publicPreview(): PublicLobbyPreview {
+		const lobbies = [...this.lobbies.values()].filter(
+			(lobby) => lobby.visibility === "public",
+		);
+		const open = lobbies.find((lobby) => lobby.acceptsPlayers);
+		return {
+			players: (open?.toState().players ?? [])
+				.filter((player) => player.connected)
+				.map(({ name, color, pattern }) => ({ name, color, pattern })),
+			capacity: LOBBY_CAPACITY,
+			playing: lobbies
+				.filter((lobby) => !lobby.acceptsPlayers)
+				.reduce((sum, lobby) => sum + lobby.connectedCount, 0),
+		};
 	}
 
 	startTutorial(session: Session, name: string): LobbyResult {

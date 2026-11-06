@@ -5,7 +5,6 @@ import {
 	PICKUP_CONTAINER_KINDS,
 	PICKUP_MAX_SURFACE_HEIGHT,
 	PICKUP_MIN_PER_LEVEL,
-	PICKUP_PER_ROOM,
 } from "../../config/index.js";
 import { rotate2 } from "../../math.js";
 import type { SeededRandom } from "../../random.js";
@@ -43,6 +42,7 @@ function floorPoint(
 		};
 		if (
 			pointInPolygon(point, room.polygon) &&
+			!(room.mezzanine && pointInPolygon(point, room.mezzanine.stairPolygon)) &&
 			!items.some((item) =>
 				item.colliders.some((box) => pointInBox(point, box, FLOOR_MARGIN)),
 			) &&
@@ -60,8 +60,10 @@ function placeInRoom(
 	room: Room,
 	furniture: FurnitureItem[],
 	rng: SeededRandom,
+	used: ReadonlySet<number>,
 ): PickupPlace | null {
 	const items = furniture.filter((item) => item.roomId === room.id);
+	const free = items.filter((item) => !used.has(item.id));
 	const place = (
 		spot: PickupSpot,
 		at: { x: number; y: number; z: number },
@@ -74,9 +76,9 @@ function placeInRoom(
 		...at,
 	});
 	const containers = rng.shuffle(
-		items.filter((item) => PICKUP_CONTAINER_KINDS.includes(item.kind)),
+		free.filter((item) => PICKUP_CONTAINER_KINDS.includes(item.kind)),
 	);
-	const surfaces = rng.shuffle(items.filter(canHoldLoot));
+	const surfaces = rng.shuffle(free.filter(canHoldLoot));
 	const roll = rng.next();
 	const container = roll < 0.7 ? containers[0] : undefined;
 	if (container) {
@@ -115,24 +117,35 @@ export function placePickups(
 	rooms: Room[],
 	furniture: FurnitureItem[],
 	rng: SeededRandom,
+	total: number,
 ): MaterialPickup[] {
 	const places: PickupPlace[] = [];
-	const levels = [...new Set(rooms.map((room) => room.level))];
+	const usable = rooms.filter((room) => room.type !== "stairwell");
+	const levels = [...new Set(usable.map((room) => room.level))];
+	const used = new Set<number>();
 	for (const level of levels) {
-		const onLevel = rng.shuffle(
-			rooms.filter((room) => room.level === level && room.type !== "stairwell"),
-		);
+		const onLevel = rng.shuffle(usable.filter((room) => room.level === level));
 		const target = Math.max(
 			PICKUP_MIN_PER_LEVEL,
-			Math.round(onLevel.length * PICKUP_PER_ROOM),
+			Math.round((total * onLevel.length) / usable.length),
 		);
 		let placed = 0;
-		for (const room of onLevel) {
-			if (placed >= target) {
-				break;
-			}
-			const place = placeInRoom(room, furniture, rng.fork(`room-${room.id}`));
+		for (
+			let attempt = 0;
+			placed < target && attempt < target + onLevel.length * 4;
+			attempt += 1
+		) {
+			const room = onLevel[attempt % onLevel.length];
+			const place = placeInRoom(
+				room,
+				furniture,
+				rng.fork(`room-${room.id}-${attempt}`),
+				used,
+			);
 			if (place) {
+				if (place.furnitureId !== null) {
+					used.add(place.furnitureId);
+				}
 				places.push(place);
 				placed += 1;
 			}
@@ -144,13 +157,17 @@ export function placePickups(
 	return places.map((place, id) => ({ id, material: deck[id], ...place }));
 }
 
+export function recipeDeck(recipe: OccultRecipe): MaterialId[] {
+	return (Object.entries(recipe) as [MaterialId, number][]).flatMap(
+		([material, count]) => Array.from({ length: count }, () => material),
+	);
+}
+
 export function assignRecipeMaterials(
 	pickups: MaterialPickup[],
 	recipe: OccultRecipe,
 ): void {
-	const deck = (Object.entries(recipe) as [MaterialId, number][]).flatMap(
-		([material, count]) => Array.from({ length: count }, () => material),
-	);
+	const deck = recipeDeck(recipe);
 	const seen = new Map<number, number>();
 	for (const pickup of pickups) {
 		const index = seen.get(pickup.level) ?? 0;

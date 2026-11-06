@@ -1,5 +1,6 @@
 import {
 	ALTAR_INTERACT_RANGE,
+	MATERIAL_IDS,
 	type MaterialId,
 	OCCULT_RECIPES,
 	type OccultId,
@@ -8,6 +9,7 @@ import {
 } from "../../../shared/config/index.js";
 import type { Vec3 } from "../../../shared/math.js";
 import { lineOfSight } from "../../../shared/physics/lineOfSight.js";
+import type { SeededRandom } from "../../../shared/random.js";
 import type { Match } from "../Match.js";
 import type { MatchPlayer } from "../MatchPlayer.js";
 
@@ -25,6 +27,17 @@ export function canCraft(player: MatchPlayer, object: OccultId): boolean {
 
 export class LootSystem {
 	readonly returnsAt = new Map<number, number>();
+	/** Matériau tiré à la réapparition : le plan du manoir, lui, ne change jamais. */
+	readonly respawned = new Map<number, MaterialId>();
+	/** Le tutoriel se limite aux matériaux de sa recette. */
+	respawnPool: readonly MaterialId[] = MATERIAL_IDS;
+	private rng: SeededRandom | null = null;
+
+	materialOf(match: Match, pickupId: number): MaterialId {
+		return (
+			this.respawned.get(pickupId) ?? match.layout.pickups[pickupId].material
+		);
+	}
 
 	take(match: Match, player: MatchPlayer, pickupId: number): boolean {
 		const pickup = match.layout.pickups[pickupId];
@@ -40,7 +53,7 @@ export class LootSystem {
 		) {
 			return false;
 		}
-		const { material } = pickup;
+		const material = this.materialOf(match, pickupId);
 		player.materials[material] += 1;
 		this.returnsAt.set(pickupId, match.now + PICKUP_RESPAWN_MS);
 		match.emit({
@@ -85,7 +98,10 @@ export class LootSystem {
 		for (const [pickupId, at] of this.returnsAt) {
 			if (match.now >= at) {
 				this.returnsAt.delete(pickupId);
-				match.emit({ type: "pickupBack", id: pickupId });
+				this.rng ??= match.rng.fork("loot");
+				const material = this.rng.pick(this.respawnPool);
+				this.respawned.set(pickupId, material);
+				match.emit({ type: "pickupBack", id: pickupId, material });
 			}
 		}
 	}

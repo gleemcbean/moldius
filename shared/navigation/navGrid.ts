@@ -1,6 +1,11 @@
-import { NAV_AGENT_RADIUS, NAV_CELL_SIZE } from "../config/index.js";
+import {
+	NAV_AGENT_RADIUS,
+	NAV_CELL_SIZE,
+	RELIEF_MAX_HEIGHT,
+} from "../config/index.js";
 import { levelForHeight } from "../manor/levels.js";
-import type { Level, Opening } from "../manor/types.js";
+import { pointInPolygon } from "../manor/polygon.js";
+import type { Level, Opening, Room } from "../manor/types.js";
 import type { Vec2, Vec3 } from "../math.js";
 import { circleBoxPenetration } from "../physics/character.js";
 import type { CollisionWorld, FloorRegion } from "../physics/collisionWorld.js";
@@ -25,6 +30,12 @@ const NEIGHBOR_OFFSETS = [
 	[-1, 1],
 	[-1, -1],
 ] as const;
+
+function gridLevelFor(room: Room, y: number): Level {
+	return room.mezzanine && y > room.floorY + 1
+		? ((room.level + 1) as Level)
+		: room.level;
+}
 
 function acrossOpening(opening: Opening, point: Vec2): number {
 	return (
@@ -68,6 +79,7 @@ export class NavGrid {
 			this.buildLevel(level, doorways);
 		}
 		this.buildPortals();
+		this.linkMezzanines();
 		this.component = new Int32Array(this.nodeCount).fill(-1);
 		this.mainComponent = this.labelComponents();
 	}
@@ -325,47 +337,51 @@ export class NavGrid {
 	}
 
 	private regionForLevel(point: Vec2, level: Level): FloorRegion | null {
+		let found: FloorRegion | null = null;
 		for (const region of this.world.regionsAt(point)) {
 			if (region.level === level) {
-				return region;
+				if (region.stair) {
+					return region;
+				}
+				found ??= region;
 			}
 		}
-		return null;
+		return found;
 	}
 
 	private surfaceHeight(point: Vec2, floor: number): number | null {
 		let height = floor;
 		const radius = NAV_AGENT_RADIUS;
-		const bounds = {
-			minX: point.x - radius,
-			maxX: point.x + radius,
-			minZ: point.z - radius,
-			maxZ: point.z + radius,
-		};
-		for (const id of this.world.queryBoxes(bounds)) {
-			const box = this.world.boxes[id];
+		const nearby = this.world
+			.queryBoxes({
+				minX: point.x - radius,
+				maxX: point.x + radius,
+				minZ: point.z - radius,
+				maxZ: point.z + radius,
+			})
+			.map((id) => this.world.boxes[id])
+			.filter(
+				(box) =>
+					box.kind === "furniture" &&
+					box.yMax > floor + 0.02 &&
+					box.yMin <= floor + 1.8,
+			);
+		for (const box of nearby) {
 			if (
-				box.kind !== "furniture" ||
-				box.yMax <= floor + 0.02 ||
-				box.yMin > floor + 1.8
-			) {
-				continue;
-			}
-			if (!circleBoxPenetration(point.x, point.z, radius, box)) {
-				continue;
-			}
-			if (
-				box.yMax <= floor + 0.36 &&
 				box.walkable &&
+				box.yMax <= floor + RELIEF_MAX_HEIGHT &&
 				circleBoxPenetration(point.x, point.z, 0.05, box)
 			) {
 				height = Math.max(height, box.yMax);
-				continue;
 			}
-			if (box.yMax <= floor + 0.36 && box.walkable) {
-				continue;
+		}
+		for (const box of nearby) {
+			if (
+				circleBoxPenetration(point.x, point.z, radius, box) &&
+				!(box.walkable && box.yMax <= height + 0.36)
+			) {
+				return null;
 			}
-			return null;
 		}
 		return height;
 	}
@@ -396,9 +412,9 @@ export class NavGrid {
 				z: middleA.z + opening.normal.z * (opening.depth + frontDistance),
 			};
 			const doorId = opening.door?.id ?? null;
-			const gridA = roomA.level;
-			const gridB = roomB.level;
 			const y = opening.floorY;
+			const gridA = gridLevelFor(roomA, y);
+			const gridB = gridLevelFor(roomB, y);
 			const base = this.portalBase + this.portals.length;
 			this.portals.push(
 				{
@@ -442,6 +458,49 @@ export class NavGrid {
 				y,
 				(cell) => acrossOpening(opening, cell) > opening.depth,
 			);
+		}
+	}
+
+	private linkMezzanines(): void {
+		for (const room of this.world.layout.rooms) {
+			const spec = room.mezzanine;
+			if (!spec) {
+				continue;
+			}
+			const upper = (room.level + 1) as Level;
+			const offset =
+				upper * this.cellsPerLevel - room.level * this.cellsPerLevel;
+			for (const node of this.roomCells.get(room.id) ?? []) {
+				if (this.levelOfNode(node) !== room.level) {
+					continue;
+				}
+				const position = this.nodePosition(node);
+				if (
+					Math.abs(position.y - spec.floorY) > 0.35 ||
+					!pointInPolygon(position, spec.stairPolygon)
+				) {
+					continue;
+				}
+				const index = node - room.level * this.cellsPerLevel;
+				const column = index % this.columns;
+				const row = (index - column) / this.columns;
+				for (const [dc, dr] of NEIGHBOR_OFFSETS) {
+					const c = column + dc;
+					const r = row + dr;
+					if (c < 0 || r < 0 || c >= this.columns || r >= this.rows) {
+						continue;
+					}
+					const above = room.level * this.cellsPerLevel + r * this.columns + c;
+					const deck = above + offset;
+					if (
+						this.walkable[deck] &&
+						Math.abs(this.heights[deck] - position.y) < 0.4 &&
+						this.clearStraight(position, this.nodePosition(deck), spec.floorY)
+					) {
+						this.link(node, deck);
+					}
+				}
+			}
 		}
 	}
 

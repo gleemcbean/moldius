@@ -2,8 +2,11 @@ import {
   ARCHIVIST_PULL_SPEED,
   DEV_FLY_FAST_SPEED,
   DEV_MOVEMENT_BUDGET_CAP,
+  FALL_DAMAGE_PER_METER,
+  FALL_SAFE_HEIGHT,
   JUMP_ENERGY_COST,
   JUMP_VELOCITY,
+  PLAYER_HEAD_CLEARANCE,
   MOVEMENT_BUDGET_CAP,
   SPRINT_GRACE_MS,
   SPRINT_SPEED,
@@ -88,7 +91,13 @@ export function applyClientState(
     (player.devModes.fly || vertical <= 1.4) &&
     (free || match.world.regionAt({ x: next.x, z: next.z }, next.y, 0.8) !== null) &&
     (player.devModes.passThrough ||
-      !movementCrossesWall(match.world, previous, next, player.bodyHeight(), recentDoors));
+      !movementCrossesWall(
+        match.world,
+        previous,
+        next,
+        Math.min(player.bodyHeight(), PLAYER_HEAD_CLEARANCE),
+        recentDoors,
+      ));
   if (!valid) {
     match.correctPlayer(player);
     return 'rejected';
@@ -101,11 +110,32 @@ export function applyClientState(
   player.position = next;
   player.velocity = { x: message.vx, y: message.vy, z: message.vz };
   player.grounded = message.grounded;
+  trackFall(match, player, previous.y, free);
   player.crouch = message.crouch;
   player.sprintIntent = message.sprint && sprintAllowed;
   player.moveInput = message.moveInput;
   player.history.push({ t: now, x: next.x, y: next.y, z: next.z, yaw: message.yaw });
   return 'accepted';
+}
+
+function trackFall(match: Match, player: MatchPlayer, previousY: number, free: boolean): void {
+  if (free) {
+    player.fallPeakY = null;
+    return;
+  }
+  if (!player.grounded) {
+    player.fallPeakY = Math.max(player.fallPeakY ?? previousY, player.position.y);
+    return;
+  }
+  const peak = player.fallPeakY;
+  player.fallPeakY = null;
+  if (peak === null) {
+    return;
+  }
+  const drop = peak - player.position.y;
+  if (drop > FALL_SAFE_HEIGHT) {
+    match.applyFallDamage(player, Math.round((drop - FALL_SAFE_HEIGHT) * FALL_DAMAGE_PER_METER));
+  }
 }
 
 export function archivistPullVector(match: Match, player: MatchPlayer): { x: number; z: number } {

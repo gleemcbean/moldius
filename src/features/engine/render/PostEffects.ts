@@ -6,7 +6,12 @@ export interface PostEffectsFrame {
 	tension: number;
 	animated: boolean;
 	levels: number;
+	desaturate?: number;
 }
+
+export const POST_BULGE = 0.3;
+export const HUD_BEND = 0.38;
+const HUD_SHIFT = 0.1;
 
 const VERTEX = `
 varying vec2 vUv;
@@ -19,6 +24,10 @@ void main() {
 
 const FRAGMENT = `
 uniform sampler2D scene;
+uniform sampler2D hud;
+uniform vec2 hudSize;
+uniform float hudOn;
+uniform float desaturate;
 uniform vec2 resolution;
 uniform float lines;
 uniform float time;
@@ -46,12 +55,19 @@ float bayer4(vec2 cell) {
   return bayer2(cell * 0.5) * 0.25 + bayer2(cell);
 }
 
+vec2 hudTexel(vec2 point) {
+  vec2 texel = point * hudSize;
+  vec2 seam = floor(texel + 0.5);
+  vec2 spread = max(fwidth(texel), vec2(0.0001));
+  return (seam + clamp((texel - seam) / spread, -0.5, 0.5)) / hudSize;
+}
+
 void main() {
   vec2 centered = vUv - 0.5;
   vec2 aspect = vec2(resolution.x / resolution.y, 1.0);
   vec2 radial = centered * aspect;
   float spread = dot(radial, radial);
-  float bulge = 0.3 * strength;
+  float bulge = ${POST_BULGE.toFixed(3)} * strength;
   vec2 uv = 0.5 + centered * (1.0 + bulge * spread) / (1.0 + bulge * (0.25 + 0.25 * aspect.x * aspect.x));
   vec2 shift = centered * spread * (0.012 + tension * 0.014) * strength;
   vec3 color = vec3(
@@ -79,6 +95,19 @@ void main() {
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(dot(gl_FragColor.rgb, LUMA)), desaturate);
+
+  float hudAlpha = 0.0;
+  if (hudOn > 0.5) {
+    vec2 hudUv = mix(vUv, uv, ${HUD_BEND.toFixed(3)});
+    vec4 hudMain = texture2D(hud, hudTexel(hudUv));
+    vec2 hudShift = shift * ${HUD_SHIFT.toFixed(3)};
+    float hudRed = texture2D(hud, hudTexel(hudUv + hudShift)).r;
+    float hudBlue = texture2D(hud, hudTexel(hudUv - hudShift)).b;
+    hudAlpha = hudMain.a;
+    gl_FragColor.rgb = vec3(hudRed, hudMain.g, hudBlue) + gl_FragColor.rgb * (1.0 - hudAlpha);
+  }
+
   float luminance = dot(gl_FragColor.rgb, LUMA);
   float grain = hash(floor(gl_FragCoord.xy) + grainTime * 131.0) - 0.5;
   gl_FragColor.rgb += grain * (0.022 + 0.03 * (1.0 - luminance)) * strength;
@@ -93,7 +122,7 @@ void main() {
   float shadow = 1.0 - smoothstep(0.02, 0.4, luminance);
   gl_FragColor.rgb += (dither - 0.5) * 0.05 * shadow * strength;
   gl_FragColor.rgb = floor(clamp(gl_FragColor.rgb, 0.0, 1.0) * levels + dither) / levels;
-  gl_FragColor.rgb *= 1.0 - (1.0 - vignette) * (0.62 + tension * 0.25) * strength;
+  gl_FragColor.rgb *= 1.0 - (1.0 - vignette) * (0.62 + tension * 0.25) * strength * (1.0 - hudAlpha * 0.9);
   gl_FragColor.rgb = clamp(gl_FragColor.rgb, 0.0, 1.0);
 }
 `;
@@ -122,6 +151,10 @@ export class PostEffects {
 			fragmentShader: FRAGMENT,
 			uniforms: {
 				scene: { value: this.target.texture },
+				hud: { value: null },
+				hudSize: { value: new THREE.Vector2(1, 1) },
+				hudOn: { value: 0 },
+				desaturate: { value: 0 },
 				resolution: { value: new THREE.Vector2(1, 1) },
 				lines: { value: 300 },
 				time: { value: 0 },
@@ -137,6 +170,13 @@ export class PostEffects {
 		this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.material);
 		this.quad.frustumCulled = false;
 		this.scene.add(this.quad);
+	}
+
+	setHud(texture: THREE.Texture, width: number, height: number): void {
+		const uniforms = this.material.uniforms;
+		uniforms.hud.value = texture;
+		uniforms.hudSize.value.set(width, height);
+		uniforms.hudOn.value = 1;
 	}
 
 	render(frame: PostEffectsFrame, draw: () => void): void {
@@ -161,6 +201,7 @@ export class PostEffects {
 		uniforms.tension.value = this.tension;
 		uniforms.animated.value = frame.animated ? 1 : 0;
 		uniforms.levels.value = frame.levels;
+		uniforms.desaturate.value = (frame.desaturate ?? 0) * 0.75 * frame.strength;
 
 		const previous = this.renderer.getRenderTarget();
 		this.renderer.setRenderTarget(this.target);

@@ -62,7 +62,7 @@ export class LocalPlayer {
 	moveAck = 0;
 	private accumulator = 0;
 	private readonly jumpAssist = new JumpAssist();
-	readonly events: { kind: "jump" | "land"; speed: number }[] = [];
+	readonly events: { kind: "jump" | "land" | "tired"; speed: number }[] = [];
 	private cameraY: number;
 	private forced: ForcedAnimation | null = null;
 	private deathTilt = 0;
@@ -185,8 +185,12 @@ export class LocalPlayer {
 			passThrough: context.devModes.passThrough,
 		};
 		this.accumulator = Math.min(this.accumulator + dt, STEP * MAX_STEPS);
-		if (input.jump && context.jumpAllowed) {
-			this.jumpAssist.press();
+		if (input.jump) {
+			if (context.jumpAllowed) {
+				this.jumpAssist.press();
+			} else {
+				this.events.push({ kind: "tired", speed: 0 });
+			}
 		}
 		while (this.accumulator >= STEP) {
 			Object.assign(this.previous, this.character);

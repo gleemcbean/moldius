@@ -3,8 +3,12 @@ import {
 	type MaterialId,
 	OCCULT_RECIPES,
 	type OccultId,
+	VALVE_COOLDOWN_MS,
+	VALVE_HEAL_RADIUS,
+	VALVE_JET_DURATION_MS,
 } from "@shared/config/index";
 import { SPECIES } from "@shared/config/species";
+import { TUTORIAL_WOUNDED_HEALTH } from "@shared/matchConfig";
 import type { Vec3 } from "@shared/math";
 import { wrapAngle } from "@shared/math";
 import type { MatchInit, PlayerInventory } from "@shared/protocol/game";
@@ -19,13 +23,18 @@ import type { LoadedWorld } from "./SessionLoader";
 
 export const TUTORIAL_STEPS = [
 	"move",
+	"sprint",
+	"crouch",
 	"lantern",
 	"door",
+	"map",
 	"loot",
 	"grimoire",
 	"altar",
 	"hold",
 	"hide",
+	"valve",
+	"push",
 	"shout",
 	"capture",
 	"end",
@@ -41,10 +50,26 @@ export interface TutorialFrame {
 	inventory: PlayerInventory | null;
 	heldObject: OccultId | null;
 	lanternOpen: boolean;
+	health: number;
+	serverNow: number;
 	dt: number;
 }
 
+export interface TutorialActions {
+	summon: () => void;
+	wound: () => void;
+}
+
 const MOVE_DISTANCE = 4;
+const SPRINT_PRACTICE_S = 1.2;
+const CROUCH_PRACTICE_S = 1.2;
+const HEAL_TO_PASS = 16;
+const MOVE_ACTIONS = [
+	"moveForward",
+	"moveBackward",
+	"moveLeft",
+	"moveRight",
+] as const;
 const GRIMOIRE_READ_MS = 2500;
 const SAME_FLOOR = 2;
 const STAR_SCALE = 0.035;
@@ -86,6 +111,10 @@ export class TutorialController {
 	private doorUsed = false;
 	private captured = false;
 	private finished = false;
+	private sprintTime = 0;
+	private crouchTime = 0;
+	private mapSeen = false;
+	private woundSeen = false;
 	private lastPublished = "";
 	private readonly star: THREE.Sprite;
 	private readonly starTexture: THREE.CanvasTexture;
@@ -96,7 +125,7 @@ export class TutorialController {
 	constructor(
 		private readonly init: MatchInit,
 		private readonly loaded: LoadedWorld,
-		private readonly summon: () => void,
+		private readonly actions: TutorialActions,
 	) {
 		this.starTexture = new THREE.CanvasTexture(starCanvas());
 		this.starTexture.colorSpace = THREE.SRGBColorSpace;
@@ -144,7 +173,10 @@ export class TutorialController {
 			} else {
 				this.index += 1;
 				if (this.step === "shout" || this.step === "capture") {
-					this.summon();
+					this.actions.summon();
+				}
+				if (this.step === "valve") {
+					this.actions.wound();
 				}
 			}
 		}
@@ -173,6 +205,24 @@ export class TutorialController {
 				}
 				this.last = { ...feet };
 				return this.travelled >= MOVE_DISTANCE;
+			case "sprint":
+				if (
+					frame.held.has("sprint") &&
+					MOVE_ACTIONS.some((action) => frame.held.has(action))
+				) {
+					this.sprintTime += context.dt;
+				}
+				return this.sprintTime >= SPRINT_PRACTICE_S;
+			case "crouch":
+				if (frame.held.has("crouch")) {
+					this.crouchTime += context.dt;
+				}
+				return this.crouchTime >= CROUCH_PRACTICE_S;
+			case "map": {
+				const open = hudStore.get().showMap;
+				this.mapSeen ||= open;
+				return this.mapSeen && !open;
+			}
 			case "lantern":
 				return frame.pressed.has("lantern");
 			case "door":
@@ -196,6 +246,14 @@ export class TutorialController {
 			case "hide":
 				this.wasHidden ||= context.hidden;
 				return this.wasHidden && !context.hidden;
+			case "valve":
+				this.woundSeen ||= context.health <= TUTORIAL_WOUNDED_HEALTH;
+				return (
+					this.woundSeen &&
+					context.health >= TUTORIAL_WOUNDED_HEALTH + HEAL_TO_PASS
+				);
+			case "push":
+				return frame.pressed.has("push");
 			case "shout":
 				return frame.pressed.has("shout");
 			case "capture":
@@ -273,6 +331,15 @@ export class TutorialController {
 						z: spot.entry.z,
 					})),
 				);
+			case "valve":
+				return this.nearest(
+					feet,
+					layout.valves.map((valve) => ({
+						x: valve.jet.x,
+						y: valve.floorY,
+						z: valve.jet.z,
+					})),
+				);
 			case "capture": {
 				const center = anomalies.infos()[0]?.center;
 				return center ? { x: center.x, y: center.y - 1, z: center.z } : null;
@@ -295,13 +362,17 @@ export class TutorialController {
 						label("moveBackward"),
 						label("moveRight"),
 					].join(" "),
-					label("sprint"),
-					label("crouch"),
 				);
+			case "sprint":
+				return steps.sprint(label("sprint"), label("jump"));
+			case "crouch":
+				return steps.crouch(label("crouch"));
 			case "lantern":
 				return steps.lantern(label("lantern"));
 			case "door":
 				return steps.door(label("interact"));
+			case "map":
+				return steps.map(label("map"));
 			case "loot":
 				return steps.loot(
 					label("interact"),
@@ -320,6 +391,14 @@ export class TutorialController {
 				return steps.hold(this.objectName());
 			case "hide":
 				return steps.hide(label("interact"));
+			case "valve":
+				return steps.valve(
+					label("interact"),
+					VALVE_JET_DURATION_MS / 1000,
+					VALVE_COOLDOWN_MS / 1000,
+				);
+			case "push":
+				return steps.push(label("push"));
 			case "shout":
 				return steps.shout(label("shout"));
 			case "capture":
@@ -328,11 +407,33 @@ export class TutorialController {
 					label("lantern"),
 				);
 			case "end":
-				return steps.end(label("push"), label("map"));
+				return steps.end();
 		}
 	}
 
+	private valveChecks({ feet, serverNow }: TutorialFrame): TutorialCheck[] {
+		const { layout, state } = this.loaded;
+		const labels = currentMessages().game.tutorial.checks;
+		const flowing = layout.valves.filter(
+			(valve) => (state.valves.get(valve.id)?.activeUntil ?? 0) > serverNow,
+		);
+		return [
+			{ label: labels.valveOpen, ok: flowing.length > 0 },
+			{
+				label: labels.inJet,
+				ok: flowing.some(
+					(valve) =>
+						Math.hypot(feet.x - valve.jet.x, feet.z - valve.jet.z) <=
+							VALVE_HEAL_RADIUS && Math.abs(feet.y - valve.floorY) < SAME_FLOOR,
+				),
+			},
+		];
+	}
+
 	private checks(context: TutorialFrame): TutorialCheck[] {
+		if (this.step === "valve") {
+			return this.valveChecks(context);
+		}
 		if (this.step !== "capture") {
 			return [];
 		}

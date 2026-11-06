@@ -15,18 +15,14 @@ import {
 	GrimoireModel,
 } from "../../grimoire/GrimoireModel";
 import { LanternModel } from "../../models/LanternModel";
-import {
-	GRIP_HAND,
-	type HandPose,
-	MittenHand,
-	orientHand,
-	SUPPORT_HAND,
-} from "../../models/MittenHand";
 import type { ModelKit } from "../../models/modelKit";
 import { createOccultModel } from "../../models/occultModels";
-import type { MaterialOptions } from "../../world/MaterialLibrary";
+import type { DynamicLight } from "../lighting/LightPool";
+import { OccultAura } from "./OccultAura";
 
 export const FIRST_PERSON_LAYER = 1;
+
+type ArmMesh = THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
 
 export interface RigInput {
 	grimoireOpen: boolean;
@@ -40,28 +36,45 @@ export interface RigInput {
 	pitch: number;
 	swing: number;
 	headBob: boolean;
+	reduceMotion: boolean;
 	visible: boolean;
 	fov: number;
 	aspect: number;
 }
 
-interface Arm {
-	forearm: THREE.Mesh;
-	hand: MittenHand;
-}
-
-const HAND_SIZE = 1.15;
-const FOREARM_LENGTH = 0.3;
-const BOOK_HOLD: HandPose = { curl: 0.35, thumb: 1.2 };
+const ARM_ELBOW_RADIUS = 0.085;
+const ARM_HAND_RADIUS = 0.062;
+const ARM_LENGTH = 0.6;
+const ARM_TIP_STEPS = 6;
+const ARM_DARK = new THREE.Color(0x4e4a44);
+const ARM_LIT = new THREE.Color(0xa58a6a);
+const ARM_VERTEX_SHADER = `
+varying vec3 vArmNormal;
+void main() {
+	vArmNormal = normalMatrix * normal;
+	gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+const ARM_FRAGMENT_SHADER = `
+uniform vec3 color;
+varying vec3 vArmNormal;
+void main() {
+	float light = dot(normalize(vArmNormal), normalize(vec3(-0.25, 0.75, 0.6)));
+	gl_FragColor = vec4(color * (0.62 + 0.38 * light), 1.0);
+	#include <tonemapping_fragment>
+	#include <colorspace_fragment>
+}`;
 const UP = new THREE.Vector3(0, 1, 0);
 
 const LANTERN_SCALE = 0.95;
 const LANTERN_IDLE = new THREE.Vector3(0.27, -0.03, -0.5);
 const LANTERN_READING = new THREE.Vector3(0.5, 0.15, -0.45);
-const HELD_SIZE = 0.135;
+const HELD_SIZE = 0.15;
 const HELD_RAISED = new THREE.Vector3(-0.25, -0.2, -0.52);
 const HELD_LOWERED = new THREE.Vector3(-0.3, -0.72, -0.4);
-const HELD_PALM_DROP = 0.045;
+const HELD_TIP_DROP = 0.035;
+const HELD_GLOW_INTENSITY = 0.9;
+const HELD_GLOW_RADIUS = 4.5;
+const HELD_ARM_TINT = 0.24;
 const HELD_ELBOW = new THREE.Vector3(-0.46, -0.62, -0.12);
 const BOOK_WIDTH = (BOOK_PAGE_WIDTH + 0.015) * 2;
 const BOOK_HEIGHT = BOOK_PAGE_HEIGHT + 0.025;
@@ -95,8 +108,8 @@ export class FirstPersonRig {
 	readonly grimoire: GrimoireModel;
 	readonly fpLight: THREE.PointLight;
 	private readonly fpAmbient: THREE.HemisphereLight;
-	private readonly rightArm: Arm;
-	private readonly leftArm: Arm;
+	private readonly rightArm: ArmMesh;
+	private readonly leftArm: ArmMesh;
 	private bookBlend = 0;
 	private bookTilt = 0;
 	private bookLowered = 0;
@@ -109,11 +122,22 @@ export class FirstPersonRig {
 	private lanternLevel = 0;
 	private readonly heldRoot = new THREE.Group();
 	private readonly heldModels = new Map<OccultId, THREE.Group>();
+	private readonly heldHeights = new Map<OccultId, number>();
+	private readonly aura = new OccultAura();
+	private readonly heldTint = new THREE.Color();
+	readonly heldGlow: DynamicLight = {
+		id: "held-object",
+		position: new THREE.Vector3(),
+		color: 0xffffff,
+		intensity: 0,
+		radius: HELD_GLOW_RADIUS,
+		priority: 3,
+		flicker: 0.08,
+	};
 	private heldShown: OccultId | null = null;
 	private heldBlend = 0;
 
 	constructor(kit: ModelKit) {
-		const skin: MaterialOptions = { texture: "mushroomSkin", roughness: 0.85 };
 		this.lantern = new LanternModel(kit, LANTERN_SCALE);
 		this.root.add(this.lantern.root);
 		this.grimoire = new GrimoireModel(kit);
@@ -123,9 +147,10 @@ export class FirstPersonRig {
 			this.heldModels.set(id, model);
 			this.heldRoot.add(model);
 		}
+		this.heldRoot.add(this.aura.root);
 		this.root.add(this.heldRoot);
-		this.rightArm = this.createArm(kit, skin);
-		this.leftArm = this.createArm(kit, skin);
+		this.rightArm = this.createArm();
+		this.leftArm = this.createArm();
 		this.fpLight = new THREE.PointLight(0xffb468, 0, 1.6, 2);
 		this.root.add(this.fpLight);
 		this.fpAmbient = new THREE.HemisphereLight(0xaaaaae, 0x4c4c4e, 1.25);
@@ -140,6 +165,7 @@ export class FirstPersonRig {
 		const center = box.getCenter(new THREE.Vector3());
 		const scale = HELD_SIZE / Math.max(size.x, size.y, size.z);
 		model.scale.setScalar(scale);
+		this.heldHeights.set(id, size.y * scale);
 		model.position.set(
 			-center.x * scale,
 			-box.min.y * scale,
@@ -158,8 +184,11 @@ export class FirstPersonRig {
 		bobY: number,
 	): void {
 		const wanted = this.bookBlend > 0.05 ? null : input.heldObject;
-		if (wanted !== null) {
+		if (wanted !== null && wanted !== this.heldShown) {
 			this.heldShown = wanted;
+			this.aura.show(wanted, this.heldHeights.get(wanted) ?? HELD_SIZE);
+			this.heldGlow.color = this.aura.color;
+			this.heldTint.setHex(this.aura.color);
 		}
 		const target = wanted === null ? 0 : 1;
 		const step = dt / 0.2;
@@ -179,33 +208,57 @@ export class FirstPersonRig {
 		position.y += this.sway.y - bobY - input.crouch * 0.01;
 		this.heldRoot.position.copy(position);
 		this.heldRoot.rotation.set(0.12, 0.35, 0);
+		this.aura.update(
+			dt,
+			input.visible ? this.heldBlend : 0,
+			!input.reduceMotion,
+		);
+		this.heldGlow.intensity =
+			input.visible && this.heldBlend > 0.01
+				? HELD_GLOW_INTENSITY * this.heldBlend
+				: 0;
+		this.heldGlow.position.copy(position).add(this.aura.root.position);
+		this.root.localToWorld(this.heldGlow.position);
 		if (this.heldBlend > 0.01 && this.bookBlend <= 0.05) {
 			const contact = position.clone();
-			contact.y -= HELD_PALM_DROP;
-			const fingers = new THREE.Vector3()
-				.subVectors(contact, HELD_ELBOW)
-				.normalize();
-			this.leftArm.hand.setPose(SUPPORT_HAND);
-			this.placeArm(
-				this.leftArm,
-				contact,
-				HELD_ELBOW,
-				fingers,
-				new THREE.Vector3(0.1, 1, 0.15),
-				new THREE.Vector3(0, -0.06 * HAND_SIZE, 0),
-			);
+			contact.y -= HELD_TIP_DROP;
+			this.placeArm(this.leftArm, contact, HELD_ELBOW);
 		}
 	}
 
-	private createArm(kit: ModelKit, skin: MaterialOptions): Arm {
-		const forearm = kit.cylinder(0.045, 0.058, FOREARM_LENGTH, skin, 16);
-		const elbowCap = kit.sphere(0.058, skin, [1, 1, 1], 14);
-		elbowCap.position.y = -FOREARM_LENGTH / 2;
-		forearm.add(elbowCap);
-		this.root.add(forearm);
-		const hand = new MittenHand(kit, skin, -1, HAND_SIZE);
-		this.root.add(hand.root);
-		return { forearm, hand };
+	private createArm(): ArmMesh {
+		const half = ARM_LENGTH / 2;
+		const tipHeight = ARM_HAND_RADIUS * 0.8;
+		const profile = [
+			new THREE.Vector2(0.001, -half),
+			new THREE.Vector2(ARM_ELBOW_RADIUS, -half + 0.03),
+		];
+		for (let step = 0; step <= ARM_TIP_STEPS; step += 1) {
+			const angle = (step / ARM_TIP_STEPS) * (Math.PI / 2);
+			profile.push(
+				new THREE.Vector2(
+					Math.max(0.001, Math.cos(angle) * ARM_HAND_RADIUS),
+					half - tipHeight + Math.sin(angle) * tipHeight,
+				),
+			);
+		}
+		const arm: ArmMesh = new THREE.Mesh(
+			new THREE.LatheGeometry(profile, 20),
+			new THREE.ShaderMaterial({
+				uniforms: { color: { value: ARM_DARK.clone() } },
+				vertexShader: ARM_VERTEX_SHADER,
+				fragmentShader: ARM_FRAGMENT_SHADER,
+			}),
+		);
+		this.root.add(arm);
+		return arm;
+	}
+
+	private updateArmTones(): void {
+		const right: THREE.Color = this.rightArm.material.uniforms.color.value;
+		const left: THREE.Color = this.leftArm.material.uniforms.color.value;
+		right.lerpColors(ARM_DARK, ARM_LIT, this.lanternLevel);
+		left.copy(right).lerp(this.heldTint, HELD_ARM_TINT * this.heldBlend);
 	}
 
 	update(dt: number, input: RigInput): void {
@@ -279,23 +332,23 @@ export class FirstPersonRig {
 		this.grimoire.root.visible = this.bookBlend > 0.01;
 		this.grimoire.update(dt);
 
-		this.placeLanternHand(
+		this.placeArm(
+			this.rightArm,
 			lanternAnchor,
 			new THREE.Vector3(
-				0.36 + blend * 0.04,
-				-0.5 + blend * 0.06,
-				-0.12 - blend * 0.06,
+				0.62 + blend * 0.04,
+				-0.44 + blend * 0.06,
+				-0.16 - blend * 0.06,
 			),
 		);
 		if (this.bookBlend > 0.05) {
-			this.placeBookHand(bookPosition, this.grimoire.root.rotation);
+			this.placeBookArm(bookPosition, this.grimoire.root.rotation);
 		}
 		this.updateHeld(dt, input, bobX, bobY);
-		const leftHandBusy = this.bookBlend > 0.05 || this.heldBlend > 0.01;
-		this.leftArm.forearm.visible = leftHandBusy;
-		this.leftArm.hand.root.visible = leftHandBusy;
+		this.leftArm.visible = this.bookBlend > 0.05 || this.heldBlend > 0.01;
 
 		this.lanternLevel = this.lantern.update(dt, input.lanternOpen);
+		this.updateArmTones();
 		this.fpLight.position.copy(this.lanternLocalPosition());
 		this.fpLight.position.z += 0.05;
 		this.fpLight.intensity = this.lanternLevel * (0.55 + blend * 0.2);
@@ -352,67 +405,30 @@ export class FirstPersonRig {
 		lantern.position.copy(anchor).sub(handleOffset);
 	}
 
-	private placeLanternHand(grip: THREE.Vector3, elbow: THREE.Vector3): void {
-		const arm = this.rightArm;
-		const reach = new THREE.Vector3().subVectors(grip, elbow).normalize();
-		const fingers = reach.clone().addScaledVector(UP, -0.55).normalize();
-		const palm = new THREE.Vector3(-0.25, -1, 0.15);
-		arm.hand.setPose(GRIP_HAND);
-		this.placeArm(
-			arm,
-			grip,
-			elbow,
-			fingers,
-			palm,
-			MittenHand.gripCenter(HAND_SIZE),
-		);
-	}
-
-	private placeBookHand(
+	private placeBookArm(
 		bookPosition: THREE.Vector3,
 		bookRotation: THREE.Euler,
 	): void {
-		const arm = this.leftArm;
-		const toWorld = (x: number, y: number, z: number) =>
-			new THREE.Vector3(x, y, z).applyEuler(bookRotation);
-		const contact = toWorld(
+		const contact = new THREE.Vector3(
 			-BOOK_PAGE_WIDTH - 0.012,
 			-BOOK_PAGE_HEIGHT * 0.12,
 			-0.03,
-		).add(bookPosition);
-		const fingers = toWorld(1, 0.25, -0.12).normalize();
-		const palm = toWorld(0, 0, 1);
-		const elbow = new THREE.Vector3(-0.42, -0.5, -0.1);
-		arm.hand.setPose(BOOK_HOLD);
-		this.placeArm(
-			arm,
-			contact,
-			elbow,
-			fingers,
-			palm,
-			new THREE.Vector3(0, -0.055 * HAND_SIZE, 0),
-		);
+		)
+			.applyEuler(bookRotation)
+			.add(bookPosition);
+		this.placeArm(this.leftArm, contact, new THREE.Vector3(-0.42, -0.5, -0.1));
 	}
 
 	private placeArm(
-		arm: Arm,
+		arm: THREE.Mesh,
 		contact: THREE.Vector3,
 		elbow: THREE.Vector3,
-		fingers: THREE.Vector3,
-		palm: THREE.Vector3,
-		contactInHand: THREE.Vector3,
 	): void {
-		const hand = arm.hand.root;
-		orientHand(hand, fingers, palm);
-		const wrist = contact
-			.clone()
-			.sub(contactInHand.clone().applyQuaternion(hand.quaternion));
-		hand.position.copy(wrist);
-		const direction = new THREE.Vector3().subVectors(wrist, elbow);
+		const direction = new THREE.Vector3().subVectors(contact, elbow);
 		const length = direction.length();
-		arm.forearm.position.copy(elbow).addScaledVector(direction, 0.5);
-		arm.forearm.quaternion.setFromUnitVectors(UP, direction.normalize());
-		arm.forearm.scale.set(1, length / FOREARM_LENGTH, 1);
+		arm.position.copy(elbow).addScaledVector(direction, 0.5);
+		arm.quaternion.setFromUnitVectors(UP, direction.normalize());
+		arm.scale.set(1, length / ARM_LENGTH, 1);
 	}
 
 	lanternLocalPosition(): THREE.Vector3 {
@@ -426,6 +442,9 @@ export class FirstPersonRig {
 
 	dispose(): void {
 		this.grimoire.dispose();
+		this.aura.dispose();
+		this.rightArm.material.dispose();
+		this.leftArm.material.dispose();
 		this.root.traverse((object) => {
 			if (object instanceof THREE.Mesh) {
 				object.geometry.dispose();

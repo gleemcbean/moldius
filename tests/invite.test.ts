@@ -7,6 +7,7 @@ import {
 
 describe("liens d'invitation", () => {
 	it("lit le code dans le chemin et ramène l'adresse à l'accueil", () => {
+		expect(readInviteLink("/admin", "")).toBeNull();
 		expect(readInviteLink("/AB3CD", "")).toEqual({
 			code: "AB3CD",
 			path: "/",

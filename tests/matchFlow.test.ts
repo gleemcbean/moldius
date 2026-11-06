@@ -196,6 +196,7 @@ describe("cycle de partie", () => {
 						checks.push(
 							Math.hypot(
 								player.position.x - entity.position.x,
+								player.position.y - entity.position.y,
 								player.position.z - entity.position.z,
 							),
 						);

@@ -16,6 +16,7 @@ import { useLanguage, useT } from "../../i18n";
 import type { Language } from "../../i18n/language";
 import { defaultNames } from "../../i18n/names";
 import { accountStore } from "../account/accountStore";
+import { friendsStore } from "../friends/friendsStore";
 import { installStore, promptInstall } from "../install/installStore";
 import { consumeInvite, inviteStore } from "../lobby/inviteStore";
 import {
@@ -29,6 +30,7 @@ import { sessionStore } from "../network/sessionStore";
 import { settingsStore, updateSettings } from "../settings/settingsStore";
 import { HomeBackdrop } from "./HomeBackdrop";
 import styles from "./HomeScreen.module.scss";
+import { PublicLobbyPreview } from "./PublicLobbyPreview";
 
 function pickSuggestions(language: Language, current: string): string[] {
 	const pool = defaultNames(language).filter((name) => name !== current);
@@ -38,6 +40,10 @@ function pickSuggestions(language: Language, current: string): string[] {
 
 export function HomeScreen() {
 	const t = useT();
+	const friendAlerts = useStore(
+		friendsStore,
+		(state) => state.overview?.incoming.length ?? 0,
+	);
 	const language = useLanguage();
 	const name = useStore(settingsStore, (state) => state.playerName);
 	const color = useStore(settingsStore, (state) => state.playerColor);
@@ -166,15 +172,19 @@ export function HomeScreen() {
 				</section>
 
 				<div className={styles.actions}>
-					<Button
-						size="large"
-						wide
-						icon={<Icon name="play" />}
-						disabled={!ready}
-						onClick={() => quickJoin(trimmed)}
-					>
-						{t.home.quickJoin}
-					</Button>
+					<div className={styles.hintAnchor}>
+						<Button
+							size="large"
+							wide
+							icon={<Icon name="play" />}
+							disabled={!ready}
+							aria-describedby="public-lobby-hint"
+							onClick={() => quickJoin(trimmed)}
+						>
+							{t.home.quickJoin}
+						</Button>
+						<PublicLobbyPreview />
+					</div>
 					<Button
 						variant="secondary"
 						wide
@@ -226,13 +236,20 @@ export function HomeScreen() {
 							{t.home.joinFriends}
 						</Button>
 					</form>
-					<Button
-						variant="secondary"
-						disabled={!ready}
-						onClick={() => startTutorial(trimmed)}
-					>
-						{t.home.tutorial}
-					</Button>
+					<div className={styles.hintAnchor}>
+						<Button
+							variant="secondary"
+							wide
+							disabled={!ready}
+							aria-describedby="tutorial-hint"
+							onClick={() => startTutorial(trimmed)}
+						>
+							{t.home.tutorial}
+						</Button>
+						<span id="tutorial-hint" role="tooltip" className={styles.sideHint}>
+							{t.home.tutorialHint}
+						</span>
+					</div>
 				</div>
 
 				<div className={styles.more}>
@@ -258,6 +275,24 @@ export function HomeScreen() {
 							<span className={styles.tileIcon}>
 								<Icon name="user" />
 							</span>
+						</button>
+					)}
+					{accountStatus === "loading" ||
+					accountStatus === "disabled" ? null : (
+						<button
+							type="button"
+							className={styles.tile}
+							onClick={() => openOverlay("friends")}
+							title={t.home.friends}
+							aria-label={t.home.friends}
+							data-selectable=""
+						>
+							<span className={styles.tileIcon}>
+								<Icon name="users" />
+							</span>
+							{friendAlerts > 0 ? (
+								<span className={styles.tileBadge}>{friendAlerts}</span>
+							) : null}
 						</button>
 					)}
 					<button

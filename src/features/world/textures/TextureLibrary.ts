@@ -4,6 +4,7 @@ import { CREATURE_TEXTURES } from "./creatureTextures";
 import { CURIO_TEXTURES } from "./curioTextures";
 import { DECOR_TEXTURES } from "./decorTextures";
 import { OBJECT_TEXTURES } from "./objectTextures";
+import { OCCULT_TEXTURES } from "./occultTextures";
 import { PixelPainter } from "./PixelPainter";
 import { SURFACE_TEXTURES, type TextureRecipe } from "./surfaceTextures";
 
@@ -13,6 +14,7 @@ export const TEXTURE_RECIPES: Record<string, TextureRecipe> = {
 	...DECOR_TEXTURES,
 	...CREATURE_TEXTURES,
 	...CURIO_TEXTURES,
+	...OCCULT_TEXTURES,
 };
 
 export type TextureKey = keyof typeof TEXTURE_RECIPES & string;

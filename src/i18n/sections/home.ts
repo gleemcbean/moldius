@@ -12,7 +12,14 @@ export const homeFr = {
 	codePlaceholder: "CODE",
 	codeLabel: "Code du lobby privé",
 	joinFriends: "Rejoindre",
-	tutorial: "Tutoriel (2 min)",
+	tutorial: "Tutoriel",
+	tutorialHint: "Dure environ 3 minutes",
+	friends: "Amis",
+	publicCount: (count: number, capacity: number) =>
+		`Lobby public : ${count}/${capacity}`,
+	publicEmpty: "Personne pour l'instant",
+	publicPlaying: (count: number) =>
+		count > 1 ? `${count} joueurs en partie` : "1 joueur en partie",
 	myAccount: "Mon compte",
 	signIn: "Se connecter",
 	settings: "Paramètres",
@@ -36,7 +43,14 @@ export const homeEn: typeof homeFr = {
 	codePlaceholder: "CODE",
 	codeLabel: "Private lobby code",
 	joinFriends: "Join",
-	tutorial: "Tutorial (2 min)",
+	tutorial: "Tutorial",
+	tutorialHint: "Takes about 3 minutes",
+	friends: "Friends",
+	publicCount: (count: number, capacity: number) =>
+		`Public lobby: ${count}/${capacity}`,
+	publicEmpty: "Nobody yet",
+	publicPlaying: (count: number) =>
+		count > 1 ? `${count} players in a match` : "1 player in a match",
 	myAccount: "My account",
 	signIn: "Sign in",
 	settings: "Settings",

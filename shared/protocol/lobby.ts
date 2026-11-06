@@ -58,7 +58,15 @@ export type LobbyErrorCode =
 	| "microphone-required"
 	| "rate-limited"
 	| "already-playing"
-	| "invalid-request";
+	| "invalid-request"
+	| "sign-in-required"
+	| "friend-not-found"
+	| "friend-self"
+	| "friend-exists"
+	| "friend-limit"
+	| "friend-offline"
+	| "friend-busy"
+	| "lobby-not-invitable";
 
 export interface LobbyError {
 	code: LobbyErrorCode;

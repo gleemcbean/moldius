@@ -35,8 +35,8 @@ const SLOPE = 0.42;
 
 export const occultAltar: FurnitureBuilder = ({ item }) => {
 	const top = item.height;
-	const width = item.width;
-	const depth = item.depth;
+	const width = item.width * 0.74;
+	const depth = item.depth * 0.68;
 	const slopeDrop = Math.sin(SLOPE) * depth * 0.5;
 	const deskY = top - slopeDrop - 0.03;
 	const sin = Math.sin(SLOPE);
@@ -48,6 +48,8 @@ export const occultAltar: FurnitureBuilder = ({ item }) => {
 	const edge = onDesk(depth * 0.48, 0.03);
 	const cloth = onDesk(0, 0.03);
 	const clothTip = onDesk(depth * 0.5, 0.0);
+	const foot = Math.min(item.width, item.depth) * 0.36;
+	const neck = deskY - 0.07;
 	return [
 		texturedPlane(
 			CIRCLE,
@@ -59,25 +61,48 @@ export const occultAltar: FurnitureBuilder = ({ item }) => {
 			0,
 			-Math.PI / 2,
 		),
-		boxAt(RED_WOOD, width * 0.72, 0.06, depth * 0.78, 0, 0.03, 0),
-		boxAt(DARK_WOOD, width * 0.52, 0.06, depth * 0.56, 0, 0.09, 0),
 		lathe(
 			DARK_WOOD,
 			[
-				[0.075, 0.12],
-				[0.055, 0.2],
-				[0.085, 0.27],
-				[0.05, 0.36],
-				[0.042, deskY - 0.16],
-				[0.075, deskY - 0.1],
-				[0.11, deskY - 0.02],
+				[0.001, 0],
+				[foot, 0],
+				[foot, 0.035],
+				[foot * 0.86, 0.05],
+				[foot * 0.84, 0.085],
+				[foot * 0.55, 0.125],
+				[foot * 0.34, 0.17],
+				[0.078, 0.215],
+				[0.096, 0.245],
+				[0.066, 0.285],
+				[0.052, 0.36],
+				[0.046, neck - 0.055],
+				[0.066, neck - 0.03],
+				[0.05, neck - 0.012],
+				[0.072, neck],
+				[0.11, neck + 0.045],
+				[0.001, neck + 0.045],
 			],
 			0,
 			0,
 			0,
-			12,
+			16,
 		),
-		cylinder(BRASS, 0.09, 0.09, 0.012, 0, 0.28, 0, 12),
+		cylinder(BRASS, foot * 0.87, foot * 0.87, 0.012, 0, 0.052, 0, 18),
+		cylinder(BRASS, 0.1, 0.1, 0.012, 0, 0.233, 0, 14),
+		...[-1, 1].flatMap((side) =>
+			[-1, 1].map((end) =>
+				boxAt(
+					RED_WOOD,
+					0.05,
+					0.05,
+					0.09,
+					side * foot * 0.66,
+					0.018,
+					end * foot * 0.66,
+					0,
+				),
+			),
+		),
 		boxAt(DARK_WOOD, width, 0.035, depth, 0, deskY, 0, SLOPE),
 		boxAt(BRASS, width + 0.02, 0.022, 0.03, 0, edge.y, edge.z, SLOPE),
 		boxAt(RED_WOOD, 0.03, 0.05, depth, -width / 2, deskY + 0.012, 0, SLOPE),
@@ -105,31 +130,31 @@ export const occultAltar: FurnitureBuilder = ({ item }) => {
 		boxAt(
 			VIOLET,
 			width * 0.56,
-			0.2,
+			0.11,
 			0.012,
 			0,
-			clothTip.y - 0.1,
+			clothTip.y - 0.055,
 			clothTip.z + 0.012,
 		),
 		boxAt(
 			GOLD_CLOTH,
 			width * 0.58,
-			0.035,
+			0.03,
 			0.016,
 			0,
-			clothTip.y - 0.2,
+			clothTip.y - 0.11,
 			clothTip.z + 0.012,
 		),
 		boxAt(
 			GOLD_CLOTH,
 			width * 0.1,
-			0.2,
+			0.11,
 			0.016,
 			0,
-			clothTip.y - 0.1,
+			clothTip.y - 0.055,
 			clothTip.z + 0.014,
 		),
-		...candle(-width * 0.3, 0.06, depth * 0.3, 0.12),
-		...candle(width * 0.3, 0.06, depth * 0.3, 0.09),
+		...candle(-foot * 0.9, 0, foot * 0.9, 0.16),
+		...candle(foot * 0.9, 0, foot * 0.9, 0.11),
 	];
 };

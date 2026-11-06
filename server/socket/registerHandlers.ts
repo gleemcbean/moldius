@@ -12,6 +12,7 @@ import type {
 	IceServerConfig,
 	LobbyError,
 } from "../../shared/protocol/lobby.js";
+import type { FriendStore } from "../accounts/FriendStore.js";
 import { normalizeLobbyCode } from "../lobby/codes.js";
 import type { LobbyManager } from "../lobby/LobbyManager.js";
 import {
@@ -34,6 +35,10 @@ import type {
 	SessionAccount,
 	SessionRegistry,
 } from "../sessions/SessionRegistry.js";
+import {
+	accountPresenceChanged,
+	registerFriendHandlers,
+} from "./friendHandlers.js";
 
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -48,6 +53,7 @@ export interface HandlerDependencies {
 	identify?: (
 		cookieHeader: string | undefined,
 	) => Promise<SessionAccount | null>;
+	friends?: () => FriendStore | null;
 }
 
 const INVALID: LobbyError = {
@@ -116,6 +122,46 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 			},
 		});
 		deps.lobbies.handleReconnect(current);
+		if (current.account) {
+			accountPresenceChanged(deps, current.account.accountId);
+		}
+	});
+
+	socket.on("lobby:peekPublic", (ack) => {
+		if (typeof ack !== "function") {
+			return;
+		}
+		ack(
+			allow("lobby:peek")
+				? { ok: true, value: deps.lobbies.publicPreview() }
+				: { ok: false, error: RATE_LIMITED },
+		);
+	});
+
+	socket.on("lobby:joinPublic", (payload, ack) => {
+		respond(ack, allow("lobby:join"), session(), (current) => {
+			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+			if (!name) {
+				return {
+					ok: false,
+					error: {
+						code: "invalid-name",
+						message: "Choisissez un pseudonyme de 2 à 18 caractères.",
+					},
+				};
+			}
+			const lobbyId =
+				isRecord(payload) && typeof payload.lobbyId === "string"
+					? payload.lobbyId
+					: "";
+			return deps.lobbies.joinPublic(
+				current,
+				name,
+				lobbyId,
+				preferredColor(payload),
+				preferredPattern(payload),
+			);
+		});
 	});
 
 	socket.on("lobby:quickJoin", (payload, ack) => {
@@ -292,11 +338,15 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	});
 
 	registerGameHandlers(socket, deps, session, allow);
+	registerFriendHandlers(socket, deps, session, allow);
 
 	socket.on("disconnect", () => {
 		const current = deps.sessions.detach(socket.id, deps.clock());
 		if (current && !current.socketId) {
 			deps.lobbies.handleDisconnect(current);
+			if (current.account) {
+				accountPresenceChanged(deps, current.account.accountId);
+			}
 		}
 	});
 }
@@ -422,6 +472,12 @@ function registerGameHandlers(
 	socket.on("game:tutorialSummon", () => {
 		withMatch("game:tutorialSummon", (current, match) =>
 			match.handleTutorialSummon(current.playerId),
+		);
+	});
+
+	socket.on("game:tutorialWound", () => {
+		withMatch("game:tutorialWound", (current, match) =>
+			match.handleTutorialWound(current.playerId),
 		);
 	});
 

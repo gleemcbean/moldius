@@ -8,7 +8,7 @@ export async function createTestDatabase(): Promise<Database> {
   if (url) {
     const database = createDatabase({ connectionString: url, ssl: false, maxConnections: 4 });
     await database.query(
-      'DROP TABLE IF EXISTS password_resets, pending_registrations, match_history, auth_sessions, accounts, schema_migrations CASCADE',
+      'DROP TABLE IF EXISTS friendships, presence_samples, password_resets, pending_registrations, match_history, auth_sessions, accounts, schema_migrations CASCADE',
     );
     return database;
   }

@@ -14,7 +14,7 @@ import type {
 	ValveStation,
 } from "../types.js";
 import { type IdAllocator, RoomFurnisher } from "./RoomFurnisher.js";
-import { furnishRoomByType, topUpHidingSpots } from "./themes.js";
+import { balanceRoom, furnishRoomByType, topUpHidingSpots } from "./themes.js";
 
 export interface FurnishResult {
 	furniture: FurnitureItem[];
@@ -75,6 +75,9 @@ export function furnishManor(
 	ensureValveCount(furnishers, valveTarget, rng);
 	ensureHidingSpots(furnishers, Math.ceil(rooms.length * 0.55), rng);
 	placeAltars(furnishers, rng.fork("altars"));
+	for (const furnisher of furnishers) {
+		balanceRoom(furnisher);
+	}
 	return collect(furnishers);
 }
 

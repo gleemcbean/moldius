@@ -11,6 +11,7 @@ import type { ScryptParameters } from "./accounts/passwords.js";
 import { createApp } from "./app.js";
 import { serverNow } from "./clock.js";
 import { loadServerConfig } from "./config.js";
+import { computeLiveStats } from "./liveStats.js";
 import { LobbyManager } from "./lobby/LobbyManager.js";
 import {
 	createFileMailer,
@@ -29,6 +30,7 @@ export interface ServerOverrides {
 	mailer?: Mailer | null;
 	publicUrl?: string | null;
 	discord?: DiscordClient | null;
+	adminEmails?: string[];
 }
 
 export interface RunningServer {
@@ -39,7 +41,10 @@ export interface RunningServer {
 export async function startServer(
 	overrides: ServerOverrides = {},
 ): Promise<RunningServer> {
-	const config = loadServerConfig();
+	const loadedConfig = loadServerConfig();
+	const config = overrides.adminEmails
+		? { ...loadedConfig, adminEmails: overrides.adminEmails }
+		: loadedConfig;
 	const dev = overrides.dev ?? config.dev;
 	const publicUrl =
 		overrides.publicUrl !== undefined ? overrides.publicUrl : config.publicUrl;
@@ -82,10 +87,17 @@ export async function startServer(
 	);
 	await accounts.start();
 	let lobbies: LobbyManager | null = null;
+	let sessionRegistry: SessionRegistry | null = null;
+	const liveStats = () =>
+		lobbies && sessionRegistry
+			? computeLiveStats(sessionRegistry, lobbies)
+			: null;
+	accounts.liveStats = liveStats;
 	const { app, dispose: disposeApp } = createApp(
 		config,
 		() => lobbies,
 		accounts,
+		liveStats,
 	);
 	const httpServer = createServer(app);
 	const io = new Server<ClientToServerEvents, ServerToClientEvents>(
@@ -103,6 +115,7 @@ export async function startServer(
 		},
 	);
 	const sessions = new SessionRegistry();
+	sessionRegistry = sessions;
 	accounts.onRevoke = (revocation) => sessions.revoke(revocation);
 	lobbies = new LobbyManager(io, sessions, serverNow, {
 		minPlayers: dev ? 1 : 2,
@@ -117,6 +130,7 @@ export async function startServer(
 		dev,
 		clock: serverNow,
 		identify: (cookieHeader) => accounts.identify(cookieHeader),
+		friends: () => accounts.friends,
 	});
 	if (dev) {
 		console.log(

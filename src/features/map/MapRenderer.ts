@@ -41,6 +41,7 @@ export interface MapDrawOptions {
 	currentRoomId: number | null;
 	levelBadge: string | null;
 	pixelRatio: number;
+	silhouette: boolean;
 }
 
 const COLORS = {
@@ -58,6 +59,11 @@ const COLORS = {
 	label: "#efe3b8",
 	labelCurrent: "#fff6c8",
 	current: "rgba(220, 229, 77, 0.85)",
+	silhouetteFill: "rgba(216, 207, 164, 0.05)",
+	silhouetteLine: "rgba(239, 227, 184, 0.28)",
+	voidFill: "#090a09",
+	deckAbove: "rgba(216, 207, 164, 0.07)",
+	deckAboveLine: "rgba(216, 207, 164, 0.4)",
 	player: "#dce54d",
 	cone: "rgba(220, 229, 77, 0.28)",
 	stairArrow: "rgba(170, 190, 255, 0.85)",
@@ -129,7 +135,7 @@ function labelsOverlap(a: LabelBox, b: LabelBox): boolean {
 	);
 }
 
-function roomLabel(room: Room): string {
+export function roomLabel(room: Room): string {
 	const world = currentMessages().world;
 	if (room.type === "stairwell") {
 		return world.stairwellLabel;
@@ -149,7 +155,17 @@ export class MapRenderer {
 		return this.layout.rooms.filter(
 			(room) =>
 				room.level === level ||
-				(room.type === "stairwell" && room.level === level - 1),
+				((room.type === "stairwell" || room.mezzanine !== null) &&
+					room.level === level - 1),
+		);
+	}
+
+	private roomsBelow(level: Level): Room[] {
+		return this.layout.rooms.filter(
+			(room) =>
+				room.level === level - 1 &&
+				room.type !== "stairwell" &&
+				room.mezzanine === null,
 		);
 	}
 
@@ -197,9 +213,9 @@ export class MapRenderer {
 		}
 		const rooms = this.roomsOnLevel(view.level);
 		const wallWidth = Math.max(1.5, view.scale * 0.14);
-		const outline = (room: Room) => {
+		const trace = (polygon: { x: number; z: number }[]) => {
 			context.beginPath();
-			room.polygon.forEach((point, index) => {
+			polygon.forEach((point, index) => {
 				if (index === 0) {
 					context.moveTo(toX(point.x), toY(point.z));
 				} else {
@@ -208,6 +224,16 @@ export class MapRenderer {
 			});
 			context.closePath();
 		};
+		const outline = (room: Room) => trace(room.polygon);
+		const below = options.silhouette ? this.roomsBelow(view.level) : [];
+		for (const room of below) {
+			outline(room);
+			context.fillStyle = COLORS.silhouetteFill;
+			context.fill();
+			context.strokeStyle = COLORS.silhouetteLine;
+			context.lineWidth = 1;
+			context.stroke();
+		}
 		for (const room of rooms) {
 			outline(room);
 			context.strokeStyle = COLORS.wallShadow;
@@ -217,9 +243,39 @@ export class MapRenderer {
 		for (const room of rooms) {
 			outline(room);
 			const fill = roomFill(room);
-			context.fillStyle =
+			const shown =
 				room.id === options.currentRoomId ? lighten(fill, 0.1) : fill;
+			if (room.mezzanine && room.level < view.level) {
+				context.fillStyle = COLORS.voidFill;
+				context.fill();
+				trace(room.mezzanine.deck);
+			}
+			context.fillStyle = shown;
 			context.fill();
+		}
+		for (const room of rooms) {
+			if (room.mezzanine && room.level === view.level) {
+				trace(room.mezzanine.deck);
+				context.fillStyle = COLORS.deckAbove;
+				context.fill();
+				context.strokeStyle = COLORS.deckAboveLine;
+				context.lineWidth = 1;
+				context.setLineDash([3, 3]);
+				context.stroke();
+				context.setLineDash([]);
+			}
+		}
+		for (const room of rooms) {
+			if (room.mezzanine && room.level < view.level) {
+				context.strokeStyle = COLORS.wall;
+				context.lineWidth = Math.max(1, wallWidth * 0.45);
+				for (const rail of room.mezzanine.rails) {
+					context.beginPath();
+					context.moveTo(toX(rail.a.x), toY(rail.a.z));
+					context.lineTo(toX(rail.b.x), toY(rail.b.z));
+					context.stroke();
+				}
+			}
 		}
 		for (const room of rooms) {
 			outline(room);
@@ -231,6 +287,12 @@ export class MapRenderer {
 			const room = this.layout.rooms[item.roomId];
 			if (!rooms.includes(room) || item.colliders.length === 0) {
 				continue;
+			}
+			if (room.mezzanine) {
+				const onDeck = item.y >= room.mezzanine.floorY - 0.01;
+				if (onDeck !== room.level < view.level) {
+					continue;
+				}
 			}
 			for (const collider of item.colliders) {
 				const corners = boxCorners(collider);
@@ -302,8 +364,9 @@ export class MapRenderer {
 			}
 		}
 		for (const room of rooms) {
-			if (room.stair) {
-				this.drawStairs(context, room, toX, toY, view);
+			const stair = room.stair ?? room.mezzanine?.stair;
+			if (stair) {
+				this.drawStairs(context, room, stair, toX, toY, view);
 			}
 		}
 		const current = rooms.find((room) => room.id === options.currentRoomId);
@@ -401,11 +464,11 @@ export class MapRenderer {
 	private drawStairs(
 		context: CanvasRenderingContext2D,
 		room: Room,
+		stair: StairSpec,
 		toX: (x: number) => number,
 		toY: (z: number) => number,
 		view: MapView,
 	): void {
-		const stair = room.stair as StairSpec;
 		const scale = view.scale;
 		const goingUp = room.level === view.level;
 		context.strokeStyle = "rgba(170, 190, 255, 0.35)";

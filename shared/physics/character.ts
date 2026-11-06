@@ -10,6 +10,7 @@ import {
 	GROUND_ACCELERATION,
 	JUMP_VELOCITY,
 	MAX_FALL_SPEED,
+	PLAYER_HEAD_CLEARANCE,
 	PLAYER_HEIGHT_CROUCHED,
 	PLAYER_HEIGHT_STANDING,
 	PLAYER_RADIUS,
@@ -104,6 +105,10 @@ export function createCharacterState(
 		crouch: 0,
 		onRamp: false,
 	};
+}
+
+export function clearanceHeight(state: CharacterState): number {
+	return Math.min(characterHeight(state), PLAYER_HEAD_CLEARANCE);
 }
 
 export function characterHeight(state: CharacterState): number {
@@ -309,7 +314,7 @@ export function resolveHorizontal(
 	state: CharacterState,
 	dt: number,
 ): void {
-	const height = characterHeight(state);
+	const height = clearanceHeight(state);
 	const allowance = state.grounded ? STEP_UP_HEIGHT : AIR_STEP_HEIGHT;
 	for (let iteration = 0; iteration < 4; iteration += 1) {
 		let moved = false;
@@ -430,6 +435,7 @@ function updateVertical(
 	const wasGrounded = state.grounded;
 	state.vy = Math.max(-MAX_FALL_SPEED, state.vy - GRAVITY * dt);
 	const nextY = state.y + state.vy * dt;
+	const rising = state.vy > 0;
 	const tolerance = wasGrounded ? STEP_UP_HEIGHT : AIR_STEP_HEIGHT;
 	const support = supportHeight(
 		world,
@@ -440,7 +446,15 @@ function updateVertical(
 	);
 	state.onRamp = support.ramp;
 
-	if (support.height !== null && nextY <= support.height) {
+	if (
+		rising &&
+		support.ramp &&
+		support.height !== null &&
+		nextY <= support.height
+	) {
+		state.y = support.height;
+		state.grounded = false;
+	} else if (!rising && support.height !== null && nextY <= support.height) {
 		state.y = support.height;
 		state.vy = 0;
 		state.grounded = true;
@@ -471,7 +485,7 @@ function updateVertical(
 		PLAYER_RADIUS,
 		state.y,
 	);
-	const height = characterHeight(state);
+	const height = clearanceHeight(state);
 	if (state.y + height > ceiling) {
 		state.y = Math.max(ceiling - height, support.height ?? state.y);
 		state.vy = Math.min(0, state.vy);

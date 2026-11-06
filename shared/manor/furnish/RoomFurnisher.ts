@@ -1,4 +1,8 @@
 import {
+	MEZZANINE_RAIL_COLLIDER,
+	MIN_PILLAR_SPACING,
+} from "../../config/index.js";
+import {
 	closestPointOnSegment,
 	directionToYaw,
 	distance2,
@@ -13,7 +17,9 @@ import {
 } from "../furnitureCatalog.js";
 import { hideProfile } from "../hideProfiles.js";
 import { stairHeightAt } from "../layoutBuilder.js";
+import { deckIsConnected, postBoxes } from "../mezzanineShapes.js";
 import {
+	boxCorners,
 	boxesOverlap2D,
 	boxInsidePolygon,
 	edgeDirection,
@@ -24,6 +30,7 @@ import {
 import type {
 	FurnitureItem,
 	HideSpot,
+	Level,
 	LightSource,
 	LineEdge,
 	Opening,
@@ -63,6 +70,12 @@ interface Segment {
 const GRID_STEP = 0.5;
 const AGENT_CLEARANCE = 0.4;
 const OPENING_ANCHOR_DEPTH = 0.65;
+const PLATFORM_KINDS = new Set(["estrade", "dais"]);
+const GRAND_CHANDELIER_DROP = 0.35;
+const CEILING_ITEM_CLEARANCE = 0.25;
+const DECK_DOOR_CLEARANCE = 0.9;
+const DECK_STAIR_CLEARANCE = 1.3;
+const DECK_ITEM_MAX_DEPTH = 0.9;
 
 export interface WallItemOptions {
 	variant?: number;
@@ -93,6 +106,11 @@ export class RoomFurnisher {
 	private readonly wallUses: WallUse[][];
 	private readonly wallSegments: Segment[];
 	private readonly anchors: Vec2[] = [];
+	private readonly groundOpenings: Opening[];
+	private readonly reservedZones: OrientedBox[] = [];
+	private readonly deckBoxes: OrientedBox[] = [];
+	private readonly deckBlockers: OrientedBox[] = [];
+	private minReachShare = 0.38;
 	private readonly grid: {
 		originX: number;
 		originZ: number;
@@ -108,14 +126,420 @@ export class RoomFurnisher {
 		readonly rng: SeededRandom,
 		private readonly ids: IdAllocator,
 	) {
+		this.groundOpenings = room.mezzanine
+			? roomOpenings.filter((opening) => opening.floorY < room.floorY + 1)
+			: roomOpenings;
 		this.wallUses = room.edges.map(() => []);
 		this.wallSegments = this.computeWallSegments();
 		this.grid = this.createGrid();
-		for (const opening of roomOpenings) {
+		for (const opening of this.groundOpenings) {
 			if (opening.kind !== "window") {
 				this.reserveOpeningClearance(opening);
 			}
 		}
+		this.reserveMezzanine();
+		if (this.room.mezzanine) {
+			this.relaxAnchors();
+		}
+	}
+
+	/**
+	 * Poteaux et escalier peuvent déjà couper la grille, trop grossière pour voir
+	 * qu'on passe entre eux : on ne garde que les ancrages de la plus grande zone,
+	 * sinon plus aucun meuble ne pourrait jamais être posé au sol.
+	 */
+	private relaxAnchors(): void {
+		if (this.isNavigable()) {
+			return;
+		}
+		const groups = new Map<number, Vec2[]>();
+		const label = new Int32Array(this.grid.base.length).fill(-1);
+		const sizes = new Map<number, number>();
+		for (const anchor of this.anchors) {
+			const cell = this.nearestFreeCell(anchor);
+			if (cell === null) {
+				continue;
+			}
+			if (label[cell] < 0) {
+				sizes.set(cell, this.floodFrom(cell, label, cell));
+			}
+			groups.set(label[cell], [...(groups.get(label[cell]) ?? []), anchor]);
+		}
+		let best = -1;
+		for (const [id, size] of sizes) {
+			if (best < 0 || size > (sizes.get(best) ?? 0)) {
+				best = id;
+			}
+		}
+		this.anchors.length = 0;
+		this.anchors.push(...(groups.get(best) ?? []));
+		let freeTotal = 0;
+		for (const value of this.grid.base) {
+			freeTotal += value === 1 ? 1 : 0;
+		}
+		this.minReachShare = Math.min(
+			this.minReachShare,
+			((sizes.get(best) ?? 0) / Math.max(1, freeTotal)) * 0.8,
+		);
+	}
+
+	private floodFrom(start: number, label: Int32Array, id: number): number {
+		const queue = [start];
+		label[start] = id;
+		let reached = 0;
+		while (queue.length > 0) {
+			const index = queue.pop() as number;
+			reached += 1;
+			const column = index % this.grid.columns;
+			const row = (index - column) / this.grid.columns;
+			for (const neighbor of [
+				column > 0 ? index - 1 : -1,
+				column < this.grid.columns - 1 ? index + 1 : -1,
+				row > 0 ? index - this.grid.columns : -1,
+				row < this.grid.rows - 1 ? index + this.grid.columns : -1,
+			]) {
+				if (neighbor >= 0 && label[neighbor] < 0 && this.isFreeCell(neighbor)) {
+					label[neighbor] = id;
+					queue.push(neighbor);
+				}
+			}
+		}
+		return reached;
+	}
+
+	private reserveMezzanine(): void {
+		const spec = this.room.mezzanine;
+		if (!spec) {
+			return;
+		}
+		const { stair } = spec;
+		const rotation = Math.atan2(stair.right.z, stair.right.x);
+		const front = 1.4;
+		const body: OrientedBox = {
+			cx: stair.origin.x + (stair.forward.x * stair.length) / 2,
+			cz: stair.origin.z + (stair.forward.z * stair.length) / 2,
+			hx: stair.width / 2 + 0.1,
+			hz: stair.length / 2 + 0.1,
+			rotation,
+			yMin: 0,
+			yMax: 3,
+		};
+		const approach: OrientedBox = {
+			...body,
+			cx: stair.origin.x + (stair.forward.x * (stair.length - front)) / 2,
+			cz: stair.origin.z + (stair.forward.z * (stair.length - front)) / 2,
+			hx: stair.width / 2 + 0.3,
+			hz: (stair.length + front) / 2,
+		};
+		this.reservedZones.push(approach);
+		this.keepClear.push(approach);
+		const posts = spec.posts.map((post) => ({
+			cx: post.x,
+			cz: post.z,
+			hx: 0.6,
+			hz: 0.6,
+			rotation: 0,
+			yMin: 0,
+			yMax: 3,
+		}));
+		this.reservedZones.push(...posts);
+		this.keepClear.push(...posts);
+		const { grid } = this;
+		for (let row = 0; row < grid.rows; row += 1) {
+			for (let column = 0; column < grid.columns; column += 1) {
+				const point = {
+					x: grid.originX + (column + 0.5) * GRID_STEP,
+					z: grid.originZ + (row + 0.5) * GRID_STEP,
+				};
+				if (
+					[body, ...posts].some((zone) =>
+						pointInBox(point, zone, AGENT_CLEARANCE),
+					)
+				) {
+					grid.base[row * grid.columns + column] = 0;
+				}
+			}
+		}
+		this.anchors.push({
+			x: stair.origin.x - stair.forward.x * 0.9,
+			z: stair.origin.z - stair.forward.z * 0.9,
+		});
+		this.wallUses[spec.stairEdge]?.push({
+			from: spec.stairEdgeFrom,
+			to: spec.stairEdgeTo,
+			bottom: 0,
+			top: this.room.height,
+			kind: "stair",
+		});
+	}
+
+	placeOnDeck(
+		kind: string,
+		center: Vec2,
+		rotation: number,
+		variant?: number,
+		options: {
+			size?: { width: number; depth: number; height: number };
+			platform?: FurnitureItem;
+		} = {},
+	): FurnitureItem | null {
+		const spec = this.room.mezzanine;
+		if (!spec) {
+			return null;
+		}
+		const definition = furnitureDefinition(kind);
+		const chosen = variant ?? this.rng.int(0, definition.variants.length - 1);
+		const size = options.size ?? definition.variants[chosen];
+		const box: OrientedBox = {
+			cx: center.x,
+			cz: center.z,
+			hx: size.width / 2,
+			hz: size.depth / 2,
+			rotation,
+			yMin: 0,
+			yMax: size.height,
+		};
+		const reach = Math.hypot(box.hx, box.hz);
+		const stairTop = closestPointOnSegment(
+			center,
+			spec.stairEnd.a,
+			spec.stairEnd.b,
+		);
+		const nearDoor = this.roomOpenings.some((opening) => {
+			if (opening.floorY < spec.floorY - 0.5) {
+				return false;
+			}
+			const side = this.openingSide(opening);
+			return (
+				distance2(center, {
+					x: (side.start.x + side.end.x) / 2,
+					z: (side.start.z + side.end.z) / 2,
+				}) <
+				reach + opening.width / 2 + DECK_DOOR_CLEARANCE
+			);
+		});
+		if (
+			!boxCorners(box).every((corner) => pointInPolygon(corner, spec.deck)) ||
+			distance2(center, stairTop) < reach + DECK_STAIR_CLEARANCE ||
+			nearDoor ||
+			(spec.deckKeepClear !== null &&
+				[center, ...boxCorners(box)].some((corner) =>
+					pointInPolygon(corner, spec.deckKeepClear as Vec2[]),
+				)) ||
+			(!options.platform &&
+				this.deckBoxes.some((other) => boxesOverlap2D(other, box, 0.2))) ||
+			(definition.collides &&
+				!definition.walkableTop &&
+				!deckIsConnected(spec.deck, spec.stairEnd, [
+					...postBoxes(spec.posts),
+					...this.deckBlockers,
+					box,
+				]))
+		) {
+			return null;
+		}
+		const item = this.createItem(definition, chosen, {
+			x: center.x,
+			y: spec.floorY + (options.platform?.height ?? 0),
+			z: center.z,
+			rotation,
+			size,
+			parentId: options.platform?.id ?? null,
+		});
+		if (definition.collides && !options.platform) {
+			this.deckBoxes.push(box);
+		}
+		if (definition.collides && !definition.walkableTop) {
+			this.deckBlockers.push(box);
+		}
+		this.finalizeItem(item, definition);
+		return item;
+	}
+
+	/** Plante qui retombe d'un garde-corps, sans collision, côté vide. */
+	hangOnRail(kind: string, rail: { a: Vec2; b: Vec2 }, t: number): void {
+		const spec = this.room.mezzanine;
+		if (!spec) {
+			return;
+		}
+		const length = distance2(rail.a, rail.b);
+		const definition = furnitureDefinition(kind);
+		const size = definition.variants[0];
+		if (length < size.width + 0.2) {
+			return;
+		}
+		const unit = {
+			x: (rail.b.x - rail.a.x) / length,
+			z: (rail.b.z - rail.a.z) / length,
+		};
+		const point = {
+			x: rail.a.x + (rail.b.x - rail.a.x) * t,
+			z: rail.a.z + (rail.b.z - rail.a.z) * t,
+		};
+		const voidSide = pointInPolygon(
+			{ x: point.x - unit.z * 0.4, z: point.z + unit.x * 0.4 },
+			spec.deck,
+		)
+			? { x: unit.z, z: -unit.x }
+			: { x: -unit.z, z: unit.x };
+		const item = this.createItem(definition, 0, {
+			x: point.x,
+			y: spec.floorY,
+			z: point.z,
+			rotation: Math.atan2(-voidSide.x, voidSide.z),
+			size,
+			parentId: null,
+		});
+		this.finalizeItem(item, definition);
+	}
+
+	/** Liane enroulée autour d'un poteau de la mezzanine. */
+	wrapPost(kind: string, post: Vec2, height: number): void {
+		const definition = furnitureDefinition(kind);
+		const item = this.createItem(definition, 0, {
+			x: post.x,
+			y: this.room.floorY,
+			z: post.z,
+			rotation: 0,
+			size: { ...definition.variants[0], height },
+			parentId: null,
+		});
+		this.finalizeItem(item, definition);
+	}
+
+	dressDeckWall(
+		edgeIndex: number,
+		kinds: readonly (readonly [string, number])[],
+	): void {
+		const spec = this.room.mezzanine;
+		const edge = this.room.edges[edgeIndex];
+		if (!spec || edge.kind !== "line") {
+			return;
+		}
+		const direction = edgeDirection(edge);
+		const inward = { x: -direction.z, z: direction.x };
+		const length = edgeLength(edge);
+		const level = spec.floorY - this.room.floorY;
+		let along = this.rng.range(0.4, 1.2);
+		while (along < length - 0.4) {
+			const kind = this.rng.weighted(kinds);
+			const definition = furnitureDefinition(kind);
+			const variant = this.rng.int(0, definition.variants.length - 1);
+			const size = definition.variants[variant];
+			const offset = size.depth / 2 + definition.wallOffset;
+			const item =
+				size.depth <= DECK_ITEM_MAX_DEPTH
+					? this.placeOnDeck(
+							kind,
+							{
+								x:
+									edge.a.x +
+									direction.x * (along + size.width / 2) +
+									inward.x * offset,
+								z:
+									edge.a.z +
+									direction.z * (along + size.width / 2) +
+									inward.z * offset,
+							},
+							Math.atan2(-inward.x, inward.z),
+							variant,
+						)
+					: null;
+			if (!item) {
+				along += 0.5;
+				continue;
+			}
+			this.wallUses[edgeIndex].push({
+				from: along,
+				to: along + size.width,
+				bottom: level,
+				top: level + size.height,
+				kind,
+			});
+			along += size.width + this.rng.range(0.3, 1.1);
+		}
+	}
+
+	dressDeckRails(kinds: readonly string[], count: number): void {
+		const spec = this.room.mezzanine;
+		if (!spec) {
+			return;
+		}
+		for (let attempt = 0; attempt < count * 4; attempt += 1) {
+			const rail = this.rng.pick(spec.rails);
+			const t = this.rng.range(0.1, 0.9);
+			const length = distance2(rail.a, rail.b);
+			const unit = {
+				x: (rail.b.x - rail.a.x) / length,
+				z: (rail.b.z - rail.a.z) / length,
+			};
+			const point = {
+				x: rail.a.x + (rail.b.x - rail.a.x) * t,
+				z: rail.a.z + (rail.b.z - rail.a.z) * t,
+			};
+			const normal = pointInPolygon(
+				{ x: point.x - unit.z * 0.6, z: point.z + unit.x * 0.6 },
+				spec.deck,
+			)
+				? { x: -unit.z, z: unit.x }
+				: { x: unit.z, z: -unit.x };
+			const placed = this.placeOnDeck(
+				this.rng.pick(kinds),
+				{ x: point.x + normal.x * 0.45, z: point.z + normal.z * 0.45 },
+				Math.atan2(-normal.x, normal.z),
+			);
+			if (placed) {
+				count -= 1;
+				if (count <= 0) {
+					return;
+				}
+			}
+		}
+	}
+
+	layDeckRunner(): void {
+		const spec = this.room.mezzanine;
+		if (!spec) {
+			return;
+		}
+		const rail = spec.rails[0];
+		const length = distance2(rail.a, rail.b);
+		if (length < 3) {
+			return;
+		}
+		const unit = {
+			x: (rail.b.x - rail.a.x) / length,
+			z: (rail.b.z - rail.a.z) / length,
+		};
+		const middle = {
+			x: (rail.a.x + rail.b.x) / 2,
+			z: (rail.a.z + rail.b.z) / 2,
+		};
+		const normal = pointInPolygon(
+			{ x: middle.x - unit.z * 0.6, z: middle.z + unit.x * 0.6 },
+			spec.deck,
+		)
+			? { x: -unit.z, z: unit.x }
+			: { x: unit.z, z: -unit.x };
+		const definition = furnitureDefinition("rug");
+		const item = this.createItem(definition, 0, {
+			x: middle.x + normal.x * 1.2,
+			y: spec.floorY,
+			z: middle.z + normal.z * 1.2,
+			rotation: Math.atan2(-normal.x, normal.z),
+			size: { width: length - 1, depth: 1.5, height: 0.02 },
+			parentId: null,
+		});
+		this.finalizeItem(item, definition);
+	}
+
+	floorStandingItems(): FurnitureItem[] {
+		return this.items.filter(
+			(item) =>
+				item.parentId === null &&
+				item.colliders.length > 0 &&
+				Math.abs(item.y - this.room.floorY) < 0.01,
+		);
 	}
 
 	coverage(): number {
@@ -459,26 +883,66 @@ export class RoomFurnisher {
 	ceilingItem(kind: string, at: Vec2, variant?: number): FurnitureItem | null {
 		const definition = furnitureDefinition(kind);
 		const chosen = variant ?? this.rng.int(0, definition.variants.length - 1);
-		const size = definition.variants[chosen];
-		if (
-			!pointInPolygon(at, this.room.polygon) ||
-			this.distanceToWalls(at) < size.width / 2 + 0.3
-		) {
-			return null;
+		const nominal = definition.variants[chosen];
+		const spec = this.room.mezzanine;
+		const spots = [at, ...(kind === "chandelier" ? spotsAround(at) : [])];
+		for (const spot of spots) {
+			const size =
+				spec && kind === "chandelier" && !pointInPolygon(spot, spec.deck)
+					? {
+							...nominal,
+							height: this.room.ceilingY - spec.floorY - GRAND_CHANDELIER_DROP,
+						}
+					: nominal;
+			if (
+				!pointInPolygon(spot, this.room.polygon) ||
+				this.distanceToWalls(spot) < size.width / 2 + 0.3 ||
+				this.room.height - size.height < 2.35 ||
+				!this.ceilingSpotFree(spot, size)
+			) {
+				continue;
+			}
+			const item = this.createItem(definition, chosen, {
+				x: spot.x,
+				y: this.room.ceilingY - size.height,
+				z: spot.z,
+				rotation: this.room.axisAngle,
+				size,
+				parentId: null,
+			});
+			this.finalizeItem(item, definition);
+			return item;
 		}
-		if (this.room.height - size.height < 2.35) {
-			return null;
+		return null;
+	}
+
+	private ceilingSpotFree(
+		spot: Vec2,
+		size: { width: number; height: number },
+	): boolean {
+		const bottom = this.room.ceilingY - size.height;
+		const reach = size.width / 2 + CEILING_ITEM_CLEARANCE;
+		const spec = this.room.mezzanine;
+		if (spec) {
+			if (spec.posts.some((post) => distance2(post, spot) < reach + 0.25)) {
+				return false;
+			}
+			if (
+				bottom < spec.floorY + MEZZANINE_RAIL_COLLIDER + 0.2 &&
+				spec.rails.some(
+					(rail) =>
+						distance2(spot, closestPointOnSegment(spot, rail.a, rail.b)) <
+						reach,
+				)
+			) {
+				return false;
+			}
 		}
-		const item = this.createItem(definition, chosen, {
-			x: at.x,
-			y: this.room.ceilingY - size.height,
-			z: at.z,
-			rotation: this.room.axisAngle,
-			size,
-			parentId: null,
-		});
-		this.finalizeItem(item, definition);
-		return item;
+		return !this.items.some(
+			(item) =>
+				item.colliders.some((collider) => collider.yMax > bottom - 0.1) &&
+				distance2(item, spot) < reach + Math.max(item.width, item.depth) / 2,
+		);
 	}
 
 	cobwebs(min: number, max: number): void {
@@ -617,6 +1081,15 @@ export class RoomFurnisher {
 			yMin: 0,
 			yMax: size.height,
 		};
+		if (this.reservedZones.some((zone) => boxesOverlap2D(zone, box, 0.01))) {
+			return null;
+		}
+		if (
+			definition.kind === "pillar" &&
+			this.pillarTooClose(center, size.width)
+		) {
+			return null;
+		}
 		const platform = options.platform ?? null;
 		if (platform) {
 			if (!boxInsideBox(box, platform)) {
@@ -659,12 +1132,17 @@ export class RoomFurnisher {
 			size,
 			parentId: platform?.id ?? null,
 		});
+		if (this.cutsDeck(item)) {
+			this.ids.furniture -= 1;
+			this.items.pop();
+			return null;
+		}
 		const footprint: Footprint | null = definition.collides
 			? {
 					box,
 					itemId: item.id,
-					blocksWalking: !(item.kind === "estrade"),
-					isPlatform: item.kind === "estrade",
+					blocksWalking: !PLATFORM_KINDS.has(item.kind),
+					isPlatform: PLATFORM_KINDS.has(item.kind),
 				}
 			: null;
 		if (footprint) {
@@ -689,6 +1167,36 @@ export class RoomFurnisher {
 		}
 		this.finalizeItem(item, definition);
 		return item;
+	}
+
+	private pillarTooClose(center: Vec2, width: number): boolean {
+		const spaced = [
+			...this.items.filter((item) => item.kind === "pillar"),
+			...(this.room.mezzanine?.posts ?? []),
+		].some((other) => distance2(other, center) < MIN_PILLAR_SPACING);
+		return (
+			spaced ||
+			this.items.some(
+				(item) =>
+					furnitureDefinition(item.kind).placement === "ceiling" &&
+					distance2(item, center) <
+						item.width / 2 + width / 2 + CEILING_ITEM_CLEARANCE,
+			)
+		);
+	}
+
+	private cutsDeck(item: FurnitureItem): boolean {
+		const spec = this.room.mezzanine;
+		return (
+			spec !== null &&
+			item.colliders.some(
+				(collider) =>
+					collider.yMax > spec.floorY &&
+					[...boxCorners(collider), { x: collider.cx, z: collider.cz }].some(
+						(point) => pointInPolygon(point, spec.deck),
+					),
+			)
+		);
 	}
 
 	private createItem(
@@ -746,19 +1254,29 @@ export class RoomFurnisher {
 	private addLight(item: FurnitureItem, definition: FurnitureDefinition): void {
 		const light = definition.light as FurnitureLightSpec;
 		const local = rotate2({ x: 0, z: light.offsetZ }, item.rotation);
-		const baseY = item.y + item.height;
+		const baseY =
+			item.y +
+			(definition.placement === "ceiling"
+				? definition.variants[item.variant].height
+				: item.height);
+		const y = round(baseY + light.offsetY);
+		const spec = this.room.mezzanine;
+		const grand = spec !== null && definition.placement === "ceiling";
 		this.lights.push({
 			id: this.ids.light++,
 			roomId: this.room.id,
-			level: this.room.level,
+			level:
+				spec && y >= spec.floorY
+					? ((this.room.level + 1) as Level)
+					: this.room.level,
 			position: {
 				x: round(item.x + local.x),
-				y: round(baseY + light.offsetY),
+				y,
 				z: round(item.z + local.z),
 			},
 			color: light.color,
-			intensity: light.intensity,
-			radius: light.radius,
+			intensity: grand ? light.intensity * 2.2 : light.intensity,
+			radius: grand ? light.radius * 1.8 : light.radius,
 			kind: light.kind,
 			furnitureId: item.id,
 		});
@@ -794,7 +1312,7 @@ export class RoomFurnisher {
 	private addValve(item: FurnitureItem): void {
 		const toWorld = (x: number, z: number) => rotate2({ x, z }, item.rotation);
 		const valve = toWorld(item.width / 2 - 0.3, -item.depth / 2 + 0.42);
-		const spout = toWorld(0, -item.depth / 2 + 0.62);
+		const spout = toWorld(0, item.depth / 2 + 0.25);
 		const jet = toWorld(0, item.depth / 2 + 0.25);
 		const station: ValveStation = {
 			id: this.ids.valve++,
@@ -808,7 +1326,7 @@ export class RoomFurnisher {
 			},
 			spout: {
 				x: round(item.x + spout.x),
-				y: round(item.y + 2.3),
+				y: round(item.y + 2.25),
 				z: round(item.z + spout.z),
 			},
 			jet: { x: round(item.x + jet.x), z: round(item.z + jet.z) },
@@ -823,7 +1341,11 @@ export class RoomFurnisher {
 		definition: FurnitureDefinition,
 		box: OrientedBox,
 	): Vec2[] {
-		if (definition.hideable || item.kind === "valveStation") {
+		if (
+			definition.hideable ||
+			item.kind === "valveStation" ||
+			item.kind === "occultAltar"
+		) {
 			const front = rotate2({ x: 0, z: box.hz + 0.6 }, box.rotation);
 			return [{ x: box.cx + front.x, z: box.cz + front.z }];
 		}
@@ -989,7 +1511,7 @@ export class RoomFurnisher {
 	private computeWallSegments(): Segment[] {
 		const segments: Segment[] = [];
 		const polygon = this.room.polygon;
-		const openingsByEdgePoint = this.roomOpenings.map((opening) =>
+		const openingsByEdgePoint = this.groundOpenings.map((opening) =>
 			this.openingSide(opening),
 		);
 		for (let index = 0; index < polygon.length; index += 1) {
@@ -1192,7 +1714,7 @@ export class RoomFurnisher {
 				freeTotal += 1;
 			}
 		}
-		return reached >= freeTotal * 0.38;
+		return reached >= freeTotal * this.minReachShare;
 	}
 }
 
@@ -1240,6 +1762,20 @@ function subtractCollinear(
 		});
 	}
 	return pieces;
+}
+
+function spotsAround(center: Vec2): Vec2[] {
+	const spots: Vec2[] = [];
+	for (const radius of [1, 2, 3]) {
+		for (let index = 0; index < 8; index += 1) {
+			const angle = (index / 8) * Math.PI * 2;
+			spots.push({
+				x: center.x + Math.cos(angle) * radius,
+				z: center.z + Math.sin(angle) * radius,
+			});
+		}
+	}
+	return spots;
 }
 
 function boxInsideBox(inner: OrientedBox, outer: FurnitureItem): boolean {

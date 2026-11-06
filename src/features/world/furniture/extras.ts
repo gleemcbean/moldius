@@ -16,12 +16,12 @@ import {
 	IRON,
 	LINEN,
 	lathe,
-	MARBLE,
 	type Part,
 	part,
+	pickCarved,
+	pickStatuary,
 	pickWood,
 	plane,
-	STONE,
 	sphere,
 	texturedPlane,
 	torus,
@@ -57,6 +57,8 @@ const WATER: MaterialOptions = {
 function v(x: number, y: number, z: number): THREE.Vector3 {
 	return new THREE.Vector3(x, y, z);
 }
+
+const HARPSICHORD_LID_ANGLE = 0.5;
 
 function velvet(rng: { pick<T>(items: readonly T[]): T }): MaterialOptions {
 	return { texture: rng.pick(VELVETS), roughness: 1 };
@@ -309,106 +311,109 @@ export const torchere: FurnitureBuilder = ({ item }) => {
 export const harpsichord: FurnitureBuilder = ({ item, rng }) => {
 	const wood = pickWood(rng);
 	const { width, depth, height } = item;
-	const body = 0.28;
+	const body = 0.24;
+	const top = height - 0.12;
+	const bottom = top - body;
+	const outline = (front: number) => {
+		const shape = new THREE.Shape();
+		shape.moveTo(-width / 2, front);
+		shape.lineTo(width / 2, front);
+		shape.lineTo(width / 2, -depth / 2);
+		shape.lineTo(width * 0.05, -depth / 2);
+		shape.lineTo(-width / 2, -depth * 0.1);
+		shape.closePath();
+		return shape;
+	};
+	const hull = new THREE.ExtrudeGeometry(outline(depth / 2), {
+		depth: body,
+		bevelEnabled: false,
+	});
+	hull.rotateX(Math.PI / 2);
+	hull.translate(0, top, 0);
+	const lid = new THREE.ShapeGeometry(outline(depth / 2 - 0.3));
+	lid.rotateX(Math.PI / 2);
+	lid.translate(-width / 2, 0, 0);
+	lid.rotateZ(-HARPSICHORD_LID_ANGLE);
+	lid.translate(width / 2, top + 0.012, 0);
+	const propX = -width * 0.05;
 	const parts: Part[] = [
-		box(
+		{ geometry: hull, material: wood },
+		{ geometry: lid, material: { ...wood, side: THREE.DoubleSide } },
+		cylinderBetween(
 			wood,
-			width,
-			body,
-			depth * 0.55,
-			0,
-			height - body - 0.15,
-			-depth * 0.2,
-			0,
-			0.02,
-		),
-		box(
-			wood,
-			width * 0.55,
-			body,
-			depth * 0.4,
-			width * 0.2,
-			height - body - 0.15,
-			depth * 0.25,
-			0,
-			0.02,
+			v(propX, top, -depth * 0.05),
+			v(
+				propX,
+				top + 0.012 + (width / 2 - propX) * Math.tan(HARPSICHORD_LID_ANGLE),
+				-depth * 0.05,
+			),
+			0.012,
+			6,
 		),
 		box(
 			{ color: 0xe8dcc0, roughness: 0.4 },
-			width * 0.4,
+			width * 0.82,
 			0.03,
-			0.14,
-			-width * 0.25,
-			height - 0.18,
-			depth / 2 - 0.12,
-		),
-		box(
-			DARK,
-			width * 0.4,
-			0.012,
-			0.06,
-			-width * 0.25,
-			height - 0.15,
-			depth / 2 - 0.16,
-		),
-		boxAt(
-			wood,
-			width * 0.95,
-			0.5,
-			0.02,
+			0.15,
 			0,
-			height + 0.05,
-			-depth / 2 + 0.06,
-			-0.35,
+			top,
+			depth / 2 - 0.1,
 		),
+		box(DARK, width * 0.82, 0.012, 0.06, 0, top + 0.03, depth / 2 - 0.14),
+		boxAt(wood, width * 0.62, 0.3, 0.02, 0, top + 0.15, depth / 2 - 0.25, -0.2),
 		texturedPlane(
 			{ texture: "paintingLandscape", roughness: 0.8 },
-			width * 0.85,
-			0.42,
+			width * 0.54,
+			0.24,
 			0,
-			height + 0.05,
-			-depth / 2 + 0.075,
+			top + 0.15,
+			depth / 2 - 0.237,
 			0,
-			-0.35,
+			-0.2,
 		),
 	];
-	parts.push(
-		...legs(wood, width, depth * 0.85, height - body - 0.15, 0.03, 0.08),
-	);
+	for (const [x, z] of [
+		[-width / 2 + 0.08, depth / 2 - 0.08],
+		[width / 2 - 0.08, depth / 2 - 0.08],
+		[width / 2 - 0.08, -depth / 2 + 0.08],
+		[-width / 2 + 0.1, -depth * 0.1],
+		[width * 0.05, -depth / 2 + 0.1],
+	] as const) {
+		parts.push(cylinder(wood, 0.032, 0.02, bottom, x, 0, z, 8));
+	}
 	return parts;
 };
 
 export const chaiseLongue: FurnitureBuilder = ({ item, rng }) => {
 	const wood = pickWood(rng);
 	const fabric = velvet(rng);
-	const { width, depth } = item;
+	const { width, depth, height } = item;
 	const seat = 0.42;
 	return [
 		box(fabric, width, 0.16, depth, 0, seat - 0.16, 0, 0, 0.04),
-		boxAt(
+		box(
 			fabric,
-			0.22,
-			0.5,
-			depth,
-			-width / 2 + 0.11,
-			seat + 0.18,
+			0.24,
+			height - seat + 0.02,
+			depth - 0.02,
+			-width / 2 + 0.12,
+			seat - 0.02,
 			0,
 			0,
-			0,
-			-0.35,
+			0.1,
 		),
 		box(
 			fabric,
-			width * 0.6,
-			0.32,
+			width * 0.58,
+			0.3,
 			0.14,
-			-width * 0.15,
-			seat,
+			-width * 0.14,
+			seat - 0.02,
 			-depth / 2 + 0.07,
 			0,
 			0.05,
 		),
-		sphere(fabric, 0.11, -width / 2 + 0.28, seat + 0.1, 0, 1.4, 0.8, 0.9, 10),
+		sphere(fabric, 0.11, -width / 2 + 0.34, seat + 0.1, 0, 1.4, 0.8, 0.9, 10),
 		...legs(wood, width, depth, seat - 0.16, 0.025, 0.06),
 	];
 };
@@ -606,7 +611,7 @@ export const easel: FurnitureBuilder = ({ item, rng }) => {
 };
 
 export const bust: FurnitureBuilder = ({ item, rng }) => {
-	const material = rng.chance(0.5) ? MARBLE : STONE;
+	const material = pickStatuary(rng);
 	const plinth = item.height - 0.55;
 	return [
 		box(material, item.width, 0.08, item.width, 0, 0, 0),
@@ -643,7 +648,7 @@ export const bust: FurnitureBuilder = ({ item, rng }) => {
 };
 
 export const urn: FurnitureBuilder = ({ item, rng }) => {
-	const material = rng.pick([STONE, MARBLE, BRASS, CERAMIC]);
+	const material = rng.pick([pickCarved(rng), pickCarved(rng), BRASS, CERAMIC]);
 	const r = item.width / 2;
 	const h = item.height;
 	return [
@@ -670,12 +675,13 @@ export const urn: FurnitureBuilder = ({ item, rng }) => {
 	];
 };
 
-export const birdbath: FurnitureBuilder = ({ item }) => {
+export const birdbath: FurnitureBuilder = ({ item, rng }) => {
+	const material = pickCarved(rng);
 	const r = item.width / 2;
 	const h = item.height;
 	return [
 		lathe(
-			STONE,
+			material,
 			[
 				[0.001, 0],
 				[r * 0.55, 0],
@@ -698,17 +704,18 @@ export const birdbath: FurnitureBuilder = ({ item }) => {
 	];
 };
 
-export const gardenLantern: FurnitureBuilder = ({ item }) => {
+export const gardenLantern: FurnitureBuilder = ({ item, rng }) => {
+	const material = pickCarved(rng);
 	const h = item.height;
 	return [
-		box(STONE, item.width, 0.1, item.width, 0, 0, 0),
-		cylinder(STONE, 0.06, 0.08, h - 0.55, 0, 0.1, 0, 10),
-		box(STONE, item.width * 0.85, 0.06, item.width * 0.85, 0, h - 0.45, 0),
+		box(material, item.width, 0.1, item.width, 0, 0, 0),
+		cylinder(material, 0.06, 0.08, h - 0.55, 0, 0.1, 0, 10),
+		box(material, item.width * 0.85, 0.06, item.width * 0.85, 0, h - 0.45, 0),
 		box(GLASS, item.width * 0.6, 0.25, item.width * 0.6, 0, h - 0.39, 0),
 		...[-1, 1].flatMap((sx) =>
 			[-1, 1].map((sz) =>
 				box(
-					STONE,
+					material,
 					0.04,
 					0.25,
 					0.04,
@@ -719,7 +726,7 @@ export const gardenLantern: FurnitureBuilder = ({ item }) => {
 			),
 		),
 		lathe(
-			STONE,
+			material,
 			[
 				[0.001, 0.17],
 				[item.width * 0.6, 0.02],
@@ -1121,10 +1128,11 @@ export const vanity: FurnitureBuilder = ({ item, rng }) => {
 };
 
 export const washstand: FurnitureBuilder = ({ item, rng }) => {
+	const material = pickCarved(rng);
 	const wood = pickWood(rng);
 	const { width, depth, height } = item;
 	return [
-		box(MARBLE, width, 0.04, depth, 0, height - 0.04, 0, 0, 0.01),
+		box(material, width, 0.04, depth, 0, height - 0.04, 0, 0, 0.01),
 		box(wood, width - 0.04, height - 0.24, depth - 0.04, 0, 0.2, 0),
 		...legs(wood, width, depth, 0.2, 0.022, 0.04),
 		boxAt(wood, width - 0.04, 0.12, 0.03, 0, height + 0.06, -depth / 2 + 0.02),
@@ -1898,7 +1906,7 @@ export const crystalBall: FurnitureBuilder = () => [
 ];
 
 export const mortar: FurnitureBuilder = ({ rng }) => {
-	const material = rng.chance(0.5) ? STONE : MARBLE;
+	const material = pickCarved(rng);
 	return [
 		lathe(
 			material,

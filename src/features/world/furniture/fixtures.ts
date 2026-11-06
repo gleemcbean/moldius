@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { placed } from "../geometryUtils";
 import type { MaterialOptions } from "../MaterialLibrary";
 import {
 	BRASS,
@@ -10,12 +11,13 @@ import {
 	cylinder,
 	cylinderBetween,
 	DARK,
-	FLAME,
+	FIRE,
 	type FurnitureBuilder,
 	GLASS,
 	IRON,
 	lathe,
 	type Part,
+	pickCarved,
 	pickWood,
 	plane,
 	STONE,
@@ -23,6 +25,7 @@ import {
 	texturedPlane,
 	torus,
 } from "./parts";
+import { curvedLeaf } from "./plants";
 
 const PIPE: MaterialOptions = {
 	texture: "pipeMetal",
@@ -38,6 +41,28 @@ const PAINTINGS = [
 	"paintingAbstract",
 ] as const;
 
+function flameSheet(
+	width: number,
+	height: number,
+	x: number,
+	y: number,
+	z: number,
+	rotationY: number,
+): Part {
+	return {
+		geometry: placed(
+			new THREE.PlaneGeometry(width, height, 3, 6),
+			x,
+			y,
+			z,
+			rotationY,
+			0,
+		),
+		material: FIRE,
+	};
+}
+
+/** Plusieurs nappes de feu croisées : chacune ondule à son propre rythme. */
 function flames(
 	x: number,
 	y: number,
@@ -46,24 +71,37 @@ function flames(
 	height: number,
 ): Part[] {
 	return [
-		texturedPlane(FLAME, width, height, x, y + height / 2, z),
-		texturedPlane(
-			FLAME,
+		flameSheet(width, height, x, y + height / 2, z, 0),
+		flameSheet(
 			width * 0.8,
 			height * 0.85,
-			x,
+			x + width * 0.07,
 			y + height * 0.42,
 			z,
 			Math.PI / 2,
+		),
+		flameSheet(
+			width * 0.7,
+			height * 0.75,
+			x - width * 0.09,
+			y + height * 0.37,
+			z + 0.03,
+			Math.PI / 4,
+		),
+		flameSheet(
+			width * 0.6,
+			height * 0.6,
+			x + width * 0.11,
+			y + height * 0.3,
+			z - 0.03,
+			-Math.PI / 4,
 		),
 	];
 }
 
 export const fireplace: FurnitureBuilder = ({ item, room, rng }) => {
 	const { width, height, depth } = item;
-	const stone: MaterialOptions = rng.chance(0.5)
-		? STONE
-		: { texture: "marble", roughness: 0.55 };
+	const stone: MaterialOptions = rng.chance(0.5) ? STONE : pickCarved(rng);
 	const opening = width * 0.55;
 	const pillar = (width - opening) / 2;
 	const parts: Part[] = [
@@ -283,18 +321,46 @@ export const toilet: FurnitureBuilder = ({ item }) => {
 export const bathtub: FurnitureBuilder = ({ item }) => {
 	const { width, height, depth } = item;
 	const enamel: MaterialOptions = { texture: "ceramic", roughness: 0.25 };
+	const wall = 0.07;
+	const rim = 0.018;
 	const parts: Part[] = [
-		box(enamel, width, height - 0.12, depth, 0, 0.12, 0, 0, 0.18),
+		box(enamel, width, 0.07, depth, 0, 0.12, 0, 0, rim),
 		box(
-			{ color: 0x8ea4a0, roughness: 0.2, metalness: 0.05 },
-			width - 0.12,
-			0.01,
-			depth - 0.12,
+			{ color: 0x6f8f92, roughness: 0.18, metalness: 0.05 },
+			width - wall,
+			0.012,
+			depth - wall,
 			0,
-			height - 0.08,
+			height - 0.14,
 			0,
 		),
 	];
+	for (const side of [-1, 1]) {
+		parts.push(
+			box(
+				enamel,
+				width,
+				height - 0.12,
+				wall,
+				0,
+				0.12,
+				side * (depth - wall) * 0.5,
+				0,
+				rim,
+			),
+			box(
+				enamel,
+				wall,
+				height - 0.12,
+				depth,
+				side * (width - wall) * 0.5,
+				0.12,
+				0,
+				0,
+				rim,
+			),
+		);
+	}
 	for (const sx of [-1, 1]) {
 		for (const sz of [-1, 1]) {
 			parts.push(
@@ -409,7 +475,7 @@ export const valveStation: FurnitureBuilder = ({ item, room }) => {
 		cylinderBetween(
 			green,
 			new THREE.Vector3(0, 2.55, back),
-			new THREE.Vector3(0, 2.4, -depth / 2 + 0.62),
+			new THREE.Vector3(0, 2.4, depth / 2 + 0.25),
 			0.07,
 		),
 		lathe(
@@ -423,7 +489,7 @@ export const valveStation: FurnitureBuilder = ({ item, room }) => {
 			],
 			0,
 			2.25,
-			-depth / 2 + 0.62,
+			depth / 2 + 0.25,
 			14,
 		),
 		box(
@@ -774,14 +840,23 @@ export const painting: FurnitureBuilder = ({ item, rng }) => {
 export const tapestry: FurnitureBuilder = ({ item }) => {
 	const { width, height } = item;
 	return [
-		texturedPlane(
-			{ texture: "tapestry", roughness: 1, side: THREE.DoubleSide },
-			width,
-			height,
-			0,
-			height / 2,
-			0.03,
-		),
+		{
+			geometry: placed(
+				new THREE.PlaneGeometry(width, height, 6, 8),
+				0,
+				height / 2,
+				0.03,
+				0,
+				0,
+			),
+			material: {
+				texture: "tapestry",
+				roughness: 1,
+				side: THREE.DoubleSide,
+				fixedRepeat: true,
+				wave: "cloth",
+			},
+		},
 		cylinderBetween(
 			BRASS,
 			new THREE.Vector3(-width / 2 - 0.08, height + 0.02, 0.04),
@@ -983,16 +1058,31 @@ export const hangingHerbs: FurnitureBuilder = ({ item, rng }) => {
 		),
 	];
 	for (let x = -item.width / 2 + 0.1; x < item.width / 2 - 0.05; x += 0.14) {
-		const length = 0.25 + rng.next() * 0.25;
-		const bunch = new THREE.ConeGeometry(0.06, length, 7);
-		bunch.translate(x, item.height - length / 2 - 0.02, 0.12);
-		parts.push({
-			geometry: bunch,
-			material: {
-				texture: rng.pick(["foliageWarm", "foliageDark"] as const),
-				roughness: 1,
-			},
-		});
+		const length = 0.24 + rng.next() * 0.22;
+		const root = new THREE.Vector3(x, item.height - 0.015, 0.12);
+		const herb: MaterialOptions = {
+			texture: "leafBlade",
+			color: rng.pick([0xc4b060, 0x9aa858, 0xb09a58] as const),
+			roughness: 1,
+			alphaTest: 0.5,
+			side: THREE.DoubleSide,
+		};
+		for (let leaf = 0; leaf < 6; leaf += 1) {
+			parts.push(
+				curvedLeaf(
+					herb,
+					root,
+					0.05,
+					length * (0.75 + rng.next() * 0.25),
+					(leaf / 6) * Math.PI * 2 + rng.next() * 0.4,
+					Math.PI - 0.1 - rng.next() * 0.2,
+					0.12 + rng.next() * 0.2,
+				),
+			);
+		}
+		parts.push(
+			cylinder(BRASS, 0.012, 0.012, 0.02, x, item.height - 0.03, 0.12, 6),
+		);
 	}
 	return parts;
 };

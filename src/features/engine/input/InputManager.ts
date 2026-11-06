@@ -65,6 +65,8 @@ export class InputManager {
 	private codeToAction = new Map<string, ActionId>();
 	private unsubscribe: (() => void) | null = null;
 	pointerLocked = false;
+	freePlay = false;
+	private lockPending = false;
 	onPointerLockChange: ((locked: boolean) => void) | null = null;
 
 	constructor(private readonly element: HTMLElement) {}
@@ -99,18 +101,27 @@ export class InputManager {
 		}
 	}
 
+	get capturing(): boolean {
+		return this.pointerLocked || this.freePlay;
+	}
+
 	requestPointerLock(): void {
-		if (document.pointerLockElement === this.element) {
+		if (document.pointerLockElement === this.element || this.lockPending) {
 			return;
 		}
 		const request: Promise<void> | undefined = this.element.requestPointerLock({
 			unadjustedMovement: true,
 		});
-		request?.catch(() => {
-			const fallback: Promise<void> | undefined =
-				this.element.requestPointerLock();
-			fallback?.catch(() => undefined);
-		});
+		if (!request) {
+			return;
+		}
+		this.lockPending = true;
+		request
+			.catch(() => this.element.requestPointerLock())
+			.catch(() => undefined)
+			.finally(() => {
+				this.lockPending = false;
+			});
 	}
 
 	releasePointerLock(): void {
@@ -236,7 +247,7 @@ export class InputManager {
 
 	private readonly onMouseDown = (event: MouseEvent) => {
 		const code = mouseCode(event.button);
-		if (!code || !this.pointerLocked) {
+		if (!code || !this.capturing) {
 			return;
 		}
 		if (this.press(code)) {
@@ -252,7 +263,7 @@ export class InputManager {
 	};
 
 	private readonly onMouseMove = (event: MouseEvent) => {
-		if (this.pointerLocked) {
+		if (this.capturing) {
 			this.mouseX += event.movementX;
 			this.mouseY += event.movementY;
 		}
@@ -262,14 +273,14 @@ export class InputManager {
 		if (isTextTarget(event.target)) {
 			return;
 		}
-		if (this.pointerLocked || this.mode === "map") {
+		if (this.capturing || this.mode === "map") {
 			event.preventDefault();
 			this.wheel += Math.sign(event.deltaY);
 		}
 	};
 
 	private readonly onContextMenu = (event: MouseEvent) => {
-		if (this.pointerLocked) {
+		if (this.capturing) {
 			event.preventDefault();
 		}
 	};
@@ -281,16 +292,22 @@ export class InputManager {
 		this.clearHeld();
 	};
 
+	reconcilePointerLock(): void {
+		if ((document.pointerLockElement === this.element) !== this.pointerLocked) {
+			this.onPointerLock();
+		}
+	}
+
 	private readonly onPointerLock = () => {
 		this.pointerLocked = document.pointerLockElement === this.element;
 		if (!this.pointerLocked) {
 			for (const action of this.held) {
-				if (action !== "leaderboard" && action !== "crouch") {
+				if (action !== "crouch") {
 					this.released.add(action);
 				}
 			}
 			for (const action of [...this.held]) {
-				if (action !== "crouch" && action !== "leaderboard") {
+				if (action !== "crouch") {
 					this.held.delete(action);
 				}
 			}

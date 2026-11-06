@@ -30,6 +30,7 @@ const INTERRUPTIBLE = new Set([
 ]);
 
 function stopShort(entity: AnomalyEntity, position: Vec3): void {
+	let removed: Vec3 | null = null;
 	while (entity.path.length > 0) {
 		const last = entity.path[entity.path.length - 1];
 		if (
@@ -37,9 +38,37 @@ function stopShort(entity: AnomalyEntity, position: Vec3): void {
 				SHOUT_LURE_STOP_DISTANCE ||
 			Math.abs(last.y - position.y) > 1
 		) {
+			if (removed) {
+				walkOnTowards(entity, last, removed, position);
+			}
 			return;
 		}
-		entity.path.pop();
+		removed = entity.path.pop() ?? null;
+	}
+}
+
+function walkOnTowards(
+	entity: AnomalyEntity,
+	from: AnomalyEntity["path"][number],
+	to: Vec3,
+	position: Vec3,
+): void {
+	for (let t = 0.9; t > 0.05; t -= 0.1) {
+		const x = from.x + (to.x - from.x) * t;
+		const z = from.z + (to.z - from.z) * t;
+		if (
+			Math.hypot(x - position.x, z - position.z) >= SHOUT_LURE_STOP_DISTANCE
+		) {
+			entity.path.push({
+				...from,
+				x,
+				y: from.y + (to.y - from.y) * t,
+				z,
+				portal: false,
+				doorId: null,
+			});
+			return;
+		}
 	}
 }
 

@@ -60,6 +60,7 @@ export class MatchPlayer {
 	lastForcedMoveId = 0;
 	forcedMoveSettledAt = 0;
 	movementBudget = 1.5;
+	fallPeakY: number | null = null;
 	readonly voice: VoiceSample[] = [];
 	casting: CastingState | null = null;
 	held: OccultId | null = null;

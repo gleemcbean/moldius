@@ -92,6 +92,13 @@ import {
 	window,
 } from "./fixtures";
 import { flowerPot, pond } from "./garden";
+import {
+	climbingVine,
+	hangingFern,
+	ivyWall,
+	palmTree,
+	railVine,
+} from "./greenery";
 import { cask, curtainAlcove, trunk } from "./hiding";
 import {
 	barrelStack,
@@ -168,6 +175,7 @@ import {
 	bed,
 	bench,
 	chair,
+	dais,
 	desk,
 	estrade,
 	kitchenCounter,
@@ -217,6 +225,11 @@ export const FURNITURE_BUILDERS: Record<string, FurnitureBuilder> = {
 	crate,
 	barrel,
 	pottedPlant,
+	palmTree,
+	ivyWall,
+	railVine,
+	climbingVine,
+	hangingFern,
 	planterBed,
 	floorLamp,
 	candelabra,
@@ -226,6 +239,7 @@ export const FURNITURE_BUILDERS: Record<string, FurnitureBuilder> = {
 	cello,
 	musicStand,
 	grandPiano,
+	dais,
 	estrade,
 	altar,
 	lectern,

@@ -41,6 +41,9 @@ export const lobbyFr = {
 		hostNote: "Vous êtes l'hôte : réglez la partie pour votre groupe.",
 		guestNote: "Seul l'hôte peut modifier ces règles.",
 		anomalies: "Anomalies (moyenne)",
+		itemsPerPlayer: "Morceaux d'objets par joueur",
+		itemsPerPlayerHint:
+			"Nombre de matériaux par joueur dans un manoir moyen à un étage. Il augmente ou diminue avec la taille du manoir et le nombre d'étages.",
 		duration: "Durée de la partie",
 		minutes: (value: number) => `${value} min`,
 		manorSize: "Taille du manoir",
@@ -81,6 +84,14 @@ export const lobbyFr = {
 		"already-playing":
 			"Ce compte est déjà dans une partie, dans un autre onglet ou une autre fenêtre.",
 		"invalid-request": "Requête invalide : rechargez la page.",
+		"sign-in-required": "Connectez-vous à un compte pour utiliser les amis.",
+		"friend-not-found": "Aucun joueur ne correspond à ce code ami.",
+		"friend-self": "C'est votre propre code ami.",
+		"friend-exists": "Ce joueur est déjà ami ou a déjà reçu votre demande.",
+		"friend-limit": "Votre liste d'amis est pleine.",
+		"friend-offline": "Cet ami n'est pas en ligne.",
+		"friend-busy": "Cet ami est déjà en partie ou dans ce lobby.",
+		"lobby-not-invitable": "Rejoignez un lobby en attente pour inviter un ami.",
 	} satisfies Record<LobbyErrorCode, string>,
 };
 
@@ -125,6 +136,9 @@ export const lobbyEn: typeof lobbyFr = {
 		hostNote: "You are the host: set up the game for your group.",
 		guestNote: "Only the host can change these rules.",
 		anomalies: "Anomalies (average)",
+		itemsPerPlayer: "Object pieces per player",
+		itemsPerPlayerHint:
+			"How many materials each player gets in a medium manor with one upper floor. It goes up or down with the manor size and number of floors.",
 		duration: "Match length",
 		minutes: (value: number) => `${value} min`,
 		manorSize: "Manor size",
@@ -162,5 +176,13 @@ export const lobbyEn: typeof lobbyFr = {
 		"already-playing":
 			"This account is already in a game, in another tab or window.",
 		"invalid-request": "Invalid request: please reload the page.",
+		"sign-in-required": "Sign in to an account to use friends.",
+		"friend-not-found": "No player matches this friend code.",
+		"friend-self": "This is your own friend code.",
+		"friend-exists": "This player is already a friend or has your request.",
+		"friend-limit": "Your friend list is full.",
+		"friend-offline": "This friend is not online.",
+		"friend-busy": "This friend is already in a match or in this lobby.",
+		"lobby-not-invitable": "Join a waiting lobby to invite a friend.",
 	},
 };

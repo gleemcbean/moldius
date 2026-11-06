@@ -188,6 +188,79 @@
   gap: 12px;
 }
 
+.publicPreview {
+  gap: 12px;
+}
+
+.publicCount {
+  font-weight: 600;
+  color: $text;
+  font-variant-numeric: tabular-nums;
+}
+
+.publicEmpty {
+  color: $text-muted;
+}
+
+.publicPlayers {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 130px;
+  }
+
+  canvas {
+    flex: none;
+    width: 28px;
+    height: auto;
+  }
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.hintAnchor {
+  position: relative;
+}
+
+.sideHint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(100% + 10px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid $line-strong;
+  background: $background-panel;
+  color: $text;
+  font-size: 15px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-4px);
+  transition:
+    opacity $transition-fast,
+    transform $transition-fast;
+}
+
+.hintAnchor:hover .sideHint,
+.hintAnchor:focus-within .sideHint {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 .codeRow {
   display: grid;
   grid-template-columns: 158px 1fr;
@@ -210,7 +283,21 @@
   border-top: 1px solid rgba(70, 84, 63, 0.7);
 }
 
+.tileBadge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  padding: 0 5px;
+  background: $yellow;
+  color: $background;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 20px;
+}
+
 .tile {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;

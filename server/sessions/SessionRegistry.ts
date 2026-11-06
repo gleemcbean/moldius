@@ -61,6 +61,10 @@ export class SessionRegistry {
 		);
 	}
 
+	connected(): Session[] {
+		return [...this.bySocket.values()];
+	}
+
 	fromPlayer(playerId: string): Session | null {
 		return this.byPlayer.get(playerId) ?? null;
 	}

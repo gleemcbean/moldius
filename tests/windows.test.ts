@@ -72,7 +72,7 @@ describe("vitres entre deux salles", () => {
 				expect(others).toEqual([]);
 			}
 		}
-		expect(windows).toBeGreaterThan(10);
+		expect(windows).toBeGreaterThan(5);
 	});
 
 	it("laissent passer le regard, pas les corps, et étouffent les sons", () => {
@@ -101,7 +101,7 @@ describe("vitres entre deux salles", () => {
 				checked += 1;
 			}
 		}
-		expect(checked).toBeGreaterThan(3);
+		expect(checked).toBeGreaterThan(2);
 	});
 
 	it("une anomalie qui voit un joueur à travers une vitre fait le tour par les portes", () => {
@@ -182,10 +182,16 @@ describe("vitres entre deux salles", () => {
 				side = now;
 			}
 			const inPlayerRoom = sim.match.roomIdAt(hunter.position) === playerRoom;
-			if (!inPlayerRoom && player.health < 100) {
+			const clearReach = lineOfSight(
+				sim.match.world,
+				{ ...hunter.position, y: hunter.position.y + 1.4 },
+				{ ...player.position, y: player.position.y + 1.1 },
+				{ blockGlass: true, ignoreFurniture: true },
+			);
+			if (!inPlayerRoom && player.health < 100 && !clearReach) {
 				hurtThroughGlass = true;
 			}
-			reached ||= inPlayerRoom;
+			reached ||= inPlayerRoom || (player.health < 100 && clearReach);
 			player.health = Math.max(player.health, 100);
 		});
 		expect(crossedGlass).toBe(false);

@@ -1,12 +1,18 @@
 import {
+	GRAND_ROOM_DEPTH,
+	GRAND_ROOM_WIDTH,
 	LEVEL_HEIGHT,
 	MANOR_OPENING_EDGE_MARGIN,
 	MANOR_OPENING_SPACING,
 	MAX_UPPER_FLOORS,
+	MEZZANINE_HEADROOM,
+	MEZZANINE_HEIGHT,
+	MEZZANINE_OPENING_MAX_HEIGHT,
 	WALL_GAP,
 } from "../config/index.js";
 import { distance2, dot2, rotate2, type Vec2 } from "../math.js";
 import type { SeededRandom } from "../random.js";
+import { buildMezzanine, MEZZANINE_SHAPES } from "./mezzanineShapes.js";
 import {
 	boundsOverlap,
 	cleanPoint,
@@ -21,6 +27,7 @@ import {
 	tessellateOutline,
 } from "./polygon.js";
 import {
+	createGrandRoomShape,
 	createRoomShape,
 	pickRoomHeight,
 	pickRoomStyle,
@@ -39,6 +46,7 @@ import type {
 	Bounds,
 	Level,
 	LineEdge,
+	MezzanineSpec,
 	Opening,
 	OpeningKind,
 	OutlineEdge,
@@ -75,6 +83,8 @@ interface OpeningRequest {
 	kind: OpeningKind;
 	depth?: number;
 	sill?: number;
+	floorY?: number;
+	levels?: number[];
 }
 
 const CORRIDOR_EXIT_LENGTH = 1.7 + MANOR_OPENING_EDGE_MARGIN * 2;
@@ -149,6 +159,79 @@ export class ManorLayoutBuilder {
 			}
 		}
 		return null;
+	}
+
+	tryAttachGrandRoom(parent: Room, type: RoomType): Room | null {
+		for (let attempt = 0; attempt < 12; attempt += 1) {
+			const shrink = attempt < 6 ? 1 : 0.88;
+			const width = snapQuarter(
+				this.rng.range(GRAND_ROOM_WIDTH[0], GRAND_ROOM_WIDTH[1]) * shrink,
+			);
+			const depth = snapQuarter(
+				this.rng.range(GRAND_ROOM_DEPTH[0], GRAND_ROOM_DEPTH[1]) * shrink,
+			);
+			const shape = createGrandRoomShape(this.rng, width, depth, attempt >= 9);
+			const deckHeight =
+				Math.round(
+					this.rng.range(MEZZANINE_HEIGHT[0], MEZZANINE_HEIGHT[1]) * 20,
+				) / 20;
+			const height =
+				deckHeight +
+				Math.round(
+					this.rng.range(MEZZANINE_HEADROOM[0], MEZZANINE_HEADROOM[1]) * 20,
+				) /
+					20;
+			const room = this.tryAttachShape(parent, type, 0, shape, null, height);
+			if (!room) {
+				continue;
+			}
+			room.mezzanine = this.planMezzanine(room, deckHeight);
+			if (room.mezzanine) {
+				return room;
+			}
+			this.removeRoom(room);
+		}
+		return null;
+	}
+
+	private planMezzanine(room: Room, deckHeight: number): MezzanineSpec | null {
+		const backs = room.edges
+			.map((edge, index) => ({ edge, index }))
+			.filter(({ edge }) => edge.kind === "line" && edgeLength(edge) >= 5)
+			.map(({ index }) => index);
+		const groundDoors = room.openingIds
+			.map((id) => this.openings[id])
+			.filter((opening) => opening && opening.floorY < room.floorY + 1)
+			.map((opening) => ({
+				x: (opening.start.x + opening.end.x) / 2,
+				z: (opening.start.z + opening.end.z) / 2,
+			}));
+		for (const shape of this.rng.shuffle([...MEZZANINE_SHAPES])) {
+			for (const back of this.rng.shuffle(backs)) {
+				for (const mirrored of this.rng.shuffle([false, true])) {
+					const spec = buildMezzanine(
+						room,
+						back,
+						mirrored,
+						deckHeight,
+						shape,
+						this.rng,
+						{ rise: STAIR_RISE, tread: STAIR_TREAD },
+						groundDoors,
+					);
+					if (spec && !this.stairBlocksOpening(room, spec)) {
+						return spec;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	private stairBlocksOpening(room: Room, spec: MezzanineSpec): boolean {
+		return (room.edgeOpenings[spec.stairEdge] ?? []).some(
+			(slot) => slot.from < spec.stairEdgeTo && slot.to > spec.stairEdgeFrom,
+		);
 	}
 
 	removeRoom(room: Room): void {
@@ -289,6 +372,7 @@ export class ManorLayoutBuilder {
 		return (
 			room.level === level &&
 			room.area > 0 &&
+			!isHanging(room) &&
 			room.type !== "stairwell" &&
 			!ROOM_TYPES[room.type].singleDoor
 		);
@@ -300,6 +384,7 @@ export class ManorLayoutBuilder {
 		level: Level,
 		shape: RoomShape,
 		forcedChildEdge: number | null,
+		forcedHeight?: number,
 	): Room | null {
 		const parentEdges = this.attachableEdges(parent, level);
 		if (parentEdges.length === 0) {
@@ -331,7 +416,8 @@ export class ManorLayoutBuilder {
 		const parentEdge = parent.edges[parentEdgeIndex] as LineEdge;
 		const childEdge = shape.edges[childEdgeIndex] as LineEdge;
 
-		const childHeight = pickRoomHeight(ROOM_TYPES[type], level, this.rng);
+		const childHeight =
+			forcedHeight ?? pickRoomHeight(ROOM_TYPES[type], level, this.rng);
 		const opening = this.chooseOpeningDimensions(
 			parent,
 			type,
@@ -341,6 +427,9 @@ export class ManorLayoutBuilder {
 		);
 		if (!opening) {
 			return null;
+		}
+		if (forcedHeight !== undefined || parent.mezzanine) {
+			opening.height = Math.min(opening.height, MEZZANINE_OPENING_MAX_HEIGHT);
 		}
 		const parentInterval = this.pickOpeningCenter(
 			parent,
@@ -382,7 +471,11 @@ export class ManorLayoutBuilder {
 		};
 		const edges = transformEdges(shape.edges, rotation, offset);
 		const polygon = tessellateOutline(edges);
-		if (!this.fitsInManor(polygon, level, type, childHeight)) {
+		const hangingFloor =
+			parent.mezzanine && level === parent.level + 1
+				? parent.mezzanine.floorY
+				: null;
+		if (!this.fitsInManor(polygon, level, type, childHeight, hangingFloor)) {
 			return null;
 		}
 		const passage = passagePolygon(
@@ -391,9 +484,13 @@ export class ManorLayoutBuilder {
 			parentOutward,
 			opening.width,
 		);
-		if (
-			!this.isFree(passage, type === "stairwell" ? [level, level + 1] : [level])
-		) {
+		const passageLevels =
+			type === "stairwell"
+				? [level, level + 1]
+				: hangingFloor !== null
+					? [level - 1, level]
+					: [level];
+		if (!this.isFree(passage, passageLevels)) {
 			return null;
 		}
 
@@ -404,6 +501,7 @@ export class ManorLayoutBuilder {
 			rotation,
 			polygon,
 			childHeight,
+			hangingFloor,
 		);
 		const openingLevel =
 			parent.type === "stairwell" ? ((parent.level + 1) as Level) : level;
@@ -417,6 +515,9 @@ export class ManorLayoutBuilder {
 				width: opening.width,
 				height: opening.height,
 				kind: opening.kind,
+				...(hangingFloor !== null
+					? { floorY: hangingFloor, levels: passageLevels }
+					: {}),
 			},
 			openingLevel,
 		);
@@ -430,7 +531,16 @@ export class ManorLayoutBuilder {
 			}
 			return [2];
 		}
-		if (ROOM_TYPES[room.type].singleDoor || room.level !== level) {
+		if (room.mezzanine && level === room.level + 1) {
+			return room.mezzanine.deckEdges.filter(
+				(index) => this.longestFreeInterval(room, index) >= 1.7,
+			);
+		}
+		if (
+			ROOM_TYPES[room.type].singleDoor ||
+			room.level !== level ||
+			isHanging(room)
+		) {
 			return [];
 		}
 		return room.edges
@@ -501,7 +611,15 @@ export class ManorLayoutBuilder {
 		let intervals: [number, number][] = [
 			[MANOR_OPENING_EDGE_MARGIN, length - MANOR_OPENING_EDGE_MARGIN],
 		];
-		for (const slot of room.edgeOpenings[edgeIndex]) {
+		const blocks = [...room.edgeOpenings[edgeIndex]];
+		if (room.mezzanine?.stairEdge === edgeIndex) {
+			blocks.push({
+				openingId: -1,
+				from: room.mezzanine.stairEdgeFrom,
+				to: room.mezzanine.stairEdgeTo,
+			});
+		}
+		for (const slot of blocks) {
 			const blockFrom = slot.from - MANOR_OPENING_SPACING;
 			const blockTo = slot.to + MANOR_OPENING_SPACING;
 			intervals = intervals.flatMap(([from, to]) => {
@@ -553,6 +671,7 @@ export class ManorLayoutBuilder {
 		level: Level,
 		type: RoomType,
 		height: number,
+		hangingFloor: number | null = null,
 	): boolean {
 		const bounds = polygonBounds(polygon);
 		const limit = level === 0 ? this.halfExtent : this.halfExtent + 12;
@@ -564,7 +683,10 @@ export class ManorLayoutBuilder {
 		) {
 			return false;
 		}
-		return this.isFree(polygon, occupiedLevels(type, level, height));
+		return this.isFree(polygon, [
+			...(hangingFloor !== null ? [level - 1] : []),
+			...occupiedLevels(type, level, height),
+		]);
 	}
 
 	private isFree(polygon: Vec2[], levels: readonly number[]): boolean {
@@ -590,13 +712,14 @@ export class ManorLayoutBuilder {
 		rotation: number,
 		tessellated: Vec2[] | null,
 		chosenHeight?: number,
+		hangingFloor: number | null = null,
 	): Room {
 		const definition = ROOM_TYPES[type];
 		const polygon = tessellated ?? tessellateOutline(edges);
 		if (signedArea(polygon) <= 0) {
 			throw new Error("Room polygon must have a positive orientation");
 		}
-		const floorY = level * LEVEL_HEIGHT;
+		const floorY = hangingFloor ?? level * LEVEL_HEIGHT;
 		const height = chosenHeight ?? pickRoomHeight(definition, level, this.rng);
 		const id = this.rooms.length;
 		const nameIndex = Math.floor(this.rng.next() * definition.names.length);
@@ -628,16 +751,19 @@ export class ManorLayoutBuilder {
 			exteriorEdges: edges.map(() => false),
 			style,
 			stair: type === "stairwell" ? buildStairSpec(edges) : null,
+			mezzanine: null,
 			seed: Math.floor(this.rng.next() * 2 ** 31),
 		};
 		this.rooms.push(room);
 		this.occupants.push({
 			polygon,
 			bounds: room.bounds,
-			levels:
-				style.ceiling === "glass"
+			levels: [
+				...(hangingFloor !== null ? [level - 1] : []),
+				...(style.ceiling === "glass"
 					? [level, ...levelsAbove(level)]
-					: occupiedLevels(type, level, height),
+					: occupiedLevels(type, level, height)),
+			],
 			roomId: id,
 			openingId: null,
 		});
@@ -687,7 +813,7 @@ export class ManorLayoutBuilder {
 			width: request.width,
 			height: request.height,
 			depth,
-			floorY: level * LEVEL_HEIGHT,
+			floorY: request.floorY ?? level * LEVEL_HEIGHT,
 			level,
 			sill: request.sill ?? 0,
 			door: isDoor
@@ -723,7 +849,7 @@ export class ManorLayoutBuilder {
 		this.occupants.push({
 			polygon: passage,
 			bounds: polygonBounds(passage),
-			levels: [level],
+			levels: request.levels ?? [level],
 			roomId: null,
 			openingId: id,
 		});
@@ -758,6 +884,7 @@ export class ManorLayoutBuilder {
 			(room) =>
 				room.level === level &&
 				room.area > 0 &&
+				!isHanging(room) &&
 				room.type !== "stairwell" &&
 				!ROOM_TYPES[room.type].singleDoor,
 		);
@@ -1245,7 +1372,7 @@ export class ManorLayoutBuilder {
 				}
 				const sameLevel =
 					occupant.levels.includes(room.level) ||
-					(room.type === "stairwell" &&
+					((room.type === "stairwell" || room.mezzanine !== null) &&
 						occupant.levels.includes(room.level + 1));
 				if (sameLevel && pointInPolygon(probe, occupant.polygon)) {
 					return false;
@@ -1357,6 +1484,14 @@ export function outwardNormalAt(edge: OutlineEdge, t: number): Vec2 {
 		z: (point.z - edge.center.z) / edge.radius,
 	};
 	return edge.sweep > 0 ? radial : { x: -radial.x, z: -radial.z };
+}
+
+export function isHanging(room: Room): boolean {
+	return Math.abs(room.floorY - room.level * LEVEL_HEIGHT) > 0.01;
+}
+
+function snapQuarter(value: number): number {
+	return Math.round(value * 4) / 4;
 }
 
 function buildStairSpec(edges: OutlineEdge[]): StairSpec {

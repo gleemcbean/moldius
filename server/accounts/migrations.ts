@@ -110,6 +110,31 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
 			`ALTER TABLE pending_registrations ADD COLUMN language text NOT NULL DEFAULT 'fr'`,
 		],
 	},
+	{
+		version: 6,
+		statements: [
+			`ALTER TABLE accounts ADD COLUMN friend_code text`,
+			`CREATE UNIQUE INDEX accounts_friend_code_idx ON accounts (friend_code)`,
+			`ALTER TABLE accounts ADD COLUMN appear_offline boolean NOT NULL DEFAULT false`,
+			`ALTER TABLE accounts ADD COLUMN last_seen_at timestamptz`,
+			`CREATE TABLE friendships (
+        account_low uuid NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
+        account_high uuid NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
+        requester_id uuid NOT NULL,
+        status text NOT NULL,
+        created_at timestamptz NOT NULL,
+        accepted_at timestamptz,
+        PRIMARY KEY (account_low, account_high)
+      )`,
+			`CREATE INDEX friendships_high_idx ON friendships (account_high)`,
+			`CREATE TABLE presence_samples (
+        sampled_at timestamptz PRIMARY KEY,
+        connected integer NOT NULL,
+        signed_in integer NOT NULL,
+        in_match integer NOT NULL
+      )`,
+		],
+	},
 ];
 
 export async function migrate(database: Database): Promise<number> {

@@ -51,12 +51,16 @@ function candidateOrigins(sim: MatchSimulation, roomId: number): Vec3[] {
 	const center = { x: room.labelPoint.x, y: room.floorY, z: room.labelPoint.z };
 	const origins: Vec3[] = [];
 	const node = match.grid.nearestNode(center, 2);
-	if (node !== null) {
+	if (
+		node !== null &&
+		Math.abs(match.grid.heights[node] - room.floorY) < 0.01
+	) {
 		origins.push(match.grid.nodePosition(node));
 	}
 	const cells = (match.grid.roomCells.get(roomId) ?? [])
 		.filter((cell) => match.grid.component[cell] === match.grid.mainComponent)
 		.map((cell) => match.grid.nodePosition(cell))
+		.filter((point) => Math.abs(point.y - room.floorY) < 0.01)
 		.sort(
 			(a, b) =>
 				Math.hypot(a.x - center.x, a.z - center.z) -

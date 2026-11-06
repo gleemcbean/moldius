@@ -178,7 +178,11 @@ export const trunk: FurnitureBuilder = ({ item, rng }) => {
 export const curtainAlcove: FurnitureBuilder = ({ item, rng }) => {
 	const { width, height, depth } = item;
 	const wood: MaterialOptions = { texture: "woodDark", roughness: 0.85 };
-	const velvet: MaterialOptions = { texture: rng.pick(VELVETS), roughness: 1 };
+	const velvet: MaterialOptions = {
+		wave: "cloth",
+		texture: rng.pick(VELVETS),
+		roughness: 1,
+	};
 	const parts: Part[] = [
 		box(
 			{ texture: "woodPanels", color: 0x7a6a5a, roughness: 0.9 },

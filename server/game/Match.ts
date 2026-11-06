@@ -32,13 +32,21 @@ import {
 	DEFAULT_HAT_PATTERN,
 	type HatPattern,
 } from "../../shared/hatPatterns.js";
-import { assignRecipeMaterials } from "../../shared/manor/furnish/pickups.js";
+import {
+	assignRecipeMaterials,
+	recipeDeck,
+} from "../../shared/manor/furnish/pickups.js";
 import {
 	generateManor,
 	layoutChecksum,
 } from "../../shared/manor/generateManor.js";
 import type { Level, ManorLayout } from "../../shared/manor/types.js";
-import { type MatchConfig, matchDurationMs } from "../../shared/matchConfig.js";
+import {
+	type MatchConfig,
+	matchDurationMs,
+	pickupTotal,
+	TUTORIAL_WOUNDED_HEALTH,
+} from "../../shared/matchConfig.js";
 import type { Vec3 } from "../../shared/math.js";
 import { NavGrid } from "../../shared/navigation/navGrid.js";
 import { PathFinder } from "../../shared/navigation/pathfinding.js";
@@ -151,6 +159,7 @@ export class Match {
 	readonly hazards: HazardSystem;
 	readonly loot = new LootSystem();
 	readonly tutorial: boolean;
+	readonly pickupTotal: number;
 	private tutorialLured = false;
 	private tutorialFollowAt = 0;
 	readonly players = new Map<string, MatchPlayer>();
@@ -191,7 +200,11 @@ export class Match {
 		this.tutorial = options.tutorial ?? false;
 		this.now = this.clock();
 		this.createdAt = this.now;
-		this.layout = generateManor(this.seed, this.config);
+		this.pickupTotal = pickupTotal(this.config, options.participants.length);
+		this.layout = generateManor(this.seed, {
+			...this.config,
+			pickupTotal: this.pickupTotal,
+		});
 		this.checksum = layoutChecksum(this.layout);
 		this.world = new CollisionWorld(this.layout);
 		this.grid = new NavGrid(this.world);
@@ -213,6 +226,7 @@ export class Match {
 				this.layout.pickups,
 				OCCULT_RECIPES[tutorialObject],
 			);
+			this.loot.respawnPool = recipeDeck(OCCULT_RECIPES[tutorialObject]);
 		}
 		this.anomalies = this.roster.instances.map(
 			(instance, index) =>
@@ -291,6 +305,7 @@ export class Match {
 			serverTime: this.clock(),
 			dev: this.dev,
 			tutorial: this.tutorial,
+			pickupTotal: this.pickupTotal,
 		};
 	}
 
@@ -783,7 +798,7 @@ export class Match {
 	applyDamage(
 		player: MatchPlayer,
 		amount: number,
-		source: SpeciesId | "explosion",
+		source: SpeciesId | "explosion" | "fall",
 		from: Vec3 | null,
 		periodic = false,
 	): boolean {
@@ -823,7 +838,31 @@ export class Match {
 		return true;
 	}
 
-	private kill(player: MatchPlayer, cause: SpeciesId | "explosion"): void {
+	applyFallDamage(player: MatchPlayer, amount: number): void {
+		if (!this.tutorial) {
+			this.applyDamage(player, amount, "fall", null);
+			return;
+		}
+		const health = Math.max(1, player.health - amount);
+		if (health < player.health && !player.devModes.immortal) {
+			const lost = player.health - health;
+			player.health = health;
+			this.emit({
+				type: "damage",
+				playerId: player.id,
+				amount: lost,
+				source: "fall",
+				hp: health,
+				from: null,
+				periodic: false,
+			});
+		}
+	}
+
+	private kill(
+		player: MatchPlayer,
+		cause: SpeciesId | "explosion" | "fall",
+	): void {
 		player.alive = false;
 		player.deaths += 1;
 		player.respawnAt = this.now + PLAYER_RESPAWN_DELAY_MS;
@@ -873,6 +912,7 @@ export class Match {
 		player.lastForcedMoveId = this.forcedMoveCounter;
 		player.position = { ...position };
 		player.velocity = { x: 0, y: 0, z: 0 };
+		player.fallPeakY = null;
 		player.movementBudget = 1.5;
 		if (yaw !== null) {
 			player.yaw = yaw;
@@ -1006,6 +1046,28 @@ export class Match {
 			anomalyId: entity.id,
 			gen: entity.gen,
 			species: entity.species,
+		});
+	}
+
+	handleTutorialWound(playerId: string): void {
+		const player = this.players.get(playerId);
+		if (
+			!this.tutorial ||
+			!player?.alive ||
+			player.health <= TUTORIAL_WOUNDED_HEALTH
+		) {
+			return;
+		}
+		const amount = player.health - TUTORIAL_WOUNDED_HEALTH;
+		player.health = TUTORIAL_WOUNDED_HEALTH;
+		this.emit({
+			type: "damage",
+			playerId: player.id,
+			amount,
+			source: this.anomalies[0]?.species ?? "murmure",
+			hp: player.health,
+			from: null,
+			periodic: false,
 		});
 	}
 
@@ -1421,12 +1483,15 @@ export class Match {
 
 	currentStateEvents(): GameEvent[] {
 		const events: GameEvent[] = [];
+		for (const [id, material] of this.loot.respawned) {
+			events.push({ type: "pickupBack", id, material });
+		}
 		for (const id of this.loot.returnsAt.keys()) {
 			events.push({
 				type: "pickup",
 				id,
 				playerId: "",
-				material: this.layout.pickups[id].material,
+				material: this.loot.materialOf(this, id),
 			});
 		}
 		for (const door of this.doors.doors) {

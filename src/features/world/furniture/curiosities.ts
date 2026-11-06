@@ -15,6 +15,7 @@ import {
 	lathe,
 	type Part,
 	part,
+	pickCarved,
 	pickWood,
 	plane,
 	STONE,
@@ -272,8 +273,8 @@ export const orrery: FurnitureBuilder = ({ item, rng }) => {
 			Math.sin(angle) * radius * Math.sin(tilt),
 			Math.sin(angle) * radius,
 		);
-		parts.push(
-			sphere(
+		parts.push({
+			...sphere(
 				{ color: planets[index], roughness: 0.5 },
 				0.03 + index * 0.008,
 				point.x,
@@ -284,7 +285,15 @@ export const orrery: FurnitureBuilder = ({ item, rng }) => {
 				1,
 				10,
 			),
-		);
+			animation: {
+				kind: "spin",
+				pivot: [0, center, 0],
+				axis: [Math.sin(tilt), Math.cos(tilt), 0],
+				speed: 0.5 - index * 0.13,
+				amplitude: 0,
+				phase: 0,
+			},
+		});
 	});
 	return parts;
 };
@@ -586,13 +595,14 @@ export const laundryBasket: FurnitureBuilder = ({ item }) => {
 };
 
 export const sarcophagus: FurnitureBuilder = ({ item, rng }) => {
+	const material = pickCarved(rng);
 	const { width, height, depth } = item;
 	const lidHeight = 0.16;
 	const shift = rng.chance(0.4) ? 0.12 : 0;
 	return [
-		box(STONE, width * 0.94, 0.12, depth * 0.96, 0, 0, 0),
+		box(material, width * 0.94, 0.12, depth * 0.96, 0, 0, 0),
 		box(
-			STONE,
+			material,
 			width * 0.88,
 			height - lidHeight - 0.12,
 			depth * 0.9,
@@ -603,7 +613,7 @@ export const sarcophagus: FurnitureBuilder = ({ item, rng }) => {
 			0.02,
 		),
 		box(
-			STONE,
+			material,
 			width,
 			lidHeight,
 			depth,

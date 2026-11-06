@@ -3,15 +3,20 @@ import { meterTorus, scaleUv } from "../geometryUtils";
 import type { MaterialOptions } from "../MaterialLibrary";
 import {
 	cylinder,
-	cylinderBetween,
 	type FurnitureBuilder,
 	lathe,
 	type Part,
 	STONE,
 	sphere,
 } from "./parts";
+import {
+	curvedLeaf,
+	flowerHead,
+	leafMaterial,
+	potMaterial,
+	stem,
+} from "./plants";
 
-const TERRACOTTA: MaterialOptions = { color: 0xb5643c, roughness: 0.9 };
 const SOIL: MaterialOptions = { texture: "soil", roughness: 1 };
 const STEM: MaterialOptions = { color: 0x4d8a3a, roughness: 0.9 };
 const LILY_PAD: MaterialOptions = {
@@ -117,39 +122,33 @@ export const pond: FurnitureBuilder = ({ item, rng }) => {
 export const flowerPot: FurnitureBuilder = ({ item, rng }) => {
 	const radius = Math.min(item.width, item.depth) * 0.42;
 	const potHeight = item.height * 0.45;
+	const soilY = potHeight * 0.86;
 	const parts: Part[] = [
 		lathe(
-			TERRACOTTA,
+			potMaterial(),
 			[
 				[0.001, 0],
 				[radius * 0.7, 0],
-				[radius * 0.95, potHeight * 0.85],
-				[radius * 1.08, potHeight * 0.88],
+				[radius * 0.95, potHeight * 0.82],
+				[radius * 1.08, potHeight * 0.85],
 				[radius * 1.08, potHeight],
 				[radius * 0.92, potHeight],
-				[0.001, potHeight * 0.8],
+				[radius * 0.88, soilY - 0.01],
+				[0.001, soilY - 0.01],
 			],
 			0,
 			0,
 			0,
-			12,
+			14,
 		),
-		cylinder(
-			SOIL,
-			radius * 0.9,
-			radius * 0.9,
-			0.01,
-			0,
-			potHeight * 0.86,
-			0,
-			12,
-		),
+		cylinder(SOIL, radius * 0.9, radius * 0.9, 0.01, 0, soilY - 0.01, 0, 14),
 	];
 	const petals: MaterialOptions = {
 		color: rng.pick(FLOWER_COLORS),
 		roughness: 0.7,
 	};
 	const heart: MaterialOptions = { color: 0xf6d24a, roughness: 0.7 };
+	const root = new THREE.Vector3(0, soilY, 0);
 	const stems = rng.int(3, 6);
 	for (let index = 0; index < stems; index += 1) {
 		const angle = (index / stems) * Math.PI * 2 + rng.range(-0.3, 0.3);
@@ -160,30 +159,22 @@ export const flowerPot: FurnitureBuilder = ({ item, rng }) => {
 			Math.sin(angle) * lean,
 		);
 		parts.push(
-			cylinderBetween(
-				STEM,
-				new THREE.Vector3(0, potHeight * 0.85, 0),
-				top,
-				0.007,
-				5,
-			),
-			sphere(petals, rng.range(0.03, 0.045), top.x, top.y, top.z, 1, 0.6, 1, 8),
-			sphere(heart, 0.014, top.x, top.y + 0.018, top.z, 1, 1, 1, 6),
+			stem(STEM, root, top, 0.007),
+			...flowerHead(petals, heart, top, rng.range(0.034, 0.046)),
 		);
 	}
-	for (let index = 0; index < 3; index += 1) {
-		const angle = rng.range(0, Math.PI * 2);
+	const blade = leafMaterial(rng, "leafBlade");
+	const blades = 7;
+	for (let index = 0; index < blades; index += 1) {
 		parts.push(
-			sphere(
-				STEM,
+			curvedLeaf(
+				blade,
+				root,
 				0.05,
-				Math.cos(angle) * radius * 0.5,
-				potHeight + 0.03,
-				Math.sin(angle) * radius * 0.5,
-				1.4,
-				0.35,
-				0.8,
-				6,
+				(item.height - soilY) * rng.range(0.42, 0.62),
+				(index / blades) * Math.PI * 2 + rng.range(-0.3, 0.3),
+				rng.range(0.25, 0.5),
+				rng.range(0.55, 0.9),
 			),
 		);
 	}

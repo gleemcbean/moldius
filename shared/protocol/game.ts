@@ -48,6 +48,7 @@ export interface MatchInit {
 	serverTime: number;
 	dev: boolean;
 	tutorial: boolean;
+	pickupTotal: number;
 }
 
 export interface MatchBegin {
@@ -232,7 +233,7 @@ export type ProjectileKind = "ember" | "slime";
 
 export type GameEvent =
 	| { type: "pickup"; id: number; playerId: string; material: MaterialId }
-	| { type: "pickupBack"; id: number }
+	| { type: "pickupBack"; id: number; material: MaterialId }
 	| { type: "craft"; playerId: string; object: OccultId; altarId: number }
 	| { type: "door"; doorId: number; open: boolean; by: string | null }
 	| {
@@ -265,7 +266,7 @@ export type GameEvent =
 			type: "damage";
 			playerId: string;
 			amount: number;
-			source: SpeciesId | "explosion";
+			source: SpeciesId | "explosion" | "fall";
 			hp: number;
 			from: Vec3 | null;
 			periodic: boolean;
@@ -274,7 +275,7 @@ export type GameEvent =
 			type: "death";
 			playerId: string;
 			respawnAt: number;
-			cause: SpeciesId | "explosion";
+			cause: SpeciesId | "explosion" | "fall";
 	  }
 	| { type: "respawn"; playerId: string; protectedUntil: number }
 	| {

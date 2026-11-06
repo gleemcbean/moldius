@@ -8,6 +8,8 @@ import type { Match } from "../Match.js";
 import type { AnomalyEntity } from "./AnomalyEntity.js";
 import { hoverHeight } from "./locomotion.js";
 
+const NUDGE_TURNS = [0, Math.PI / 2, -Math.PI / 2, Math.PI];
+
 function bodyRadius(entity: AnomalyEntity): number {
 	return Math.min(0.8, Math.max(0.35, entity.definition.aimRadius));
 }
@@ -25,7 +27,7 @@ function nudge(
 	entity: AnomalyEntity,
 	x: number,
 	z: number,
-): void {
+): boolean {
 	const hover = entity.definition.flying ? hoverHeight(entity) : 0;
 	const feet = {
 		x: entity.position.x,
@@ -34,10 +36,11 @@ function nudge(
 	};
 	const target = { x: feet.x + x, y: feet.y, z: feet.z + z };
 	if (!match.finder.walkableLine(feet, target, match.gridLevelOf(feet))) {
-		return;
+		return false;
 	}
 	entity.position.x = target.x;
 	entity.position.z = target.z;
+	return true;
 }
 
 function keepOffPlayers(match: Match, active: AnomalyEntity[]): void {
@@ -57,7 +60,14 @@ function keepOffPlayers(match: Match, active: AnomalyEntity[]): void {
 			if (overlap > 0) {
 				const push = Math.min(SEPARATION_MAX_PUSH, overlap);
 				const angle = distance < 1e-3 ? entity.id + 0.7 : Math.atan2(dz, dx);
-				nudge(match, entity, Math.cos(angle) * push, Math.sin(angle) * push);
+				NUDGE_TURNS.some((turn) =>
+					nudge(
+						match,
+						entity,
+						Math.cos(angle + turn) * push,
+						Math.sin(angle + turn) * push,
+					),
+				);
 			}
 		}
 	}

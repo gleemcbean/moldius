@@ -2,7 +2,7 @@ import { PRIVATE_CODE_LENGTH } from "./config/index.js";
 
 export const INVITE_PARAM = "lobby";
 
-const RESERVED_PATHS = new Set(["terms", "privacy"]);
+const RESERVED_PATHS = new Set(["terms", "privacy", "admin"]);
 
 export interface InviteLink {
 	code: string | null;

@@ -1,0 +1,406 @@
+@use '../../styles/tokens' as *;
+
+$surface: $background-raised;
+$series: #3987e5;
+
+.page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: $background;
+  color: $text;
+  font-family: $font-text;
+  font-size: 16px;
+  user-select: text;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+}
+
+.centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+
+  h1 {
+    margin: 0;
+    @include title(32px);
+  }
+
+  a {
+    color: $yellow;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+
+  h1 {
+    margin: 0;
+    @include title(36px);
+  }
+}
+
+.refresh {
+  padding: 8px 14px;
+  border: 2px solid $line-strong;
+  background: transparent;
+  color: $text;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-color: $yellow;
+  }
+}
+
+.note {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: $text-muted;
+}
+
+.liveRow {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, 1fr);
+  gap: 12px;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.hero,
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: $surface;
+  border: 1px solid $line;
+}
+
+.heroValue {
+  @include figures(56px);
+}
+
+.tileLabel {
+  font-size: 14px;
+  color: $text-muted;
+}
+
+.tileValue {
+  @include figures(32px);
+}
+
+.tileNote {
+  font-size: 13px;
+  line-height: 1.25;
+  color: $text-muted;
+}
+
+.card {
+  padding: 18px 20px;
+  background: $surface;
+  border: 1px solid $line;
+
+  h2 {
+    margin: 0 0 8px;
+    @include title(24px);
+  }
+
+  h3 {
+    margin: 18px 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: $text-muted;
+  }
+}
+
+.headline {
+  margin: 0;
+
+  strong {
+    font-weight: 700;
+  }
+}
+
+.smallMultiples {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 8px 28px;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+}
+
+.columnAxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 150px;
+  font-size: 12px;
+  line-height: 1;
+  text-align: right;
+  color: $text-muted;
+  font-variant-numeric: tabular-nums;
+}
+
+.columnPlot {
+  position: relative;
+  display: flex;
+  gap: 2px;
+}
+
+.gridTop,
+.gridMid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: $line;
+  pointer-events: none;
+}
+
+.gridTop {
+  top: 0;
+}
+
+.gridMid {
+  top: 75px;
+}
+
+.columnHit {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  cursor: default;
+
+  &:hover {
+    background: rgba(236, 239, 226, 0.05);
+  }
+}
+
+.columnArea {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 150px;
+}
+
+.columnBar {
+  position: relative;
+  width: 100%;
+  max-width: 22px;
+  border-radius: 4px 4px 0 0;
+  background: $series;
+}
+
+.columnPeak {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: $text;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.columnLabel {
+  display: flex;
+  justify-content: center;
+  flex: 0 0 22px;
+  padding-top: 6px;
+  border-top: 1px solid $line-strong;
+  font-size: 12px;
+  line-height: 1;
+  color: $text-muted;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.heatmap {
+  display: grid;
+  grid-template-columns: 36px repeat(24, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.heatRow {
+  display: contents;
+}
+
+.heatHour,
+.heatDay {
+  font-size: 12px;
+  color: $text-muted;
+  font-variant-numeric: tabular-nums;
+}
+
+.heatDay {
+  display: flex;
+  align-items: center;
+}
+
+.heatCell {
+  height: 24px;
+  border-radius: 2px;
+  background: rgba(236, 239, 226, 0.04);
+
+  &:hover {
+    outline: 2px solid $text;
+    outline-offset: -1px;
+  }
+}
+
+.heatLegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: $text-muted;
+}
+
+.heatScale {
+  display: flex;
+  gap: 2px;
+
+  i {
+    display: block;
+    width: 20px;
+    height: 12px;
+  }
+}
+
+.heatEmpty {
+  display: block;
+  width: 14px;
+  height: 12px;
+  margin-left: 12px;
+  background: rgba(236, 239, 226, 0.04);
+  border: 1px solid $line;
+}
+
+.dataTable {
+  margin-top: 12px;
+  font-size: 14px;
+
+  summary {
+    cursor: pointer;
+    color: $text-muted;
+  }
+}
+
+.tableScroll {
+  margin-top: 8px;
+  overflow-x: auto;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th,
+  td {
+    padding: 6px 10px;
+    border-bottom: 1px solid $line;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  th {
+    font-weight: 600;
+    color: $text-muted;
+  }
+
+  th button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      color: $text;
+    }
+  }
+
+  .numeric {
+    text-align: right;
+  }
+}
+
+.search {
+  width: min(320px, 100%);
+  padding: 8px 12px;
+  border: 2px solid $line-strong;
+  background: $background;
+  color: $text;
+  font: inherit;
+}
+
+.playerName {
+  font-weight: 600;
+}
+
+.hatDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+}
+
+.onlineTag {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border: 1px solid $ok;
+  font-size: 12px;
+  font-weight: 500;
+  color: $ok;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  max-width: 230px;
+  padding: 6px 10px;
+  border: 1px solid $line-strong;
+  background: $background;
+  font-size: 14px;
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+@media (max-width: 800px) {
+  .liveRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

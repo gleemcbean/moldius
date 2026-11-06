@@ -8,6 +8,26 @@ export const FURNITURE_GRID = 0.25;
 export const NAV_CELL_SIZE = 0.5;
 export const NAV_AGENT_RADIUS = 0.4;
 
+export const GRAND_ROOM_WIDTH: readonly [number, number] = [15, 20];
+export const GRAND_ROOM_DEPTH: readonly [number, number] = [12.5, 16];
+export const MEZZANINE_HEIGHT: readonly [number, number] = [3.25, 3.75];
+export const MEZZANINE_HEADROOM: readonly [number, number] = [3.3, 4];
+export const MEZZANINE_OPENING_MAX_HEIGHT = 2.8;
+export const MIN_PILLAR_SPACING = 4;
+export const DAIS_STEP_RISE = 0.18;
+export const DAIS_STEP_RUN = 0.45;
+export const RELIEF_MAX_HEIGHT = 1;
+export const MEZZANINE_DECK_WIDTH = 3;
+export const MEZZANINE_STAIR_WIDTH = 2.2;
+export const MEZZANINE_RAIL_COLLIDER = 0.95;
+export const MEZZANINE_POST_RADIUS = 0.18;
+export const MEZZANINE_POST_SPACING = 4;
+export const MANOR_GRAND_ROOMS: Record<ManorSize, number> = {
+	small: 1,
+	medium: 2,
+	large: 3,
+};
+
 export const MANOR_GROUND_ROOM_COUNT: Record<ManorSize, number> = {
 	small: 15,
 	medium: 23,

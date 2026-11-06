@@ -1,7 +1,59 @@
 import * as THREE from "three";
 import type { TextureLibrary } from "./textures/TextureLibrary";
 
+export type MaterialWave = "flame" | "fire" | "foliage" | "cloth";
+
+/** Temps partagé par tous les matériaux animés, avancé par DecorAnimator. */
+export const decorTime = { value: 0 };
+
+const WAVE_SHADERS: Record<MaterialWave, string> = {
+	flame: `
+	float waveH = clamp(uv.y, 0.0, 1.0);
+	float wavePhase = position.x * 5.3 + position.z * 7.1;
+	transformed.x += sin(uDecorTime * 9.0 + wavePhase) * 0.012 * waveH;
+	transformed.z += cos(uDecorTime * 7.0 + wavePhase) * 0.012 * waveH;
+	transformed.y += sin(uDecorTime * 13.0 + wavePhase) * 0.012 * waveH;`,
+	fire: `
+	float waveH = clamp(uv.y, 0.0, 1.0);
+	float wavePhase = position.x * 4.1 + position.z * 3.3;
+	float waveA = sin(uDecorTime * 6.5 + wavePhase + waveH * 5.0);
+	float waveB = sin(uDecorTime * 14.0 + wavePhase * 1.7 - waveH * 7.0);
+	transformed.x += (waveA * 0.075 + waveB * 0.03) * waveH;
+	transformed.z += (waveB * 0.05) * waveH;
+	transformed.y += (sin(uDecorTime * 9.0 + wavePhase * 2.3) * 0.5 + 0.2) * 0.14 * waveH;`,
+	foliage: `
+	float waveH = clamp(uv.y, 0.0, 1.0);
+	float wavePhase = position.x * 1.4 + position.z * 1.9 + position.y * 0.7;
+	float waveSway = sin(uDecorTime * 1.3 + wavePhase) + sin(uDecorTime * 3.1 + wavePhase * 2.0) * 0.3;
+	transformed.x += waveSway * 0.03 * waveH;
+	transformed.z += cos(uDecorTime * 1.05 + wavePhase) * 0.024 * waveH;`,
+	cloth: `
+	float waveCloth = sin(uDecorTime * 1.1 + position.x * 1.6 + position.z * 1.6 + position.y * 1.2);
+	transformed += normal * waveCloth * 0.016;`,
+};
+
+/** Déplace les sommets dans le shader : aucun coût de géométrie ni d'appel de rendu. */
+function applyWave(material: THREE.Material, wave: MaterialWave): void {
+	const previous = material.onBeforeCompile.bind(material);
+	const previousKey = material.customProgramCacheKey.bind(material);
+	material.customProgramCacheKey = () => `${previousKey()}-wave-${wave}`;
+	material.onBeforeCompile = (shader, renderer) => {
+		previous(shader, renderer);
+		shader.uniforms.uDecorTime = decorTime;
+		shader.vertexShader = shader.vertexShader
+			.replace(
+				"#include <common>",
+				"#include <common>\nuniform float uDecorTime;",
+			)
+			.replace(
+				"#include <begin_vertex>",
+				`#include <begin_vertex>${WAVE_SHADERS[wave]}`,
+			);
+	};
+}
+
 export interface MaterialOptions {
+	wave?: MaterialWave;
 	texture?: string;
 	color?: number;
 	roughness?: number;
@@ -18,8 +70,8 @@ export interface MaterialOptions {
 	fog?: boolean;
 }
 
-const PIXELS_PER_METER = "20.0";
-const PIXEL_SHADE = "0.07";
+const PIXELS_PER_METER = "28.0";
+const PIXEL_SHADE = "0.04";
 
 function pixelate(material: THREE.MeshStandardMaterial): void {
 	material.customProgramCacheKey = () => "moldius-pixel-1";
@@ -83,6 +135,7 @@ export class MaterialLibrary {
 			options.unlit ?? false,
 			options.fixedRepeat ?? false,
 			options.fog ?? true,
+			options.wave ?? "",
 		]);
 	}
 
@@ -123,7 +176,11 @@ export class MaterialLibrary {
 			fog: options.fog ?? true,
 		};
 		if (options.unlit) {
-			return new THREE.MeshBasicMaterial(shared);
+			const basic = new THREE.MeshBasicMaterial(shared);
+			if (options.wave) {
+				applyWave(basic, options.wave);
+			}
+			return basic;
 		}
 		const material = new THREE.MeshStandardMaterial({
 			...shared,
@@ -134,6 +191,9 @@ export class MaterialLibrary {
 			emissiveMap: options.emissive && map ? map : null,
 		});
 		pixelate(material);
+		if (options.wave) {
+			applyWave(material, options.wave);
+		}
 		return material;
 	}
 

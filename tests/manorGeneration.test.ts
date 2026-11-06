@@ -373,7 +373,8 @@ describe("mobilier", () => {
 					if (
 						a.roomId !== b.roomId ||
 						a.parentId === b.id ||
-						b.parentId === a.id
+						b.parentId === a.id ||
+						Math.abs(a.y - b.y) > 3
 					) {
 						continue;
 					}
@@ -576,7 +577,16 @@ describe("étages et escaliers", () => {
 				expect(rooms.length, `niveau ${level}`).toBeGreaterThan(0);
 				expect(rooms.length).toBeLessThan(ground.length);
 				expect(
-					rooms.every((room) => room.floorY === level * LEVEL_HEIGHT),
+					rooms.every(
+						(room) =>
+							room.floorY === level * LEVEL_HEIGHT ||
+							item.layout.openings.some(
+								(opening) =>
+									opening.roomB === room.id &&
+									item.layout.rooms[opening.roomA].mezzanine?.floorY ===
+										room.floorY,
+							),
+					),
 				).toBe(true);
 			}
 			expect(item.layout.levels.length).toBeLessThanOrEqual(item.floors + 1);
@@ -616,7 +626,7 @@ describe("étages et escaliers", () => {
 		expect(lowRooms.length).toBeGreaterThan(3);
 		for (const { item, room } of tallRooms) {
 			expect(room.height).toBeGreaterThan(5);
-			expect(room.height).toBeLessThanOrEqual(6);
+			expect(room.height).toBeLessThanOrEqual(room.mezzanine ? 8.4 : 6);
 			const above = item.layout.rooms.filter(
 				(other) =>
 					other.level === room.level + 1 &&

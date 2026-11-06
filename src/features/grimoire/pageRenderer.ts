@@ -184,19 +184,12 @@ export function renderLeftPage(
 			pictureSize,
 		);
 	}
-	context.font = `400 64px ${TITLE_FONT}`;
-	context.fillStyle = RED_INK;
-	context.fillText(
-		labels.points(species.points),
-		PAGE_WIDTH / 2,
-		pictureTop + pictureSize + 80,
-	);
 	context.font = `italic 400 32px ${HAND_FONT}`;
 	context.fillStyle = INK_SOFT;
 	context.fillText(
 		labels.inPool,
 		PAGE_WIDTH / 2,
-		pictureTop + pictureSize + 130,
+		pictureTop + pictureSize + 70,
 	);
 	context.textAlign = "left";
 }

@@ -6,6 +6,9 @@ export const GRAVITY = 12;
 export const EYE_HEIGHT_STANDING = 0.85;
 export const CROUCH_EYE_DROP = 0.2;
 export const PLAYER_HEIGHT_STANDING = 1.78;
+export const PLAYER_HEAD_CLEARANCE = 1.3;
+export const FALL_SAFE_HEIGHT = 2.2;
+export const FALL_DAMAGE_PER_METER = 14;
 export const PLAYER_HEIGHT_CROUCHED = 1.18;
 export const PLAYER_RADIUS = 0.15;
 export const PLAYER_HIT_RADIUS = 0.2;
@@ -26,6 +29,7 @@ export const SPRINT_STOP_THRESHOLD = 1;
 export const SPRINT_RESUME_THRESHOLD = 20;
 export const LANTERN_MIN_ENERGY_TO_OPEN = 2;
 export const JUMP_ENERGY_COST = 8;
+export const JUMP_MIN_ENERGY = 2;
 
 export const LANTERN_LIGHT_INTENSITY = 12;
 export const LANTERN_LIGHT_RANGE = 16;

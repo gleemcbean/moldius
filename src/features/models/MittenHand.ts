@@ -53,19 +53,3 @@ export class MittenHand {
 		);
 	}
 }
-
-export function orientHand(
-	hand: THREE.Object3D,
-	fingerDirection: THREE.Vector3,
-	palmDirection: THREE.Vector3,
-): void {
-	const yAxis = fingerDirection.clone().normalize().negate();
-	const zAxis = palmDirection
-		.clone()
-		.addScaledVector(yAxis, -palmDirection.dot(yAxis))
-		.normalize();
-	const xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
-	hand.quaternion.setFromRotationMatrix(
-		new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis),
-	);
-}

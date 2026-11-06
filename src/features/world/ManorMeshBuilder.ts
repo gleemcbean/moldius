@@ -1,4 +1,6 @@
+import { MEZZANINE_POST_RADIUS, SLAB_THICKNESS } from "@shared/config/index";
 import { DOOR_FRAME_WIDTH, DOOR_THICKNESS } from "@shared/manor/doors";
+import { furnitureDefinition } from "@shared/manor/furnitureCatalog";
 import { openingPassage } from "@shared/manor/layoutBuilder";
 import {
 	edgeLength,
@@ -6,15 +8,28 @@ import {
 	tessellateOutline,
 } from "@shared/manor/polygon";
 import type {
+	FurnitureItem,
 	ManorLayout,
+	MezzanineSpec,
 	Opening,
 	OutlineEdge,
 	Room,
 	StairSpec,
 } from "@shared/manor/types";
+import {
+	clipProfile,
+	type ReliefNode,
+	wallProfile,
+} from "@shared/manor/wallRelief";
 import { SeededRandom } from "@shared/random";
 import * as THREE from "three";
+import type { AnimatedDecor } from "./DecorAnimator";
 import { builderFor } from "./furniture";
+import {
+	carvedForSeed,
+	type Part,
+	type PartAnimation,
+} from "./furniture/parts";
 import { GeometryBucket } from "./GeometryBucket";
 import { meterBox, meterCylinder } from "./geometryUtils";
 import type { MaterialLibrary, MaterialOptions } from "./MaterialLibrary";
@@ -42,10 +57,116 @@ const CEILING_TEXTURES: Record<string, string> = {
 	planks: "darkPlanks",
 };
 
+const COPLANAR_SEPARATION = 0.00025;
+const ROOF_CHANCE = 42;
+const ROOF_MIN_EAVES = 2.7;
+const ROOF_DECK_CLEARANCE = 2.75;
+const ROOF_MIN_DROP = 0.35;
+const ROOF_RAFTER_SPACING = 1.5;
+const ROOF_RAFTER_SIZE = 0.15;
+const ROOFLESS_ROOMS = new Set(["corridor", "stairwell", "closet", "toilets"]);
+/** Les pilastres restent au-dessus des meubles adossés aux murs. */
+const PILASTER_BOTTOM = 2.6;
+const PILASTER_MIN_AREA = 45;
+const PILASTER_MIN_WALL = 4;
+const PILASTER_SPACING = 3.6;
+const ROOF_IGNORED_ITEMS = new Set([
+	"hangingFern",
+	"cobweb",
+	"pillar",
+	"valveStation",
+]);
+
+interface Roof {
+	across: { x: number; z: number };
+	center: number;
+	half: number;
+	gable: boolean;
+	heightAt: (x: number, z: number) => number;
+}
+
+function clipPolygon(
+	polygon: { x: number; z: number }[],
+	normal: { x: number; z: number },
+	offset: number,
+): { x: number; z: number }[] {
+	const kept: { x: number; z: number }[] = [];
+	polygon.forEach((a, index) => {
+		const b = polygon[(index + 1) % polygon.length];
+		const inA = a.x * normal.x + a.z * normal.z - offset;
+		const inB = b.x * normal.x + b.z * normal.z - offset;
+		if (inA >= 0) {
+			kept.push(a);
+		}
+		if (inA * inB < 0) {
+			const t = inA / (inA - inB);
+			kept.push({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t });
+		}
+	});
+	return kept;
+}
+
+function separateCoplanarFaces(
+	geometry: THREE.BufferGeometry,
+	index: number,
+): void {
+	geometry.computeBoundingBox();
+	const center = (geometry.boundingBox as THREE.Box3).getCenter(
+		new THREE.Vector3(),
+	);
+	const scale = 1 + COPLANAR_SEPARATION * ((index % 5) + 1);
+	geometry.translate(-center.x, -center.y, -center.z);
+	geometry.scale(scale, scale, scale);
+	geometry.translate(center.x, center.y, center.z);
+}
+
 export interface RoomMeshes {
 	room: Room;
 	group: THREE.Group;
 	center: THREE.Vector3;
+	animated: AnimatedDecor[];
+}
+
+const CEILING_SWING: Record<string, { amplitude: number; speed: number }> = {
+	chandelier: { amplitude: 0.018, speed: 0.75 },
+	hangingCage: { amplitude: 0.05, speed: 1.15 },
+	hangingLantern: { amplitude: 0.05, speed: 1.3 },
+	hangingChains: { amplitude: 0.035, speed: 1.05 },
+	hangingPots: { amplitude: 0.03, speed: 1.2 },
+	hangingFern: { amplitude: 0.04, speed: 0.9 },
+};
+
+const ROCKING: Record<string, { amplitude: number; speed: number }> = {
+	rockingChair: { amplitude: 0.05, speed: 1.1 },
+	rockingHorse: { amplitude: 0.045, speed: 1.3 },
+};
+
+/** Animation d'un meuble entier : suspensions qui balancent, fauteuils qui bercent. */
+function wholeItemAnimation(item: FurnitureItem): PartAnimation | null {
+	const phase = (item.seed % 628) / 100;
+	const swing = CEILING_SWING[item.kind];
+	if (swing) {
+		return {
+			kind: "swing",
+			pivot: [0, item.height, 0],
+			axis: [Math.cos(phase), 0, Math.sin(phase)],
+			speed: swing.speed,
+			amplitude: swing.amplitude,
+			phase,
+		};
+	}
+	const rock = ROCKING[item.kind];
+	if (rock) {
+		return {
+			kind: "swing",
+			pivot: [0, 0, 0],
+			axis: [1, 0, 0],
+			speed: rock.speed,
+			amplitude: rock.amplitude,
+			phase,
+		};
+	}
+	return null;
 }
 
 function wallMaterial(room: Room): MaterialOptions {
@@ -65,6 +186,8 @@ function hasTrim(room: Room): boolean {
 }
 
 export class ManorMeshBuilder {
+	private readonly roofs = new Map<number, Roof | null>();
+
 	constructor(
 		private readonly layout: ManorLayout,
 		private readonly materials: MaterialLibrary,
@@ -72,20 +195,25 @@ export class ManorMeshBuilder {
 
 	buildRoom(room: Room): RoomMeshes {
 		const bucket = new GeometryBucket(this.materials);
+		const animated: AnimatedDecor[] = [];
+		const group = new THREE.Group();
 		this.addFloor(bucket, room);
 		this.addCeiling(bucket, room);
 		this.addWalls(bucket, room);
 		if (room.stair) {
 			this.addStairs(bucket, room, room.stair);
 		}
-		this.addFurniture(bucket, room);
+		if (room.mezzanine) {
+			this.addMezzanine(bucket, room, room.mezzanine);
+		}
+		this.addPilasters(bucket, room);
+		this.addFurniture(bucket, room, group, animated);
 		for (const openingId of room.openingIds) {
 			const opening = this.layout.openings[openingId];
 			if (opening.roomA === room.id) {
 				this.addOpening(bucket, opening);
 			}
 		}
-		const group = new THREE.Group();
 		group.name = `room-${room.id}`;
 		for (const mesh of bucket.toMeshes()) {
 			group.add(mesh);
@@ -95,7 +223,7 @@ export class ManorMeshBuilder {
 			room.floorY + room.height / 2,
 			room.labelPoint.z,
 		);
-		return { room, group, center };
+		return { room, group, center, animated };
 	}
 
 	private floorGeometry(
@@ -103,9 +231,17 @@ export class ManorMeshBuilder {
 		y: number,
 		facingDown: boolean,
 	): THREE.BufferGeometry {
+		return this.polygonGeometry(room.polygon, y, facingDown);
+	}
+
+	private polygonGeometry(
+		polygon: { x: number; z: number }[],
+		y: number,
+		facingDown: boolean,
+	): THREE.BufferGeometry {
 		const sign = facingDown ? 1 : -1;
 		const shape = new THREE.Shape(
-			room.polygon.map((point) => new THREE.Vector2(point.x, sign * point.z)),
+			polygon.map((point) => new THREE.Vector2(point.x, sign * point.z)),
 		);
 		const geometry = new THREE.ShapeGeometry(shape);
 		geometry.rotateX((sign * Math.PI) / 2);
@@ -126,6 +262,11 @@ export class ManorMeshBuilder {
 			this.addGlassCeiling(bucket, room);
 			return;
 		}
+		const roof = this.roofFor(room);
+		if (roof) {
+			this.addRoof(bucket, room, roof);
+			return;
+		}
 		bucket.add(
 			{ texture: CEILING_TEXTURES[style] ?? "ceilingPlaster", roughness: 1 },
 			this.floorGeometry(room, room.ceilingY, true),
@@ -142,6 +283,209 @@ export class ManorMeshBuilder {
 		if (style === "coffered") {
 			this.addBeams(bucket, room, TRIM, 0.12, 1.5);
 			this.addBeams(bucket, room, TRIM, 0.12, 1.5, Math.PI / 2);
+		}
+	}
+
+	private roofFor(room: Room): Roof | null {
+		const known = this.roofs.get(room.id);
+		if (known !== undefined) {
+			return known;
+		}
+		const roof = this.planRoof(room);
+		this.roofs.set(room.id, roof);
+		return roof;
+	}
+
+	private planRoof(room: Room): Roof | null {
+		if (
+			room.style.ceiling === "glass" ||
+			ROOFLESS_ROOMS.has(room.type) ||
+			(!room.mezzanine &&
+				room.type !== "attic" &&
+				room.seed % 100 >= ROOF_CHANCE)
+		) {
+			return null;
+		}
+		const axis = {
+			x: Math.cos(room.axisAngle),
+			z: Math.sin(room.axisAngle),
+		};
+		const spanOf = (direction: { x: number; z: number }) => {
+			const values = room.polygon.map(
+				(point) => point.x * direction.x + point.z * direction.z,
+			);
+			return { min: Math.min(...values), max: Math.max(...values) };
+		};
+		const cross = { x: -axis.z, z: axis.x };
+		const axisSpan = spanOf(axis);
+		const crossSpan = spanOf(cross);
+		const shorter = axisSpan.max - axisSpan.min < crossSpan.max - crossSpan.min;
+		const across = shorter ? axis : cross;
+		const span = shorter ? axisSpan : crossSpan;
+		const half = (span.max - span.min) / 2;
+		const center = (span.min + span.max) / 2;
+		const gable = room.mezzanine !== null || room.seed % 3 !== 0;
+		const lowest = room.mezzanine
+			? room.mezzanine.floorY + ROOF_DECK_CLEARANCE
+			: room.floorY + ROOF_MIN_EAVES;
+		const fraction = (distance: number) =>
+			gable
+				? Math.min(1, Math.abs(distance) / half)
+				: Math.min(1, Math.max(0, (half - distance) / (half * 2)));
+		let drop = Math.min(room.ceilingY - lowest, half * (gable ? 0.8 : 0.6));
+		for (const item of this.layout.furniture) {
+			if (
+				item.roomId !== room.id ||
+				item.parentId !== null ||
+				ROOF_IGNORED_ITEMS.has(item.kind)
+			) {
+				continue;
+			}
+			const definition = furnitureDefinition(item.kind);
+			const top =
+				item.y +
+				(definition.placement === "ceiling"
+					? definition.variants[item.variant].height
+					: item.height);
+			const reach = Math.max(item.width, item.depth) / 2;
+			const distance = item.x * across.x + item.z * across.z - center;
+			const lowered = Math.max(
+				fraction(distance - reach),
+				fraction(distance + reach),
+			);
+			if (lowered > 0.001) {
+				drop = Math.min(drop, (room.ceilingY - top - 0.05) / lowered);
+			}
+		}
+		if (drop < ROOF_MIN_DROP) {
+			return null;
+		}
+		return {
+			across,
+			center,
+			half,
+			gable,
+			heightAt: (x, z) =>
+				room.ceilingY - fraction(x * across.x + z * across.z - center) * drop,
+		};
+	}
+
+	private addRoof(bucket: GeometryBucket, room: Room, roof: Roof): void {
+		const material: MaterialOptions = {
+			texture: CEILING_TEXTURES[room.style.ceiling] ?? "ceilingPlaster",
+			roughness: 1,
+		};
+		const { across, center } = roof;
+		const pieces = roof.gable
+			? [1, -1].map((side) =>
+					clipPolygon(
+						room.polygon,
+						{ x: across.x * side, z: across.z * side },
+						center * side,
+					),
+				)
+			: [room.polygon];
+		for (const piece of pieces) {
+			if (piece.length < 3) {
+				continue;
+			}
+			const geometry = this.polygonGeometry(piece, 0, true);
+			const position = geometry.getAttribute(
+				"position",
+			) as THREE.BufferAttribute;
+			for (let index = 0; index < position.count; index += 1) {
+				position.setY(
+					index,
+					roof.heightAt(position.getX(index), position.getZ(index)),
+				);
+			}
+			geometry.computeVertexNormals();
+			bucket.add(material, geometry);
+		}
+		this.addRafters(bucket, room, roof);
+	}
+
+	private addRafters(bucket: GeometryBucket, room: Room, roof: Roof): void {
+		const { across, center } = roof;
+		const along = { x: -across.z, z: across.x };
+		const { minX, maxX, minZ, maxZ } = room.bounds;
+		const middle = { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2 };
+		const shift = center - (middle.x * across.x + middle.z * across.z);
+		const base = {
+			x: middle.x + across.x * shift,
+			z: middle.z + across.z * shift,
+		};
+		const extent = Math.hypot(maxX - minX, maxZ - minZ) / 2 + 1;
+		const beam = (
+			from: { x: number; z: number },
+			to: { x: number; z: number },
+		) => {
+			const start = new THREE.Vector3(
+				from.x,
+				roof.heightAt(from.x, from.z) - ROOF_RAFTER_SIZE / 2,
+				from.z,
+			);
+			const end = new THREE.Vector3(
+				to.x,
+				roof.heightAt(to.x, to.z) - ROOF_RAFTER_SIZE / 2,
+				to.z,
+			);
+			const length = start.distanceTo(end);
+			if (length < 0.3) {
+				return;
+			}
+			bucket.add(
+				TRIM,
+				meterBox(length, ROOF_RAFTER_SIZE, ROOF_RAFTER_SIZE),
+				new THREE.Matrix4().compose(
+					start.clone().add(end).multiplyScalar(0.5),
+					new THREE.Quaternion().setFromUnitVectors(
+						new THREE.Vector3(1, 0, 0),
+						end.clone().sub(start).normalize(),
+					),
+					new THREE.Vector3(1, 1, 1),
+				),
+			);
+		};
+		for (
+			let offset = -extent;
+			offset <= extent;
+			offset += ROOF_RAFTER_SPACING
+		) {
+			const origin = {
+				x: base.x + along.x * offset,
+				z: base.z + along.z * offset,
+			};
+			const at = (t: number) => ({
+				x: origin.x + across.x * t,
+				z: origin.z + across.z * t,
+			});
+			for (const [from, to] of this.insideIntervals(
+				room,
+				origin,
+				across,
+				extent,
+			)) {
+				if (roof.gable && from < 0 && to > 0) {
+					beam(at(from), at(0));
+					beam(at(0), at(to));
+				} else {
+					beam(at(from), at(to));
+				}
+			}
+		}
+		if (roof.gable) {
+			for (const [from, to] of this.insideIntervals(
+				room,
+				base,
+				along,
+				extent,
+			)) {
+				beam(
+					{ x: base.x + along.x * from, z: base.z + along.z * from },
+					{ x: base.x + along.x * to, z: base.z + along.z * to },
+				);
+			}
 		}
 	}
 
@@ -339,6 +683,7 @@ export class ManorMeshBuilder {
 		if (cursor < length) {
 			pieces.push({ from: cursor, to: length, bottom: 0, top: room.height });
 		}
+		const profile = wallProfile(room);
 		for (const piece of pieces) {
 			for (const band of this.wallBands(room)) {
 				const bottom = Math.max(piece.bottom, band.from);
@@ -346,17 +691,16 @@ export class ManorMeshBuilder {
 				if (top - bottom < 0.005) {
 					continue;
 				}
-				bucket.add(
+				this.addProfiledWall(
+					bucket,
 					band.material,
-					this.wallQuad(
-						edge.a,
-						direction,
-						piece.from,
-						piece.to,
-						room.floorY + bottom,
-						room.floorY + top,
-						perimeter,
-					),
+					clipProfile(profile, bottom, top),
+					room.floorY,
+					edge.a,
+					direction,
+					piece.from,
+					piece.to,
+					perimeter,
 				);
 			}
 			if (hasTrim(room) && piece.bottom === 0 && piece.to - piece.from > 0.05) {
@@ -402,59 +746,186 @@ export class ManorMeshBuilder {
 		}
 	}
 
-	private wallQuad(
+	/** Mur droit extrudé selon son profil vertical, fermé à ses deux bouts. */
+	private addProfiledWall(
+		bucket: GeometryBucket,
+		material: MaterialOptions,
+		nodes: ReliefNode[],
+		floorY: number,
 		origin: { x: number; z: number },
 		direction: { x: number; z: number },
 		from: number,
 		to: number,
-		bottom: number,
-		top: number,
 		perimeter: number,
-	): THREE.BufferGeometry {
-		const ax = origin.x + direction.x * from;
-		const az = origin.z + direction.z * from;
-		const bx = origin.x + direction.x * to;
-		const bz = origin.z + direction.z * to;
+	): void {
 		const normal = { x: -direction.z, z: direction.x };
+		const positions: number[] = [];
+		const normals: number[] = [];
+		const uvs: number[] = [];
+		const indices: number[] = [];
+		const at = (along: number, depth: number) => ({
+			x: origin.x + direction.x * along + normal.x * depth,
+			z: origin.z + direction.z * along + normal.z * depth,
+		});
+		const quad = (
+			corners: [number, number, number][],
+			faceNormal: [number, number, number],
+			quadUv: [number, number][],
+		) => {
+			const base = positions.length / 3;
+			for (const [index, corner] of corners.entries()) {
+				positions.push(...corner);
+				normals.push(...faceNormal);
+				uvs.push(...quadUv[index]);
+			}
+			indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+		};
+		const u0 = perimeter + from;
+		const u1 = perimeter + to;
+		for (let index = 1; index < nodes.length; index += 1) {
+			const low = nodes[index - 1];
+			const high = nodes[index];
+			const rise = high.y - low.y;
+			const reach = high.depth - low.depth;
+			const size = Math.hypot(rise, reach) || 1;
+			const a0 = at(from, low.depth);
+			const b0 = at(to, low.depth);
+			const a1 = at(from, high.depth);
+			const b1 = at(to, high.depth);
+			const v0 = low.y + low.depth;
+			const v1 = high.y + high.depth;
+			quad(
+				[
+					[a0.x, floorY + low.y, a0.z],
+					[b0.x, floorY + low.y, b0.z],
+					[b1.x, floorY + high.y, b1.z],
+					[a1.x, floorY + high.y, a1.z],
+				],
+				[(normal.x * rise) / size, -reach / size, (normal.z * rise) / size],
+				[
+					[u0, v0],
+					[u1, v0],
+					[u1, v1],
+					[u0, v1],
+				],
+			);
+			if (low.depth < 0.002 && high.depth < 0.002) {
+				continue;
+			}
+			for (const [along, sign] of [
+				[from, -1],
+				[to, 1],
+			] as const) {
+				const wall = at(along, 0);
+				const lowOut = at(along, low.depth);
+				const highOut = at(along, high.depth);
+				const corners: [number, number, number][] = [
+					[wall.x, floorY + low.y, wall.z],
+					[lowOut.x, floorY + low.y, lowOut.z],
+					[highOut.x, floorY + high.y, highOut.z],
+					[wall.x, floorY + high.y, wall.z],
+				];
+				quad(
+					sign > 0 ? corners : [...corners].reverse(),
+					[direction.x * sign, 0, direction.z * sign],
+					[
+						[0, low.y],
+						[low.depth, low.y],
+						[high.depth, high.y],
+						[0, high.y],
+					],
+				);
+			}
+		}
 		const geometry = new THREE.BufferGeometry();
 		geometry.setAttribute(
 			"position",
-			new THREE.Float32BufferAttribute(
-				[ax, bottom, az, bx, bottom, bz, bx, top, bz, ax, top, az],
-				3,
-			),
+			new THREE.Float32BufferAttribute(positions, 3),
 		);
 		geometry.setAttribute(
 			"normal",
-			new THREE.Float32BufferAttribute(
-				[
-					normal.x,
-					0,
-					normal.z,
-					normal.x,
-					0,
-					normal.z,
-					normal.x,
-					0,
-					normal.z,
-					normal.x,
-					0,
-					normal.z,
-				],
-				3,
-			),
+			new THREE.Float32BufferAttribute(normals, 3),
 		);
-		const u0 = perimeter + from;
-		const u1 = perimeter + to;
-		geometry.setAttribute(
-			"uv",
-			new THREE.Float32BufferAttribute(
-				[u0, bottom, u1, bottom, u1, top, u0, top],
-				2,
-			),
+		geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+		geometry.setIndex(indices);
+		bucket.add(material, geometry);
+	}
+
+	/** Pilastres verticaux sur les longs murs des grandes pièces. */
+	private addPilasters(bucket: GeometryBucket, room: Room): void {
+		if (room.area < PILASTER_MIN_AREA || room.type === "corridor") {
+			return;
+		}
+		const material = hasTrim(room) ? TRIM : wallMaterial(room);
+		const profile = wallProfile(room);
+		const topDepthStart =
+			[...profile].reverse().find((node) => node.depth < 0.002)?.y ??
+			room.height;
+		const top = Math.min(topDepthStart, room.height);
+		if (top - PILASTER_BOTTOM < 0.7) {
+			return;
+		}
+		const standing = this.layout.furniture.filter(
+			(item) =>
+				item.roomId === room.id &&
+				item.parentId === null &&
+				furnitureDefinition(item.kind).placement !== "ceiling",
 		);
-		geometry.setIndex([0, 1, 2, 0, 2, 3]);
-		return geometry;
+		room.edges.forEach((edge, edgeIndex) => {
+			const length = edgeLength(edge);
+			if (edge.kind !== "line" || length < PILASTER_MIN_WALL) {
+				return;
+			}
+			const direction = {
+				x: (edge.b.x - edge.a.x) / length,
+				z: (edge.b.z - edge.a.z) / length,
+			};
+			const normal = { x: -direction.z, z: direction.x };
+			const count = Math.max(1, Math.floor(length / PILASTER_SPACING));
+			for (let index = 1; index <= count; index += 1) {
+				const along = (length * index) / (count + 1);
+				const clearOfOpening = room.edgeOpenings[edgeIndex].every(
+					(slot) => along < slot.from - 0.45 || along > slot.to + 0.45,
+				);
+				const x = edge.a.x + direction.x * along;
+				const z = edge.a.z + direction.z * along;
+				const clearOfFurniture = standing.every(
+					(item) =>
+						Math.hypot(item.x - x, item.z - z) >
+						Math.max(item.width, item.depth) / 2 + 0.45,
+				);
+				if (!clearOfOpening || !clearOfFurniture) {
+					continue;
+				}
+				const rotation = new THREE.Quaternion().setFromEuler(
+					new THREE.Euler(0, -Math.atan2(direction.z, direction.x), 0),
+				);
+				const piece = (
+					width: number,
+					depth: number,
+					from: number,
+					to: number,
+				) => {
+					bucket.add(
+						material,
+						meterBox(width, to - from, depth),
+						new THREE.Matrix4().compose(
+							new THREE.Vector3(
+								x + normal.x * (depth / 2),
+								room.floorY + (from + to) / 2,
+								z + normal.z * (depth / 2),
+							),
+							rotation,
+							new THREE.Vector3(1, 1, 1),
+						),
+					);
+				};
+				piece(0.28, 0.07, PILASTER_BOTTOM, PILASTER_BOTTOM + 0.1);
+				piece(0.36, 0.1, PILASTER_BOTTOM + 0.1, top - 0.3);
+				piece(0.46, 0.14, top - 0.3, top - 0.18);
+				piece(0.56, 0.18, top - 0.18, top);
+			}
+		});
 	}
 
 	private addTrimStrip(
@@ -492,33 +963,54 @@ export class ManorMeshBuilder {
 		perimeter: number,
 	): void {
 		const segments = 8;
+		const profile = wallProfile(room);
+		const sign = edge.sweep > 0 ? -1 : 1;
 		for (const band of this.wallBands(room)) {
+			const nodes = clipProfile(profile, band.from, band.to);
 			const positions: number[] = [];
 			const normals: number[] = [];
 			const uvs: number[] = [];
 			const indices: number[] = [];
-			for (let step = 0; step <= segments; step += 1) {
-				const t = step / segments;
-				const angle = edge.startAngle + edge.sweep * t;
-				const x = edge.center.x + Math.cos(angle) * edge.radius;
-				const z = edge.center.z + Math.sin(angle) * edge.radius;
-				const sign = edge.sweep > 0 ? -1 : 1;
-				const nx = Math.cos(angle) * sign;
-				const nz = Math.sin(angle) * sign;
-				const u = perimeter + Math.abs(edge.sweep) * edge.radius * t;
-				positions.push(
-					x,
-					room.floorY + band.from,
-					z,
-					x,
-					room.floorY + band.to,
-					z,
-				);
-				normals.push(nx, 0, nz, nx, 0, nz);
-				uvs.push(u, band.from, u, band.to);
-				if (step < segments) {
-					const base = step * 2;
-					indices.push(base, base + 3, base + 2, base, base + 1, base + 3);
+			for (let index = 1; index < nodes.length; index += 1) {
+				const low = nodes[index - 1];
+				const high = nodes[index];
+				const rise = high.y - low.y;
+				const reach = high.depth - low.depth;
+				const size = Math.hypot(rise, reach) || 1;
+				const start = positions.length / 3;
+				for (let step = 0; step <= segments; step += 1) {
+					const t = step / segments;
+					const angle = edge.startAngle + edge.sweep * t;
+					const cos = Math.cos(angle);
+					const sin = Math.sin(angle);
+					const nx = cos * sign;
+					const nz = sin * sign;
+					const x = edge.center.x + cos * edge.radius;
+					const z = edge.center.z + sin * edge.radius;
+					const u = perimeter + Math.abs(edge.sweep) * edge.radius * t;
+					positions.push(
+						x + nx * low.depth,
+						room.floorY + low.y,
+						z + nz * low.depth,
+						x + nx * high.depth,
+						room.floorY + high.y,
+						z + nz * high.depth,
+					);
+					const ny = -reach / size;
+					const across = rise / size;
+					normals.push(
+						nx * across,
+						ny,
+						nz * across,
+						nx * across,
+						ny,
+						nz * across,
+					);
+					uvs.push(u, low.y + low.depth, u, high.y + high.depth);
+					if (step < segments) {
+						const base = start + step * 2;
+						indices.push(base, base + 3, base + 2, base, base + 1, base + 3);
+					}
 				}
 			}
 			const geometry = new THREE.BufferGeometry();
@@ -894,10 +1386,139 @@ export class ManorMeshBuilder {
 		}
 	}
 
+	private addMezzanine(
+		bucket: GeometryBucket,
+		room: Room,
+		spec: MezzanineSpec,
+	): void {
+		const underside = spec.floorY - SLAB_THICKNESS;
+		bucket.add(
+			{ texture: "oakPlanks", roughness: 0.85 },
+			this.polygonGeometry(spec.deck, spec.floorY, false),
+		);
+		bucket.add(
+			{ texture: "darkPlanks", roughness: 1 },
+			this.polygonGeometry(spec.deck, underside, true),
+		);
+		const rail: MaterialOptions = { texture: "woodRed", roughness: 0.6 };
+		const segment = (
+			a: { x: number; z: number },
+			b: { x: number; z: number },
+			y: number,
+			height: number,
+			thickness: number,
+			material: MaterialOptions,
+		) => {
+			const length = Math.hypot(b.x - a.x, b.z - a.z);
+			bucket.add(
+				material,
+				meterBox(length, height, thickness),
+				new THREE.Matrix4().compose(
+					new THREE.Vector3((a.x + b.x) / 2, y, (a.z + b.z) / 2),
+					new THREE.Quaternion().setFromEuler(
+						new THREE.Euler(0, -Math.atan2(b.z - a.z, b.x - a.x), 0),
+					),
+					new THREE.Vector3(1, 1, 1),
+				),
+			);
+		};
+		for (const { a, b } of spec.rails) {
+			segment(
+				a,
+				b,
+				spec.floorY - SLAB_THICKNESS / 2,
+				SLAB_THICKNESS,
+				0.14,
+				TRIM,
+			);
+			segment(a, b, spec.floorY + 1.02, 0.07, 0.11, rail);
+			segment(a, b, spec.floorY + 0.14, 0.05, 0.07, rail);
+			const length = Math.hypot(b.x - a.x, b.z - a.z);
+			const balusters = Math.floor(length / 0.42);
+			for (let index = 1; index < balusters; index += 1) {
+				const t = index / balusters;
+				bucket.add(
+					rail,
+					meterBox(0.05, 0.86, 0.05),
+					new THREE.Matrix4().makeTranslation(
+						a.x + (b.x - a.x) * t,
+						spec.floorY + 0.58,
+						a.z + (b.z - a.z) * t,
+					),
+				);
+			}
+		}
+		const stone = carvedForSeed(room.seed);
+		const roof = this.roofFor(room);
+		for (const post of spec.posts) {
+			const top = roof ? roof.heightAt(post.x, post.z) : room.ceilingY;
+			const upper = top - spec.floorY;
+			bucket.add(
+				stone,
+				meterCylinder(
+					MEZZANINE_POST_RADIUS * 0.82,
+					MEZZANINE_POST_RADIUS * 0.9,
+					upper,
+					12,
+				),
+				new THREE.Matrix4().makeTranslation(
+					post.x,
+					spec.floorY + upper / 2,
+					post.z,
+				),
+			);
+			bucket.add(
+				TRIM,
+				meterBox(0.5, 0.14, 0.5),
+				new THREE.Matrix4().makeTranslation(post.x, spec.floorY + 0.07, post.z),
+			);
+			bucket.add(
+				TRIM,
+				meterBox(0.46, 0.14, 0.46),
+				new THREE.Matrix4().makeTranslation(post.x, top - 0.07, post.z),
+			);
+			const height = underside - room.floorY;
+			bucket.add(
+				stone,
+				meterCylinder(
+					MEZZANINE_POST_RADIUS,
+					MEZZANINE_POST_RADIUS + 0.04,
+					height,
+					12,
+				),
+				new THREE.Matrix4().makeTranslation(
+					post.x,
+					room.floorY + height / 2,
+					post.z,
+				),
+			);
+			bucket.add(
+				TRIM,
+				meterBox(0.56, 0.16, 0.56),
+				new THREE.Matrix4().makeTranslation(post.x, underside - 0.08, post.z),
+			);
+		}
+		const inner = {
+			x: (spec.stairSide.a.x + spec.stairSide.b.x) / 2 - spec.stair.origin.x,
+			z: (spec.stairSide.a.z + spec.stairSide.b.z) / 2 - spec.stair.origin.z,
+		};
+		this.addStairs(
+			bucket,
+			room,
+			spec.stair,
+			spec.stairSideOuter
+				? 0
+				: inner.x * spec.stair.right.x + inner.z * spec.stair.right.z >= 0
+					? 1
+					: -1,
+		);
+	}
+
 	private addStairs(
 		bucket: GeometryBucket,
 		room: Room,
 		stair: StairSpec,
+		railDirection: 1 | -1 | 0 = 1,
 	): void {
 		const tread: MaterialOptions = { texture: "oakPlanks", roughness: 0.85 };
 		const stringer: MaterialOptions = { texture: "stoneBlocks", roughness: 1 };
@@ -963,77 +1584,113 @@ export class ManorMeshBuilder {
 				new THREE.Vector3(1, 1, 1),
 			),
 		);
-		const railSide = stair.width / 2 - 0.08;
-		const railMaterial: MaterialOptions = {
-			texture: "woodRed",
-			roughness: 0.6,
-		};
-		const startPoint = new THREE.Vector3(
-			stair.origin.x +
-				stair.forward.x * stair.bottomLanding +
-				stair.right.x * railSide,
-			room.floorY + 0.95,
-			stair.origin.z +
-				stair.forward.z * stair.bottomLanding +
-				stair.right.z * railSide,
-		);
-		const endPoint = new THREE.Vector3(
-			stair.origin.x +
-				stair.forward.x * landingStart +
-				stair.right.x * railSide,
-			room.floorY + stair.topY + 0.95,
-			stair.origin.z +
-				stair.forward.z * landingStart +
-				stair.right.z * railSide,
-		);
-		const railLength = startPoint.distanceTo(endPoint);
-		const rail = meterCylinder(0.03, 0.03, railLength, 10);
-		const railQuaternion = new THREE.Quaternion().setFromUnitVectors(
-			new THREE.Vector3(0, 1, 0),
-			new THREE.Vector3().subVectors(endPoint, startPoint).normalize(),
-		);
-		bucket.add(
-			railMaterial,
-			rail,
-			new THREE.Matrix4().compose(
-				startPoint.clone().add(endPoint).multiplyScalar(0.5),
-				railQuaternion,
-				new THREE.Vector3(1, 1, 1),
-			),
-		);
-		for (let index = 0; index <= 6; index += 1) {
-			const t = index / 6;
-			const along = stair.bottomLanding + t * stair.run;
-			const baseY = room.floorY + t * stair.topY + stair.rise * 0.5;
-			const post = meterCylinder(0.025, 0.025, 0.95 - stair.rise * 0.5, 8);
+		for (const direction of railDirection === 0 ? [1, -1] : [railDirection]) {
+			const railSide = (stair.width / 2 - 0.08) * direction;
+			const railMaterial: MaterialOptions = {
+				texture: "woodRed",
+				roughness: 0.6,
+			};
+			const startPoint = new THREE.Vector3(
+				stair.origin.x +
+					stair.forward.x * stair.bottomLanding +
+					stair.right.x * railSide,
+				room.floorY + 0.95,
+				stair.origin.z +
+					stair.forward.z * stair.bottomLanding +
+					stair.right.z * railSide,
+			);
+			const endPoint = new THREE.Vector3(
+				stair.origin.x +
+					stair.forward.x * landingStart +
+					stair.right.x * railSide,
+				room.floorY + stair.topY + 0.95,
+				stair.origin.z +
+					stair.forward.z * landingStart +
+					stair.right.z * railSide,
+			);
+			const railLength = startPoint.distanceTo(endPoint);
+			const rail = meterCylinder(0.03, 0.03, railLength, 10);
+			const railQuaternion = new THREE.Quaternion().setFromUnitVectors(
+				new THREE.Vector3(0, 1, 0),
+				new THREE.Vector3().subVectors(endPoint, startPoint).normalize(),
+			);
 			bucket.add(
 				railMaterial,
-				post,
-				new THREE.Matrix4().makeTranslation(
-					stair.origin.x + stair.forward.x * along + stair.right.x * railSide,
-					baseY + (0.95 - stair.rise * 0.5) / 2,
-					stair.origin.z + stair.forward.z * along + stair.right.z * railSide,
+				rail,
+				new THREE.Matrix4().compose(
+					startPoint.clone().add(endPoint).multiplyScalar(0.5),
+					railQuaternion,
+					new THREE.Vector3(1, 1, 1),
 				),
 			);
+			for (let index = 0; index <= 6; index += 1) {
+				const t = index / 6;
+				const along = stair.bottomLanding + t * stair.run;
+				const baseY = room.floorY + t * stair.topY + stair.rise * 0.5;
+				const post = meterCylinder(0.025, 0.025, 0.95 - stair.rise * 0.5, 8);
+				bucket.add(
+					railMaterial,
+					post,
+					new THREE.Matrix4().makeTranslation(
+						stair.origin.x + stair.forward.x * along + stair.right.x * railSide,
+						baseY + (0.95 - stair.rise * 0.5) / 2,
+						stair.origin.z + stair.forward.z * along + stair.right.z * railSide,
+					),
+				);
+			}
 		}
 	}
 
-	private addFurniture(bucket: GeometryBucket, room: Room): void {
+	private addFurniture(
+		bucket: GeometryBucket,
+		room: Room,
+		group: THREE.Group,
+		animated: AnimatedDecor[],
+	): void {
 		const items = this.layout.furniture.filter(
 			(item) => item.roomId === room.id,
 		);
 		for (const item of items) {
 			const builder = builderFor(item.kind);
 			const parts = builder({ item, room, rng: new SeededRandom(item.seed) });
+			const quaternion = new THREE.Quaternion().setFromEuler(
+				new THREE.Euler(0, -item.rotation, 0),
+			);
+			const position = new THREE.Vector3(item.x, item.y, item.z);
 			const matrix = new THREE.Matrix4().compose(
-				new THREE.Vector3(item.x, item.y, item.z),
-				new THREE.Quaternion().setFromEuler(
-					new THREE.Euler(0, -item.rotation, 0),
-				),
+				position,
+				quaternion,
 				new THREE.Vector3(1, 1, 1),
 			);
-			for (const part of parts) {
-				bucket.add(part.material, part.geometry, matrix);
+			const whole = wholeItemAnimation(item);
+			const moving = new Map<PartAnimation, Part[]>();
+			parts.forEach((part, index) => {
+				separateCoplanarFaces(part.geometry, index);
+				const animation = whole ?? part.animation;
+				if (animation) {
+					moving.set(animation, [...(moving.get(animation) ?? []), part]);
+				} else {
+					bucket.add(part.material, part.geometry, matrix);
+				}
+			});
+			for (const [animation, moved] of moving) {
+				const [px, py, pz] = animation.pivot;
+				const assembly = new GeometryBucket(this.materials);
+				for (const part of moved) {
+					part.geometry.translate(-px, -py, -pz);
+					assembly.add(part.material, part.geometry);
+				}
+				const holder = new THREE.Group();
+				holder.position
+					.set(px, py, pz)
+					.applyQuaternion(quaternion)
+					.add(position);
+				holder.quaternion.copy(quaternion);
+				for (const mesh of assembly.toMeshes()) {
+					holder.add(mesh);
+				}
+				group.add(holder);
+				animated.push({ holder, base: quaternion.clone(), animation });
 			}
 		}
 	}

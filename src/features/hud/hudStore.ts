@@ -20,19 +20,6 @@ export interface TutorialHud {
 	finished: boolean;
 }
 
-export interface LeaderboardRow {
-	id: string;
-	name: string;
-	color: number;
-	score: number;
-	health: number;
-	energy: number;
-	alive: boolean;
-	connected: boolean;
-	self: boolean;
-	team: number | null;
-}
-
 export interface HudFeedback {
 	id: number;
 	text: string;
@@ -45,13 +32,9 @@ export interface HudState {
 	health: number;
 	energy: number;
 	sprintLocked: boolean;
+	energyDeniedAt: number;
 	lanternOpen: boolean;
 	crouching: boolean;
-	score: number;
-	rank: number;
-	team: number | null;
-	teamRank: number;
-	teamCount: number;
 	prompt: string | null;
 	castPhase: CastPhase;
 	inventory: PlayerInventory | null;
@@ -78,11 +61,8 @@ export interface HudState {
 	shoutReadyAt: number;
 	voiceLevel: number;
 	voiceTransmitting: boolean;
-	leaderboard: LeaderboardRow[];
-	showLeaderboard: boolean;
 	showMap: boolean;
 	paused: boolean;
-	needsPointer: boolean;
 	fps: number;
 	level: Level;
 	serverNow: number;
@@ -103,13 +83,9 @@ export function initialHud(): HudState {
 		health: 100,
 		energy: 100,
 		sprintLocked: false,
+		energyDeniedAt: 0,
 		lanternOpen: false,
 		crouching: false,
-		score: 0,
-		rank: 1,
-		team: null,
-		teamRank: 1,
-		teamCount: 0,
 		prompt: null,
 		castPhase: "idle",
 		inventory: null,
@@ -136,11 +112,8 @@ export function initialHud(): HudState {
 		voiceLevel: 0,
 		haze: 0,
 		voiceTransmitting: false,
-		leaderboard: [],
-		showLeaderboard: false,
 		showMap: false,
 		paused: false,
-		needsPointer: true,
 		fps: 0,
 		level: 0,
 		serverNow: 0,

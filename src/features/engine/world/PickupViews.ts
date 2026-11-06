@@ -38,6 +38,21 @@ export class PickupViews {
 		return template;
 	}
 
+	/** Remplace le modèle posé quand le fragment réapparaît sous une autre forme. */
+	setMaterial(id: number, material: MaterialId): void {
+		const previous = this.models.get(id);
+		if (!previous) {
+			return;
+		}
+		const model = this.template(material).clone();
+		model.position.copy(previous.position);
+		model.rotation.copy(previous.rotation);
+		model.scale.copy(previous.scale);
+		this.group.remove(previous);
+		this.models.set(id, model);
+		this.group.add(model);
+	}
+
 	isAvailable(id: number): boolean {
 		return !this.taken.has(id);
 	}

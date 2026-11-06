@@ -17,8 +17,35 @@ interface PuddleView {
 
 interface JetView {
 	stream: THREE.Mesh;
+	core: THREE.Mesh;
 	pool: THREE.Mesh;
 	wheel: THREE.Vector3;
+	nozzle: THREE.Vector3;
+	light: DynamicLight;
+}
+
+function streakTexture(): THREE.CanvasTexture {
+	const canvas = document.createElement("canvas");
+	canvas.width = 32;
+	canvas.height = 64;
+	const context = canvas.getContext("2d") as CanvasRenderingContext2D;
+	context.fillStyle = "#6a6a6a";
+	context.fillRect(0, 0, 32, 64);
+	for (let index = 0; index < 34; index += 1) {
+		const shade = 110 + Math.floor(Math.random() * 145);
+		context.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+		context.fillRect(
+			Math.floor(Math.random() * 32),
+			Math.floor(Math.random() * 64),
+			1 + Math.floor(Math.random() * 3),
+			8 + Math.floor(Math.random() * 22),
+		);
+	}
+	const texture = new THREE.CanvasTexture(canvas);
+	texture.wrapS = THREE.RepeatWrapping;
+	texture.wrapT = THREE.RepeatWrapping;
+	texture.repeat.set(2, 2);
+	return texture;
 }
 
 export class HazardViews {
@@ -33,13 +60,33 @@ export class HazardViews {
 	});
 	private readonly slimeMaterial: THREE.Material;
 	private readonly puddleGeometry = new THREE.CircleGeometry(1, 28);
+	private readonly streakMap = streakTexture();
 	private readonly streamMaterial = new THREE.MeshStandardMaterial({
+		color: 0x5aff7a,
+		emissive: 0x3fd060,
+		emissiveIntensity: 1,
+		emissiveMap: this.streakMap,
+		map: this.streakMap,
+		transparent: true,
+		opacity: 0.62,
+		roughness: 0.1,
+		depthWrite: false,
+		side: THREE.DoubleSide,
+	});
+	private readonly poolMaterial = new THREE.MeshStandardMaterial({
 		color: 0x5aff7a,
 		emissive: 0x2a9a3a,
 		emissiveIntensity: 0.8,
 		transparent: true,
-		opacity: 0.55,
+		opacity: 0.5,
 		roughness: 0.1,
+		depthWrite: false,
+	});
+	private readonly coreMaterial = new THREE.MeshBasicMaterial({
+		color: 0xb8ffc8,
+		map: this.streakMap,
+		transparent: true,
+		opacity: 0.7,
 		depthWrite: false,
 	});
 	private time = 0;
@@ -60,23 +107,48 @@ export class HazardViews {
 		for (const valve of layout.valves) {
 			const height = valve.spout.y - valve.floorY;
 			const stream = new THREE.Mesh(
-				new THREE.CylinderGeometry(0.07, 0.16, height, 12, 1, true),
+				new THREE.CylinderGeometry(0.1, 0.16, height, 14, 1, true),
 				this.streamMaterial,
 			);
-			stream.position.set(valve.jet.x, valve.floorY + height / 2, valve.jet.z);
+			stream.position.set(
+				valve.spout.x,
+				valve.floorY + height / 2,
+				valve.spout.z,
+			);
 			stream.visible = false;
+			const core = new THREE.Mesh(
+				new THREE.CylinderGeometry(0.05, 0.08, height, 10, 1, true),
+				this.coreMaterial,
+			);
+			core.position.copy(stream.position);
+			core.visible = false;
 			const pool = new THREE.Mesh(
 				new THREE.CircleGeometry(0.68, 24),
-				this.streamMaterial,
+				this.poolMaterial,
 			);
 			pool.rotation.x = -Math.PI / 2;
 			pool.position.set(valve.jet.x, valve.floorY + 0.03, valve.jet.z);
 			pool.visible = false;
-			this.group.add(stream, pool);
+			this.group.add(stream, core, pool);
 			this.jets.set(valve.id, {
 				stream,
+				core,
 				pool,
 				wheel: new THREE.Vector3(valve.valve.x, valve.valve.y, valve.valve.z),
+				nozzle: new THREE.Vector3(valve.spout.x, valve.spout.y, valve.spout.z),
+				light: {
+					id: `jet-${valve.id}`,
+					position: new THREE.Vector3(
+						valve.spout.x,
+						valve.floorY + 1.1,
+						valve.spout.z,
+					),
+					color: 0x5aff7a,
+					intensity: 2.4,
+					radius: 4.5,
+					priority: 2,
+					flicker: 0.1,
+				},
 			});
 		}
 	}
@@ -85,7 +157,7 @@ export class HazardViews {
 		this.time += dt;
 		this.syncProjectiles(serverTime, dynamicLights);
 		this.syncPuddles(serverTime);
-		this.syncJets(serverTime);
+		this.syncJets(dt, serverTime, dynamicLights);
 	}
 
 	private syncProjectiles(
@@ -191,13 +263,31 @@ export class HazardViews {
 		}
 	}
 
-	private syncJets(serverTime: number): void {
+	private syncJets(
+		dt: number,
+		serverTime: number,
+		dynamicLights: DynamicLight[],
+	): void {
+		this.streakMap.offset.y = (this.streakMap.offset.y + dt * 2.8) % 1;
 		for (const [valveId, jet] of this.jets) {
 			const valve = this.state.valves.get(valveId);
 			const active = valve !== undefined && serverTime < valve.activeUntil;
 			jet.stream.visible = active;
+			jet.core.visible = active;
 			jet.pool.visible = active;
 			if (active) {
+				dynamicLights.push(jet.light);
+				if (Math.random() < 0.6) {
+					this.particles.emit(jet.nozzle, 1, {
+						color: 0x9affb0,
+						speed: 0.25,
+						up: -1.6,
+						life: 0.55,
+						size: 0.03,
+						gravity: 9,
+						spread: 0.08,
+					});
+				}
 				jet.stream.scale.set(
 					1 + Math.sin(this.time * 20) * 0.08,
 					1,
@@ -234,8 +324,12 @@ export class HazardViews {
 		this.emberMaterial.dispose();
 		this.puddleGeometry.dispose();
 		this.streamMaterial.dispose();
+		this.poolMaterial.dispose();
+		this.coreMaterial.dispose();
+		this.streakMap.dispose();
 		for (const jet of this.jets.values()) {
 			jet.stream.geometry.dispose();
+			jet.core.geometry.dispose();
 			jet.pool.geometry.dispose();
 		}
 		for (const view of this.puddles.values()) {

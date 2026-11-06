@@ -33,10 +33,12 @@ import { GrimoireController } from "../../grimoire/GrimoireController";
 import { renderIllustrations } from "../../grimoire/illustrations";
 import { renderObjectArt } from "../../grimoire/objectArt";
 import { ensurePageFonts } from "../../grimoire/pageRenderer";
+import { ensureHudFonts, HudCanvas } from "../../hud/HudCanvas";
 import { createAnomalyModel } from "../../models/anomalies/createAnomalyModel";
 import { ModelKit } from "../../models/modelKit";
 import { getSocket } from "../../network/socket";
 import { settingsStore } from "../../settings/settingsStore";
+import { DecorAnimator } from "../../world/DecorAnimator";
 import {
 	ManorMeshBuilder,
 	type RoomMeshes,
@@ -58,6 +60,7 @@ export const LOAD_STEPS: readonly LoadStepId[] = [
 ];
 
 export interface LoadedWorld {
+	decor: DecorAnimator;
 	pickups: PickupViews;
 	altars: AltarViews;
 	layout: ManorLayout;
@@ -65,6 +68,7 @@ export interface LoadedWorld {
 	state: ClientWorldState;
 	renderer: THREE.WebGLRenderer;
 	post: PostEffects;
+	hud: HudCanvas;
 	scene: THREE.Scene;
 	camera: THREE.PerspectiveCamera;
 	textures: TextureLibrary;
@@ -106,7 +110,10 @@ async function generateLayout(init: MatchInit): Promise<ManorLayout> {
 					event: MessageEvent<{ layout: ManorLayout; checksum: number }>,
 				) => resolve(event.data);
 				worker.onerror = (event) => reject(new Error(event.message));
-				worker.postMessage({ seed: init.seed, config: init.config });
+				worker.postMessage({
+					seed: init.seed,
+					config: { ...init.config, pickupTotal: init.pickupTotal },
+				});
 			},
 		);
 		if (result.checksum === init.layoutChecksum) {
@@ -242,6 +249,12 @@ export async function loadSession(
 	const particles = new ParticleSystem();
 	particles.scale = settings.effects ? preset.particleScale : 0.25;
 	scene.add(particles.points);
+	const decor = new DecorAnimator(
+		rooms.flatMap((room) => room.animated),
+		layout,
+		particles,
+	);
+	decor.reduceMotion = settings.reduceMotion;
 	const motes = new AmbientMotes(settings.effects ? 1 : 0.35);
 	scene.add(motes.points);
 	const hazards = new HazardViews(state, layout, materials, particles);
@@ -254,7 +267,12 @@ export async function loadSession(
 	scene.add(pickups.group);
 	const altars = new AltarViews(layout, kit);
 	scene.add(altars.group);
-	const lights = new LightPool(scene, preset.lightPool, layout.lights);
+	const lights = new LightPool(
+		scene,
+		preset.lightPool,
+		layout.lights,
+		layout.rooms,
+	);
 	lights.reduceFlicker = settings.reduceMotion;
 	const rig = new FirstPersonRig(kit);
 	camera.add(rig.root);
@@ -291,6 +309,8 @@ export async function loadSession(
 		(fraction) => progress("grimoire", fraction * 0.6),
 	);
 	const objectArt = renderObjectArt(renderer, kit);
+	await ensureHudFonts();
+	const hud = new HudCanvas(objectArt);
 	const grimoire = new GrimoireController(
 		init,
 		rig.grimoire,
@@ -348,11 +368,13 @@ export async function loadSession(
 	progress("gpu", 1);
 
 	return {
+		decor,
 		layout,
 		world,
 		state,
 		renderer,
 		post,
+		hud,
 		scene,
 		camera,
 		textures,

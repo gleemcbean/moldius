@@ -1,7 +1,9 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import express, { type Express } from "express";
+import type { AdminLiveStats } from "../shared/protocol/admin.js";
 import type { AccountModule } from "./accounts/AccountModule.js";
+import { createAdminRouter } from "./accounts/adminRoutes.js";
 import { createAccountRouter } from "./accounts/routes.js";
 import type { ServerConfig } from "./config.js";
 import type { LobbyManager } from "./lobby/LobbyManager.js";
@@ -45,6 +47,7 @@ export function createApp(
 	config: ServerConfig,
 	lobbies: () => LobbyManager | null,
 	accounts: AccountModule,
+	liveStats: () => AdminLiveStats | null = () => null,
 ): AppHandle {
 	const app = express();
 	app.disable("x-powered-by");
@@ -69,6 +72,10 @@ export function createApp(
 
 	const accountRouter = createAccountRouter(accounts);
 	app.use("/api/account", accountRouter.router);
+	app.use(
+		"/api/admin",
+		createAdminRouter(accounts, config.adminEmails, liveStats),
+	);
 
 	app.get("/api/health", (_request, response) => {
 		response.json({

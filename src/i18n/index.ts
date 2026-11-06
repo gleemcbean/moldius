@@ -4,6 +4,7 @@ import type { Language } from "./language";
 import { accountEn, accountFr } from "./sections/account";
 import { bestiaryEn, bestiaryFr } from "./sections/bestiary";
 import { commonEn, commonFr } from "./sections/common";
+import { friendsEn, friendsFr } from "./sections/friends";
 import { gameEn, gameFr } from "./sections/game";
 import { grimoireEn, grimoireFr } from "./sections/grimoire";
 import { appearanceEn, appearanceFr, homeEn, homeFr } from "./sections/home";
@@ -18,6 +19,7 @@ const fr = {
 	lobby: lobbyFr,
 	settings: settingsFr,
 	account: accountFr,
+	friends: friendsFr,
 	game: gameFr,
 	grimoire: grimoireFr,
 	bestiary: bestiaryFr,
@@ -33,6 +35,7 @@ const en: Messages = {
 	lobby: lobbyEn,
 	settings: settingsEn,
 	account: accountEn,
+	friends: friendsEn,
 	game: gameEn,
 	grimoire: grimoireEn,
 	bestiary: bestiaryEn,

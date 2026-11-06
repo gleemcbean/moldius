@@ -260,6 +260,15 @@ describe("déplacements du joueur", () => {
 				continue;
 			}
 			landed += 1;
+			for (let step = 0; step < 60 && !state.grounded; step += 1) {
+				stepCharacter(
+					caseWorld,
+					state,
+					input({ yaw }),
+					DEFAULT_MODIFIERS,
+					1 / 60,
+				);
+			}
 			expect(state.grounded).toBe(true);
 			for (let index = 1; index < heights.length; index += 1) {
 				const drop = heights[index - 1] - heights[index];

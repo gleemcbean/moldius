@@ -12,6 +12,7 @@ import {
 	GLASS,
 	IRON,
 	type Part,
+	type PartAnimation,
 	pickWood,
 	sphere,
 	texturedPlane,
@@ -645,6 +646,14 @@ export const toolRack: FurnitureBuilder = ({ item, rng }) => {
 export const grandfatherClock: FurnitureBuilder = ({ item, rng }) => {
 	const wood = pickWood(rng);
 	const { width, height, depth } = item;
+	const pendulum: PartAnimation = {
+		kind: "swing",
+		pivot: [0, height - 0.57, depth * 0.47],
+		axis: [0, 0, 1],
+		speed: Math.PI,
+		amplitude: 0.1,
+		phase: rng.next() * Math.PI * 2,
+	};
 	return [
 		box(wood, width, 0.35, depth, 0, 0, 0, 0, 0.02),
 		box(wood, width * 0.75, height - 0.85, depth * 0.85, 0, 0.35, 0, 0, 0.015),
@@ -682,6 +691,9 @@ export const grandfatherClock: FurnitureBuilder = ({ item, rng }) => {
 			-1.2,
 		),
 		box(GLASS, width * 0.5, height - 1.0, 0.01, 0, 0.45, depth * 0.43),
-		cylinder(BRASS, 0.07, 0.07, 0.015, 0, 0.75, depth * 0.3, 16),
+		...[
+			cylinder(BRASS, 0.012, 0.012, height - 1.32, 0, 0.75, depth * 0.47, 6),
+			boxAt(BRASS, 0.13, 0.13, 0.02, 0, 0.75, depth * 0.47, 0, 0, Math.PI / 4),
+		].map((part) => ({ ...part, animation: pendulum })),
 	];
 };

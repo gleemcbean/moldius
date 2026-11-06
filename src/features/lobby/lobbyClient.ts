@@ -78,6 +78,11 @@ export function joinPrivateLobby(name: string, code: string): void {
   getSocket().emit('lobby:joinPrivate', { name, code, ...appearance() }, handleJoin);
 }
 
+export function joinPublicLobby(name: string, lobbyId: string): void {
+  lobbyStore.set({ pending: true, error: null, lobby: null });
+  getSocket().emit('lobby:joinPublic', { name, lobbyId, ...appearance() }, handleJoin);
+}
+
 export function leaveLobby(): void {
   getSocket().emit('lobby:leave');
   lobbyStore.set({ lobby: null });

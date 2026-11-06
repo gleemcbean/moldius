@@ -11,9 +11,10 @@ import {
 	type FurnitureBuilder,
 	IRON,
 	lathe,
-	MARBLE,
 	type Part,
+	type PartAnimation,
 	part,
+	pickStatuary,
 	pickWood,
 	sphere,
 	torus,
@@ -24,7 +25,11 @@ const FELT: MaterialOptions = {
 	color: 0x3f8a4a,
 	roughness: 1,
 };
-const VELVET: MaterialOptions = { texture: "velvetRed", roughness: 1 };
+const VELVET: MaterialOptions = {
+	wave: "cloth",
+	texture: "velvetRed",
+	roughness: 1,
+};
 const BALL_COLORS = [0xf2ecd8, 0xd8442f, 0xe0b326, 0x2a3a8a, 0x111111];
 
 function tilted(
@@ -195,9 +200,24 @@ export const gramophone: FurnitureBuilder = ({ item, rng }) => {
 	const wood = pickWood(rng);
 	const { width, height } = item;
 	const cabinet = height * 0.62;
+	const platter: PartAnimation = {
+		kind: "spin",
+		pivot: [0, cabinet, 0],
+		axis: [0, 1, 0],
+		speed: 3.4,
+		amplitude: 0,
+		phase: 0,
+	};
 	return [
 		box(wood, width * 0.8, cabinet, width * 0.8, 0, 0, 0, 0, 0.02),
-		cylinder(DARK, width * 0.3, width * 0.3, 0.02, 0, cabinet, 0, 20),
+		{
+			...cylinder(DARK, width * 0.3, width * 0.3, 0.02, 0, cabinet, 0, 20),
+			animation: platter,
+		},
+		{
+			...box(BRASS, 0.05, 0.004, 0.03, width * 0.16, cabinet + 0.02, 0),
+			animation: platter,
+		},
 		cylinder(BRASS, 0.012, 0.012, 0.06, width * 0.25, cabinet, -width * 0.2, 6),
 		cylinderBetween(
 			BRASS,
@@ -301,16 +321,27 @@ export const shieldDisplay: FurnitureBuilder = ({ item }) => {
 	return parts;
 };
 
-export const statue: FurnitureBuilder = ({ item }) => {
+export const statue: FurnitureBuilder = ({ item, rng }) => {
+	const material = pickStatuary(rng);
 	const { width, height } = item;
 	const plinth = Math.min(0.85, height * 0.36);
 	const figure = height - plinth;
 	return [
-		box(MARBLE, width, 0.12, width, 0, 0, 0, 0, 0.02),
-		box(MARBLE, width * 0.82, plinth - 0.2, width * 0.82, 0, 0.12, 0),
-		box(MARBLE, width * 0.92, 0.08, width * 0.92, 0, plinth - 0.08, 0, 0, 0.02),
+		box(material, width, 0.12, width, 0, 0, 0, 0, 0.02),
+		box(material, width * 0.82, plinth - 0.2, width * 0.82, 0, 0.12, 0),
+		box(
+			material,
+			width * 0.92,
+			0.08,
+			width * 0.92,
+			0,
+			plinth - 0.08,
+			0,
+			0,
+			0.02,
+		),
 		lathe(
-			MARBLE,
+			material,
 			[
 				[0.001, 0],
 				[0.3, 0],
@@ -325,9 +356,9 @@ export const statue: FurnitureBuilder = ({ item }) => {
 			0,
 			16,
 		),
-		sphere(MARBLE, 0.11, 0, plinth + figure * 0.86, 0.02, 1, 1.15, 1, 14),
+		sphere(material, 0.11, 0, plinth + figure * 0.86, 0.02, 1, 1.15, 1, 14),
 		tilted(
-			MARBLE,
+			material,
 			[
 				[0.13, 0],
 				[0.08, 0.1],
@@ -341,20 +372,20 @@ export const statue: FurnitureBuilder = ({ item }) => {
 			12,
 		),
 		cylinderBetween(
-			MARBLE,
+			material,
 			new THREE.Vector3(-0.16, plinth + figure * 0.7, 0.02),
 			new THREE.Vector3(-0.2, plinth + figure * 0.48, 0.18),
 			0.045,
 			8,
 		),
 		cylinderBetween(
-			MARBLE,
+			material,
 			new THREE.Vector3(0.16, plinth + figure * 0.7, 0.02),
 			new THREE.Vector3(0.24, plinth + figure * 0.9, 0.14),
 			0.045,
 			8,
 		),
-		sphere(MARBLE, 0.07, 0.25, plinth + figure * 0.96, 0.15, 1, 1, 1, 10),
+		sphere(material, 0.07, 0.25, plinth + figure * 0.96, 0.15, 1, 1, 1, 10),
 	];
 };
 
@@ -458,9 +489,20 @@ export const spinningWheel: FurnitureBuilder = ({ item, rng }) => {
 	const { width, height, depth } = item;
 	const radius = Math.min(height * 0.32, 0.32);
 	const hub = new THREE.Vector3(width * 0.12, height - radius - 0.06, 0);
+	const wheelSpin: PartAnimation = {
+		kind: "spin",
+		pivot: [hub.x, hub.y, hub.z],
+		axis: [0, 0, 1],
+		speed: 0.5,
+		amplitude: 0,
+		phase: rng.next() * Math.PI * 2,
+	};
 	const parts: Part[] = [
 		box(wood, width * 0.85, 0.06, depth * 0.45, 0, 0.32, 0, 0, 0.01),
-		torus(wood, radius, 0.022, hub.x, hub.y, hub.z, 0, 0),
+		{
+			...torus(wood, radius, 0.022, hub.x, hub.y, hub.z, 0, 0),
+			animation: wheelSpin,
+		},
 	];
 	for (const [x, z] of [
 		[-width * 0.36, -depth * 0.18],
@@ -479,8 +521,8 @@ export const spinningWheel: FurnitureBuilder = ({ item, rng }) => {
 	}
 	for (let index = 0; index < 8; index += 1) {
 		const angle = (index / 8) * Math.PI * 2;
-		parts.push(
-			cylinderBetween(
+		parts.push({
+			...cylinderBetween(
 				wood,
 				hub,
 				new THREE.Vector3(
@@ -491,7 +533,8 @@ export const spinningWheel: FurnitureBuilder = ({ item, rng }) => {
 				0.008,
 				5,
 			),
-		);
+			animation: wheelSpin,
+		});
 	}
 	for (const z of [-0.06, 0.06]) {
 		parts.push(

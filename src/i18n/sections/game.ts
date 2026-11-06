@@ -34,7 +34,7 @@ export const gameFr = {
 		missingMaterials: "Matériaux manquants : refermer",
 	},
 	inventory: {
-		title: "Matériaux",
+		title: "Fragments",
 		handEmpty: "Main vide",
 	},
 	altar: {
@@ -49,11 +49,21 @@ export const gameFr = {
 			range: (meters: number) => `À moins de ${meters} m du monstre`,
 			object: "Objet occulte en main",
 			voice: "Voix entendue par le micro",
+			valveOpen: "Vanne ouverte",
+			inJet: "Sous le jet",
 		},
 		steps: {
-			move: (keys: string, sprint: string, crouch: string) => ({
+			move: (keys: string) => ({
 				title: "Se déplacer",
-				body: `${keys} pour marcher, la souris pour regarder, ${sprint} pour courir, ${crouch} pour s'accroupir. La minicarte montre où vous êtes. Avancez un peu.`,
+				body: `${keys} pour marcher, la souris pour regarder. La minicarte montre où vous êtes. Avancez un peu.`,
+			}),
+			sprint: (sprint: string, jump: string) => ({
+				title: "Courir et sauter",
+				body: `Maintenez ${sprint} en marchant pour courir, ${jump} pour sauter. Courir, sauter et garder la lanterne ouverte vident la barre jaune d'énergie. À sec, plus de course ni de saut tant qu'elle n'est pas remontée, et une chute de la mezzanine fait mal. Courez un instant.`,
+			}),
+			crouch: (crouch: string) => ({
+				title: "Rester discret",
+				body: `Maintenez ${crouch} pour vous accroupir. Courir s'entend de loin, accroupi presque pas. Lanterne fermée, la jauge de bruit apparaît : votre voix au micro attire aussi les monstres.`,
 			}),
 			lantern: (key: string) => ({
 				title: "La lanterne",
@@ -62,6 +72,10 @@ export const gameFr = {
 			door: (key: string) => ({
 				title: "Les portes",
 				body: `Suivez l'étoile, visez une porte et appuyez sur ${key}.`,
+			}),
+			map: (key: string) => ({
+				title: "La carte",
+				body: `${key} ouvre le plan du manoir : pièces, étages, escaliers et autels. Ouvrez-le, puis refermez-le avec ${key}.`,
 			}),
 			loot: (key: string, list: string) => ({
 				title: "Les matériaux",
@@ -83,25 +97,32 @@ export const gameFr = {
 				title: "Se cacher",
 				body: `Armoires, malles et autres cachettes protègent des monstres. Entrez dans celle qui est indiquée avec ${key}, puis ressortez.`,
 			}),
+			valve: (key: string, flow: number, rest: number) => ({
+				title: "L'eau verte",
+				body: `Vous êtes blessé : regardez la barre rouge. L'eau verte soigne. Suivez l'étoile jusqu'à une vanne, en prenant l'escalier si besoin, ouvrez-la avec ${key} et placez-vous sous le jet. Elle coule ${flow} s, puis se repose ${rest} s.`,
+			}),
+			push: (key: string) => ({
+				title: "Pousser",
+				body: `${key} pousse le joueur devant vous et interrompt son incantation. Cela coûte de l'énergie et se recharge : regardez en bas à droite. Essayez.`,
+			}),
 			shout: (key: string) => ({
 				title: "Crier",
 				body: `Un Murmure vient de s'éveiller. Un cri attire les monstres à l'endroit où vous êtes : appuyez sur ${key} pour le faire venir.`,
 			}),
 			capture: (formula: string, lantern: string) => ({
 				title: "Capturer",
-				body: `Lanterne fermée (${lantern}), à moins de 5 m et l'objet occulte en main : prononcez à voix haute « ${formula} ». Pas besoin de viser. Ici, il ne peut pas vous blesser.`,
+				body: `Lanterne fermée (${lantern}), à moins de 5 m et l'objet occulte en main : prononcez à voix haute « ${formula} ». Inutile de viser.`,
 			}),
-			end: (push: string, map: string) => ({
+			end: () => ({
 				title: "Vous êtes prêt",
-				body: `En partie, les monstres blessent et chaque capture rapporte des points. ${push} pousse un joueur, ${map} ouvre la carte, et un cri ou une voix forte interrompt l'incantation d'un rival. Entrée pour revenir à l'accueil.`,
+				body: `En partie, les monstres blessent pour de vrai, et l'on revient après quelques secondes quand on tombe. Un cri ou une voix forte interrompt aussi l'incantation d'un rival. Entrée pour revenir à l'accueil.`,
 			}),
 		},
 	},
 	cast: {
 		noSpeech:
 			"Reconnaissance vocale indisponible dans ce navigateur : incantez avec Chrome, Edge ou Safari.",
-		captured: (label: string, points: number) =>
-			`Capture réussie : ${label} ! +${points} points`,
+		captured: (label: string) => `Capture réussie : ${label} !`,
 		failed: [
 			"Rien ne se passe.",
 			"La formule se perd dans le vide.",
@@ -145,16 +166,10 @@ export const gameFr = {
 	hud: {
 		awakening: (seconds: number) =>
 			`Les anomalies s'éveillent dans ${seconds} s`,
-		scoreLine: (rank: number, players: number) =>
-			`points · ${rank}${rank === 1 ? "er" : "e"} sur ${players} · Tab : classement`,
-		teamLine: (team: string, rank: number, teams: number) =>
-			`${team} · ${rank}${rank === 1 ? "re" : "e"} sur ${teams} · Tab : classement`,
 		petrified: "Pétrifié par la Pleureuse !",
 		noise: "Bruit",
 		noiseQuiet: "Discret",
 		noiseHeard: "Audible",
-		energy: "Énergie",
-		health: "Vie",
 		push: "Pousser",
 		shout: "Cri",
 		grimoire: "Grimoire",
@@ -194,15 +209,6 @@ export const gameFr = {
 			stairs: "Escalier",
 			elsewhere: "Joueur à un autre étage",
 		},
-	},
-	leaderboard: {
-		title: "Classement",
-		mushroom: "Champignon",
-		points: "Points",
-		health: "Vie",
-		energy: "Énergie",
-		you: "vous",
-		down: "à terre",
 	},
 	results: {
 		kicker: "Fin de la chasse",
@@ -312,7 +318,7 @@ export const gameEn: typeof gameFr = {
 		missingMaterials: "Materials missing: close",
 	},
 	inventory: {
-		title: "Materials",
+		title: "Fragments",
 		handEmpty: "Empty hand",
 	},
 	altar: {
@@ -327,11 +333,21 @@ export const gameEn: typeof gameFr = {
 			range: (meters: number) => `Within ${meters} m of the monster`,
 			object: "Occult object in hand",
 			voice: "Voice heard by the microphone",
+			valveOpen: "Valve open",
+			inJet: "Under the jet",
 		},
 		steps: {
-			move: (keys: string, sprint: string, crouch: string) => ({
+			move: (keys: string) => ({
 				title: "Moving",
-				body: `${keys} to walk, the mouse to look, ${sprint} to run, ${crouch} to crouch. The minimap shows where you are. Walk a little.`,
+				body: `${keys} to walk, the mouse to look. The minimap shows where you are. Walk a little.`,
+			}),
+			sprint: (sprint: string, jump: string) => ({
+				title: "Running and jumping",
+				body: `Hold ${sprint} while walking to run, ${jump} to jump. Running, jumping and keeping the lantern open drain the yellow energy bar. Once empty, no more running or jumping until it has refilled, and a fall from a mezzanine hurts. Run for a moment.`,
+			}),
+			crouch: (crouch: string) => ({
+				title: "Staying quiet",
+				body: `Hold ${crouch} to crouch. Running can be heard from afar, crouching hardly at all. With the lantern closed, the noise gauge appears: your voice on the mic draws monsters too.`,
 			}),
 			lantern: (key: string) => ({
 				title: "The lantern",
@@ -340,6 +356,10 @@ export const gameEn: typeof gameFr = {
 			door: (key: string) => ({
 				title: "Doors",
 				body: `Follow the star, aim at a door and press ${key}.`,
+			}),
+			map: (key: string) => ({
+				title: "The map",
+				body: `${key} opens the manor plan: rooms, floors, stairs and altars. Open it, then close it with ${key}.`,
 			}),
 			loot: (key: string, list: string) => ({
 				title: "Materials",
@@ -361,25 +381,32 @@ export const gameEn: typeof gameFr = {
 				title: "Hiding",
 				body: `Wardrobes, trunks and other hiding places protect you from monsters. Enter the marked one with ${key}, then come back out.`,
 			}),
+			valve: (key: string, flow: number, rest: number) => ({
+				title: "Green water",
+				body: `You are hurt: look at the red bar. Green water heals. Follow the star to a valve, taking the stairs if needed, open it with ${key} and stand under the jet. It flows for ${flow} s, then rests for ${rest} s.`,
+			}),
+			push: (key: string) => ({
+				title: "Pushing",
+				body: `${key} pushes the player in front of you and interrupts their incantation. It costs energy and has to recharge: look at the bottom right. Try it.`,
+			}),
 			shout: (key: string) => ({
 				title: "Shouting",
 				body: `A Whisper has just awoken. A shout draws monsters to where you stand: press ${key} to bring it here.`,
 			}),
 			capture: (formula: string, lantern: string) => ({
 				title: "Capturing",
-				body: `Lantern closed (${lantern}), within 5 m and with the occult object in hand: say "${formula}" out loud. No need to aim. Here it cannot hurt you.`,
+				body: `Lantern closed (${lantern}), within 5 m and with the occult object in hand: say "${formula}" out loud. No need to aim.`,
 			}),
-			end: (push: string, map: string) => ({
+			end: () => ({
 				title: "You are ready",
-				body: `In a real game, monsters hurt and each capture scores points. ${push} pushes a player, ${map} opens the map, and a shout or a loud voice interrupts a rival's incantation. Press Enter to return home.`,
+				body: `In a real game, monsters really hurt, and you come back a few seconds after falling. A shout or a loud voice also interrupts a rival's incantation. Press Enter to return home.`,
 			}),
 		},
 	},
 	cast: {
 		noSpeech:
 			"Speech recognition unavailable in this browser: cast with Chrome, Edge or Safari.",
-		captured: (label: string, points: number) =>
-			`${label} captured! +${points} points`,
+		captured: (label: string) => `${label} captured!`,
 		failed: [
 			"Nothing happens.",
 			"The formula fades into the void.",
@@ -423,28 +450,10 @@ export const gameEn: typeof gameFr = {
 	},
 	hud: {
 		awakening: (seconds: number) => `The anomalies awaken in ${seconds} s`,
-		scoreLine: (rank: number, players: number) => {
-			const tens = rank % 100;
-			const suffix =
-				tens >= 11 && tens <= 13
-					? "th"
-					: (["th", "st", "nd", "rd"][rank % 10] ?? "th");
-			return `points · ${rank}${suffix} of ${players} · Tab: leaderboard`;
-		},
-		teamLine: (team: string, rank: number, teams: number) => {
-			const tens = rank % 100;
-			const suffix =
-				tens >= 11 && tens <= 13
-					? "th"
-					: (["th", "st", "nd", "rd"][rank % 10] ?? "th");
-			return `${team} · ${rank}${suffix} of ${teams} · Tab: leaderboard`;
-		},
 		petrified: "Turned to stone by the Weeper!",
 		noise: "Noise",
 		noiseQuiet: "Quiet",
 		noiseHeard: "Audible",
-		energy: "Energy",
-		health: "Health",
 		push: "Push",
 		shout: "Shout",
 		grimoire: "Grimoire",
@@ -484,15 +493,6 @@ export const gameEn: typeof gameFr = {
 			stairs: "Stairs",
 			elsewhere: "Player on another floor",
 		},
-	},
-	leaderboard: {
-		title: "Leaderboard",
-		mushroom: "Mushroom",
-		points: "Points",
-		health: "Health",
-		energy: "Energy",
-		you: "you",
-		down: "down",
 	},
 	results: {
 		kicker: "End of the hunt",

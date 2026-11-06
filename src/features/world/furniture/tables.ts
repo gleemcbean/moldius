@@ -1,9 +1,11 @@
+import { DAIS_STEP_RISE, DAIS_STEP_RUN } from "@shared/config/index";
 import * as THREE from "three";
 import type { MaterialOptions } from "../MaterialLibrary";
 import {
 	BRASS,
 	box,
 	boxAt,
+	carvedForSeed,
 	cylinder,
 	cylinderBetween,
 	type FurnitureBuilder,
@@ -11,10 +13,11 @@ import {
 	LINEN,
 	lathe,
 	type Part,
+	pickCarved,
 	pickWood,
-	STONE,
 	sphere,
 } from "./parts";
+import { leafMaterial, leafyBush, potMaterial } from "./plants";
 
 function turnedLeg(
 	material: MaterialOptions,
@@ -42,6 +45,8 @@ function turnedLeg(
 		10,
 	);
 }
+
+const TRIM_WOOD: MaterialOptions = { texture: "woodDark", roughness: 0.8 };
 
 function fabricFor(rng: { pick<T>(items: readonly T[]): T }): MaterialOptions {
 	return {
@@ -232,7 +237,7 @@ export const armchair: FurnitureBuilder = ({ item, rng }) => {
 	const { width, height, depth } = item;
 	return [
 		box(fabric, width - 0.1, 0.22, depth - 0.12, 0, 0.18, 0.04, 0, 0.06),
-		box(fabric, width, 0.6, 0.2, 0, 0.2, -depth / 2 + 0.1, 0, 0.07),
+		box(fabric, width - 0.06, 0.6, 0.2, 0, 0.2, -depth / 2 + 0.1, 0, 0.07),
 		box(
 			fabric,
 			width + 0.04,
@@ -256,7 +261,21 @@ export const armchair: FurnitureBuilder = ({ item, rng }) => {
 			0.06,
 		),
 		box(fabric, 0.14, 0.42, depth - 0.15, width / 2 - 0.07, 0.2, 0.06, 0, 0.06),
-		box(wood, width - 0.04, 0.18, depth - 0.06, 0, 0, 0, 0, 0.02),
+		box(wood, width - 0.06, 0.07, depth - 0.1, 0, 0.12, 0, 0, 0.012),
+		...[-1, 1].flatMap((sx) =>
+			[-1, 1].map((sz) =>
+				cylinder(
+					wood,
+					0.03,
+					0.018,
+					0.13,
+					sx * (width / 2 - 0.08),
+					0,
+					sz * (depth / 2 - 0.09),
+					8,
+				),
+			),
+		),
 	];
 };
 
@@ -265,11 +284,11 @@ export const sofa: FurnitureBuilder = ({ item, rng }) => {
 	const fabric = fabricFor(rng);
 	const { width, height, depth } = item;
 	const parts: Part[] = [
-		box(wood, width, 0.16, depth - 0.05, 0, 0.02, 0, 0, 0.02),
+		box(wood, width - 0.04, 0.07, depth - 0.1, 0, 0.11, 0, 0, 0.012),
 		box(fabric, width - 0.3, 0.2, depth - 0.25, 0, 0.18, 0.08, 0, 0.06),
 		box(
 			fabric,
-			width,
+			width - 0.06,
 			height - 0.18,
 			0.24,
 			0,
@@ -293,18 +312,20 @@ export const sofa: FurnitureBuilder = ({ item, rng }) => {
 				0.07,
 			),
 		);
-		parts.push(
-			cylinder(
-				wood,
-				0.03,
-				0.02,
-				0.05,
-				side * (width / 2 - 0.08),
-				0,
-				depth / 2 - 0.1,
-				8,
-			),
-		);
+		for (const end of [-1, 1]) {
+			parts.push(
+				cylinder(
+					wood,
+					0.032,
+					0.02,
+					0.12,
+					side * (width / 2 - 0.09),
+					0,
+					end * (depth / 2 - 0.1),
+					8,
+				),
+			);
+		}
 	}
 	const cushions = Math.round(width / 0.7);
 	for (let index = 0; index < cushions; index += 1) {
@@ -374,11 +395,22 @@ export const pew: FurnitureBuilder = ({ item }) => {
 	return parts;
 };
 
-export const altar: FurnitureBuilder = ({ item }) => {
+export const altar: FurnitureBuilder = ({ item, rng }) => {
+	const material = pickCarved(rng);
 	const { width, height, depth } = item;
 	return [
-		box(STONE, width, height - 0.08, depth * 0.85, 0, 0, 0, 0, 0.02),
-		box(STONE, width + 0.08, 0.08, depth + 0.05, 0, height - 0.08, 0, 0, 0.015),
+		box(material, width, height - 0.08, depth * 0.85, 0, 0, 0, 0, 0.02),
+		box(
+			material,
+			width + 0.08,
+			0.08,
+			depth + 0.05,
+			0,
+			height - 0.08,
+			0,
+			0,
+			0.015,
+		),
 		box(
 			{ texture: "velvetRed", roughness: 1 },
 			width * 0.4,
@@ -543,31 +575,43 @@ export const pottingTable: FurnitureBuilder = (context) => {
 	for (let index = 0; index < 4; index += 1) {
 		const x = -item.width / 2 + 0.2 + index * ((item.width - 0.4) / 3);
 		parts.push(
-			cylinder(
-				{ texture: "greenhouseTiles", roughness: 0.9 },
-				0.08,
-				0.06,
-				0.13,
-				x,
-				item.height,
-				0,
-				10,
-			),
+			cylinder(potMaterial(), 0.08, 0.06, 0.13, x, item.height, 0, 10),
 		);
 		parts.push(
-			sphere(
-				{
-					texture: rng.pick(["foliage", "foliageDark", "foliageWarm"] as const),
-					roughness: 1,
-				},
+			...leafyBush(
+				leafMaterial(rng, "leafSprig"),
+				{ texture: "foliageDark", roughness: 1 },
+				new THREE.Vector3(x, item.height + 0.2, 0),
 				0.1,
-				x,
-				item.height + 0.2,
+				rng,
+				12,
+				0.9,
+			),
+		);
+	}
+	return parts;
+};
+
+export const dais: FurnitureBuilder = ({ item, room, rng }) => {
+	const surface = rng.chance(0.5)
+		? carvedForSeed(room.seed)
+		: { texture: room.style.floor, roughness: 0.85 };
+	const nosing = rng.chance(0.5) ? TRIM_WOOD : BRASS;
+	const tiers = Math.round(item.height / DAIS_STEP_RISE);
+	const parts: Part[] = [];
+	for (let tier = 0; tier < tiers; tier += 1) {
+		const width = item.width - tier * DAIS_STEP_RUN * 2;
+		const depth = item.depth - tier * DAIS_STEP_RUN * 2;
+		parts.push(
+			box(surface, width, DAIS_STEP_RISE, depth, 0, tier * DAIS_STEP_RISE, 0),
+			box(
+				nosing,
+				width + 0.02,
+				0.025,
+				depth + 0.02,
 				0,
-				1,
-				0.8,
-				1,
-				8,
+				(tier + 1) * DAIS_STEP_RISE - 0.03,
+				0,
 			),
 		);
 	}

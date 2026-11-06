@@ -1,8 +1,10 @@
 import {
 	MAX_ANOMALY_COUNT,
+	MAX_ITEMS_PER_PLAYER,
 	MAX_MATCH_MINUTES,
 	MAX_UPPER_FLOORS,
 	MIN_ANOMALY_COUNT,
+	MIN_ITEMS_PER_PLAYER,
 	MIN_MATCH_MINUTES,
 } from "@shared/config/index";
 import { ENABLED_SPECIES_IDS } from "@shared/config/monsters";
@@ -77,6 +79,16 @@ export function RulesPanel({
 					step={1}
 					disabled={!editable}
 					onChange={(anomalyCount) => update({ anomalyCount })}
+				/>
+			</Field>
+			<Field label={labels.itemsPerPlayer} hint={labels.itemsPerPlayerHint}>
+				<Slider
+					value={config.itemsPerPlayer}
+					min={MIN_ITEMS_PER_PLAYER}
+					max={MAX_ITEMS_PER_PLAYER}
+					step={1}
+					disabled={!editable}
+					onChange={(itemsPerPlayer) => update({ itemsPerPlayer })}
 				/>
 			</Field>
 			<Field label={labels.duration}>

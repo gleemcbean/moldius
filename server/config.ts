@@ -1,10 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { emailKey } from "../shared/protocol/account.js";
 import type { IceServerConfig } from "../shared/protocol/lobby.js";
 import type { SmtpOptions } from "./mail/mailer.js";
 
 export interface ServerConfig {
+	adminEmails: string[];
 	port: number;
 	host: string;
 	production: boolean;
@@ -125,6 +127,7 @@ export function loadServerConfig(): ServerConfig {
 	loadDotEnv(projectRoot);
 	const production = process.env.NODE_ENV === "production";
 	return {
+		adminEmails: parseList(process.env.ADMIN_EMAILS).map(emailKey),
 		port: Number(process.env.PORT ?? 3001),
 		host: process.env.HOST ?? "0.0.0.0",
 		production,

@@ -1,4 +1,6 @@
-import type { LightSource } from "@shared/manor/types";
+import { EYE_HEIGHT_STANDING } from "@shared/config/index";
+import { floorsSeenFromEye, levelForHeight } from "@shared/manor/levels";
+import type { Level, LightSource, Room } from "@shared/manor/types";
 import * as THREE from "three";
 
 export interface DynamicLight {
@@ -9,6 +11,8 @@ export interface DynamicLight {
 	radius: number;
 	priority: number;
 	flicker: number;
+	level?: Level;
+	spansFloors?: boolean;
 }
 
 interface Slot {
@@ -27,6 +31,7 @@ const KIND_FLICKER: Record<LightSource["kind"], number> = {
 };
 
 const INTENSITY_SCALE = 4.2;
+const SPANNING_LIGHT_REACH = 5;
 
 export class LightPool {
 	private readonly slots: Slot[] = [];
@@ -35,7 +40,17 @@ export class LightPool {
 	private time = 0;
 	reduceFlicker = false;
 
-	constructor(scene: THREE.Scene, size: number, sources: LightSource[]) {
+	constructor(
+		scene: THREE.Scene,
+		size: number,
+		sources: LightSource[],
+		rooms: readonly Room[] = [],
+	) {
+		const spanning = new Set(
+			rooms
+				.filter((room) => room.type === "stairwell" || room.mezzanine)
+				.map((room) => room.id),
+		);
 		for (let index = 0; index < size; index += 1) {
 			const light = new THREE.PointLight(0xffffff, 0, 6, 2);
 			light.visible = true;
@@ -54,6 +69,8 @@ export class LightPool {
 			radius: source.radius,
 			priority: source.kind === "moon" ? 0.7 : 1,
 			flicker: KIND_FLICKER[source.kind],
+			level: source.level,
+			spansFloors: spanning.has(source.roomId),
 		}));
 	}
 
@@ -100,7 +117,26 @@ export class LightPool {
 		}
 	}
 
+	private onOtherFloor(light: DynamicLight, camera: THREE.Vector3): boolean {
+		const { lowest, highest } = floorsSeenFromEye(
+			camera.y,
+			EYE_HEIGHT_STANDING,
+		);
+		const level = light.level ?? levelForHeight(light.position.y - 1);
+		if (level >= lowest && level <= highest) {
+			return false;
+		}
+		return (
+			!light.spansFloors ||
+			Math.hypot(light.position.x - camera.x, light.position.z - camera.z) >
+				light.radius + SPANNING_LIGHT_REACH
+		);
+	}
+
 	private score(light: DynamicLight, camera: THREE.Vector3): number {
+		if (this.onOtherFloor(light, camera)) {
+			return 0;
+		}
 		const distance = this.scratch.copy(light.position).distanceTo(camera);
 		const verticalPenalty =
 			Math.abs(light.position.y - camera.y) > 3.2 ? 0.25 : 1;

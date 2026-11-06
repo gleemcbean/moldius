@@ -43,8 +43,8 @@ export const grimoireFr = {
 	objects: {
 		pendulum: "Pendule d'améthyste",
 		blackMirror: "Miroir noir",
-		boneBell: "Clochette d'os",
-		rubySeal: "Sceau de rubis",
+		runeSkull: "Crâne runique",
+		athame: "Athamé de rubis",
 		jadeEye: "Œil de jade",
 		censer: "Encensoir sacré",
 	} as Record<OccultId, string>,
@@ -182,8 +182,8 @@ export const grimoireEn: typeof grimoireFr = {
 	objects: {
 		pendulum: "Amethyst Pendulum",
 		blackMirror: "Black Mirror",
-		boneBell: "Bone Bell",
-		rubySeal: "Ruby Seal",
+		runeSkull: "Runic Skull",
+		athame: "Ruby Athame",
 		jadeEye: "Jade Eye",
 		censer: "Sacred Censer",
 	},
