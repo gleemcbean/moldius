@@ -64,7 +64,11 @@ import {
 } from "../../engine/player/LocalPlayer";
 import { SpottedDetector } from "../../engine/player/SpottedDetector";
 import { MINIMAP_SIZE } from "../../hud/HudCanvas";
-import { hudStore, pushFeedback } from "../../hud/hudStore";
+import {
+	hudStore,
+	type LeaderboardRow,
+	pushFeedback,
+} from "../../hud/hudStore";
 import { type MapMarker, MapRenderer, roomLabel } from "../../map/MapRenderer";
 import { mapStore, panMap, resetMap, zoomMap } from "../../map/mapStore";
 import { clockSync } from "../../network/clockSync";
@@ -125,6 +129,7 @@ export class GameSession {
 	private gaze = 0;
 	private readonly gorgonGaze = new Map<number, number>();
 	private jumpSpentAt: number[] = [];
+	private leaderboardHeld = false;
 	private haze = 0;
 	private clearAir: { density: number; color: THREE.Color } | null = null;
 	private mapOpen = false;
@@ -938,6 +943,14 @@ export class GameSession {
 				(this.input as InputManager).releasePointerLock();
 			}
 		}
+		const leaderboardHeld = frame.held.has("leaderboard");
+		if (leaderboardHeld !== this.leaderboardHeld) {
+			this.leaderboardHeld = leaderboardHeld;
+			hudStore.set({
+				showLeaderboard: leaderboardHeld,
+				leaderboard: leaderboardHeld ? this.leaderboardRows() : [],
+			});
+		}
 		if (this.mapOpen) {
 			this.handleMapInput(frame);
 			return;
@@ -1292,6 +1305,7 @@ export class GameSession {
 			voicePeakMs: Math.min(2000, Math.round(this.voiceActiveMs)),
 			held: this.heldSlot,
 			moveAck: player.moveAck,
+			jumps: player.jumps,
 		});
 		this.voicePeak = 0;
 		this.voiceActiveMs = 0;
@@ -1392,6 +1406,25 @@ export class GameSession {
 		return levelForHeight(player.character.y, Math.max(...layout.levels), 1.8);
 	}
 
+	private leaderboardRows(): LeaderboardRow[] {
+		const loaded = this.loadedWorld as LoadedWorld;
+		return [...loaded.state.players.values()]
+			.map((player) => ({
+				id: player.id,
+				name: player.name,
+				color: player.color,
+				score: player.latest?.score ?? 0,
+				health: player.latest?.hp ?? 100,
+				energy: player.latest?.en ?? 100,
+				alive: player.latest
+					? (player.latest.flags & PLAYER_FLAG.dead) === 0
+					: true,
+				self: player.id === this.selfId,
+				team: player.team,
+			}))
+			.sort((first, second) => second.score - first.score);
+	}
+
 	private publishHud(
 		serverNow: number,
 		spotted: number,
@@ -1409,6 +1442,7 @@ export class GameSession {
 		const howlerNearby = this.howlerNearby(serverNow);
 		const respawnAt = this.respawnAt;
 		hudStore.set({
+			leaderboard: this.leaderboardHeld ? this.leaderboardRows() : [],
 			remainingMs: this.beginInfo
 				? Math.max(0, this.beginInfo.endsAt - serverNow)
 				: loaded.state.remainingMs,

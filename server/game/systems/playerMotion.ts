@@ -5,10 +5,12 @@ import {
   FALL_DAMAGE_PER_METER,
   FALL_SAFE_HEIGHT,
   JUMP_ENERGY_COST,
-  JUMP_VELOCITY,
+  JUMP_REGEN_PAUSE_SECONDS,
   PLAYER_HEAD_CLEARANCE,
   MOVEMENT_BUDGET_CAP,
   SPRINT_GRACE_MS,
+  SPRINT_START_ENERGY_COST,
+  ENERGY_USE_REGEN_PAUSE_SECONDS,
   SPRINT_SPEED,
   WALK_SPEED,
   OCCULT_IDS,
@@ -18,9 +20,7 @@ import { movementCrossesWall } from '../../../shared/physics/lineOfSight.js';
 import type { ClientStateMessage } from '../../../shared/protocol/game.js';
 import type { Match } from '../Match.js';
 import type { MatchPlayer } from '../MatchPlayer.js';
-import { drainEnergy } from './energy.js';
-
-const JUMP_DETECT_SPEED = JUMP_VELOCITY * 0.6;
+import { drainEnergy, isSprintDraining, pauseEnergyRegen } from './energy.js';
 
 export type StateOutcome = 'accepted' | 'look-only' | 'stale' | 'rejected';
 
@@ -33,6 +33,7 @@ export function applyClientState(
     return 'stale';
   }
   player.lastSeq = message.seq;
+  chargeJumps(player, message.jumps);
   player.held = OCCULT_IDS[message.held] ?? null;
   const now = match.now;
   const elapsedMs = Math.min(1000, Math.max(16, now - player.lastStateAt));
@@ -104,18 +105,31 @@ export function applyClientState(
   }
   player.movementBudget -= horizontal;
 
-  if (!player.devModes.fly && player.grounded && !message.grounded && message.vy > JUMP_DETECT_SPEED) {
-    drainEnergy(player, JUMP_ENERGY_COST);
-  }
   player.position = next;
   player.velocity = { x: message.vx, y: message.vy, z: message.vz };
   player.grounded = message.grounded;
   trackFall(match, player, previous.y, free);
   player.crouch = message.crouch;
+  const wasSprinting = player.sprintIntent;
   player.sprintIntent = message.sprint && sprintAllowed;
   player.moveInput = message.moveInput;
+  if (!wasSprinting && isSprintDraining(player)) {
+    drainEnergy(player, SPRINT_START_ENERGY_COST);
+    pauseEnergyRegen(player, ENERGY_USE_REGEN_PAUSE_SECONDS);
+  }
   player.history.push({ t: now, x: next.x, y: next.y, z: next.z, yaw: message.yaw });
   return 'accepted';
+}
+
+/** Le compteur repart de zéro après une reconnexion : rien à débiter dans ce cas. */
+function chargeJumps(player: MatchPlayer, jumps: number): void {
+  const count = jumps - player.jumpsSeen;
+  player.jumpsSeen = jumps;
+  if (count <= 0 || !player.alive || player.devModes.fly) {
+    return;
+  }
+  drainEnergy(player, JUMP_ENERGY_COST * count);
+  pauseEnergyRegen(player, JUMP_REGEN_PAUSE_SECONDS);
 }
 
 function trackFall(match: Match, player: MatchPlayer, previousY: number, free: boolean): void {

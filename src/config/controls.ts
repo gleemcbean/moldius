@@ -21,7 +21,7 @@ export const ACTION_GROUPS: { id: ActionGroupId; actions: ActionId[] }[] = [
 		actions: ["grimoire", "lantern", "interact", "pagePrevious", "pageNext"],
 	},
 	{ id: "sabotage", actions: ["push", "shout"] },
-	{ id: "interface", actions: ["map"] },
+	{ id: "interface", actions: ["map", "leaderboard"] },
 ];
 
 export const RESERVED_CODES = new Set([

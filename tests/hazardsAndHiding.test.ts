@@ -315,6 +315,7 @@ describe("réseau", () => {
 			voicePeakMs: 0,
 			held: -1,
 			moveAck: bot.moveAck,
+			jumps: bot.jumps,
 		});
 		expect(player.position).toEqual(position);
 	});

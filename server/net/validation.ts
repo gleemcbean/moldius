@@ -72,6 +72,7 @@ export function parseClientState(payload: unknown): ClientStateMessage | null {
 	const voiceLevel = finiteNumber(payload.voiceLevel, 0, 1);
 	const voicePeakMs = finiteNumber(payload.voicePeakMs, 0, 2000);
 	const moveAck = finiteNumber(payload.moveAck, 0, 1e9);
+	const jumps = finiteNumber(payload.jumps, 0, 1e9);
 	const held = finiteNumber(payload.held, -1, 64);
 	const grounded = bool(payload.grounded);
 	const sprint = bool(payload.sprint);
@@ -91,6 +92,7 @@ export function parseClientState(payload: unknown): ClientStateMessage | null {
 		voiceLevel === null ||
 		voicePeakMs === null ||
 		moveAck === null ||
+		jumps === null ||
 		grounded === null ||
 		sprint === null ||
 		moveInput === null ||
@@ -117,6 +119,7 @@ export function parseClientState(payload: unknown): ClientStateMessage | null {
 		voicePeakMs,
 		held: held === null ? -1 : Math.round(held),
 		moveAck,
+		jumps: Math.round(jumps),
 	};
 }
 

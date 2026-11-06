@@ -60,6 +60,7 @@ export class LocalPlayer {
 	yaw: number;
 	pitch = 0;
 	moveAck = 0;
+	jumps = 0;
 	private accumulator = 0;
 	private readonly jumpAssist = new JumpAssist();
 	readonly events: { kind: "jump" | "land" | "tired"; speed: number }[] = [];
@@ -206,6 +207,7 @@ export class LocalPlayer {
 			);
 			this.jumpAssist.settle(this.character, STEP);
 			if (jump.jump) {
+				this.jumps += 1;
 				this.events.push({ kind: "jump", speed: 0 });
 			} else if (!wasGrounded && this.character.grounded) {
 				this.events.push({ kind: "land", speed: fallSpeed });

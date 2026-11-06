@@ -302,12 +302,12 @@ export class InputManager {
 		this.pointerLocked = document.pointerLockElement === this.element;
 		if (!this.pointerLocked) {
 			for (const action of this.held) {
-				if (action !== "crouch") {
+				if (action !== "crouch" && action !== "leaderboard") {
 					this.released.add(action);
 				}
 			}
 			for (const action of [...this.held]) {
-				if (action !== "crouch") {
+				if (action !== "crouch" && action !== "leaderboard") {
 					this.held.delete(action);
 				}
 			}

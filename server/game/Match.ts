@@ -7,9 +7,11 @@ import {
 	ANOMALY_SPAWN_RETRY_MS,
 	DOOR_INTERACT_RANGE,
 	ENERGY_MAX,
+	ENERGY_USE_REGEN_PAUSE_SECONDS,
 	HEALTH_MAX,
 	HIDE_INTERACT_RANGE,
 	LANTERN_MIN_ENERGY_TO_OPEN,
+	LANTERN_OPEN_ENERGY_COST,
 	MATCH_LOADING_TIMEOUT_MS,
 	OCCULT_CONSUMED_ON_CAPTURE,
 	OCCULT_RECIPES,
@@ -82,7 +84,7 @@ import { MatchPlayer } from "./MatchPlayer.js";
 import { formulaWords, planRoster, type RosterPlan } from "./roster.js";
 import { validateCast } from "./systems/captures.js";
 import { type DoorState, DoorSystem } from "./systems/doors.js";
-import { stepEnergy } from "./systems/energy.js";
+import { drainEnergy, pauseEnergyRegen, stepEnergy } from "./systems/energy.js";
 import { HazardSystem } from "./systems/hazards.js";
 import { LightingMap } from "./systems/lighting.js";
 import { LootSystem } from "./systems/loot.js";
@@ -886,6 +888,7 @@ export class Match {
 		player.alive = true;
 		player.health = HEALTH_MAX;
 		player.energy = ENERGY_MAX;
+		player.energyRegenPause = 0;
 		player.sprintLocked = false;
 		player.hiddenSpot = -1;
 		player.carriedBy = -1;
@@ -975,6 +978,10 @@ export class Match {
 		}
 		if (open && player.energy < LANTERN_MIN_ENERGY_TO_OPEN) {
 			return;
+		}
+		if (open && !player.lanternOpen) {
+			drainEnergy(player, LANTERN_OPEN_ENERGY_COST);
+			pauseEnergyRegen(player, ENERGY_USE_REGEN_PAUSE_SECONDS);
 		}
 		player.lanternOpen = open;
 	}

@@ -45,6 +45,8 @@ export class MatchPlayer {
 	grimoireOpen = false;
 	lanternOpen = false;
 	energy = ENERGY_MAX;
+	energyRegenPause = 0;
+	jumpsSeen = 0;
 	sprintLocked = false;
 	health = HEALTH_MAX;
 	alive = true;

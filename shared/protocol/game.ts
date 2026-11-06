@@ -166,6 +166,8 @@ export interface ClientStateMessage {
 	voicePeakMs: number;
 	held: number;
 	moveAck: number;
+	/** Compteur cumulé : aucun saut n'est perdu si plusieurs tiennent dans un message. */
+	jumps: number;
 }
 
 export type InteractionKind = "door" | "hide" | "unhide" | "valve" | "pickup";

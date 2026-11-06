@@ -1,6 +1,7 @@
 import {
   ENERGY_MAX,
   ENERGY_REGEN_PER_SECOND,
+  ENERGY_USE_REGEN_PAUSE_SECONDS,
   LANTERN_ENERGY_COST_PER_SECOND,
   SPRINT_ENERGY_COST_PER_SECOND,
   SPRINT_RESUME_THRESHOLD,
@@ -32,6 +33,10 @@ export function energyDrainPerSecond(player: MatchPlayer): number {
   );
 }
 
+export function pauseEnergyRegen(player: MatchPlayer, seconds: number): void {
+  player.energyRegenPause = Math.max(player.energyRegenPause, seconds);
+}
+
 export function stepEnergy(player: MatchPlayer, dt: number): EnergyStep {
   const result: EnergyStep = { sprintLockedNow: false, lanternForcedClosed: false };
   if (!player.alive) {
@@ -43,7 +48,13 @@ export function stepEnergy(player: MatchPlayer, dt: number): EnergyStep {
     return result;
   }
   const drain = energyDrainPerSecond(player);
-  const delta = drain > 0 ? -drain : ENERGY_REGEN_PER_SECOND;
+  const regen = player.energyRegenPause > 0 ? 0 : ENERGY_REGEN_PER_SECOND;
+  const delta = drain > 0 ? -drain : regen;
+  if (drain > 0) {
+    pauseEnergyRegen(player, ENERGY_USE_REGEN_PAUSE_SECONDS);
+  } else {
+    player.energyRegenPause = Math.max(0, player.energyRegenPause - dt);
+  }
   player.energy = Math.min(ENERGY_MAX, Math.max(0, player.energy + delta * dt));
   if (!player.sprintLocked && player.energy <= SPRINT_STOP_THRESHOLD) {
     player.sprintLocked = true;

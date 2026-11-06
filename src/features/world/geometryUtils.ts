@@ -1,3 +1,4 @@
+import { orientLatheProfile } from "@shared/latheProfile";
 import * as THREE from "three";
 
 export function scaleUv(
@@ -80,13 +81,7 @@ export function meterLathe(
 	input: THREE.Vector2[],
 	segments = 20,
 ): THREE.BufferGeometry {
-	let area = 0;
-	for (let index = 0; index < input.length; index += 1) {
-		const current = input[index];
-		const next = input[(index + 1) % input.length];
-		area += current.x * next.y - next.x * current.y;
-	}
-	const points = area < 0 ? [...input].reverse() : input;
+	const points = orientLatheProfile(input);
 	const geometry = new THREE.LatheGeometry(points, segments);
 	let length = 0;
 	for (let index = 1; index < points.length; index += 1) {

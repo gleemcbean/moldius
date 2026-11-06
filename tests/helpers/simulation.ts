@@ -96,6 +96,7 @@ export interface SimulatedPlayer {
 	input: CharacterInput;
 	seq: number;
 	moveAck: number;
+	jumps: number;
 	voiceLevel: number;
 	voicePeakMs: number;
 	held: number;
@@ -161,6 +162,7 @@ export class MatchSimulation {
 				},
 				seq: 0,
 				moveAck: 0,
+				jumps: 0,
 				voiceLevel: 0,
 				voicePeakMs: 0,
 				held: -1,
@@ -224,6 +226,10 @@ export class MatchSimulation {
 			if (player.alive && !player.hidden && !player.carried) {
 				const substeps = 4;
 				for (let index = 0; index < substeps; index += 1) {
+					const jumpsNow =
+						bot.input.jump &&
+						bot.character.grounded &&
+						bot.character.crouch < 0.6;
 					stepCharacter(
 						this.match.world,
 						bot.character,
@@ -236,6 +242,9 @@ export class MatchSimulation {
 						},
 						dt / substeps,
 					);
+					if (jumpsNow) {
+						bot.jumps += 1;
+					}
 				}
 			}
 			if (bot.lantern !== player.lanternOpen) {
@@ -262,6 +271,7 @@ export class MatchSimulation {
 				voicePeakMs: bot.voicePeakMs,
 				held: bot.held,
 				moveAck: bot.moveAck,
+				jumps: bot.jumps,
 			};
 			this.match.handleClientState(bot.id, message);
 		}

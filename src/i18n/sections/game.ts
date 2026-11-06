@@ -210,6 +210,15 @@ export const gameFr = {
 			elsewhere: "Joueur à un autre étage",
 		},
 	},
+	leaderboard: {
+		title: "Classement",
+		mushroom: "Champignon",
+		points: "Points",
+		health: "Vie",
+		energy: "Énergie",
+		you: "vous",
+		down: "à terre",
+	},
 	results: {
 		kicker: "Fin de la chasse",
 		title: "La récolte est terminée",
@@ -493,6 +502,15 @@ export const gameEn: typeof gameFr = {
 			stairs: "Stairs",
 			elsewhere: "Player on another floor",
 		},
+	},
+	leaderboard: {
+		title: "Leaderboard",
+		mushroom: "Mushroom",
+		points: "Points",
+		health: "Health",
+		energy: "Energy",
+		you: "you",
+		down: "down",
 	},
 	results: {
 		kicker: "End of the hunt",

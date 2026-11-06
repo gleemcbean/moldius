@@ -26,6 +26,18 @@ export interface HudFeedback {
 	tone: "success" | "error" | "info" | "warning";
 }
 
+export interface LeaderboardRow {
+	id: string;
+	name: string;
+	color: number;
+	score: number;
+	health: number;
+	energy: number;
+	alive: boolean;
+	self: boolean;
+	team: number | null;
+}
+
 export interface HudState {
 	remainingMs: number;
 	anomaliesInMs: number;
@@ -62,6 +74,8 @@ export interface HudState {
 	voiceLevel: number;
 	voiceTransmitting: boolean;
 	showMap: boolean;
+	leaderboard: LeaderboardRow[];
+	showLeaderboard: boolean;
 	paused: boolean;
 	fps: number;
 	level: Level;
@@ -113,6 +127,8 @@ export function initialHud(): HudState {
 		haze: 0,
 		voiceTransmitting: false,
 		showMap: false,
+		leaderboard: [],
+		showLeaderboard: false,
 		paused: false,
 		fps: 0,
 		level: 0,
