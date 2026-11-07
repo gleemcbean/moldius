@@ -7,8 +7,8 @@ import { audioEngine } from "../audio/audioEngine";
 import { clockSync } from "../network/clockSync";
 import { micManager } from "./micManager";
 import { voiceChat } from "./voiceChat";
+import { loadVoiceWorklet } from "./voiceWorklet";
 
-const WORKLET_URL = "/voice-capture.worklet.js";
 const TRIM_INTERVAL_MS = 1000;
 
 interface VoiceCapture {
@@ -35,20 +35,7 @@ class MomentVoiceBank {
 	start(): void {
 		this.capturing = true;
 		this.generation += 1;
-		this.workletReady ??= this.loadWorklet();
-	}
-
-	private async loadWorklet(): Promise<boolean> {
-		const worklet = audioEngine.ctx.audioWorklet;
-		if (!worklet) {
-			return false;
-		}
-		try {
-			await worklet.addModule(WORKLET_URL);
-			return true;
-		} catch {
-			return false;
-		}
+		this.workletReady ??= loadVoiceWorklet();
 	}
 
 	setWindows(windows: readonly TimeWindow[]): void {

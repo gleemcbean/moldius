@@ -3,10 +3,12 @@ import {
 	VOICE_PROXIMITY_MAX_RANGE,
 } from "@shared/config/index";
 import type { IceServerConfig, VoiceSignal } from "@shared/protocol/lobby";
+import { VOICE_RELAY_AFTER_MS } from "@shared/voiceRelay";
 import { createStore } from "../../utils/store";
 import { audioEngine, setPannerPosition } from "../audio/audioEngine";
 import { getSocket } from "../network/socket";
 import { createRadioFilter, type RadioFilter } from "./radioEffect";
+import { VoiceRelayCapture, VoiceRelayPlayback } from "./voiceRelay";
 
 export type VoiceMode = "lobby" | "game";
 
@@ -19,7 +21,7 @@ interface PeerLink {
 	transceiver: RTCRtpTransceiver | null;
 	element: HTMLAudioElement | null;
 	stream: MediaStream | null;
-	source: MediaStreamAudioSourceNode | null;
+	source: AudioNode | null;
 	gain: GainNode;
 	filter: BiquadFilterNode;
 	panner: PannerNode;
@@ -32,6 +34,12 @@ interface PeerLink {
 	offerSentAt: number;
 	queue: Promise<void>;
 	pendingCandidates: RTCIceCandidateInit[];
+	directStream: MediaStream | null;
+	/** Depuis quand le lien direct n'est pas établi ; null s'il l'est. */
+	downSince: number | null;
+	relayed: boolean;
+	relayPlayback: VoiceRelayPlayback | null;
+	restartedAt: number;
 }
 
 interface PendingSignal {
@@ -41,10 +49,13 @@ interface PendingSignal {
 
 const OFFER_RETRY_MS = 2500;
 const WATCHDOG_INTERVAL_MS = 1000;
+const ICE_RESTART_INTERVAL_MS = 30_000;
 
 export interface VoicePeerInfo {
 	level: number;
 	state: RTCPeerConnectionState;
+	/** La voix passe par le serveur, faute de lien direct. */
+	relayed: boolean;
 }
 
 export const voiceStore = createStore<{ peers: Record<string, VoicePeerInfo> }>(
@@ -61,6 +72,9 @@ class VoiceChat {
 	private meterTimer: number | null = null;
 	private watchdogTimer: number | null = null;
 	private readonly pending: PendingSignal[] = [];
+	private readonly relayCapture = new VoiceRelayCapture((data) =>
+		this.sendRelay(data),
+	);
 
 	listen(): void {
 		if (this.listening) {
@@ -74,6 +88,9 @@ class VoiceChat {
 			}
 			this.handleSignal(peerId, signal);
 		});
+		getSocket().on("voice:relay", ({ peerId, data }) =>
+			this.receiveRelay(peerId, data),
+		);
 	}
 
 	start(myId: string, iceServers: IceServerConfig[]): void {
@@ -84,10 +101,10 @@ class VoiceChat {
 			this.meterTimer = window.setInterval(() => this.publishLevels(), 100);
 		}
 		if (this.watchdogTimer === null) {
-			this.watchdogTimer = window.setInterval(
-				() => this.retryStalledOffers(),
-				WATCHDOG_INTERVAL_MS,
-			);
+			this.watchdogTimer = window.setInterval(() => {
+				this.retryStalledOffers();
+				this.superviseLinks();
+			}, WATCHDOG_INTERVAL_MS);
 		}
 		for (const { peerId, signal } of this.pending.splice(
 			0,
@@ -102,6 +119,7 @@ class VoiceChat {
 		for (const link of this.peers.values()) {
 			void link.transceiver?.sender.replaceTrack(track);
 		}
+		this.updateRelayCapture();
 	}
 
 	setMode(mode: VoiceMode): void {
@@ -241,6 +259,11 @@ class VoiceChat {
 			offerSentAt: 0,
 			queue: Promise.resolve(),
 			pendingCandidates: [],
+			directStream: null,
+			downSince: performance.now(),
+			relayed: false,
+			relayPlayback: null,
+			restartedAt: 0,
 		};
 		filter.connect(gain);
 		this.route(link);
@@ -274,16 +297,16 @@ class VoiceChat {
 				});
 			}
 		};
-		connection.ontrack = (event) =>
-			this.attachRemote(
-				link,
-				event.streams[0] ?? new MediaStream([event.track]),
-			);
+		connection.ontrack = (event) => {
+			link.directStream = event.streams[0] ?? new MediaStream([event.track]);
+			if (!link.relayed) {
+				this.attachRemote(link, link.directStream);
+			}
+		};
 		connection.onconnectionstatechange = () => {
 			link.state = connection.connectionState;
-			if (connection.connectionState === "failed") {
-				connection.restartIce();
-			}
+			this.superviseLink(link);
+			this.updateRelayCapture();
 		};
 		this.peers.set(peerId, link);
 		return link;
@@ -315,9 +338,25 @@ class VoiceChat {
 		link.stream = stream;
 		const context = audioEngine.ctx;
 		link.source = context.createMediaStreamSource(stream);
-		link.source.connect(link.filter);
-		link.source.connect(link.analyser);
-		link.source.connect(link.radio.input);
+		this.connectSource(link, link.source);
+	}
+
+	private attachRelay(link: PeerLink, playback: VoiceRelayPlayback): void {
+		link.source?.disconnect();
+		if (link.element) {
+			link.element.srcObject = null;
+			link.element = null;
+		}
+		link.stream = playback.stream;
+		link.source = playback.bus;
+		this.connectSource(link, playback.bus);
+		playback.bus.connect(playback.output);
+	}
+
+	private connectSource(link: PeerLink, source: AudioNode): void {
+		source.connect(link.filter);
+		source.connect(link.analyser);
+		source.connect(link.radio.input);
 	}
 
 	private handleSignal(peerId: string, signal: VoiceSignal): void {
@@ -400,6 +439,74 @@ class VoiceChat {
 		}
 	}
 
+	/** Le relais prend le relais d'un lien direct qui n'aboutit pas, sans cesser d'y revenir. */
+	private superviseLink(link: PeerLink): void {
+		const now = performance.now();
+		const connection = link.connection;
+		if (connection.connectionState === "connected") {
+			link.downSince = null;
+			if (link.relayed) {
+				link.relayed = false;
+				if (link.directStream) {
+					this.attachRemote(link, link.directStream);
+				}
+			}
+			return;
+		}
+		link.downSince ??= now;
+		if (now - link.downSince >= VOICE_RELAY_AFTER_MS) {
+			link.relayed = true;
+		}
+		if (
+			connection.connectionState === "failed" &&
+			now - link.restartedAt >= ICE_RESTART_INTERVAL_MS
+		) {
+			link.restartedAt = now;
+			connection.restartIce();
+		}
+	}
+
+	private superviseLinks(): void {
+		for (const link of this.peers.values()) {
+			this.superviseLink(link);
+		}
+		this.updateRelayCapture();
+	}
+
+	private updateRelayCapture(): void {
+		if (
+			this.localTrack &&
+			[...this.peers.values()].some((link) => link.relayed)
+		) {
+			void this.relayCapture.start(this.localTrack);
+		} else {
+			this.relayCapture.stop();
+		}
+	}
+
+	private sendRelay(data: ArrayBuffer): void {
+		const peerIds = [...this.peers.values()]
+			.filter((link) => link.relayed)
+			.map((link) => link.id);
+		if (peerIds.length > 0) {
+			getSocket().volatile.emit("voice:relay", { peerIds, data });
+		}
+	}
+
+	private receiveRelay(peerId: string, data: ArrayBuffer): void {
+		const link = this.peers.get(peerId);
+		if (!link || link.connection.connectionState === "connected") {
+			return;
+		}
+		link.relayed = true;
+		link.relayPlayback ??= new VoiceRelayPlayback();
+		if (link.stream !== link.relayPlayback.stream) {
+			this.attachRelay(link, link.relayPlayback);
+		}
+		link.relayPlayback.play(data);
+		this.updateRelayCapture();
+	}
+
 	private retryStalledOffers(): void {
 		const now = performance.now();
 		for (const link of this.peers.values()) {
@@ -432,10 +539,12 @@ class VoiceChat {
 		link.panner.disconnect();
 		link.radio.dispose();
 		link.radioGain.disconnect();
+		link.relayPlayback?.dispose();
 		if (link.element) {
 			link.element.srcObject = null;
 		}
 		this.peers.delete(peerId);
+		this.updateRelayCapture();
 	}
 
 	private publishLevels(): void {
@@ -451,6 +560,7 @@ class VoiceChat {
 			peers[link.id] = {
 				level: Math.min(1, Math.max(0, (db + 58) / 46)),
 				state: link.state,
+				relayed: link.relayed,
 			};
 		}
 		voiceStore.set({ peers });

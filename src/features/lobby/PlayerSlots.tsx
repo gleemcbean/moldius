@@ -44,6 +44,13 @@ function VoiceLink({ playerId }: { playerId: string }) {
 		voiceStore,
 		(voice) => voice.peers[playerId]?.state ?? null,
 	);
+	const relayed = useStore(
+		voiceStore,
+		(voice) => voice.peers[playerId]?.relayed ?? false,
+	);
+	if (relayed) {
+		return <span className={styles.micOk}>{t.lobby.voice.relayed}</span>;
+	}
 	const key = state ? LINK_LABELS[state] : undefined;
 	const label = key ? t.lobby.voice[key] : undefined;
 	if (!label) {

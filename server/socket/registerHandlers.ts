@@ -32,6 +32,7 @@ import {
 	parseCast,
 	parseClientState,
 	parseInteract,
+	parseVoiceRelay,
 	parseVoiceSignal,
 	sanitizeName,
 	sanitizeToken,
@@ -390,6 +391,23 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				peerId: current.playerId,
 				signal: envelope.signal,
 			});
+		}
+	});
+
+	socket.on("voice:relay", (payload) => {
+		const current = session();
+		const relay = parseVoiceRelay(payload);
+		if (!current || !relay || !allow("voice:relay")) {
+			return;
+		}
+		for (const peerId of new Set(relay.peerIds)) {
+			const target = deps.lobbies.relayVoice(current, peerId);
+			if (target) {
+				deps.io.to(target).volatile.emit("voice:relay", {
+					peerId: current.playerId,
+					data: relay.data as unknown as ArrayBuffer,
+				});
+			}
 		}
 	});
 

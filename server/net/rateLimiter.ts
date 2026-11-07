@@ -41,6 +41,7 @@ export class RateLimiter {
 export const SOCKET_RATE_RULES: Record<string, RateRule> = {
 	"game:state": { perSecond: 30, burst: 40 },
 	"voice:signal": { perSecond: 60, burst: 120 },
+	"voice:relay": { perSecond: 40, burst: 80 },
 	"time:ping": { perSecond: 4, burst: 8 },
 	"game:interact": { perSecond: 8, burst: 10 },
 	"game:lantern": { perSecond: 8, burst: 10 },

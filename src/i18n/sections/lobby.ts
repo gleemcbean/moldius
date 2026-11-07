@@ -37,6 +37,7 @@ export const lobbyFr = {
 	voice: {
 		connecting: "Voix : connexion…",
 		connected: "Voix reliée",
+		relayed: "Voix via le serveur",
 		interrupted: "Voix interrompue",
 		unavailable: "Voix indisponible",
 	},
@@ -170,6 +171,7 @@ export const lobbyEn: typeof lobbyFr = {
 	voice: {
 		connecting: "Voice: connecting…",
 		connected: "Voice linked",
+		relayed: "Voice via server",
 		interrupted: "Voice interrupted",
 		unavailable: "Voice unavailable",
 	},

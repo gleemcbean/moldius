@@ -1,15 +1,17 @@
 const OUTPUT_RATE = 16000;
-const BLOCK_SAMPLES = 1600;
+const DEFAULT_BLOCK_SAMPLES = 1600;
 
 /** Réduit la voix à 16 kHz et l'envoie au jeu par petits blocs, sans rien garder. */
 class VoiceCaptureProcessor extends AudioWorkletProcessor {
-	constructor() {
+	constructor(options) {
 		super();
+		const blockSamples =
+			options?.processorOptions?.blockSamples ?? DEFAULT_BLOCK_SAMPLES;
 		this.step = sampleRate / OUTPUT_RATE;
 		this.progress = 0;
 		this.sum = 0;
 		this.count = 0;
-		this.block = new Int16Array(BLOCK_SAMPLES);
+		this.block = new Int16Array(blockSamples);
 		this.filled = 0;
 	}
 
@@ -29,7 +31,7 @@ class VoiceCaptureProcessor extends AudioWorkletProcessor {
 				this.count = 0;
 				this.block[this.filled] = value * 32767;
 				this.filled += 1;
-				if (this.filled === BLOCK_SAMPLES) {
+				if (this.filled === this.block.length) {
 					this.port.postMessage(this.block.slice(0));
 					this.filled = 0;
 				}

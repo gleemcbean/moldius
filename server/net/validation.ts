@@ -8,6 +8,10 @@ import type {
 	VoiceSignal,
 	VoiceSignalEnvelope,
 } from "../../shared/protocol/lobby.js";
+import {
+	VOICE_RELAY_MAX_BYTES,
+	VOICE_RELAY_MAX_PEERS,
+} from "../../shared/voiceRelay.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -159,6 +163,23 @@ export function parseCast(payload: unknown): CastRequest | null {
 		return null;
 	}
 	return { transcripts, method };
+}
+
+export function parseVoiceRelay(
+	payload: unknown,
+): { peerIds: string[]; data: Buffer } | null {
+	if (
+		!isRecord(payload) ||
+		!Array.isArray(payload.peerIds) ||
+		payload.peerIds.length > VOICE_RELAY_MAX_PEERS ||
+		!payload.peerIds.every((id) => typeof id === "string") ||
+		!Buffer.isBuffer(payload.data) ||
+		payload.data.length === 0 ||
+		payload.data.length > VOICE_RELAY_MAX_BYTES
+	) {
+		return null;
+	}
+	return { peerIds: payload.peerIds as string[], data: payload.data };
 }
 
 export function parseVoiceSignal(payload: unknown): VoiceSignalEnvelope | null {

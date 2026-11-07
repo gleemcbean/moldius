@@ -27,6 +27,8 @@ import type {
 	LobbyError,
 	LobbyState,
 	SessionInfo,
+	VoiceRelayFrame,
+	VoiceRelayRequest,
 	VoiceSignalEnvelope,
 } from "./lobby.js";
 
@@ -80,6 +82,7 @@ export interface ClientToServerEvents {
 	"lobby:team": (payload: { team: number }) => void;
 	"lobby:start": (ack: Ack<null>) => void;
 	"voice:signal": (payload: VoiceSignalEnvelope) => void;
+	"voice:relay": (payload: VoiceRelayRequest) => void;
 	"time:ping": (payload: TimeSyncPing) => void;
 	"game:loaded": (payload: { matchId: string; layoutChecksum: number }) => void;
 	"game:layoutRequest": (payload: { matchId: string }) => void;
@@ -106,6 +109,7 @@ export interface ServerToClientEvents {
 	"friends:changed": () => void;
 	"friends:invited": (invite: FriendInvite) => void;
 	"voice:signal": (payload: VoiceSignalEnvelope) => void;
+	"voice:relay": (payload: VoiceRelayFrame) => void;
 	"time:pong": (payload: TimeSyncPong) => void;
 	"game:init": (payload: MatchInit) => void;
 	"game:layout": (payload: { matchId: string; layoutJson: string }) => void;

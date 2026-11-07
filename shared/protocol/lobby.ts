@@ -100,6 +100,17 @@ export type VoiceSignal =
 			sdpMLineIndex: number | null;
 	  };
 
+/** Dans un sens, la liste des destinataires ; dans l'autre, le joueur qui parle. */
+export interface VoiceRelayRequest {
+	peerIds: string[];
+	data: ArrayBuffer;
+}
+
+export interface VoiceRelayFrame {
+	peerId: string;
+	data: ArrayBuffer;
+}
+
 export interface VoiceSignalEnvelope {
 	peerId: string;
 	signal: VoiceSignal;
