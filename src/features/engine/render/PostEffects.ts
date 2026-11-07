@@ -179,6 +179,10 @@ export class PostEffects {
 		uniforms.hudOn.value = 1;
 	}
 
+	clearHud(): void {
+		this.material.uniforms.hudOn.value = 0;
+	}
+
 	render(frame: PostEffectsFrame, draw: () => void): void {
 		this.time += frame.dt;
 		this.tension +=

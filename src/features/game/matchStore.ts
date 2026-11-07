@@ -1,3 +1,4 @@
+import type { MatchMetrics } from "@shared/challenges";
 import type {
 	MatchBegin,
 	MatchInit,
@@ -15,6 +16,7 @@ export interface MatchState {
 	init: MatchInit | null;
 	begin: MatchBegin | null;
 	results: MatchResults | null;
+	challengeMetrics: MatchMetrics | null;
 	loadingSteps: LoadingStep[];
 	loaded: boolean;
 	error: string | null;
@@ -24,6 +26,7 @@ export const matchStore = createStore<MatchState>({
 	init: null,
 	begin: null,
 	results: null,
+	challengeMetrics: null,
 	loadingSteps: [],
 	loaded: false,
 	error: null,
@@ -34,6 +37,7 @@ export function resetMatchState(): void {
 		init: null,
 		begin: null,
 		results: null,
+		challengeMetrics: null,
 		loadingSteps: [],
 		loaded: false,
 		error: null,

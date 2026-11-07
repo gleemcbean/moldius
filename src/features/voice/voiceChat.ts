@@ -6,6 +6,7 @@ import type { IceServerConfig, VoiceSignal } from "@shared/protocol/lobby";
 import { createStore } from "../../utils/store";
 import { audioEngine, setPannerPosition } from "../audio/audioEngine";
 import { getSocket } from "../network/socket";
+import { createRadioFilter, type RadioFilter } from "./radioEffect";
 
 export type VoiceMode = "lobby" | "game";
 
@@ -17,11 +18,15 @@ interface PeerLink {
 	ignoreOffer: boolean;
 	transceiver: RTCRtpTransceiver | null;
 	element: HTMLAudioElement | null;
+	stream: MediaStream | null;
 	source: MediaStreamAudioSourceNode | null;
 	gain: GainNode;
 	filter: BiquadFilterNode;
 	panner: PannerNode;
 	analyser: AnalyserNode;
+	radio: RadioFilter;
+	radioGain: GainNode;
+	radioOn: boolean;
 	samples: Float32Array<ArrayBuffer>;
 	state: RTCPeerConnectionState;
 	offerSentAt: number;
@@ -132,6 +137,26 @@ class VoiceChat {
 		}
 	}
 
+	/** Le talkie double la voix sans la spatialiser : on l'entend d'où qu'on soit. */
+	setRadio(peerId: string, on: boolean): void {
+		const link = this.peers.get(peerId);
+		if (!link || link.radioOn === on) {
+			return;
+		}
+		link.radioOn = on;
+		link.radioGain.gain.setTargetAtTime(
+			on ? 1.2 : 0,
+			audioEngine.ctx.currentTime,
+			0.03,
+		);
+	}
+
+	clearRadio(): void {
+		for (const id of this.peers.keys()) {
+			this.setRadio(id, false);
+		}
+	}
+
 	updateSpatial(
 		peerId: string,
 		position: { x: number; y: number; z: number } | null,
@@ -162,6 +187,10 @@ class VoiceChat {
 		);
 	}
 
+	remoteStream(peerId: string): MediaStream | null {
+		return this.peers.get(peerId)?.stream ?? null;
+	}
+
 	levelOf(peerId: string): number {
 		return voiceStore.get().peers[peerId]?.level ?? 0;
 	}
@@ -185,6 +214,11 @@ class VoiceChat {
 		panner.distanceModel = "linear";
 		const analyser = context.createAnalyser();
 		analyser.fftSize = 512;
+		const radio = createRadioFilter(context);
+		const radioGain = context.createGain();
+		radioGain.gain.value = 0;
+		radio.output.connect(radioGain);
+		radioGain.connect(audioEngine.bus("voice"));
 		const link: PeerLink = {
 			id: peerId,
 			connection,
@@ -193,11 +227,15 @@ class VoiceChat {
 			ignoreOffer: false,
 			transceiver,
 			element: null,
+			stream: null,
 			source: null,
 			gain,
 			filter,
 			panner,
 			analyser,
+			radio,
+			radioGain,
+			radioOn: false,
 			samples: new Float32Array(new ArrayBuffer(analyser.fftSize * 4)),
 			state: "new",
 			offerSentAt: 0,
@@ -274,10 +312,12 @@ class VoiceChat {
 		element.srcObject = stream;
 		void element.play().catch(() => undefined);
 		link.element = element;
+		link.stream = stream;
 		const context = audioEngine.ctx;
 		link.source = context.createMediaStreamSource(stream);
 		link.source.connect(link.filter);
 		link.source.connect(link.analyser);
+		link.source.connect(link.radio.input);
 	}
 
 	private handleSignal(peerId: string, signal: VoiceSignal): void {
@@ -390,6 +430,8 @@ class VoiceChat {
 		link.source?.disconnect();
 		link.gain.disconnect();
 		link.panner.disconnect();
+		link.radio.dispose();
+		link.radioGain.disconnect();
 		if (link.element) {
 			link.element.srcObject = null;
 		}

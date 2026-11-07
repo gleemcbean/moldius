@@ -10,22 +10,35 @@ import {
 	MANOR_UPPER_ROOM_COUNT,
 	MANOR_WINDOWS,
 	MAX_UPPER_FLOORS,
+	STAKE_FURNITURE,
+	STAKE_KINDS,
+	stakeRoomCount,
 } from "../config/index.js";
 import type { MatchConfig } from "../matchConfig.js";
 import { NavGrid } from "../navigation/navGrid.js";
 import { CollisionWorld } from "../physics/collisionWorld.js";
 import { hashNumbers, hashString, SeededRandom } from "../random.js";
 import { furnishManor } from "./furnish/furnishManor.js";
-import { placePickups } from "./furnish/pickups.js";
+import { placePickups, placeWalkies } from "./furnish/pickups.js";
 import { isHanging, ManorLayoutBuilder } from "./layoutBuilder.js";
 import { mergeBounds } from "./polygon.js";
 import { ROOM_TYPES } from "./roomCatalog.js";
-import type { Level, ManorLayout, Room, RoomType } from "./types.js";
+import type {
+	FurnitureItem,
+	Level,
+	ManorLayout,
+	Room,
+	RoomType,
+	StakeRoom,
+} from "./types.js";
 
 export type ManorOptions = Pick<
 	MatchConfig,
 	"manorSize" | "roomTypes" | "floors" | "upperFloorSize" | "stairCount"
-> & { pickupTotal?: number };
+> & {
+	pickupTotal?: number;
+	walkies?: boolean;
+};
 
 const TOP_UP_TYPES: RoomType[] = [
 	"corridor",
@@ -119,7 +132,8 @@ export function generateManor(
 	let builder = buildRooms(rng, options);
 	for (
 		let attempt = 1;
-		attempt <= MANOR_LAYOUT_RETRIES && hasSparseFloor(builder);
+		attempt <= MANOR_LAYOUT_RETRIES &&
+		(hasSparseFloor(builder) || isMissingStakeRoom(builder, options));
 		attempt += 1
 	) {
 		rng = new SeededRandom(hashNumbers(seed, attempt));
@@ -178,9 +192,37 @@ export function generateManor(
 				y: item.y,
 				z: item.z,
 			})),
+		walkies:
+			(options.walkies ?? true)
+				? placeWalkies(rooms, furnished.furniture, rng.fork("walkies"))
+				: [],
+		stakes: stakeRoomsOf(furnished.furniture),
 		bounds,
 		levels,
 	});
+}
+
+function stakeRoomsOf(furniture: FurnitureItem[]): StakeRoom[] {
+	return furniture
+		.flatMap((item) => {
+			const kind = STAKE_KINDS.find(
+				(candidate) => STAKE_FURNITURE[candidate] === item.kind,
+			);
+			return kind
+				? [
+						{
+							kind,
+							furnitureId: item.id,
+							roomId: item.roomId,
+							level: item.level,
+							x: item.x,
+							y: item.y,
+							z: item.z,
+						},
+					]
+				: [];
+		})
+		.map((stake, id) => ({ id, ...stake }));
 }
 
 function withoutCutOffHideSpots(layout: ManorLayout): ManorLayout {
@@ -313,6 +355,29 @@ function placeMezzanineRooms(
 	}
 }
 
+function enabledStakeRooms(options: ManorOptions): RoomType[] {
+	return STAKE_KINDS.filter((kind) => options.roomTypes.includes(kind));
+}
+
+function isMissingStakeRoom(
+	builder: ManorLayoutBuilder,
+	options: ManorOptions,
+): boolean {
+	return enabledStakeRooms(options).some(
+		(type) => !builder.rooms.some((room) => room.type === type),
+	);
+}
+
+/** Chaque enjeu autorisé une fois, puis davantage dans les grands manoirs. */
+function planStakeRooms(options: ManorOptions, rooms: number): RoomType[] {
+	const enabled = enabledStakeRooms(options);
+	const count = Math.min(enabled.length * 2, stakeRoomCount(rooms));
+	return Array.from(
+		{ length: enabled.length === 0 ? 0 : Math.max(count, enabled.length) },
+		(_, index) => enabled[index % enabled.length],
+	);
+}
+
 function hasSparseFloor(builder: ManorLayoutBuilder): boolean {
 	const counts = new Map<number, number>();
 	for (const room of builder.rooms) {
@@ -339,13 +404,19 @@ function planRooms(rng: SeededRandom, options: ManorOptions): RoomPlan {
 		return levelAllowed && (!definition.optional || allowed.has(type));
 	};
 
+	const stakeRooms = planStakeRooms(
+		options,
+		groundCount + floors * MANOR_UPPER_ROOM_COUNT[options.upperFloorSize],
+	);
+	const upperStakes = floors > 0 ? stakeRooms.splice(STAKE_KINDS.length) : [];
 	const ground = pickThemed(
 		rng,
 		GROUND_CORE.filter((type) => permitted(type, 0)),
 		GROUND_EXTRA.filter(([type]) => permitted(type, 0)),
-		Math.round(groundCount * 0.55),
+		Math.round(groundCount * 0.55) - stakeRooms.length,
 		() => true,
 	);
+	ground.push(...stakeRooms);
 	fillWithGeneric(rng, ground, groundCount, GENERIC_GROUND, allowed, 0.36);
 
 	const upper: RoomType[][] = [];
@@ -382,6 +453,9 @@ function planRooms(rng: SeededRandom, options: ManorOptions): RoomPlan {
 				!used.has(type) ||
 				rng.chance(0.4),
 		);
+		if (level === 1) {
+			plan.push(...upperStakes);
+		}
 		fillWithGeneric(rng, plan, count, GENERIC_UPPER, allowed, 0.32);
 		for (const type of plan) {
 			used.add(type);
@@ -654,6 +728,9 @@ export function layoutChecksum(layout: ManorLayout): number {
 		parts.push(
 			`${pickup.material}:${pickup.x.toFixed(2)}:${pickup.z.toFixed(2)}`,
 		);
+	}
+	for (const walkie of layout.walkies) {
+		parts.push(`walkie:${walkie.x.toFixed(2)}:${walkie.z.toFixed(2)}`);
 	}
 	return hashString(parts.join("|"));
 }

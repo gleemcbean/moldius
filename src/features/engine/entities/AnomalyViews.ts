@@ -1,22 +1,47 @@
 import { swarmClearance } from "@shared/anomalies/swarm";
 import {
 	ARCHIVIST_CIRCLE_RADIUS,
+	LANTERN_LIGHT_INTENSITY,
+	LANTERN_LIGHT_RANGE,
 	RAT_KING_SWARM_RADIUS,
+	VOICE_PROXIMITY_MAX_RANGE,
 } from "@shared/config/index";
 import { SPECIES, type SpeciesId } from "@shared/config/species";
+import type { DisguiseBody } from "@shared/doubleDisguise";
 import { DEFAULT_HAT_PATTERN, type HatPattern } from "@shared/hatPatterns";
 import type { Room } from "@shared/manor/types";
 import type { CollisionWorld } from "@shared/physics/collisionWorld";
-import { countWallsBetween, lineOfSight } from "@shared/physics/lineOfSight";
+import {
+	countWallsBetween,
+	lineOfSight,
+	pullBackToSight,
+} from "@shared/physics/lineOfSight";
 import { POSE_SMOOTHING_LAG_MS, PoseSmoother } from "@shared/poseSmoother";
-import type { AnomalyState, GameEvent } from "@shared/protocol/game";
+import {
+	type AnomalyState,
+	type GameEvent,
+	PLAYER_FLAG,
+} from "@shared/protocol/game";
+import {
+	DEFAULT_LANTERN_TINT,
+	LANTERN_TINT_COLORS,
+	type LanternTint,
+} from "@shared/rewards";
 import * as THREE from "three";
 import { type SoundHandle, soundBank } from "../../audio/soundBank";
 import type { AnomalyModel } from "../../models/anomalies/AnomalyModel";
 import { createAnomalyModel } from "../../models/anomalies/createAnomalyModel";
+import { DoubleModel } from "../../models/anomalies/creatures";
 import type { ModelKit } from "../../models/modelKit";
 import { modelYaw } from "../../models/modelKit";
+import {
+	doubleVoices,
+	speakClip,
+	type VoicePlayback,
+} from "../../voice/doubleVoices";
+import { voiceChat } from "../../voice/voiceChat";
 import type { TextureLibrary } from "../../world/textures/TextureLibrary";
+import { footstepSound } from "../audio/AmbientAudio";
 import type { DynamicLight } from "../lighting/LightPool";
 import type { ClientWorldState } from "../state/ClientWorldState";
 import { nameTag } from "./nameTag";
@@ -24,6 +49,7 @@ import { nameTag } from "./nameTag";
 export interface PlayerAppearance {
 	color: number;
 	pattern: HatPattern;
+	lantern: LanternTint;
 }
 
 import type { ParticleSystem } from "../effects/Particles";
@@ -81,6 +107,7 @@ export interface AnomalyRenderInfo {
 	aware: boolean;
 	extra: number;
 	mimic: string | null;
+	impersonated: string | null;
 	renderTime: number;
 }
 
@@ -100,16 +127,22 @@ interface View {
 	tag: THREE.Sprite | null;
 	pose: PoseSmoother;
 	emitted: number[];
+	lantern: DynamicLight | null;
+	stepPhase: number;
+	voice: VoicePlayback | null;
+	nextVoiceAt: number;
 }
 
 const TAG_RANGE = 11;
+const DOUBLE_VOICE_MIN_GAP = 7;
+const DOUBLE_VOICE_EXTRA_GAP = 12;
 
 function disguiseKey(
 	impersonated: string | null,
 	mimic: PlayerAppearance | null,
 ): string | null {
 	return impersonated && mimic
-		? `${impersonated}-${mimic.color}-${mimic.pattern}`
+		? `${impersonated}-${mimic.color}-${mimic.pattern}-${mimic.lantern}`
 		: null;
 }
 
@@ -118,6 +151,8 @@ export class AnomalyViews {
 	private readonly views = new Map<number, View>();
 	private readonly beams: Beam[] = [];
 	private time = 0;
+	private voicesSilenced = false;
+	private readonly standIns = new Map<number, string>();
 
 	private readonly swarms = new Map<
 		number,
@@ -193,6 +228,7 @@ export class AnomalyViews {
 		dynamicLights: DynamicLight[],
 	): void {
 		this.time += dt;
+		this.recordVoices();
 		for (const anomaly of this.state.anomalies.values()) {
 			let view = this.views.get(anomaly.id);
 			if (!anomaly.active || anomaly.buffer.size === 0) {
@@ -207,7 +243,7 @@ export class AnomalyViews {
 			}
 			const impersonated =
 				anomaly.roster.species === "double"
-					? this.impersonate(anomaly.id, sample.value.mimic)
+					? this.impersonate(anomaly.id, sample.value.mimic, sample.value)
 					: null;
 			const mimic = impersonated ? this.playerAppearance(impersonated) : null;
 			const mimicKey = disguiseKey(impersonated, mimic);
@@ -269,6 +305,7 @@ export class AnomalyViews {
 				aware: sample.value.aware,
 				extra: sample.value.extra,
 				mimic: sample.value.mimic,
+				impersonated,
 				renderTime: renderTime - POSE_SMOOTHING_LAG_MS,
 			};
 			if (view.tag) {
@@ -281,6 +318,16 @@ export class AnomalyViews {
 					lineOfSight(this.world, listener, view.tag.position);
 			}
 			this.updateSound(view, state, center, listener);
+			this.updateDisguise(
+				view,
+				impersonated,
+				sample.value.mimic !== null &&
+					sample.value.extra < 1 &&
+					state !== "special",
+				listener,
+				dt,
+				dynamicLights,
+			);
 			this.updateGlow(view, dynamicLights);
 			this.emitParticles(view, dt);
 			this.updateCircle(view, sample.value.extra);
@@ -394,14 +441,185 @@ export class AnomalyViews {
 		}
 	}
 
-	private impersonate(anomalyId: number, mimic: string | null): string | null {
+	/** Ce que la carte doit montrer : les Doubles encore déguisés et qui ils imitent. */
+	disguises(): DisguiseBody[] {
+		const bodies: DisguiseBody[] = [];
+		for (const view of this.views.values()) {
+			const info = view.info;
+			if (
+				info?.mimic &&
+				info.impersonated &&
+				info.impersonated !== this.state.selfId
+			) {
+				bodies.push({
+					anomalyId: view.id,
+					playerId: info.impersonated,
+					x: info.position.x,
+					y: info.position.y,
+					z: info.position.z,
+					yaw: view.pose.yaw,
+				});
+			}
+		}
+		return bodies;
+	}
+
+	/**
+	 * On ne peut pas se croiser soi-même : si le Double imite celui qui regarde,
+	 * il prend pour lui les traits d'un autre joueur vivant, le plus loin possible.
+	 */
+	private impersonate(
+		anomalyId: number,
+		mimic: string | null,
+		at: { x: number; z: number },
+	): string | null {
 		if (!mimic || mimic !== this.state.selfId) {
+			this.standIns.delete(anomalyId);
 			return mimic;
+		}
+		const alive = (id: string) =>
+			((this.state.players.get(id)?.latest?.flags ?? 0) & PLAYER_FLAG.dead) ===
+			0;
+		const cached = this.standIns.get(anomalyId);
+		if (cached && this.state.players.has(cached) && alive(cached)) {
+			return cached;
 		}
 		const others = [...this.state.players.keys()]
 			.filter((id) => id !== this.state.selfId)
 			.sort();
-		return others.length > 0 ? others[anomalyId % others.length] : mimic;
+		if (others.length === 0) {
+			return mimic;
+		}
+		const away = (id: string) => {
+			const latest = this.state.players.get(id)?.latest;
+			return latest ? Math.hypot(latest.x - at.x, latest.z - at.z) : 0;
+		};
+		const pool = others.some(alive) ? others.filter(alive) : others;
+		const standIn = pool.reduce((best, id) =>
+			away(id) > away(best) ? id : best,
+		);
+		this.standIns.set(anomalyId, standIn);
+		return standIn;
+	}
+
+	/** En fin de partie, la voix prêtée au Double n'est plus ni gardée ni rejouée. */
+	silenceVoices(): void {
+		if (this.voicesSilenced) {
+			return;
+		}
+		this.voicesSilenced = true;
+		for (const view of this.views.values()) {
+			view.voice?.stop();
+		}
+		doubleVoices.clear();
+	}
+
+	private recordVoices(): void {
+		if (this.voicesSilenced) {
+			return;
+		}
+		doubleVoices.update(
+			new Set(
+				[...this.state.players.keys()].filter((id) => id !== this.state.selfId),
+			),
+		);
+	}
+
+	/** Reprend ce qui se voit et s'entend chez le joueur imité : lanterne, pas et voix. */
+	private updateDisguise(
+		view: View,
+		impersonated: string | null,
+		disguised: boolean,
+		listener: THREE.Vector3,
+		dt: number,
+		dynamicLights: DynamicLight[],
+	): void {
+		const model = view.model;
+		if (!(model instanceof DoubleModel)) {
+			return;
+		}
+		const position = model.root.position;
+		const flags =
+			(impersonated && this.state.players.get(impersonated)?.latest?.flags) ||
+			0;
+		const lanternOpen = disguised && (flags & PLAYER_FLAG.lantern) !== 0;
+		model.copiedLantern = lanternOpen;
+		if (lanternOpen) {
+			model.root.updateMatrixWorld(true);
+			const held = model.mushroom.lanternLightPosition;
+			view.lantern ??= {
+				id: `double-lantern-${view.id}`,
+				position: new THREE.Vector3(),
+				color:
+					LANTERN_TINT_COLORS[
+						(impersonated && this.state.players.get(impersonated)?.lantern) ||
+							DEFAULT_LANTERN_TINT
+					],
+				intensity: LANTERN_LIGHT_INTENSITY,
+				radius: LANTERN_LIGHT_RANGE,
+				priority: 4,
+				flicker: 0.12,
+			};
+			view.lantern.position.copy(
+				pullBackToSight(
+					this.world,
+					{ x: position.x, y: held.y, z: position.z },
+					held,
+					0.06,
+				),
+			);
+			dynamicLights.push(view.lantern);
+		}
+		if (view.voice?.ended) {
+			view.voice = null;
+		}
+		const distance = position.distanceTo(listener);
+		if (!disguised) {
+			view.voice?.stop();
+			view.voice = null;
+			model.copiedTalking = 0;
+			return;
+		}
+		const speed = view.pose.speed;
+		if (speed >= 0.6 && distance <= 22) {
+			view.stepPhase += dt * speed * 0.9;
+			if (view.stepPhase >= 1) {
+				view.stepPhase = 0;
+				const room = this.world.roomAt(
+					{ x: position.x, z: position.z },
+					position.y + 0.1,
+				);
+				soundBank.play(footstepSound(room?.style.floor), {
+					position,
+					volume: 0.55,
+					refDistance: 1.5,
+					maxDistance: 22,
+					occlusion: view.occlusion,
+				});
+			}
+		}
+		if (
+			!this.voicesSilenced &&
+			!view.voice &&
+			impersonated &&
+			this.time >= view.nextVoiceAt &&
+			distance <= VOICE_PROXIMITY_MAX_RANGE &&
+			voiceChat.levelOf(impersonated) < 0.12
+		) {
+			view.nextVoiceAt =
+				this.time +
+				DOUBLE_VOICE_MIN_GAP +
+				Math.random() * DOUBLE_VOICE_EXTRA_GAP;
+			const clip = doubleVoices.clipFor(impersonated);
+			if (clip) {
+				view.voice = speakClip(clip);
+			}
+		}
+		view.voice?.place(
+			{ x: position.x, y: position.y + 1.5, z: position.z },
+			view.occlusion,
+		);
+		model.copiedTalking = view.voice ? 0.5 + Math.sin(this.time * 14) * 0.3 : 0;
 	}
 
 	private create(
@@ -442,6 +660,10 @@ export class AnomalyViews {
 			tag,
 			pose: new PoseSmoother(),
 			emitted: [],
+			lantern: null,
+			stepPhase: 0,
+			voice: null,
+			nextVoiceAt: 4 + Math.random() * 8,
 		};
 		this.views.set(id, view);
 		return view;
@@ -455,6 +677,8 @@ export class AnomalyViews {
 		view.info = null;
 		view.idle?.stop(0.4);
 		view.idle = null;
+		view.voice?.stop();
+		view.voice = null;
 		if (view.circle) {
 			view.circle.visible = false;
 		}

@@ -21,6 +21,7 @@ import {
 	SLIME_SPEED_FACTOR,
 	WATER_SPEED_FACTOR,
 } from "@shared/config/index";
+import { PlayerMarkerBlender } from "@shared/doubleDisguise";
 import { levelForHeight } from "@shared/manor/levels";
 import type { Level } from "@shared/manor/types";
 import { pullBackToSight } from "@shared/physics/lineOfSight";
@@ -28,12 +29,14 @@ import {
 	type CastResult,
 	type ForcedMove,
 	type GameEvent,
+	type Highlight,
 	type MatchBegin,
 	type MatchInit,
 	PLAYER_FLAG,
 	type PlayerInventory,
 	type WorldSnapshot,
 } from "@shared/protocol/game";
+import { DEFAULT_LANTERN_TINT, LANTERN_TINT_COLORS } from "@shared/rewards";
 import { TEAM_COLORS } from "@shared/teams";
 import * as THREE from "three";
 import {
@@ -75,9 +78,13 @@ import { clockSync } from "../../network/clockSync";
 import { type GameSocket, getSocket } from "../../network/socket";
 import { activeDevModes, devModesStore } from "../../settings/devModesStore";
 import { settingsStore } from "../../settings/settingsStore";
+import { doubleVoices, speakRadioClip } from "../../voice/doubleVoices";
 import { micManager } from "../../voice/micManager";
+import { momentVoices } from "../../voice/momentVoices";
 import { voiceChat } from "../../voice/voiceChat";
 import { CastController } from "../CastController";
+import { replayStore } from "../replayStore";
+import { ReplayDirector } from "./ReplayDirector";
 import {
 	type LoadedWorld,
 	type LoadStepId,
@@ -91,6 +98,11 @@ const LANTERN_RECONCILE_MS = 700;
 const LANTERN_COLOR = 0xffb060;
 const JUMP_ENERGY_SETTLE_MS = 600;
 const HIDDEN_GLOW = { color: 0x7d8aa0, intensity: 0.55, range: 1.4 };
+const RADIO_GHOST_MIN_MS = 25_000;
+const RADIO_GHOST_EXTRA_MS = 30_000;
+const REPLAY_FOV = 62;
+/** Filet de sécurité : si la fin de partie n'arrive pas, les extraits partent quand même. */
+const VOICE_CLIPS_GRACE_MS = 5_000;
 
 function wrapIndex(index: number, length: number): number {
 	return ((index % length) + length) % length;
@@ -130,6 +142,7 @@ export class GameSession {
 	private readonly gorgonGaze = new Map<number, number>();
 	private jumpSpentAt: number[] = [];
 	private leaderboardHeld = false;
+	private readonly markerBlender = new PlayerMarkerBlender();
 	private haze = 0;
 	private clearAir: { density: number; color: THREE.Color } | null = null;
 	private mapOpen = false;
@@ -151,6 +164,12 @@ export class GameSession {
 	private started = false;
 	private readonly dynamicLights: DynamicLight[] = [];
 	private readonly selfDamageAt = { value: 0 };
+	private radioOn = false;
+	private radioGhostAt = 0;
+	private radioGhostName: string | null = null;
+	private radioGhostUntil = 0;
+	private replay: ReplayDirector | null = null;
+	private onReplayDone: (() => void) | null = null;
 
 	constructor(
 		readonly init: MatchInit,
@@ -213,6 +232,7 @@ export class GameSession {
 			loaded.doors,
 			loaded.state,
 			loaded.pickups,
+			loaded.walkies,
 			this.init.tutorial,
 		);
 		if (this.init.tutorial) {
@@ -271,6 +291,9 @@ export class GameSession {
 		if (!this.started) {
 			this.started = true;
 			loaded.ambientAudio.start();
+			if (!this.init.tutorial) {
+				momentVoices.start();
+			}
 		}
 		this.lastFrame = performance.now();
 		this.frameHandle = requestAnimationFrame(this.frame);
@@ -628,6 +651,10 @@ export class GameSession {
 	}
 
 	private step(dt: number): void {
+		if (this.replay) {
+			this.stepReplay(dt);
+			return;
+		}
 		const loaded = this.loadedWorld;
 		const player = this.player;
 		const input = this.input;
@@ -636,6 +663,14 @@ export class GameSession {
 		}
 		const settings = settingsStore.get();
 		const serverNow = clockSync.serverNow();
+		if (
+			this.beginInfo &&
+			serverNow > this.beginInfo.endsAt + VOICE_CLIPS_GRACE_MS
+		) {
+			loaded.anomalies.silenceVoices();
+			momentVoices.clear();
+		}
+		momentVoices.update(loaded.state.players.keys(), this.selfId);
 		const renderTime = serverNow - this.interpolationDelay;
 		const frame = input.frame();
 		const self = loaded.state.self?.latest ?? null;
@@ -687,6 +722,14 @@ export class GameSession {
 		loaded.motes.update(dt, loaded.camera.position);
 		loaded.pickups.update(dt, loaded.camera.position);
 		loaded.altars.update(dt, loaded.camera.position);
+		loaded.walkies.update(dt, loaded.camera.position, this.dynamicLights);
+		loaded.stakes.update(
+			dt,
+			loaded.camera.position,
+			serverNow,
+			this.dynamicLights,
+		);
+		this.updateRadioGhost();
 		this.tutorial?.update({
 			frame,
 			feet: {
@@ -916,6 +959,16 @@ export class GameSession {
 	): void {
 		const loaded = this.loadedWorld as LoadedWorld;
 		const socket = getSocket();
+		const radioOn =
+			alive &&
+			!restrained &&
+			loaded.state.selfHasWalkie &&
+			frame.held.has("radio");
+		if (radioOn !== this.radioOn) {
+			this.radioOn = radioOn;
+			socket.emit("game:radio", { on: radioOn });
+			soundBank.play("radio-squelch", { volume: 0.4 });
+		}
 		let escapeConsumed = false;
 		if (frame.escape && this.mapOpen) {
 			this.closeMap();
@@ -1156,7 +1209,10 @@ export class GameSession {
 		const local = loaded.rig.lanternLocalPosition();
 		const held = loaded.camera.localToWorld(local.clone());
 		lantern.position.copy(pullBackToSight(loaded.world, eye, held, 0.06));
-		lantern.color.setHex(LANTERN_COLOR);
+		const tint = loaded.state.self?.lantern ?? DEFAULT_LANTERN_TINT;
+		lantern.color.setHex(
+			tint === DEFAULT_LANTERN_TINT ? LANTERN_COLOR : LANTERN_TINT_COLORS[tint],
+		);
 		lantern.intensity = LANTERN_LIGHT_INTENSITY * loaded.rig.lanternLevelValue;
 		lantern.distance = LANTERN_LIGHT_RANGE;
 	}
@@ -1475,6 +1531,11 @@ export class GameSession {
 			voiceLevel: micManager.measure(),
 			voiceTransmitting: micManager.voiceActive(),
 			fps: this.fps,
+			walkieHeld: loaded.state.selfHasWalkie,
+			walkieTalking: this.radioOn,
+			walkieHearing:
+				loaded.remotePlayers.radioSpeaker ??
+				(performance.now() < this.radioGhostUntil ? this.radioGhostName : null),
 			level: this.currentLevel(),
 			serverNow,
 		});
@@ -1552,21 +1613,35 @@ export class GameSession {
 		}
 		const top = Math.max(...loaded.layout.levels);
 		const markers: MapMarker[] = [];
+		const disguises = loaded.anomalies.disguises();
+		const viewer = this.player?.character;
+		const now = performance.now();
 		for (const player of loaded.state.players.values()) {
 			const latest = player.latest;
 			if (player.id === loaded.state.selfId || !latest) {
 				continue;
 			}
+			const dead = (latest.flags & PLAYER_FLAG.dead) !== 0;
+			const body = viewer
+				? this.markerBlender.place(
+						player.id,
+						viewer,
+						latest,
+						disguises,
+						now,
+						dead,
+					)
+				: latest;
 			const color =
 				player.team === null ? player.color : TEAM_COLORS[player.team];
 			markers.push({
-				x: latest.x,
-				z: latest.z,
-				yaw: latest.yaw,
-				level: levelForHeight(latest.y, top, 1.8),
+				x: body.x,
+				z: body.z,
+				yaw: body.yaw,
+				level: levelForHeight(body.y, top, 1.8),
 				color: `#${color.toString(16).padStart(6, "0")}`,
 				name: player.name,
-				dead: (latest.flags & PLAYER_FLAG.dead) !== 0,
+				dead,
 			});
 		}
 		return markers;
@@ -1638,9 +1713,168 @@ export class GameSession {
 		scene.fog = fog;
 	}
 
+	/** Le Double se glisse parfois sur la fréquence, avec la voix de celui qu'il imite. */
+	private updateRadioGhost(): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const now = performance.now();
+		if (!loaded.state.selfHasWalkie || now < this.radioGhostAt) {
+			if (!loaded.state.selfHasWalkie) {
+				this.radioGhostAt =
+					now + RADIO_GHOST_MIN_MS + Math.random() * RADIO_GHOST_EXTRA_MS;
+			}
+			return;
+		}
+		this.radioGhostAt =
+			now + RADIO_GHOST_MIN_MS + Math.random() * RADIO_GHOST_EXTRA_MS;
+		const body = loaded.anomalies
+			.disguises()
+			.find((disguise) => disguise.playerId !== this.selfId);
+		const clip = body ? doubleVoices.clipFor(body.playerId) : null;
+		if (body && clip) {
+			speakRadioClip(clip);
+			soundBank.play("radio-squelch", { volume: 0.5 });
+			this.radioGhostName =
+				loaded.state.players.get(body.playerId)?.name ?? null;
+			this.radioGhostUntil = now + clip.duration * 1000;
+		}
+	}
+
+	/** Faux s'il n'y a rien à montrer ou si le monde n'est pas à l'écran. */
+	playHighlights(highlights: Highlight[], onDone: () => void): boolean {
+		const loaded = this.loadedWorld;
+		if (!loaded || !this.container || highlights.length === 0) {
+			return false;
+		}
+		const replay = new ReplayDirector(loaded, highlights);
+		this.closeMap();
+		loaded.grimoire.setOpen(false);
+		loaded.anomalies.silenceVoices();
+		momentVoices.stopCapture();
+		loaded.remotePlayers.spectate();
+		voiceChat.clearRadio();
+		voiceChat.setMode("lobby");
+		this.cast.cancel();
+		this.input?.releasePointerLock();
+		this.input?.detach();
+		this.input = null;
+		loaded.post.clearHud();
+		loaded.rig.root.visible = false;
+		loaded.body.root.visible = false;
+		loaded.camera.fov = REPLAY_FOV;
+		loaded.camera.updateProjectionMatrix();
+		const fog = loaded.scene.fog;
+		if (fog instanceof THREE.FogExp2 && this.clearAir) {
+			fog.density = this.clearAir.density;
+			fog.color.copy(this.clearAir.color);
+		}
+		hudStore.set({ showMap: false, showLeaderboard: false, paused: false });
+		this.onReplayDone = onDone;
+		if (!replay.next()) {
+			return false;
+		}
+		this.replay = replay;
+		return true;
+	}
+
+	skipHighlight(): void {
+		if (this.replay && !this.replay.next()) {
+			this.finishReplay();
+		}
+	}
+
+	skipAllHighlights(): void {
+		if (this.replay) {
+			this.finishReplay();
+		}
+	}
+
+	private finishReplay(): void {
+		this.replay?.stop();
+		this.replay = null;
+		momentVoices.clear();
+		replayStore.set({ active: false });
+		const done = this.onReplayDone;
+		this.onReplayDone = null;
+		done?.();
+	}
+
+	private stepReplay(dt: number): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const time = (this.replay as ReplayDirector).advance(dt);
+		if (time === null) {
+			this.finishReplay();
+			return;
+		}
+		const settings = settingsStore.get();
+		loaded.camera.updateMatrixWorld(true);
+		const eye = loaded.camera.getWorldPosition(new THREE.Vector3());
+		const forward = loaded.camera.getWorldDirection(new THREE.Vector3());
+		this.dynamicLights.length = 0;
+		loaded.remotePlayers.update(dt, time, eye, eye, this.dynamicLights);
+		loaded.anomalies.update(dt, time, eye, this.dynamicLights);
+		loaded.doors.update(dt);
+		loaded.hazards.update(dt, time, this.dynamicLights);
+		loaded.decor.update(dt, eye);
+		loaded.particles.update(dt);
+		loaded.motes.update(dt, eye);
+		loaded.pickups.update(dt, eye);
+		loaded.altars.update(dt, eye);
+		loaded.walkies.update(dt, eye, this.dynamicLights);
+		loaded.stakes.update(dt, eye, time, this.dynamicLights);
+		loaded.lights.update(eye, this.dynamicLights, dt);
+		this.cullRooms(eye);
+		audioEngine.setListener({
+			x: eye.x,
+			y: eye.y,
+			z: eye.z,
+			forwardX: forward.x,
+			forwardY: forward.y,
+			forwardZ: forward.z,
+		});
+		loaded.post.render(
+			{
+				dt,
+				strength: settings.ambiance,
+				tension: 0,
+				animated: !settings.reduceMotion,
+				levels: settings.colorLevels,
+				desaturate: 0,
+			},
+			() => this.render(loaded),
+		);
+	}
+
 	private onEvent(event: GameEvent): void {
 		const loaded = this.loadedWorld as LoadedWorld;
 		switch (event.type) {
+			case "voiceWindows":
+				momentVoices.setWindows(event.windows);
+				break;
+			case "walkie":
+				loaded.walkies.setAvailable(event.id, event.available);
+				if (event.holder === this.selfId) {
+					soundBank.play("radio-squelch", { volume: 0.6 });
+					pushFeedback(currentMessages().game.walkie.taken, "info");
+				}
+				break;
+			case "stake": {
+				const stake = loaded.layout.stakes[event.id];
+				if (stake && event.playerId !== null) {
+					soundBank.play(stake.kind === "pact" ? "stake-pact" : "stake-bell", {
+						position: { x: stake.x, y: stake.y + 1, z: stake.z },
+						volume: 1,
+						refDistance: 6,
+						maxDistance: stake.kind === "pact" ? 16 : 60,
+					});
+				}
+				if (stake && event.playerId === this.selfId) {
+					pushFeedback(
+						currentMessages().game.stakeResult[stake.kind],
+						stake.kind === "sanctuary" ? "success" : "warning",
+					);
+				}
+				break;
+			}
 			case "door": {
 				const door = loaded.doors.doors.get(event.doorId);
 				if (
@@ -1779,6 +2013,11 @@ export class GameSession {
 		releaseKeyboardLock();
 		this.detach();
 		this.cast.dispose();
+		doubleVoices.clear();
+		this.replay?.stop();
+		this.replay = null;
+		momentVoices.clear();
+		voiceChat.clearRadio();
 		voiceChat.setMode("lobby");
 		soundBank.stopAll();
 		if (this.loadedWorld) {
@@ -1795,6 +2034,8 @@ export class GameSession {
 		loaded.pickups.dispose();
 		loaded.hud.dispose();
 		loaded.altars.dispose();
+		loaded.walkies.dispose();
+		loaded.stakes.dispose();
 		loaded.particles.dispose();
 		loaded.motes.dispose();
 		loaded.grimoire.dispose();

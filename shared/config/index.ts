@@ -3,6 +3,7 @@ export * from "./anomalies.js";
 export * from "./captures.js";
 export * from "./dev.js";
 export * from "./generation.js";
+export * from "./items.js";
 export * from "./match.js";
 export * from "./network.js";
 export * from "./occult.js";

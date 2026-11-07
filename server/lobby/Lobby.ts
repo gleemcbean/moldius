@@ -1,5 +1,6 @@
 import {
-	LOBBY_CAPACITY,
+	PRIVATE_LOBBY_CAPACITY,
+	PUBLIC_LOBBY_CAPACITY,
 	PUBLIC_START_COUNTDOWN_MS,
 } from "../../shared/config/index.js";
 import {
@@ -19,6 +20,10 @@ import type {
 	LobbyState,
 	LobbyVisibility,
 } from "../../shared/protocol/lobby.js";
+import {
+	DEFAULT_LANTERN_TINT,
+	type LanternTint,
+} from "../../shared/rewards.js";
 import { smallestTeam } from "../../shared/teams.js";
 
 export interface LobbyMember {
@@ -29,6 +34,7 @@ export interface LobbyMember {
 	connected: boolean;
 	color: number;
 	pattern: HatPattern;
+	lantern: LanternTint;
 	team: number | null;
 	joinedAt: number;
 }
@@ -56,6 +62,7 @@ export class Lobby {
 	matchId: string | null = null;
 	config: MatchConfig;
 	previousFormulaWords = new Set<string>();
+	daily: string | null = null;
 
 	constructor(
 		readonly id: string,
@@ -73,8 +80,14 @@ export class Lobby {
 					};
 	}
 
+	get capacity(): number {
+		return this.visibility === "private"
+			? PRIVATE_LOBBY_CAPACITY
+			: PUBLIC_LOBBY_CAPACITY;
+	}
+
 	get isFull(): boolean {
-		return this.members.length >= LOBBY_CAPACITY;
+		return this.members.length >= this.capacity;
 	}
 
 	get isEmpty(): boolean {
@@ -97,12 +110,14 @@ export class Lobby {
 		now: number,
 		preferredColor: number | null,
 		pattern: HatPattern | null = null,
+		lantern: LanternTint | null = null,
 	): LobbyActionResult {
 		const existing = this.member(playerId);
 		if (existing) {
 			existing.name = name;
 			existing.connected = true;
 			existing.pattern = pattern ?? existing.pattern;
+			existing.lantern = lantern ?? existing.lantern;
 			return { ok: true };
 		}
 		if (this.phase !== "waiting" && this.phase !== "countdown") {
@@ -130,6 +145,7 @@ export class Lobby {
 			connected: true,
 			color,
 			pattern: pattern ?? DEFAULT_HAT_PATTERN,
+			lantern: lantern ?? DEFAULT_LANTERN_TINT,
 			team: null,
 			joinedAt: now,
 		});
@@ -199,6 +215,13 @@ export class Lobby {
 				ok: false,
 				code: "not-host",
 				message: "Seul l'hôte peut modifier les règles.",
+			};
+		}
+		if (this.daily !== null) {
+			return {
+				ok: false,
+				code: "not-private",
+				message: "Le défi du jour a les mêmes règles pour tout le monde.",
 			};
 		}
 		if (this.phase !== "waiting") {
@@ -324,6 +347,7 @@ export class Lobby {
 			connected: member.connected,
 			color: member.color,
 			pattern: member.pattern,
+			lantern: member.lantern,
 			team: member.team,
 		}));
 		return {
@@ -331,14 +355,15 @@ export class Lobby {
 			code: this.code,
 			visibility: this.visibility,
 			hostId: this.hostId,
-			capacity: LOBBY_CAPACITY,
+			capacity: this.capacity,
 			minPlayers: this.minPlayers,
 			players,
 			config: this.config,
-			configEditable: this.visibility === "private",
+			configEditable: this.visibility === "private" && this.daily === null,
 			phase: this.phase,
 			countdownEndsAt: this.countdownEndsAt,
 			matchId: this.matchId,
+			daily: this.daily,
 		};
 	}
 }

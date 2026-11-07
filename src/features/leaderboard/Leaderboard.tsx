@@ -10,9 +10,10 @@ export function Leaderboard() {
 	const t = useT();
 	const labels = t.game.leaderboard;
 	const rows = useStore(hudStore, (state) => state.leaderboard);
+	const teamMode = rows.some((row) => row.team !== null);
 	return (
 		<div className={styles.overlay}>
-			<div className={styles.panel}>
+			<div className={[styles.panel, teamMode ? styles.compact : ""].join(" ")}>
 				<h2 className={styles.title}>{labels.title}</h2>
 				<div className={styles.head}>
 					<span>#</span>
@@ -21,7 +22,7 @@ export function Leaderboard() {
 					<span>{labels.health}</span>
 					<span>{labels.energy}</span>
 				</div>
-				{rows.some((row) => row.team !== null)
+				{teamMode
 					? teamStandings(
 							rows.map((row) => ({
 								playerId: row.id,

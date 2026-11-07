@@ -404,6 +404,45 @@ const DEFINITIONS: FurnitureDefinition[] = [
 			},
 		},
 	),
+	define("stakeSanctuary", "Sanctuaire", "floor", variants([1.0, 0.7, 1.05]), {
+		frontClearance: 0.7,
+		light: {
+			offsetY: 0.95,
+			offsetZ: 0,
+			color: 0x8fe3a4,
+			intensity: 0.6,
+			radius: 4,
+			kind: "candle",
+		},
+	}),
+	define(
+		"stakeReliquary",
+		"Reliquaire",
+		"floor",
+		variants([0.95, 0.75, 0.95]),
+		{
+			frontClearance: 0.7,
+			light: {
+				offsetY: 0.95,
+				offsetZ: 0,
+				color: 0xffc857,
+				intensity: 0.6,
+				radius: 4,
+				kind: "candle",
+			},
+		},
+	),
+	define("stakePact", "Autel du pacte", "floor", variants([0.95, 0.75, 0.9]), {
+		frontClearance: 0.7,
+		light: {
+			offsetY: 0.9,
+			offsetZ: 0,
+			color: 0xff4d5e,
+			intensity: 0.6,
+			radius: 4,
+			kind: "candle",
+		},
+	}),
 	define(
 		"occultAltar",
 		"Autel occulte",

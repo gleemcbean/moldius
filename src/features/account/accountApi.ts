@@ -3,6 +3,7 @@ import type {
 	AccountErrorBody,
 	AccountProfile,
 	AccountStatus,
+	DailyBoard,
 	EmailTokenRequest,
 	LoginRequest,
 	MatchHistoryEntry,
@@ -80,10 +81,13 @@ export const accountApi = {
 	logout: () => request<null>("POST", "/logout", {}),
 	updateProfile: (input: ProfileUpdateRequest) =>
 		request<{ account: AccountProfile }>("PATCH", "/profile", input),
+	acceptTerms: () =>
+		request<{ account: AccountProfile }>("POST", "/terms-acceptance", {}),
 	changePassword: (input: PasswordChangeRequest) =>
 		request<{ account: AccountProfile }>("POST", "/password", input),
 	remove: (input: AccountDeletionRequest) => request<null>("DELETE", "", input),
 	unlinkDiscord: () =>
 		request<{ account: AccountProfile }>("POST", "/discord/unlink", {}),
 	history: () => request<{ entries: MatchHistoryEntry[] }>("GET", "/history"),
+	daily: (date: string) => request<DailyBoard>("GET", `/daily?date=${date}`),
 };

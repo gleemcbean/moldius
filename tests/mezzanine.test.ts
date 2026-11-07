@@ -527,7 +527,7 @@ describe("dans une vraie partie", () => {
 	});
 
 	it("un saut par-dessus le garde-corps blesse à l'atterrissage", () => {
-		const sim = new MatchSimulation({ seed: 4242, players: 1 });
+		const sim = new MatchSimulation({ seed: 1, players: 1 });
 		silenceAnomalies(sim);
 		const room = grandRooms(sim.match.layout)[0];
 		const spec = room.mezzanine as NonNullable<Room["mezzanine"]>;

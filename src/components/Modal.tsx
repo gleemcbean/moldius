@@ -9,14 +9,19 @@ export function Modal({
 	onClose,
 	children,
 	wide = false,
+	dismissible = true,
 }: {
 	title: string;
 	onClose: () => void;
 	children: ReactNode;
 	wide?: boolean;
+	dismissible?: boolean;
 }) {
 	const t = useT();
 	useEffect(() => {
+		if (!dismissible) {
+			return;
+		}
 		const onKey = (event: KeyboardEvent) => {
 			if (event.code === "Escape") {
 				event.stopPropagation();
@@ -25,13 +30,13 @@ export function Modal({
 		};
 		window.addEventListener("keydown", onKey, true);
 		return () => window.removeEventListener("keydown", onKey, true);
-	}, [onClose]);
+	}, [onClose, dismissible]);
 
 	return (
 		<div
 			className={styles.backdrop}
 			onPointerDown={(event) =>
-				event.target === event.currentTarget && onClose()
+				dismissible && event.target === event.currentTarget && onClose()
 			}
 		>
 			<SelectorGroup
@@ -39,15 +44,17 @@ export function Modal({
 			>
 				<header className={styles.header}>
 					<h2>{title}</h2>
-					<button
-						type="button"
-						className={styles.close}
-						onClick={onClose}
-						aria-label={t.common.close}
-						data-selectable=""
-					>
-						<Icon name="close" />
-					</button>
+					{dismissible ? (
+						<button
+							type="button"
+							className={styles.close}
+							onClick={onClose}
+							aria-label={t.common.close}
+							data-selectable=""
+						>
+							<Icon name="close" />
+						</button>
+					) : null}
 				</header>
 				<div className={styles.body}>{children}</div>
 			</SelectorGroup>

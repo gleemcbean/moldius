@@ -4,12 +4,12 @@ import { planRoster } from "../server/game/roster.js";
 import { formulaKeyWord } from "../shared/anomalies/formulas.js";
 import {
 	ANOMALY_FIRST_SPAWN_DELAY_MS,
-	ANOMALY_MAX_ACTIVE,
-	ANOMALY_MAX_ACTIVE_PER_TIER,
 	ANOMALY_NEXT_DELAY_MS,
+	anomalyTierCaps,
 	MATCH_DURATION_MS,
 	PLAYER_RESPAWN_DELAY_MS,
 	PLAYER_RESPAWN_PROTECTION_MS,
+	PUBLIC_SIMULTANEOUS_ANOMALIES,
 } from "../shared/config/index.js";
 import { SPECIES, SPECIES_IDS } from "../shared/config/species.js";
 import {
@@ -122,9 +122,10 @@ describe("cycle de partie", () => {
 		const sim = new MatchSimulation({
 			seed: 77,
 			players: 2,
-			config: { anomalyCount: 8 },
 		});
-		expect(sim.match.anomalies.length).toBeGreaterThan(ANOMALY_MAX_ACTIVE);
+		expect(sim.match.anomalies.length).toBeGreaterThan(
+			PUBLIC_SIMULTANEOUS_ANOMALIES,
+		);
 		let most = 0;
 		sim.run(ANOMALY_FIRST_SPAWN_DELAY_MS / 1000 + 20, () => {
 			most = Math.max(
@@ -132,7 +133,7 @@ describe("cycle de partie", () => {
 				sim.match.anomalies.filter((entity) => entity.active).length,
 			);
 		});
-		expect(most).toBe(ANOMALY_MAX_ACTIVE);
+		expect(most).toBe(PUBLIC_SIMULTANEOUS_ANOMALIES);
 		const captured = sim.match.anomalies.find((entity) => entity.active);
 		if (!captured) {
 			throw new Error("No active anomaly to capture.");
@@ -145,7 +146,7 @@ describe("cycle de partie", () => {
 		expect(waiting.filter((entity) => entity.active)).toHaveLength(1);
 		expect(captured.active).toBe(false);
 		expect(sim.match.anomalies.filter((entity) => entity.active)).toHaveLength(
-			ANOMALY_MAX_ACTIVE,
+			PUBLIC_SIMULTANEOUS_ANOMALIES,
 		);
 	});
 
@@ -154,7 +155,7 @@ describe("cycle de partie", () => {
 			const sim = new MatchSimulation({
 				seed,
 				players: 2,
-				config: { anomalyCount: 12 },
+				config: { simultaneousAnomalies: 3 },
 			});
 			const most = { 1: 0, 2: 0, 3: 0 };
 			let total = 0;
@@ -175,12 +176,43 @@ describe("cycle de partie", () => {
 				}
 			});
 			for (const tier of [1, 2, 3] as const) {
-				expect(most[tier]).toBeLessThanOrEqual(
-					ANOMALY_MAX_ACTIVE_PER_TIER[tier],
-				);
+				expect(most[tier]).toBeLessThanOrEqual(anomalyTierCaps(3)[tier]);
 			}
-			expect(total).toBeLessThanOrEqual(ANOMALY_MAX_ACTIVE);
+			expect(total).toBeLessThanOrEqual(3);
 		}
+	});
+
+	it("atteint le nombre d'anomalies simultanées réglé dans le lobby", () => {
+		const sim = new MatchSimulation({
+			seed: 77,
+			players: 2,
+			config: { simultaneousAnomalies: 8 },
+		});
+		expect(sim.match.anomalies).toHaveLength(12);
+		let most = 0;
+		sim.run(ANOMALY_FIRST_SPAWN_DELAY_MS / 1000 + 45, () => {
+			most = Math.max(
+				most,
+				sim.match.anomalies.filter((entity) => entity.active).length,
+			);
+		});
+		expect(most).toBe(8);
+	});
+
+	it("tient le nombre demandé même avec une seule espèce autorisée", () => {
+		const sim = new MatchSimulation({
+			seed: 77,
+			players: 1,
+			config: { simultaneousAnomalies: 3, species: ["murmure"] },
+		});
+		let most = 0;
+		sim.run(ANOMALY_FIRST_SPAWN_DELAY_MS / 1000 + 20, () => {
+			most = Math.max(
+				most,
+				sim.match.anomalies.filter((entity) => entity.active).length,
+			);
+		});
+		expect(most).toBe(3);
 	});
 
 	it("fait apparaître les anomalies après 30 s, hors de vue des joueurs", () => {
@@ -370,7 +402,7 @@ describe("intelligence artificielle", () => {
 			const candidate = new MatchSimulation({
 				seed,
 				players: 1,
-				config: { anomalyCount: 8 },
+				config: { simultaneousAnomalies: 4 },
 			});
 			if (
 				candidate.match.anomalies.some((entity) => entity.species === "hurleur")
@@ -407,7 +439,7 @@ describe("intelligence artificielle", () => {
 		const sim = new MatchSimulation({
 			seed: 23,
 			players: 1,
-			config: { anomalyCount: 8 },
+			config: { simultaneousAnomalies: 4 },
 		});
 		const silent = sim.match.players.get("p1") as MatchPlayer;
 		silent.hiddenSpot = -1;

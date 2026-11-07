@@ -236,7 +236,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		name: "Le Doppelgänger",
 		points: 500,
 		description:
-			"Il imite un champignon de l'équipe, sa lanterne et sa démarche. Approché ou éclairé, il se déchire et révèle une gueule pleine de dents.",
+			"Il imite un champignon de l'équipe, sa lanterne, sa démarche et parfois sa voix. Même la carte s'y trompe. Approché ou éclairé, il se déchire et révèle une gueule pleine de dents.",
 		danger:
 			"Se révèle de près ou à la lumière, puis poursuit et mord (36 dégâts). Ouvre les portes.",
 		hostile: true,

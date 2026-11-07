@@ -1,10 +1,12 @@
 import { navigate, showToast } from "../../app/appStore";
 import { currentMessages } from "../../i18n";
+import { applyLiveMetrics } from "../challenges/challengeStore";
 import { hudStore, initialHud } from "../hud/hudStore";
 import { lobbyStore } from "../lobby/lobbyStore";
 import { sessionStore } from "../network/sessionStore";
 import { getSocket } from "../network/socket";
 import { matchStore, resetMatchState } from "./matchStore";
+import { resetReplay } from "./replayStore";
 import { GameSession } from "./session/GameSession";
 import { LOAD_STEPS } from "./session/SessionLoader";
 
@@ -18,6 +20,12 @@ export function currentSession(): GameSession | null {
 function disposeSession(): void {
 	session?.dispose();
 	session = null;
+	resetReplay();
+}
+
+function showResults(): void {
+	disposeSession();
+	navigate("results");
 }
 
 function updateStep(stepId: string, fraction: number): void {
@@ -88,6 +96,11 @@ export function initMatchController(): void {
 	socket.on("game:events", ({ t, events }) => session?.handleEvents(events, t));
 	socket.on("game:forcedMove", (move) => session?.handleForcedMove(move));
 	socket.on("game:castResult", (result) => session?.handleCastResult(result));
+	socket.on("game:challenges", (metrics) => {
+		if (session) {
+			applyLiveMetrics(metrics);
+		}
+	});
 	socket.on("game:inventory", (inventory) =>
 		session?.handleInventory(inventory),
 	);
@@ -95,9 +108,10 @@ export function initMatchController(): void {
 		if (!session || results.matchId !== session.matchId) {
 			return;
 		}
-		disposeSession();
 		matchStore.set({ results });
-		navigate("results");
+		if (!session.playHighlights(results.highlights, showResults)) {
+			showResults();
+		}
 	});
 	socket.on("game:aborted", ({ reason }) => {
 		disposeSession();

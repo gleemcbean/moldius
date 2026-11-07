@@ -1,10 +1,12 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { loadKeyboardLayout } from "../config/controls";
 import { AccountModal } from "../features/account/AccountModal";
 import { initAccount } from "../features/account/accountStore";
 import { audioEngine } from "../features/audio/audioEngine";
 import { music } from "../features/audio/music";
 import { BestiaryModal } from "../features/bestiary/BestiaryModal";
+import { ChallengesModal } from "../features/challenges/ChallengesModal";
+import { DailyModal } from "../features/daily/DailyModal";
 import { FriendInvites } from "../features/friends/FriendInvites";
 import { FriendsModal } from "../features/friends/FriendsModal";
 import { initFriends } from "../features/friends/friendsStore";
@@ -13,6 +15,7 @@ import { initMatchController } from "../features/game/matchController";
 import { HomeScreen } from "../features/home/HomeScreen";
 import { LegalPage } from "../features/legal/LegalPage";
 import { LoadingScreen } from "../features/loading/LoadingScreen";
+import { treatPathAsInvite } from "../features/lobby/inviteStore";
 import { LobbyScreen } from "../features/lobby/LobbyScreen";
 import { listenLobbyUpdates } from "../features/lobby/lobbyClient";
 import { initConnection } from "../features/network/connection";
@@ -27,6 +30,8 @@ import { appStore, closeOverlay } from "./appStore";
 import { DesktopOnly } from "./DesktopOnly";
 import { hasDesktopInput } from "./desktopOnly";
 import { Toasts } from "./Toasts";
+
+const ADMIN_CHECK_TIMEOUT_MS = 3000;
 
 const AdminPage = lazy(() =>
 	import("../features/admin/AdminPage").then((module) => ({
@@ -75,16 +80,49 @@ export function App() {
 		return <LegalPage document={pathname === "/terms" ? "terms" : "privacy"} />;
 	}
 	if (pathname === "/admin") {
-		return (
-			<Suspense fallback={null}>
-				<AdminPage />
-			</Suspense>
-		);
+		return <AdminGate />;
 	}
-	if (!hasDesktopInput()) {
-		return <DesktopOnly />;
+	return <PublicApp />;
+}
+
+function PublicApp() {
+	return hasDesktopInput() ? <GameApp /> : <DesktopOnly />;
+}
+
+/** Rien n'est affiché ni chargé tant que le serveur n'a pas reconnu un admin. */
+function AdminGate() {
+	const [allowed, setAllowed] = useState<boolean | null>(null);
+	useEffect(() => {
+		let cancelled = false;
+		fetch("/api/admin/overview", {
+			credentials: "same-origin",
+			signal: AbortSignal.timeout(ADMIN_CHECK_TIMEOUT_MS),
+		})
+			.then((response) => response.ok)
+			.catch(() => false)
+			.then((ok) => {
+				if (cancelled) {
+					return;
+				}
+				if (!ok) {
+					treatPathAsInvite();
+				}
+				setAllowed(ok);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+	if (allowed === null) {
+		return null;
 	}
-	return <GameApp />;
+	return allowed ? (
+		<Suspense fallback={null}>
+			<AdminPage />
+		</Suspense>
+	) : (
+		<PublicApp />
+	);
 }
 
 function GameApp() {
@@ -102,6 +140,10 @@ function GameApp() {
 			{overlay === "account" ? <AccountModal onClose={closeOverlay} /> : null}
 			{overlay === "bestiary" ? <BestiaryModal onClose={closeOverlay} /> : null}
 			{overlay === "friends" ? <FriendsModal onClose={closeOverlay} /> : null}
+			{overlay === "daily" ? <DailyModal onClose={closeOverlay} /> : null}
+			{overlay === "challenges" ? (
+				<ChallengesModal onClose={closeOverlay} />
+			) : null}
 			{screen === "home" || screen === "lobby" ? <FriendInvites /> : null}
 			<Toasts />
 		</>

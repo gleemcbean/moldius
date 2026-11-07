@@ -148,7 +148,11 @@ function trackFall(match: Match, player: MatchPlayer, previousY: number, free: b
   }
   const drop = peak - player.position.y;
   if (drop > FALL_SAFE_HEIGHT) {
-    match.applyFallDamage(player, Math.round((drop - FALL_SAFE_HEIGHT) * FALL_DAMAGE_PER_METER));
+    match.applyFallDamage(
+      player,
+      Math.round((drop - FALL_SAFE_HEIGHT) * FALL_DAMAGE_PER_METER),
+      drop,
+    );
   }
 }
 

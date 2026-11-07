@@ -70,7 +70,7 @@ export const accountFr = {
 	},
 	profile: {
 		displayName: "Pseudonyme en jeu",
-		hint: "Le pseudonyme et le chapeau choisis sur l'écran d'accueil, ainsi que la langue choisie dans les paramètres, sont aussi enregistrés automatiquement sur votre compte.",
+		hint: "Le pseudonyme, le chapeau et la lanterne choisis sur l'écran d'accueil, ainsi que la langue choisie dans les paramètres, sont aussi enregistrés automatiquement sur votre compte.",
 		saving: "Enregistrement…",
 		saved: "Profil enregistré.",
 	},
@@ -114,8 +114,14 @@ export const accountFr = {
 		wins: "Victoires",
 		best: "Meilleur score",
 		total: "Points cumulés",
+		rewardUnlocked: "Débloquée",
 	},
-	panels: { history: "Historique", profile: "Profil", security: "Sécurité" },
+	panels: {
+		history: "Historique",
+		rewards: "Récompenses",
+		profile: "Profil",
+		security: "Sécurité",
+	},
 	notices: {
 		connecte: "Connexion avec Discord réussie.",
 		cree: "Compte créé avec Discord, bienvenue !",
@@ -206,7 +212,7 @@ export const accountEn: typeof accountFr = {
 	},
 	profile: {
 		displayName: "In-game name",
-		hint: "The name and hat chosen on the home screen, and the language chosen in the settings, are also saved to your account automatically.",
+		hint: "The name, hat and lantern chosen on the home screen, and the language chosen in the settings, are also saved to your account automatically.",
 		saving: "Saving…",
 		saved: "Profile saved.",
 	},
@@ -248,8 +254,14 @@ export const accountEn: typeof accountFr = {
 		wins: "Wins",
 		best: "Best score",
 		total: "Total points",
+		rewardUnlocked: "Unlocked",
 	},
-	panels: { history: "History", profile: "Profile", security: "Security" },
+	panels: {
+		history: "History",
+		rewards: "Rewards",
+		profile: "Profile",
+		security: "Security",
+	},
 	notices: {
 		connecte: "Signed in with Discord.",
 		cree: "Account created with Discord, welcome!",

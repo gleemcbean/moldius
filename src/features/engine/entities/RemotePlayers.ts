@@ -10,6 +10,7 @@ import {
 } from "@shared/physics/lineOfSight";
 import { PoseSmoother } from "@shared/poseSmoother";
 import { PLAYER_FLAG } from "@shared/protocol/game";
+import { DEFAULT_LANTERN_TINT, LANTERN_TINT_COLORS } from "@shared/rewards";
 import { TEAM_COLORS } from "@shared/teams";
 import * as THREE from "three";
 import { soundBank } from "../../audio/soundBank";
@@ -41,7 +42,11 @@ interface RemoteView {
 export class RemotePlayers {
 	readonly group = new THREE.Group();
 	private readonly views = new Map<string, RemoteView>();
+	private readonly replayVoices = new Map<string, number>();
+	private spectating = false;
 	private time = 0;
+	/** Le dernier joueur entendu au talkie, pour l'afficher. */
+	radioSpeaker: string | null = null;
 
 	constructor(
 		private readonly state: ClientWorldState,
@@ -49,10 +54,13 @@ export class RemotePlayers {
 		private readonly world: CollisionWorld,
 	) {
 		for (const player of state.players.values()) {
-			if (player.id === state.selfId) {
-				continue;
-			}
-			const model = new MushroomModel(kit, player.color, player.pattern);
+			const lanternColor = LANTERN_TINT_COLORS[player.lantern];
+			const model = new MushroomModel(
+				kit,
+				player.color,
+				player.pattern,
+				player.lantern === DEFAULT_LANTERN_TINT ? null : lanternColor,
+			);
 			const tag = nameTag(
 				player.name,
 				player.team === null ? player.color : TEAM_COLORS[player.team],
@@ -65,7 +73,7 @@ export class RemotePlayers {
 				light: {
 					id: `player-${player.id}`,
 					position: new THREE.Vector3(),
-					color: 0xffb468,
+					color: lanternColor,
 					intensity: 0,
 					radius: LANTERN_LIGHT_RANGE,
 					priority: 4,
@@ -78,7 +86,28 @@ export class RemotePlayers {
 				visible: false,
 				pose: new PoseSmoother(),
 			});
+			if (player.id === state.selfId) {
+				model.root.visible = false;
+				tag.visible = false;
+			}
 		}
+	}
+
+	/** Dans les meilleurs moments, on se voit aussi soi-même, sans le son du tchat. */
+	spectate(): void {
+		this.spectating = true;
+		this.radioSpeaker = null;
+	}
+
+	setReplayVoice(playerId: string, level: number): void {
+		this.replayVoices.set(playerId, level);
+	}
+
+	resetPoses(): void {
+		for (const view of this.views.values()) {
+			view.pose.reset();
+		}
+		this.replayVoices.clear();
 	}
 
 	positionOf(playerId: string): THREE.Vector3 | null {
@@ -94,12 +123,19 @@ export class RemotePlayers {
 		dynamicLights: DynamicLight[],
 	): void {
 		this.time += dt;
+		const listening = !this.spectating && this.state.selfHasWalkie;
+		this.radioSpeaker = null;
 		for (const view of this.views.values()) {
+			if (view.id === this.state.selfId && !this.spectating) {
+				continue;
+			}
 			const player = this.state.players.get(view.id) as RemotePlayerState;
 			const sample = player.buffer.sample(renderTime);
 			if (!sample) {
 				this.setVisible(view, false);
-				voiceChat.updateSpatial(view.id, null, 0, Infinity);
+				if (!this.spectating) {
+					voiceChat.updateSpatial(view.id, null, 0, Infinity);
+				}
 				continue;
 			}
 			const flags = sample.value.flags;
@@ -116,7 +152,16 @@ export class RemotePlayers {
 			view.model.root.position.copy(view.position);
 			view.model.root.rotation.y = modelYaw(view.pose.yaw);
 			const lanternOpen = (flags & PLAYER_FLAG.lantern) !== 0;
-			const talking = voiceChat.levelOf(view.id);
+			const talking = this.spectating
+				? (this.replayVoices.get(view.id) ?? 0)
+				: voiceChat.levelOf(view.id);
+			const onRadio = listening && (flags & PLAYER_FLAG.radio) !== 0;
+			if (!this.spectating) {
+				voiceChat.setRadio(view.id, onRadio);
+			}
+			if (onRadio && talking > 0.12) {
+				this.radioSpeaker = player.name;
+			}
 			view.model.update(dt, {
 				speed: view.pose.speed,
 				crouch: sample.value.crouch,
@@ -162,12 +207,14 @@ export class RemotePlayers {
 							)
 						: 3;
 			}
-			voiceChat.updateSpatial(
-				view.id,
-				{ x: view.position.x, y: view.position.y + 1.5, z: view.position.z },
-				view.occlusion,
-				distance,
-			);
+			if (!this.spectating) {
+				voiceChat.updateSpatial(
+					view.id,
+					{ x: view.position.x, y: view.position.y + 1.5, z: view.position.z },
+					view.occlusion,
+					distance,
+				);
+			}
 			this.footsteps(view, view.pose.speed, dt, flags, distance);
 		}
 	}

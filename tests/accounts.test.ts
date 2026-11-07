@@ -21,7 +21,7 @@ import {
 	parseDiscordUser,
 } from "../server/accounts/discord.js";
 import { buildMatchRecords } from "../server/accounts/matchRecords.js";
-import { migrate } from "../server/accounts/migrations.js";
+import { MIGRATIONS, migrate } from "../server/accounts/migrations.js";
 import {
 	hashPassword,
 	needsRehash,
@@ -34,6 +34,7 @@ import { verificationEmail } from "../server/mail/templates.js";
 import { SessionRegistry } from "../server/sessions/SessionRegistry.js";
 import { accountMessage } from "../shared/i18n/accountMessages.js";
 import { parseLanguage } from "../shared/i18n/languages.js";
+import type { AccountProfile } from "../shared/protocol/account.js";
 import {
 	isDeleteConfirmation,
 	MATCH_HISTORY_LIMIT,
@@ -491,6 +492,7 @@ describe("API des comptes", () => {
 			pattern: "stars",
 		});
 		expect(Object.keys(account).sort()).toEqual([
+			"challenges",
 			"color",
 			"createdAt",
 			"discord",
@@ -498,8 +500,10 @@ describe("API des comptes", () => {
 			"email",
 			"hasPassword",
 			"language",
+			"lantern",
 			"pattern",
 			"stats",
+			"termsAcceptedAt",
 		]);
 		expect(account).toMatchObject({
 			hasPassword: true,
@@ -599,7 +603,18 @@ describe("API des comptes", () => {
 		});
 		expect((await alice.send("GET", "/me")).body?.account).toMatchObject({
 			pattern: "swirl",
+			termsAcceptedAt: null,
 		});
+		expect((await agent().send("POST", "/terms-acceptance", {})).status).toBe(
+			401,
+		);
+		const acceptedDate = async () => {
+			const { body } = await alice.send("POST", "/terms-acceptance", {});
+			return (body?.account as AccountProfile | undefined)?.termsAcceptedAt;
+		};
+		const acceptedAt = await acceptedDate();
+		expect(new Date(acceptedAt ?? "").getTime()).not.toBeNaN();
+		expect(await acceptedDate()).toBe(acceptedAt);
 
 		const laptop = agent();
 		expect(
@@ -1223,6 +1238,192 @@ describe("historique et sessions", () => {
 		return { database, service, mailer, token, advance, create };
 	}
 
+	it("classe le défi du jour en gardant le meilleur score de chacun", async () => {
+		const { database, service, token, create } = await serviceWithClock();
+		try {
+			const first = await service.authenticate(token);
+			const other = await service.authenticate(
+				await create("cepe@example.org"),
+			);
+			if (!first || !other) {
+				throw new Error("Session should not be null");
+			}
+			const play = (
+				accountId: string,
+				matchId: string,
+				score: number,
+				awarded = false,
+			) =>
+				service.recordMatch({
+					accountId,
+					matchId,
+					playedAt: new Date("2026-03-02T10:00:00Z"),
+					durationMs: 480_000,
+					visibility: "private",
+					playerName: accountId === first.accountId ? "Girolle" : "Cepe",
+					color: BLUE,
+					rank: 1,
+					playerCount: 1,
+					score,
+					captures: 2,
+					deaths: 0,
+					won: true,
+					awarded,
+					dailyDate: "2026-03-02",
+					pattern: "stars",
+				});
+			await play(first.accountId, "d1", 300, true);
+			await play(first.accountId, "d2", 100);
+			await play(other.accountId, "d3", 500);
+			const board = await service.dailyBoard("2026-03-02", first.accountId);
+			expect(board.entries.map((entry) => [entry.name, entry.score])).toEqual([
+				["Cepe", 500],
+				["Girolle", 300],
+			]);
+			expect(board.me).toMatchObject({ rank: 2, score: 300, self: true });
+			expect(
+				(await service.dailyBoard("2026-03-03", first.accountId)).entries,
+			).toEqual([]);
+			const profile = await service.profile(first.accountId);
+			expect(profile?.stats).toMatchObject({
+				dailies: 1,
+				awards: 1,
+				captures: 4,
+			});
+			expect(profile?.challenges).toEqual({});
+			await service.recordMatch({
+				accountId: first.accountId,
+				matchId: "c1",
+				playedAt: new Date("2026-03-02T11:00:00Z"),
+				durationMs: 480_000,
+				visibility: "private",
+				playerName: "Girolle",
+				color: BLUE,
+				rank: 1,
+				playerCount: 2,
+				score: 10,
+				captures: 3,
+				deaths: 0,
+				won: true,
+				metrics: { captures: 3, games: 1 },
+			});
+			await service.recordMatch({
+				accountId: first.accountId,
+				matchId: "c2",
+				playedAt: new Date("2026-03-02T12:00:00Z"),
+				durationMs: 480_000,
+				visibility: "private",
+				playerName: "Girolle",
+				color: BLUE,
+				rank: 1,
+				playerCount: 2,
+				score: 10,
+				captures: 1,
+				deaths: 0,
+				won: true,
+				metrics: { captures: 1, games: 1 },
+			});
+			expect((await service.profile(first.accountId))?.challenges).toEqual({
+				captures: { total: 4, best: 3 },
+				games: { total: 2, best: 1 },
+			});
+		} finally {
+			await database.close();
+		}
+	});
+
+	it("refuse un motif ou une lanterne pas encore débloqués", async () => {
+		const { database, service, token } = await serviceWithClock();
+		try {
+			const session = await service.authenticate(token);
+			if (!session) {
+				throw new Error("Session should not be null");
+			}
+			expect(
+				(await service.updateProfile(session.accountId, { pattern: "crown" }))
+					.ok,
+			).toBe(false);
+			expect(
+				(await service.updateProfile(session.accountId, { lantern: "violet" }))
+					.ok,
+			).toBe(false);
+			expect(
+				(await service.updateProfile(session.accountId, { pattern: "stars" }))
+					.ok,
+			).toBe(true);
+			const lantern = await service.updateProfile(session.accountId, {
+				lantern: "amber",
+			});
+			expect(lantern.ok && lantern.value.lantern).toBe("amber");
+			expect(
+				(
+					await service.updateProfile(session.accountId, {
+						pattern: "lightning",
+					})
+				).ok,
+			).toBe(false);
+			await service.recordMatch({
+				accountId: session.accountId,
+				matchId: "m_sprint",
+				playedAt: new Date("2026-03-02T10:00:00Z"),
+				durationMs: 480_000,
+				visibility: "private",
+				playerName: "Girolle",
+				color: BLUE,
+				rank: 1,
+				playerCount: 2,
+				score: 10,
+				captures: 0,
+				deaths: 0,
+				won: false,
+				metrics: { sprintMeters: 500 },
+			});
+			expect(
+				(
+					await service.updateProfile(session.accountId, {
+						pattern: "lightning",
+					})
+				).ok,
+			).toBe(true);
+		} finally {
+			await database.close();
+		}
+	});
+
+	it("reprend les parties déjà jouées dans la progression des défis", async () => {
+		const { database, service, token } = await serviceWithClock();
+		try {
+			const session = await service.authenticate(token);
+			if (!session) {
+				throw new Error("Session should not be null");
+			}
+			await database.query(
+				"ALTER TABLE accounts DROP COLUMN challenge_progress",
+			);
+			await database.query(
+				"UPDATE accounts SET games_played = 26, wins = 4, total_captures = 11 WHERE id = $1",
+				[session.accountId],
+			);
+			for (const statement of MIGRATIONS.find(
+				(migration) => migration.version === 9,
+			)?.statements ?? []) {
+				await database.query(statement);
+			}
+			const profile = await service.profile(session.accountId);
+			expect(profile?.challenges).toEqual({
+				games: { total: 26, best: 1 },
+				wins: { total: 4, best: 1 },
+				captures: { total: 11, best: 1 },
+				dailies: { total: 0, best: 0 },
+			});
+			expect(
+				(await service.updateProfile(session.accountId, { pattern: "web" })).ok,
+			).toBe(true);
+		} finally {
+			await database.close();
+		}
+	});
+
 	it(`ne garde que les ${MATCH_HISTORY_LIMIT} dernières parties et cumule les statistiques`, async () => {
 		const { database, service, token } = await serviceWithClock();
 		try {
@@ -1283,6 +1484,9 @@ describe("historique et sessions", () => {
 				wins: 10,
 				bestScore: 290,
 				totalScore: 4350,
+				captures: 43,
+				dailies: 0,
+				awards: 0,
 			});
 			const rows = await database.query<{ total: number }>(
 				"SELECT count(*)::int AS total FROM match_history",
@@ -1402,6 +1606,10 @@ describe("historique et sessions", () => {
 			winnerId: "p1",
 			teams: [],
 			winnerTeam: null,
+			awards: [],
+			highlights: [],
+			daily: null,
+			metrics: { p1: { games: 1, captures: 2 } },
 			entries: [
 				{
 					playerId: "p1",
@@ -1486,6 +1694,10 @@ describe("historique et sessions", () => {
 			teams: teamStandings(entries),
 			winnerTeam: 1,
 			entries,
+			awards: [],
+			highlights: [],
+			daily: null,
+			metrics: {},
 		};
 		const records = buildMatchRecords(
 			results,

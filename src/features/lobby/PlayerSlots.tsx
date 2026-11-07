@@ -74,11 +74,11 @@ function Occupied({
 				<HatPreview color={player.color} pattern={player.pattern} />
 			</span>
 			<span className={styles.slotBody}>
-				<span className={styles.slotName}>
-					{player.name}
-					{self ? <span className={styles.you}>{t.lobby.you}</span> : null}
+				<span className={styles.slotName} title={player.name}>
+					<span className={styles.slotNameText}>{player.name}</span>
 				</span>
 				<span className={styles.slotMeta}>
+					{self ? <span className={styles.you}>{t.lobby.you}</span> : null}
 					{player.team !== null ? (
 						<span
 							className={styles.teamTag}
@@ -157,7 +157,12 @@ export function PlayerSlots({
 					))}
 				</div>
 			) : null}
-			<ul className={styles.slots}>
+			<ul
+				className={[
+					styles.slots,
+					lobby.capacity > 4 ? styles.slotsCompact : "",
+				].join(" ")}
+			>
 				{lobby.players.map((player) => (
 					<Occupied
 						key={player.id}

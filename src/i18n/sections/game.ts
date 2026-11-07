@@ -1,3 +1,17 @@
+import type { AwardId } from "@shared/awards";
+import type { HighlightKind } from "@shared/protocol/game";
+
+export interface HighlightContext {
+	name: string;
+	other: string;
+	species: string;
+	value: number;
+}
+
+function seconds(ms: number): number {
+	return Math.round(ms / 1000);
+}
+
 import type { AbortReason } from "@shared/protocol/events";
 import type { CastFailureReason } from "@shared/protocol/game";
 import type { MicStatus } from "../../features/voice/micManager";
@@ -32,6 +46,13 @@ export const gameFr = {
 		useAltar: "Utiliser l'autel",
 		craft: (name: string) => `Fabriquer : ${name}`,
 		missingMaterials: "Matériaux manquants : refermer",
+		takeWalkie: "Prendre le talkie-walkie",
+		stakeResting: "Le feu s'est éteint : revenez plus tard",
+		stakes: {
+			sanctuary: "Sanctuaire : soigne, mais attire les anomalies",
+			reliquary: "Reliquaire : 4 fragments, mais l'alarme sonne",
+			pact: "Pacte : 50 PV contre un objet occulte",
+		},
 	},
 	inventory: {
 		title: "Fragments",
@@ -163,6 +184,109 @@ export const gameFr = {
 		captured: "Serveur : capture réussie",
 		refused: (reason: string) => `Serveur : refus — ${reason}`,
 	},
+	walkie: {
+		idle: (key: string) => `Talkie : maintenez ${key} pour parler`,
+		talking: "Talkie : vous émettez",
+		hearing: (name: string) => `Talkie : ${name}`,
+		taken: "Talkie récupéré : ceux qui en ont un vous entendent partout",
+	},
+	stakeResult: {
+		sanctuary: "Le sanctuaire vous soigne… et sonne l'appel",
+		reliquary: "Reliquaire pillé : tout le manoir l'a entendu, fuyez !",
+		pact: "Pacte scellé : un objet occulte contre votre sang",
+	},
+	highlights: {
+		title: "Meilleurs moments",
+		counter: (index: number, total: number) => `${index} / ${total}`,
+		next: "Suivant",
+		skip: "Passer tout",
+		voice: "Micro",
+		someone: "quelqu'un",
+		unknownSpecies: "une anomalie",
+		speciesName: (name: string) => name.charAt(0).toLowerCase() + name.slice(1),
+		moments: {
+			scream: ({ name, species }) =>
+				`${name} hurle à pleins poumons avec ${species} aux trousses`,
+			fall: ({ name, value }) =>
+				`${name} tombe de ${String(value).replace(".", ",")} m et le regrette`,
+			fallDeath: ({ name, value }) =>
+				`${name} tente une chute de ${String(value).replace(".", ",")} m. Le sol gagne.`,
+			betrayed: ({ name, other, species }) =>
+				`${other} pousse ${name}, et ${species} s'occupe du reste`,
+			extracted: ({ name, species }) =>
+				`${name} se croyait à l'abri, mais ${species} a trouvé la cachette`,
+			radioBetrayal: ({ name, species }) =>
+				`Le talkie de ${name} grésille au pire moment : ${species} l'entend`,
+			explosion: ({ name, species, value }) =>
+				value > 1
+					? `${species} explose et emporte ${value} joueurs`
+					: `${species} explose au visage de ${name}`,
+			carried: ({ name, species }) =>
+				`${species} embarque ${name} sans demander`,
+			thrown: ({ name, species }) =>
+				`${species} envoie ${name} à travers la pièce`,
+			death: ({ name, species }) => `${species} finit par rattraper ${name}`,
+			pact: ({ name }) =>
+				`${name} signe un pacte et y laisse la moitié de sa vie`,
+			pactDeath: ({ name }) => `${name} signe un pacte trop cher pour sa santé`,
+			heist: ({ name }) =>
+				`${name} pille le reliquaire et réveille tout le manoir`,
+			clutch: ({ name, species }) =>
+				`${name} capture ${species} à la toute dernière seconde`,
+			capture: ({ name, species }) => `${name} capture ${species}`,
+			escape: ({ name, species, value }) =>
+				`${name} sème ${species} après ${Math.round(value / 1000)} s de poursuite`,
+			doubleChat: ({ name, other }) =>
+				`${name} discute tranquillement avec un faux ${other}`,
+		} satisfies Record<
+			HighlightKind,
+			(context: HighlightContext) => string
+		> as Record<HighlightKind, (context: HighlightContext) => string>,
+	},
+	awards: {
+		title: "Titres de la partie",
+		names: {
+			abandoner: "A abandonné ses amis",
+			hider: "Champion de cache-cache",
+			screamer: "Cordes vocales en feu",
+			gravity: "Gravité 1, vous 0",
+			traitor: "Mauvais camarade",
+			gambler: "Joueur invétéré",
+			radioHost: "Animateur radio",
+			prey: "Proie préférée",
+			hunter: "Chasseur émérite",
+			martyr: "Abonné au cimetière",
+			doorman: "Concierge du manoir",
+			bunny: "Lapin sous caféine",
+			marathon: "Marathonien",
+			collector: "Ramasse-miettes",
+			lighthouse: "Phare humain",
+			tourist: "Touriste",
+		} satisfies Record<AwardId, string> as Record<AwardId, string>,
+		details: {
+			abandoner: (value) =>
+				`${value} ami${value > 1 ? "s" : ""} laissé${value > 1 ? "s" : ""} derrière`,
+			hider: (value) => `${seconds(value)} s sans sortir de sa cachette`,
+			screamer: (value) => `${seconds(value)} s de hurlements`,
+			gravity: (value) => `${value} PV perdus en tombant`,
+			traitor: (value) => `${value} joueurs poussés`,
+			gambler: (value) =>
+				`${value} pacte${value > 1 ? "s" : ""} signé${value > 1 ? "s" : ""}`,
+			radioHost: (value) => `${seconds(value)} s d'antenne`,
+			prey: (value) => `${seconds(value)} s de poursuite`,
+			hunter: (value) => `${value} captures`,
+			martyr: (value) => `${value} morts`,
+			doorman: (value) => `${value} portes manœuvrées`,
+			bunny: (value) => `${value} sauts`,
+			marathon: (value) => `${Math.round(value)} m au sprint`,
+			collector: (value) => `${value} fragments`,
+			lighthouse: (value) => `${seconds(value)} s de lanterne ouverte`,
+			tourist: () => "A surtout admiré la décoration",
+		} satisfies Record<AwardId, (value: number) => string> as Record<
+			AwardId,
+			(value: number) => string
+		>,
+	},
 	hud: {
 		awakening: (seconds: number) =>
 			`Les anomalies s'éveillent dans ${seconds} s`,
@@ -231,6 +355,7 @@ export const gameFr = {
 		deaths: (count: number) => `${count} chute${count > 1 ? "s" : ""}`,
 		saved: (email: string) =>
 			`Partie enregistrée dans l'historique du compte ${email}.`,
+		unlocked: (names: string) => `Récompense débloquée : ${names} !`,
 		backToLobby: "Retour au lobby",
 		home: "Accueil",
 	},
@@ -325,6 +450,13 @@ export const gameEn: typeof gameFr = {
 		useAltar: "Use the altar",
 		craft: (name: string) => `Craft: ${name}`,
 		missingMaterials: "Materials missing: close",
+		takeWalkie: "Take the walkie-talkie",
+		stakeResting: "The flame is out: come back later",
+		stakes: {
+			sanctuary: "Sanctuary: heals, but draws the anomalies",
+			reliquary: "Reliquary: 4 fragments, but the alarm rings",
+			pact: "Pact: 50 HP for an occult object",
+		},
 	},
 	inventory: {
 		title: "Fragments",
@@ -457,6 +589,99 @@ export const gameEn: typeof gameFr = {
 		captured: "Server: capture succeeded",
 		refused: (reason: string) => `Server: refused — ${reason}`,
 	},
+	walkie: {
+		idle: (key: string) => `Walkie: hold ${key} to talk`,
+		talking: "Walkie: transmitting",
+		hearing: (name: string) => `Walkie: ${name}`,
+		taken: "Walkie picked up: anyone holding one hears you everywhere",
+	},
+	stakeResult: {
+		sanctuary: "The sanctuary heals you… and calls out",
+		reliquary: "Reliquary looted: the whole manor heard it, run!",
+		pact: "Pact sealed: an occult object for your blood",
+	},
+	highlights: {
+		title: "Best moments",
+		counter: (index: number, total: number) => `${index} / ${total}`,
+		next: "Next",
+		skip: "Skip all",
+		voice: "Mic",
+		someone: "someone",
+		unknownSpecies: "an anomaly",
+		speciesName: (name: string) => name.charAt(0).toLowerCase() + name.slice(1),
+		moments: {
+			scream: ({ name, species }) =>
+				`${name} screams at the top of their lungs with ${species} right behind`,
+			fall: ({ name, value }) => `${name} falls ${value} m and regrets it`,
+			fallDeath: ({ name, value }) =>
+				`${name} attempts a ${value} m drop. The floor wins.`,
+			betrayed: ({ name, other, species }) =>
+				`${other} shoves ${name}, and ${species} does the rest`,
+			extracted: ({ name, species }) =>
+				`${name} felt safe, but ${species} found the hiding spot`,
+			radioBetrayal: ({ name, species }) =>
+				`${name}'s walkie crackles at the worst moment: ${species} hears it`,
+			explosion: ({ name, species, value }) =>
+				value > 1
+					? `${species} explodes and takes ${value} players along`
+					: `${species} explodes in ${name}'s face`,
+			carried: ({ name, species }) => `${species} carries ${name} away`,
+			thrown: ({ name, species }) => `${species} sends ${name} across the room`,
+			death: ({ name, species }) => `${species} finally catches ${name}`,
+			pact: ({ name }) => `${name} signs a pact and loses half their life`,
+			pactDeath: ({ name }) =>
+				`${name} signs a pact too costly for their health`,
+			heist: ({ name }) =>
+				`${name} loots the reliquary and wakes the whole manor`,
+			clutch: ({ name, species }) =>
+				`${name} captures ${species} at the very last second`,
+			capture: ({ name, species }) => `${name} captures ${species}`,
+			escape: ({ name, species, value }) =>
+				`${name} shakes off ${species} after a ${Math.round(value / 1000)} s chase`,
+			doubleChat: ({ name, other }) =>
+				`${name} calmly chats with a fake ${other}`,
+		},
+	},
+	awards: {
+		title: "Match titles",
+		names: {
+			abandoner: "Left their friends behind",
+			hider: "Hide-and-seek champion",
+			screamer: "Vocal cords on fire",
+			gravity: "Gravity 1, you 0",
+			traitor: "Bad teammate",
+			gambler: "Compulsive gambler",
+			radioHost: "Radio host",
+			prey: "Favourite prey",
+			hunter: "Expert hunter",
+			martyr: "Graveyard regular",
+			doorman: "Manor doorman",
+			bunny: "Caffeinated bunny",
+			marathon: "Marathon runner",
+			collector: "Crumb collector",
+			lighthouse: "Human lighthouse",
+			tourist: "Tourist",
+		},
+		details: {
+			abandoner: (value) =>
+				`${value} friend${value > 1 ? "s" : ""} left behind`,
+			hider: (value) => `${seconds(value)} s without leaving the hiding spot`,
+			screamer: (value) => `${seconds(value)} s of screaming`,
+			gravity: (value) => `${value} HP lost by falling`,
+			traitor: (value) => `${value} players shoved`,
+			gambler: (value) => `${value} pact${value > 1 ? "s" : ""} signed`,
+			radioHost: (value) => `${seconds(value)} s on air`,
+			prey: (value) => `${seconds(value)} s of being chased`,
+			hunter: (value) => `${value} captures`,
+			martyr: (value) => `${value} deaths`,
+			doorman: (value) => `${value} doors worked`,
+			bunny: (value) => `${value} jumps`,
+			marathon: (value) => `${Math.round(value)} m sprinted`,
+			collector: (value) => `${value} fragments`,
+			lighthouse: (value) => `${seconds(value)} s of open lantern`,
+			tourist: () => "Mostly admired the decor",
+		},
+	},
 	hud: {
 		awakening: (seconds: number) => `The anomalies awaken in ${seconds} s`,
 		petrified: "Turned to stone by the Weeper!",
@@ -523,6 +748,7 @@ export const gameEn: typeof gameFr = {
 		captures: (count: number) => `${count} capture${count === 1 ? "" : "s"}`,
 		deaths: (count: number) => `${count} fall${count === 1 ? "" : "s"}`,
 		saved: (email: string) => `Game saved to the history of account ${email}.`,
+		unlocked: (names: string) => `Reward unlocked: ${names}!`,
 		backToLobby: "Back to lobby",
 		home: "Home",
 	},

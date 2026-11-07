@@ -13,6 +13,7 @@ export const DEFAULT_KEYS: Record<ActionId, string> = {
 	interact: "KeyE",
 	push: "KeyR",
 	shout: "KeyX",
+	radio: "KeyV",
 	map: "KeyM",
 	leaderboard: "Tab",
 	pagePrevious: "ArrowLeft",

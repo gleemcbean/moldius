@@ -1,6 +1,7 @@
 import { io as connect, type Socket } from "socket.io-client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type RunningServer, startServer } from "../server/index.js";
+import { dailyChallenge, dailyDateKey } from "../shared/dailyChallenge.js";
 import type {
 	ClientToServerEvents,
 	ServerToClientEvents,
@@ -117,6 +118,40 @@ describe("serveur HTTP", () => {
 });
 
 describe("lobbies Socket.IO", () => {
+	it("lance le défi du jour à la bonne date, seul et avec les mêmes règles pour tous", async () => {
+		const player = await client();
+		const created = await request<LobbyState>((ack) =>
+			player.socket.emit("lobby:createDaily", { name: "Morille" }, ack),
+		);
+		expect(created.ok).toBe(true);
+		const lobby = (created as { value: LobbyState }).value;
+		const challenge = dailyChallenge(dailyDateKey(Date.now()));
+		expect(lobby.daily).toBe(challenge.date);
+		expect(lobby.config).toEqual(challenge.config);
+		expect(lobby.configEditable).toBe(false);
+		expect(lobby.minPlayers).toBe(1);
+		const refused = await request<LobbyState>((ack) =>
+			player.socket.emit(
+				"lobby:config",
+				{ config: { ...lobby.config, simultaneousAnomalies: 1 } },
+				ack,
+			),
+		);
+		expect(refused.ok).toBe(false);
+		player.socket.emit("lobby:microphone", { ready: true });
+		player.socket.emit("lobby:ready", { ready: true });
+		await waitForState(player.socket, (state) =>
+			state.players.every((entry) => entry.ready),
+		);
+		const init = waitFor(player.socket, "game:init");
+		const started = await request<null>((ack) =>
+			player.socket.emit("lobby:start", ack),
+		);
+		expect(started.ok).toBe(true);
+		expect(((await init) as MatchInit).seed).toBe(challenge.seed);
+		player.socket.emit("lobby:leave");
+	});
+
 	it("isole les lobbies privés, protège la configuration et lance une partie complète", async () => {
 		const host = await client();
 		const guest = await client();
@@ -129,7 +164,7 @@ describe("lobbies Socket.IO", () => {
 		const lobby = (created as { value: LobbyState }).value;
 		expect(lobby.visibility).toBe("private");
 		expect(lobby.code).toMatch(/^[A-Z0-9]{5}$/);
-		expect(lobby.capacity).toBe(4);
+		expect(lobby.capacity).toBe(8);
 
 		const wrong = await request<LobbyState>((ack) =>
 			guest.socket.emit(
@@ -167,7 +202,7 @@ describe("lobbies Socket.IO", () => {
 		const publicConfig = await request<LobbyState>((ack) =>
 			stranger.socket.emit(
 				"lobby:config",
-				{ config: { ...lobby.config, anomalyCount: 15 } },
+				{ config: { ...lobby.config, simultaneousAnomalies: 6 } },
 				ack,
 			),
 		);
@@ -179,7 +214,7 @@ describe("lobbies Socket.IO", () => {
 		const guestConfig = await request<LobbyState>((ack) =>
 			guest.socket.emit(
 				"lobby:config",
-				{ config: { ...lobby.config, anomalyCount: 15 } },
+				{ config: { ...lobby.config, simultaneousAnomalies: 6 } },
 				ack,
 			),
 		);
@@ -191,14 +226,20 @@ describe("lobbies Socket.IO", () => {
 		const hostConfig = await request<LobbyState>((ack) =>
 			host.socket.emit(
 				"lobby:config",
-				{ config: { ...lobby.config, anomalyCount: 99, manorSize: "small" } },
+				{
+					config: {
+						...lobby.config,
+						simultaneousAnomalies: 99,
+						manorSize: "small",
+					},
+				},
 				ack,
 			),
 		);
 		expect(hostConfig.ok).toBe(true);
 		expect(
-			(hostConfig as { value: LobbyState }).value.config.anomalyCount,
-		).toBe(20);
+			(hostConfig as { value: LobbyState }).value.config.simultaneousAnomalies,
+		).toBe(10);
 
 		const early = await request<null>((ack) =>
 			host.socket.emit("lobby:start", ack),
@@ -248,7 +289,7 @@ describe("lobbies Socket.IO", () => {
 		];
 		expect(initA.matchId).toBe(initB.matchId);
 		expect(initA.layoutChecksum).toBe(initB.layoutChecksum);
-		expect(initA.config.anomalyCount).toBe(20);
+		expect(initA.config.simultaneousAnomalies).toBe(10);
 
 		const beginA = waitFor(host.socket, "game:begin");
 		const snapshot = waitFor(guest.socket, "game:snapshot");

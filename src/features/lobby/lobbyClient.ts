@@ -1,6 +1,7 @@
 import type { HatPattern } from '@shared/hatPatterns';
 import type { MatchConfig } from '@shared/matchConfig';
 import type { LobbyError, LobbyState } from '@shared/protocol/lobby';
+import type { LanternTint } from '@shared/rewards';
 import { navigate, showToast } from '../../app/appStore';
 import { currentMessages } from '../../i18n';
 import { getSocket } from '../network/socket';
@@ -45,9 +46,13 @@ function handleJoin(response: LobbyResponse): boolean {
   return true;
 }
 
-function appearance(): { color: number; pattern: HatPattern } {
+function appearance(): { color: number; pattern: HatPattern; lantern: LanternTint } {
   const settings = settingsStore.get();
-  return { color: settings.playerColor, pattern: settings.playerPattern };
+  return {
+    color: settings.playerColor,
+    pattern: settings.playerPattern,
+    lantern: settings.playerLantern,
+  };
 }
 
 export function quickJoin(name: string): void {
@@ -58,6 +63,11 @@ export function quickJoin(name: string): void {
 export function createPrivateLobby(name: string): void {
   lobbyStore.set({ pending: true, error: null, lobby: null });
   getSocket().emit('lobby:createPrivate', { name, ...appearance() }, handleJoin);
+}
+
+export function createDailyLobby(name: string): void {
+  lobbyStore.set({ pending: true, error: null, lobby: null });
+  getSocket().emit('lobby:createDaily', { name, ...appearance() }, handleJoin);
 }
 
 export function startTutorial(name: string): void {

@@ -1,10 +1,11 @@
+import { entryWon, type MatchMetrics } from "../../shared/challenges.js";
 import {
 	ANOMALY_FIRST_SPAWN_DELAY_MS,
-	ANOMALY_MAX_ACTIVE,
-	ANOMALY_MAX_ACTIVE_PER_TIER,
 	ANOMALY_NEXT_DELAY_MS,
 	ANOMALY_RETURN_DELAY_MS,
 	ANOMALY_SPAWN_RETRY_MS,
+	anomalyRosterSize,
+	anomalyTierCaps,
 	DOOR_INTERACT_RANGE,
 	ENERGY_MAX,
 	ENERGY_USE_REGEN_PAUSE_SECONDS,
@@ -27,6 +28,7 @@ import {
 	SNAPSHOT_INTERVAL_TICKS,
 	VALVE_INTERACT_RANGE,
 	VOICE_AUDIBLE_LEVEL,
+	walkieCount,
 } from "../../shared/config/index.js";
 import type { SpeciesId } from "../../shared/config/species.js";
 import type { DevModes } from "../../shared/devModes.js";
@@ -62,6 +64,7 @@ import type {
 import type {
 	CastRequest,
 	ClientStateMessage,
+	DamageCause,
 	ForcedMoveKind,
 	GameEvent,
 	InteractRequest,
@@ -71,6 +74,10 @@ import type {
 	WorldSnapshot,
 } from "../../shared/protocol/game.js";
 import { SeededRandom } from "../../shared/random.js";
+import {
+	DEFAULT_LANTERN_TINT,
+	type LanternTint,
+} from "../../shared/rewards.js";
 import { teamStandings } from "../../shared/teams.js";
 import { AnomalyEntity } from "./ai/AnomalyEntity.js";
 import { witnessHide } from "./ai/hunter.js";
@@ -80,6 +87,8 @@ import { releaseClaim } from "./ai/patrol.js";
 import type { SoundEvent } from "./ai/perception.js";
 import { separateAnomalies } from "./ai/separation.js";
 import { anomalyExtra, updateAnomaly } from "./ai/updateAnomaly.js";
+import { AwardTracker, liveChallengeMetrics, pickAwards } from "./awards.js";
+import { HighlightRecorder } from "./highlights.js";
 import { MatchPlayer } from "./MatchPlayer.js";
 import { formulaWords, planRoster, type RosterPlan } from "./roster.js";
 import { validateCast } from "./systems/captures.js";
@@ -100,13 +109,16 @@ import {
 	pickRespawn,
 	type SpawnContext,
 } from "./systems/spawning.js";
+import { StakeSystem } from "./systems/stakes.js";
 import { ValveSystem } from "./systems/valves.js";
+import { WalkieSystem } from "./systems/walkies.js";
 
 export interface MatchParticipant {
 	id: string;
 	name: string;
 	color: number;
 	pattern?: HatPattern;
+	lantern?: LanternTint;
 	team?: number | null;
 }
 
@@ -138,12 +150,15 @@ export interface MatchOptions {
 	autoStart?: boolean;
 	dev?: boolean;
 	tutorial?: boolean;
+	daily?: string | null;
 }
 
 const TUTORIAL_MONSTER_LEASH = 3.8;
 const TUTORIAL_CALM_STATES = new Set(["idle", "patrol", "travel", "search"]);
 
 export type MatchPhase = "loading" | "playing" | "ended";
+
+const CHALLENGE_SYNC_TICKS = Math.round(2000 / SERVER_TICK_MS);
 
 export class Match {
 	readonly id: string;
@@ -160,6 +175,13 @@ export class Match {
 	readonly valves: ValveSystem;
 	readonly hazards: HazardSystem;
 	readonly loot = new LootSystem();
+	readonly walkies: WalkieSystem;
+	readonly stakes: StakeSystem;
+	readonly walkieTotal: number;
+	readonly awards = new AwardTracker();
+	private readonly challengesSent = new Map<string, string>();
+	readonly highlights: HighlightRecorder | null;
+	readonly daily: string | null;
 	readonly tutorial: boolean;
 	readonly pickupTotal: number;
 	private tutorialLured = false;
@@ -200,6 +222,7 @@ export class Match {
 		this.onFinished = options.onFinished;
 		this.dev = options.dev ?? false;
 		this.tutorial = options.tutorial ?? false;
+		this.daily = options.daily ?? null;
 		this.now = this.clock();
 		this.createdAt = this.now;
 		this.pickupTotal = pickupTotal(this.config, options.participants.length);
@@ -216,9 +239,23 @@ export class Match {
 		this.doors = new DoorSystem(this.layout, this.world);
 		this.valves = new ValveSystem(this.layout.valves);
 		this.hazards = new HazardSystem(this.world);
+		this.walkieTotal = Math.min(
+			this.layout.walkies.length,
+			walkieCount(options.participants.length),
+		);
+		this.walkies = new WalkieSystem(
+			this.layout.walkies.slice(0, this.walkieTotal).map((spot) => spot.id),
+		);
+		this.stakes = new StakeSystem(this.layout.stakes);
+		this.highlights = this.tutorial
+			? null
+			: new HighlightRecorder(
+					(id) => this.anomalies[id]?.species ?? null,
+					(windows) => this.emit({ type: "voiceWindows", windows }),
+				);
 		this.roster = planRoster(
 			this.rng.fork("roster"),
-			this.config.anomalyCount,
+			this.tutorial ? 1 : anomalyRosterSize(this.config.simultaneousAnomalies),
 			options.previousWords,
 			this.config.species,
 		);
@@ -260,10 +297,12 @@ export class Match {
 				this.now,
 			);
 			player.pattern = participant.pattern ?? DEFAULT_HAT_PATTERN;
+			player.lantern = participant.lantern ?? DEFAULT_LANTERN_TINT;
 			player.team =
 				this.config.teamCount > 0 ? (participant.team ?? null) : null;
 			player.roomId = this.roomIdAt(player.position);
 			this.players.set(participant.id, player);
+			this.awards.addPlayer(participant.id);
 		});
 		if (options.autoStart !== false) {
 			this.startLoop();
@@ -285,6 +324,7 @@ export class Match {
 				name: player.name,
 				color: player.color,
 				pattern: player.pattern,
+				lantern: player.lantern,
 				team: player.team,
 				spawn: {
 					x: player.position.x,
@@ -308,6 +348,7 @@ export class Match {
 			dev: this.dev,
 			tutorial: this.tutorial,
 			pickupTotal: this.pickupTotal,
+			walkieTotal: this.walkieTotal,
 		};
 	}
 
@@ -355,11 +396,19 @@ export class Match {
 		this.valves.heal(this.players.values(), this.now, dt);
 		this.updateHazards();
 		this.loot.update(this);
+		this.walkies.update(this);
+		this.stakes.update(this, dt);
 		this.updateAnomalies(dt);
 		checkVoiceSabotage(this);
 		this.updateCasting();
+		this.trackAwards();
+		if (this.tick % CHALLENGE_SYNC_TICKS === 0) {
+			this.syncChallenges();
+		}
 		if (this.tick % SNAPSHOT_INTERVAL_TICKS === 0) {
-			this.transport.broadcastVolatile("game:snapshot", this.snapshot());
+			const snapshot = this.snapshot();
+			this.transport.broadcastVolatile("game:snapshot", snapshot);
+			this.highlights?.frame(snapshot, this);
 		}
 		this.flushEvents();
 		if (this.now >= this.endsAt) {
@@ -411,6 +460,71 @@ export class Match {
 
 	emit(event: GameEvent): void {
 		this.pendingEvents.push(event);
+		this.awards.event(event, this.players);
+		this.highlights?.event(event, this);
+	}
+
+	openDoors(): number[] {
+		return this.doors.doors.flatMap((door) => (door?.open ? [door.id] : []));
+	}
+
+	private trackAwards(): void {
+		const chased = new Set(
+			this.anomalies.flatMap((entity) =>
+				entity.active &&
+				entity.targetId &&
+				(entity.state === "chase" || entity.state === "windup")
+					? [entity.targetId]
+					: [],
+			),
+		);
+		for (const player of this.players.values()) {
+			this.awards.tick(player, this.now, chased.has(player.id));
+		}
+	}
+
+	private syncChallenges(): void {
+		if (this.tutorial) {
+			return;
+		}
+		for (const player of this.players.values()) {
+			const stats = this.awards.stats.get(player.id);
+			if (!stats) {
+				continue;
+			}
+			const metrics = liveChallengeMetrics(stats);
+			const key = JSON.stringify(metrics);
+			if (this.challengesSent.get(player.id) !== key) {
+				this.challengesSent.set(player.id, key);
+				this.transport.toPlayer(player.id, "game:challenges", metrics);
+			}
+		}
+	}
+
+	private finalChallengeMetrics(
+		results: MatchResults,
+	): Record<string, MatchMetrics> {
+		if (this.tutorial) {
+			return {};
+		}
+		return Object.fromEntries(
+			results.entries.map((entry) => {
+				const stats = this.awards.stats.get(entry.playerId);
+				const won = entryWon(results, entry);
+				const flawless = entry.deaths === 0;
+				return [
+					entry.playerId,
+					{
+						...(stats ? liveChallengeMetrics(stats) : {}),
+						games: 1,
+						wins: won ? 1 : 0,
+						flawless: flawless ? 1 : 0,
+						flawlessWins: won && flawless ? 1 : 0,
+						dailies: results.daily ? 1 : 0,
+					} satisfies MatchMetrics,
+				];
+			}),
+		);
 	}
 
 	private flushEvents(): void {
@@ -748,11 +862,11 @@ export class Match {
 			);
 		let attempts = 0;
 		for (const entity of waiting) {
-			if (active >= ANOMALY_MAX_ACTIVE || attempts >= 2) {
+			if (active >= this.config.simultaneousAnomalies || attempts >= 2) {
 				return;
 			}
 			const tier = entity.definition.tier;
-			if (perTier[tier] >= ANOMALY_MAX_ACTIVE_PER_TIER[tier]) {
+			if (perTier[tier] >= this.tierCaps[tier]) {
 				continue;
 			}
 			attempts += 1;
@@ -763,6 +877,24 @@ export class Match {
 				entity.spawnDueAt = this.now + ANOMALY_SPAWN_RETRY_MS;
 			}
 		}
+	}
+
+	/**
+	 * Le réglage du lobby prime : si les espèces choisies ne permettent pas
+	 * d'atteindre le nombre demandé en respectant les paliers, ces derniers sautent.
+	 */
+	private get tierCaps(): Record<1 | 2 | 3, number> {
+		const wanted = this.config.simultaneousAnomalies;
+		const caps = anomalyTierCaps(wanted);
+		const available = { 1: 0, 2: 0, 3: 0 };
+		for (const entity of this.anomalies) {
+			available[entity.definition.tier] += 1;
+		}
+		const reachable =
+			Math.min(caps[1], available[1]) +
+			Math.min(caps[2], available[2]) +
+			Math.min(caps[3], available[3]);
+		return reachable >= wanted ? caps : { 1: wanted, 2: wanted, 3: wanted };
 	}
 
 	placeAnomaly(entity: AnomalyEntity): boolean {
@@ -800,7 +932,7 @@ export class Match {
 	applyDamage(
 		player: MatchPlayer,
 		amount: number,
-		source: SpeciesId | "explosion" | "fall",
+		source: SpeciesId | DamageCause,
 		from: Vec3 | null,
 		periodic = false,
 	): boolean {
@@ -840,9 +972,11 @@ export class Match {
 		return true;
 	}
 
-	applyFallDamage(player: MatchPlayer, amount: number): void {
+	applyFallDamage(player: MatchPlayer, amount: number, drop = 0): void {
 		if (!this.tutorial) {
-			this.applyDamage(player, amount, "fall", null);
+			if (this.applyDamage(player, amount, "fall", null)) {
+				this.highlights?.fall(player.id, drop, !player.alive, this);
+			}
 			return;
 		}
 		const health = Math.max(1, player.health - amount);
@@ -861,10 +995,8 @@ export class Match {
 		}
 	}
 
-	private kill(
-		player: MatchPlayer,
-		cause: SpeciesId | "explosion" | "fall",
-	): void {
+	private kill(player: MatchPlayer, cause: SpeciesId | DamageCause): void {
+		this.walkies.release(this, player);
 		player.alive = false;
 		player.deaths += 1;
 		player.respawnAt = this.now + PLAYER_RESPAWN_DELAY_MS;
@@ -1012,6 +1144,12 @@ export class Match {
 				break;
 			case "pickup":
 				this.loot.take(this, player, request.id);
+				break;
+			case "walkie":
+				this.walkies.take(this, player, request.id);
+				break;
+			case "stake":
+				this.stakes.interact(this, player, request.id);
 				break;
 		}
 	}
@@ -1332,6 +1470,35 @@ export class Match {
 		}
 	}
 
+	handleRadio(playerId: string, on: boolean): void {
+		const player = this.players.get(playerId);
+		if (player && this.phase === "playing") {
+			this.walkies.setTransmitting(player, on);
+		}
+	}
+
+	/** Le vacarme du reliquaire : les portes claquent, il faut les rouvrir pour fuir. */
+	slamRoomDoors(roomId: number): void {
+		for (const openingId of this.layout.rooms[roomId]?.openingIds ?? []) {
+			const opening = this.layout.openings[openingId];
+			if (!opening.door || !this.doors.get(opening.door.id)?.open) {
+				continue;
+			}
+			const door = this.doors.get(opening.door.id) as DoorState;
+			const blocked = [...this.players.values()].some(
+				(player) =>
+					player.alive &&
+					Math.hypot(
+						player.position.x - door.center.x,
+						player.position.z - door.center.z,
+					) < 1.05,
+			);
+			if (!blocked) {
+				this.setDoor(door.id, false, null);
+			}
+		}
+	}
+
 	handleDevModes(playerId: string, modes: DevModes): void {
 		const player = this.players.get(playerId);
 		if (player && this.dev) {
@@ -1452,6 +1619,7 @@ export class Match {
 		player.connected = false;
 		player.disconnectedAt = this.now;
 		player.casting = null;
+		this.walkies.release(this, player);
 		if (player.hidden) {
 			this.unhidePlayer(player, "unhide");
 		}
@@ -1483,6 +1651,7 @@ export class Match {
 			events: this.currentStateEvents(),
 		});
 		this.sendInventory(player);
+		this.challengesSent.delete(playerId);
 		if (player.alive) {
 			this.forcedMove(player, "spawn", player.position, player.yaw, 0);
 		}
@@ -1521,6 +1690,7 @@ export class Match {
 				});
 			}
 		});
+		events.push(...this.walkies.stateEvents(), ...this.stakes.stateEvents());
 		for (const puddle of this.hazards.puddles) {
 			events.push({
 				type: "puddle",
@@ -1549,6 +1719,7 @@ export class Match {
 				captures: player.captures,
 				deaths: player.deaths,
 				color: player.color,
+				pattern: player.pattern,
 				team: player.team,
 			}))
 			.sort((a, b) => b.score - a.score || a.deaths - b.deaths);
@@ -1568,7 +1739,12 @@ export class Match {
 			winnerTeam:
 				topTeam && topTeam.score > 0 && !teamTie ? topTeam.team : null,
 			durationMs: matchDurationMs(this.config),
+			awards: pickAwards(this.awards.stats),
+			highlights: this.highlights?.finish() ?? [],
+			daily: this.daily,
+			metrics: {},
 		};
+		results.metrics = this.finalChallengeMetrics(results);
 		this.transport.broadcast("game:end", results);
 		this.onFinished(results);
 	}

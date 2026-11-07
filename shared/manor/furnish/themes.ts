@@ -1244,6 +1244,29 @@ const RECIPES: Record<RoomType, Recipe> = {
 		chandeliers(f, 2);
 		f.cobwebs(2, 4);
 	},
+	sanctuary: (f) => {
+		f.floorItemsBetween("candelabra", 2, 3, { wallMargin: 0.5 });
+		f.floorItemsBetween("pew", 1, 2, { wallMargin: 0.8 });
+		f.wallDecorBetween("tapestry", 1, 2);
+		f.wallDecorBetween("sconce", 1, 2);
+		f.cobwebs(1, 2);
+	},
+	reliquary: (f) => {
+		f.wallItemsBetween("cabinet", 1, 2);
+		f.wallItemsBetween("chest", 1, 2);
+		f.floorItemsBetween("urn", 1, 2, { wallMargin: 0.4 });
+		f.floorItemsBetween("bust", 0, 1, { wallMargin: 0.5 });
+		f.wallDecorBetween("sconce", 1, 2);
+		f.cobwebs(2, 3);
+	},
+	pact: (f) => {
+		f.floorItemsBetween("candelabra", 1, 2, { wallMargin: 0.5 });
+		f.floorItemsBetween("pillar", 0, 2, { wallMargin: 1.2 });
+		f.wallItemsBetween("trunk", 0, 1);
+		f.wallDecorBetween("sconce", 1, 1);
+		f.cobwebs(3, 4);
+		f.hangingCobwebs(1);
+	},
 	closet: (f) => {
 		f.wallItem("shelf", { variant: 2 });
 		f.floorItemsBetween("broom", 1, 2, { wallMargin: 0.15 });
@@ -1653,6 +1676,21 @@ const FILLERS: Partial<Record<RoomType, readonly Filler[]>> = {
 		["pottedPlant", "floor"],
 		["bench", "floor"],
 		["statue", "floor"],
+	],
+	sanctuary: [
+		["candelabra", "floor"],
+		["statue", "floor"],
+		["pew", "floor"],
+	],
+	reliquary: [
+		["chest", "wall"],
+		["urn", "floor"],
+		["cabinet", "wall"],
+	],
+	pact: [
+		["candelabra", "floor"],
+		["pillar", "floor"],
+		["trunk", "wall"],
 	],
 	chapel: [
 		["pew", "floor"],
@@ -2136,6 +2174,9 @@ const SMALL_ROOM_ESSENTIALS = new Set([
 	"bathtub",
 	"valveStation",
 	"occultAltar",
+	"stakeSanctuary",
+	"stakeReliquary",
+	"stakePact",
 	"fireplace",
 	"stove",
 	"kitchenCounter",
@@ -2179,7 +2220,11 @@ export function balanceRoom(furnisher: RoomFurnisher): void {
 		!furnisher.items.some((i) => i.kind === "toilet")
 	) {
 		for (const item of furnisher.floorStandingItems()) {
-			if (item.kind !== "valveStation" && item.kind !== "occultAltar") {
+			if (
+				item.kind !== "valveStation" &&
+				item.kind !== "occultAltar" &&
+				!item.kind.startsWith("stake")
+			) {
 				furnisher.removeItem(item);
 			}
 		}
@@ -2195,6 +2240,7 @@ export function balanceRoom(furnisher: RoomFurnisher): void {
 			const duplicate =
 				item.kind !== "valveStation" &&
 				item.kind !== "occultAltar" &&
+				!item.kind.startsWith("stake") &&
 				furnisher.items.filter((other) => other.kind === item.kind).length > 1;
 			return (
 				item.hideSpotId === null &&
@@ -2230,6 +2276,9 @@ export function balanceRoom(furnisher: RoomFurnisher): void {
 }
 
 const TOP_UP_HIDES: Partial<Record<RoomType, string[]>> = {
+	sanctuary: ["curtainAlcove", "confessional"],
+	reliquary: ["trunk", "wardrobe"],
+	pact: ["standingCoffin", "trunk"],
 	hall: ["curtainAlcove", "wardrobe"],
 	salon: ["curtainAlcove", "wardrobe"],
 	gallery: ["curtainAlcove", "wardrobe"],

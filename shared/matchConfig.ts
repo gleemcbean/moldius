@@ -4,15 +4,16 @@ import {
 	MANOR_UPPER_LEVEL_SHARE,
 	MANOR_UPPER_ROOM_COUNT,
 	MATCH_DURATION_MS,
-	MAX_ANOMALY_COUNT,
 	MAX_ITEMS_PER_PLAYER,
 	MAX_MATCH_MINUTES,
+	MAX_SIMULTANEOUS_ANOMALIES,
 	MAX_UPPER_FLOORS,
-	MIN_ANOMALY_COUNT,
 	MIN_ITEMS_PER_PLAYER,
 	MIN_MATCH_MINUTES,
-	PUBLIC_ANOMALY_COUNT,
+	MIN_SIMULTANEOUS_ANOMALIES,
+	PUBLIC_SIMULTANEOUS_ANOMALIES,
 } from "./config/index.js";
+import { STAKE_KINDS } from "./config/items.js";
 import { ENABLED_SPECIES_IDS } from "./config/monsters.js";
 import type { SpeciesId } from "./config/species.js";
 import { OPTIONAL_ROOM_TYPES } from "./manor/roomCatalog.js";
@@ -22,7 +23,7 @@ import { isTeamCount } from "./teams.js";
 export type ManorSize = "small" | "medium" | "large";
 
 export interface MatchConfig {
-	anomalyCount: number;
+	simultaneousAnomalies: number;
 	manorSize: ManorSize;
 	roomTypes: RoomType[];
 	floors: number;
@@ -32,12 +33,13 @@ export interface MatchConfig {
 	durationMinutes: number;
 	teamCount: number;
 	itemsPerPlayer: number;
+	walkies: boolean;
 }
 
 export const MANOR_SIZES: readonly ManorSize[] = ["small", "medium", "large"];
 
 export const PUBLIC_MATCH_CONFIG: MatchConfig = Object.freeze({
-	anomalyCount: PUBLIC_ANOMALY_COUNT,
+	simultaneousAnomalies: PUBLIC_SIMULTANEOUS_ANOMALIES,
 	manorSize: "medium",
 	roomTypes: [...OPTIONAL_ROOM_TYPES],
 	floors: 1,
@@ -47,15 +49,18 @@ export const PUBLIC_MATCH_CONFIG: MatchConfig = Object.freeze({
 	durationMinutes: MATCH_DURATION_MS / 60_000,
 	teamCount: 0,
 	itemsPerPlayer: DEFAULT_ITEMS_PER_PLAYER,
+	walkies: true,
 }) as MatchConfig;
 
 export const TUTORIAL_SEED = 2024;
 export const TUTORIAL_WOUNDED_HEALTH = 50;
 
 export const TUTORIAL_MATCH_CONFIG: MatchConfig = Object.freeze({
-	anomalyCount: 1,
+	simultaneousAnomalies: 1,
 	manorSize: "small",
-	roomTypes: [...OPTIONAL_ROOM_TYPES],
+	roomTypes: OPTIONAL_ROOM_TYPES.filter(
+		(type) => !(STAKE_KINDS as readonly string[]).includes(type),
+	),
 	floors: 1,
 	upperFloorSize: "small",
 	stairCount: 1,
@@ -63,6 +68,7 @@ export const TUTORIAL_MATCH_CONFIG: MatchConfig = Object.freeze({
 	durationMinutes: MAX_MATCH_MINUTES,
 	teamCount: 0,
 	itemsPerPlayer: 10,
+	walkies: false,
 }) as MatchConfig;
 
 export function defaultPrivateConfig(): MatchConfig {
@@ -116,11 +122,11 @@ export function sanitizeMatchConfig(
 	if (!isRecord(input)) {
 		return fallback;
 	}
-	const count =
-		typeof input.anomalyCount === "number" &&
-		Number.isFinite(input.anomalyCount)
-			? Math.round(input.anomalyCount)
-			: fallback.anomalyCount;
+	const simultaneous =
+		typeof input.simultaneousAnomalies === "number" &&
+		Number.isFinite(input.simultaneousAnomalies)
+			? Math.round(input.simultaneousAnomalies)
+			: fallback.simultaneousAnomalies;
 	const roomTypes = Array.isArray(input.roomTypes)
 		? input.roomTypes.filter(
 				(type): type is RoomType =>
@@ -134,9 +140,9 @@ export function sanitizeMatchConfig(
 			)
 		: [];
 	return {
-		anomalyCount: Math.min(
-			MAX_ANOMALY_COUNT,
-			Math.max(MIN_ANOMALY_COUNT, count),
+		simultaneousAnomalies: Math.min(
+			MAX_SIMULTANEOUS_ANOMALIES,
+			Math.max(MIN_SIMULTANEOUS_ANOMALIES, simultaneous),
 		),
 		manorSize: isManorSize(input.manorSize)
 			? input.manorSize
@@ -172,6 +178,8 @@ export function sanitizeMatchConfig(
 		teamCount: isTeamCount(input.teamCount)
 			? input.teamCount
 			: fallback.teamCount,
+		walkies:
+			typeof input.walkies === "boolean" ? input.walkies : fallback.walkies,
 	};
 }
 

@@ -19,6 +19,8 @@ export interface SpawnContext {
 }
 
 const EXCLUDED_PLAYER_ROOMS: RoomType[] = ['stairwell', 'toilets', 'closet'];
+/** Au-delà, les monstres se rapprochent : un petit manoir doit pouvoir tous les accueillir. */
+const SPACIOUS_ANOMALY_COUNT = 3;
 const ARCHIVIST_ROOMS: RoomType[] = [
   'hall',
   'library',
@@ -244,6 +246,8 @@ export function pickAnomalySpawn(
   entity: AnomalyEntity,
 ): AnomalySpawnSpot | null {
   const { layout, grid, rng } = context;
+  const running = context.anomalies.filter((other) => other.active).length;
+  const spacing = running < SPACIOUS_ANOMALY_COUNT ? 12 : 6;
   const occupiedRooms = playerRooms(context);
   const takenArchivistRooms = new Set(
     context.anomalies
@@ -280,7 +284,7 @@ export function pickAnomalySpawn(
         (other) =>
           other.active &&
           Math.abs(other.position.y - position.y) < 2.5 &&
-          Math.hypot(other.position.x - position.x, other.position.z - position.z) < 12,
+          Math.hypot(other.position.x - position.x, other.position.z - position.z) < spacing,
       );
       if (crowded || !hiddenFromPlayers(context, position, entity.definition.bodyHeight)) {
         continue;

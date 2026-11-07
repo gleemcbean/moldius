@@ -4,8 +4,9 @@ import {
 	caskRadius,
 	TRUNK_LID,
 } from "@shared/manor/hideProfiles";
+import { plankDisc } from "@shared/plankDisc";
 import * as THREE from "three";
-import { meterBox, meterLathe } from "../geometryUtils";
+import { meterBox, meterCircle, meterLathe } from "../geometryUtils";
 import type { MaterialOptions } from "../MaterialLibrary";
 import {
 	BRASS,
@@ -291,44 +292,38 @@ export const cask: FurnitureBuilder = ({ item }) => {
 			torus(IRON, ring, 0.016, 0, center, -length / 2 + t * length, 0),
 		);
 	}
-	const headRadius = radius * 0.86;
-	const back = new THREE.CircleGeometry(headRadius, 28);
-	back.translate(0, center, -length / 2 + 0.05);
+	const staveRadius = (z: number) =>
+		radius * (0.86 + 0.14 * Math.sin(((z + length / 2) / length) * Math.PI));
+	const backZ = -length / 2 + 0.05;
+	const back = meterCircle(staveRadius(backZ), 28);
+	back.translate(0, center, backZ);
 	parts.push({ geometry: back, material: heads });
 
 	const frontZ = length / 2 - 0.05;
-	const hatchWidth = Math.min(0.56, headRadius * 0.9);
+	const headDepth = 0.045;
+	const headRadius = staveRadius(frontZ + headDepth / 2);
+	const count = Math.ceil((headRadius * 2) / 0.12);
+	const plank = (headRadius * 2) / count;
+	const hatchPlanks = Math.floor(Math.min(0.56, headRadius * 0.9) / plank);
+	const hatchWidth =
+		plank *
+		Math.max(
+			count % 2 === 0 ? 2 : 1,
+			hatchPlanks - ((hatchPlanks + count) % 2),
+		);
 	const hatchBottom = center - 0.34;
 	const hatchTop = center + 0.3;
-	const plank = 0.12;
-	const count = Math.ceil((headRadius * 2) / plank);
-	for (let index = 0; index < count; index += 1) {
-		const x0 = -headRadius + index * plank;
-		const x1 = Math.min(headRadius, x0 + plank);
-		const outer = Math.max(Math.abs(x0), Math.abs(x1));
-		const half = Math.sqrt(
-			Math.max(0, headRadius * headRadius - outer * outer),
+	for (const outline of plankDisc(headRadius, count, 0.004, {
+		halfWidth: hatchWidth / 2,
+		bottom: hatchBottom - center,
+		top: hatchTop - center,
+	})) {
+		const geometry = new THREE.ExtrudeGeometry(
+			new THREE.Shape(outline.map(([x, y]) => new THREE.Vector2(x, y))),
+			{ depth: headDepth, bevelEnabled: false },
 		);
-		const cx = (x0 + x1) / 2;
-		const w = x1 - x0 - 0.006;
-		if (half < 0.02) {
-			continue;
-		}
-		const bottom = center - half;
-		const top = center + half;
-		const crossesHatch = x1 > -hatchWidth / 2 && x0 < hatchWidth / 2;
-		if (!crossesHatch) {
-			parts.push(box(heads, w, top - bottom, 0.045, cx, bottom, frontZ));
-			continue;
-		}
-		if (hatchBottom > bottom) {
-			parts.push(
-				box(heads, w, hatchBottom - bottom, 0.045, cx, bottom, frontZ),
-			);
-		}
-		if (top > hatchTop) {
-			parts.push(box(heads, w, top - hatchTop, 0.045, cx, hatchTop, frontZ));
-		}
+		geometry.translate(0, center, frontZ - headDepth / 2);
+		parts.push({ geometry, material: heads });
 	}
 	parts.push(
 		box(IRON, hatchWidth + 0.04, 0.03, 0.05, 0, hatchBottom - 0.03, frontZ),

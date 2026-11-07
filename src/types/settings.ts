@@ -1,5 +1,6 @@
 import type { HatPattern } from "@shared/hatPatterns";
 import type { Language } from "@shared/i18n/languages";
+import type { LanternTint } from "@shared/rewards";
 
 export const ACTION_IDS = [
 	"moveForward",
@@ -14,6 +15,7 @@ export const ACTION_IDS = [
 	"interact",
 	"push",
 	"shout",
+	"radio",
 	"map",
 	"leaderboard",
 	"pagePrevious",
@@ -40,6 +42,7 @@ export interface PlayerSettings {
 	playerName: string;
 	playerColor: number;
 	playerPattern: HatPattern;
+	playerLantern: LanternTint;
 	keys: Record<ActionId, string>;
 	mouseSensitivity: number;
 	invertY: boolean;
@@ -58,4 +61,5 @@ export interface PlayerSettings {
 	volumes: VolumeSettings;
 	micDeviceId: string | null;
 	voiceGate: number;
+	termsAccepted: boolean;
 }

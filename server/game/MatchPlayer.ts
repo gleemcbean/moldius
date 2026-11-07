@@ -19,6 +19,10 @@ import {
 	type PlayerSnapshot,
 	type SpawnPoint,
 } from "../../shared/protocol/game.js";
+import {
+	DEFAULT_LANTERN_TINT,
+	type LanternTint,
+} from "../../shared/rewards.js";
 import { PoseHistory } from "./history.js";
 
 export interface VoiceSample {
@@ -66,6 +70,9 @@ export class MatchPlayer {
 	readonly voice: VoiceSample[] = [];
 	casting: CastingState | null = null;
 	held: OccultId | null = null;
+	walkie = -1;
+	radioOn = false;
+	radioNoiseAt = -Infinity;
 	readonly materials = Object.fromEntries(
 		MATERIAL_IDS.map((id) => [id, 0]),
 	) as Record<MaterialId, number>;
@@ -86,6 +93,7 @@ export class MatchPlayer {
 	disconnectedAt: number | null = null;
 	readonly history = new PoseHistory();
 	pattern: HatPattern = DEFAULT_HAT_PATTERN;
+	lantern: LanternTint = DEFAULT_LANTERN_TINT;
 	team: number | null = null;
 	devModes: DevModes = noDevModes();
 
@@ -219,6 +227,9 @@ export class MatchPlayer {
 		}
 		if (this.alive && !this.grounded && !this.hidden && !this.carried) {
 			flags |= PLAYER_FLAG.airborne;
+		}
+		if (this.radioOn) {
+			flags |= PLAYER_FLAG.radio;
 		}
 		return flags;
 	}

@@ -815,6 +815,8 @@ const MAW_GLOW_OFFSET = new THREE.Vector3(0, 0.12, 0.42);
 
 export class DoubleModel extends AnomalyModel {
 	readonly mushroom: MushroomModel;
+	copiedLantern = true;
+	copiedTalking = 0;
 	private readonly core = new THREE.Group();
 	private readonly upperTeeth = new THREE.Group();
 	private readonly eyes = new THREE.Group();
@@ -833,9 +835,10 @@ export class DoubleModel extends AnomalyModel {
 		kit: ModelKit,
 		color: number,
 		pattern: HatPattern = DEFAULT_HAT_PATTERN,
+		lanternTint: number | null = null,
 	) {
 		super(kit);
-		this.mushroom = new MushroomModel(kit, color, pattern);
+		this.mushroom = new MushroomModel(kit, color, pattern, lanternTint);
 		this.root.add(this.mushroom.root);
 		this.throat = this.own(new THREE.MeshBasicMaterial({ color: 0xff3a1a }));
 		this.hate = this.own(new THREE.MeshBasicMaterial({ color: 0xff2a14 }));
@@ -907,10 +910,10 @@ export class DoubleModel extends AnomalyModel {
 			crouch: windup * 0.4,
 			grounded: true,
 			sprinting: reveal > 0.5 && input.speed > 4,
-			lanternOpen: reveal < 0.5,
+			lanternOpen: reveal < 0.5 && this.copiedLantern,
 			grimoireOpen: false,
 			dead: false,
-			talking: 0,
+			talking: reveal < 0.5 ? this.copiedTalking : 0,
 		});
 		const chomp =
 			reveal >= 1 && input.state === "chase"

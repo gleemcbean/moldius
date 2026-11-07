@@ -688,7 +688,6 @@ function Dashboard({
 export function AdminPage() {
 	const [state, setState] = useState<
 		| { kind: "loading" }
-		| { kind: "missing" }
 		| { kind: "error" }
 		| { kind: "ready"; data: AdminOverview }
 	>({ kind: "loading" });
@@ -699,7 +698,7 @@ export function AdminPage() {
 				credentials: "same-origin",
 			});
 			if (response.status === 404) {
-				setState({ kind: "missing" });
+				window.location.replace("/");
 			} else if (response.ok) {
 				setState({
 					kind: "ready",
@@ -730,14 +729,7 @@ export function AdminPage() {
 	return (
 		<main className={styles.page}>
 			<div className={styles.centered}>
-				{state.kind === "loading" ? null : state.kind === "error" ? (
-					<p>Serveur injoignable.</p>
-				) : (
-					<>
-						<h1>Page introuvable</h1>
-						<a href="/">Retour à l'accueil</a>
-					</>
-				)}
+				{state.kind === "error" ? <p>Serveur injoignable.</p> : null}
 			</div>
 		</main>
 	);

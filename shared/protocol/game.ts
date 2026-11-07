@@ -1,9 +1,14 @@
+import type { MatchAward } from "../awards.js";
+import type { MatchMetrics } from "../challenges.js";
+import type { StakeKind } from "../config/items.js";
 import type { MaterialId, OccultId } from "../config/occult.js";
 import type { SpeciesId } from "../config/species.js";
 import type { HatPattern } from "../hatPatterns.js";
 import type { MatchConfig } from "../matchConfig.js";
 import type { Vec3 } from "../math.js";
+import type { LanternTint } from "../rewards.js";
 import type { TeamStanding } from "../teams.js";
+import type { TimeWindow } from "../voiceTimeline.js";
 
 export interface SpawnPoint {
 	x: number;
@@ -17,6 +22,7 @@ export interface MatchPlayerInit {
 	name: string;
 	color: number;
 	pattern: HatPattern;
+	lantern: LanternTint;
 	team: number | null;
 	spawn: SpawnPoint;
 }
@@ -49,6 +55,7 @@ export interface MatchInit {
 	dev: boolean;
 	tutorial: boolean;
 	pickupTotal: number;
+	walkieTotal: number;
 }
 
 export interface MatchBegin {
@@ -73,6 +80,7 @@ export const PLAYER_FLAG = {
 	shouting: 2048,
 	airborne: 4096,
 	petrified: 8192,
+	radio: 16384,
 } as const;
 
 export interface PlayerSnapshot {
@@ -170,7 +178,14 @@ export interface ClientStateMessage {
 	jumps: number;
 }
 
-export type InteractionKind = "door" | "hide" | "unhide" | "valve" | "pickup";
+export type InteractionKind =
+	| "door"
+	| "hide"
+	| "unhide"
+	| "valve"
+	| "pickup"
+	| "walkie"
+	| "stake";
 
 export interface InteractRequest {
 	kind: InteractionKind;
@@ -233,6 +248,8 @@ export interface ForcedMove {
 
 export type ProjectileKind = "ember" | "slime";
 
+export type DamageCause = "explosion" | "fall" | "pact";
+
 export type GameEvent =
 	| { type: "pickup"; id: number; playerId: string; material: MaterialId }
 	| { type: "pickupBack"; id: number; material: MaterialId }
@@ -268,7 +285,7 @@ export type GameEvent =
 			type: "damage";
 			playerId: string;
 			amount: number;
-			source: SpeciesId | "explosion" | "fall";
+			source: SpeciesId | DamageCause;
 			hp: number;
 			from: Vec3 | null;
 			periodic: boolean;
@@ -277,7 +294,7 @@ export type GameEvent =
 			type: "death";
 			playerId: string;
 			respawnAt: number;
-			cause: SpeciesId | "explosion" | "fall";
+			cause: SpeciesId | DamageCause;
 	  }
 	| { type: "respawn"; playerId: string; protectedUntil: number }
 	| {
@@ -355,7 +372,63 @@ export type GameEvent =
 			to: Vec3;
 			hits: string[];
 	  }
+	| { type: "walkie"; id: number; holder: string | null; available: boolean }
+	| { type: "voiceWindows"; windows: TimeWindow[] }
+	| {
+			type: "stake";
+			id: number;
+			stake: StakeKind;
+			playerId: string | null;
+			activeUntil: number;
+			cooldownUntil: number;
+	  }
 	| { type: "notice"; text: string };
+
+export interface TimedEvent {
+	t: number;
+	event: GameEvent;
+}
+
+export const HIGHLIGHT_KINDS = [
+	"scream",
+	"fall",
+	"fallDeath",
+	"betrayed",
+	"extracted",
+	"radioBetrayal",
+	"explosion",
+	"carried",
+	"thrown",
+	"death",
+	"pact",
+	"pactDeath",
+	"heist",
+	"clutch",
+	"capture",
+	"escape",
+	"doubleChat",
+] as const;
+
+export type HighlightKind = (typeof HIGHLIGHT_KINDS)[number];
+
+export interface HighlightFrame {
+	t: number;
+	players: (PlayerSnapshot & { v: number })[];
+	anomalies: AnomalySnapshot[];
+}
+
+export interface Highlight {
+	kind: HighlightKind;
+	playerId: string;
+	otherId: string | null;
+	anomalyId: number | null;
+	species: SpeciesId | null;
+	value: number;
+	focusT: number;
+	doorsOpen: number[];
+	frames: HighlightFrame[];
+	events: TimedEvent[];
+}
 
 export interface MatchResultEntry {
 	playerId: string;
@@ -364,6 +437,7 @@ export interface MatchResultEntry {
 	captures: number;
 	deaths: number;
 	color: number;
+	pattern?: HatPattern;
 	team: number | null;
 }
 
@@ -374,6 +448,11 @@ export interface MatchResults {
 	winnerId: string | null;
 	winnerTeam: number | null;
 	durationMs: number;
+	awards: MatchAward[];
+	highlights: Highlight[];
+	daily: string | null;
+	/** Par joueur : ce que la partie ajoute à ses défis. */
+	metrics: Record<string, MatchMetrics>;
 }
 
 export interface TimeSyncPing {

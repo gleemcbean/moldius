@@ -134,7 +134,9 @@ export function parseInteract(payload: unknown): InteractRequest | null {
 			kind !== "hide" &&
 			kind !== "unhide" &&
 			kind !== "valve" &&
-			kind !== "pickup") ||
+			kind !== "pickup" &&
+			kind !== "walkie" &&
+			kind !== "stake") ||
 		id === null
 	) {
 		return null;

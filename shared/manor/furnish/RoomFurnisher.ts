@@ -1344,7 +1344,8 @@ export class RoomFurnisher {
 		if (
 			definition.hideable ||
 			item.kind === "valveStation" ||
-			item.kind === "occultAltar"
+			item.kind === "occultAltar" ||
+			item.kind.startsWith("stake")
 		) {
 			const front = rotate2({ x: 0, z: box.hz + 0.6 }, box.rotation);
 			return [{ x: box.cx + front.x, z: box.cz + front.z }];

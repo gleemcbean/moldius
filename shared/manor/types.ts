@@ -1,3 +1,4 @@
+import type { StakeKind } from "../config/items.js";
 import type { MaterialId } from "../config/occult.js";
 import type { Vec2, Vec3 } from "../math.js";
 
@@ -22,6 +23,9 @@ export type RoomType =
 	| "dining"
 	| "workshop"
 	| "chapel"
+	| "sanctuary"
+	| "reliquary"
+	| "pact"
 	| "closet"
 	| "observatory"
 	| "curiosities"
@@ -320,6 +324,26 @@ export interface Altar {
 	z: number;
 }
 
+export interface WalkieSpot {
+	id: number;
+	roomId: number;
+	level: Level;
+	x: number;
+	y: number;
+	z: number;
+}
+
+export interface StakeRoom {
+	id: number;
+	kind: StakeKind;
+	furnitureId: number;
+	roomId: number;
+	level: Level;
+	x: number;
+	y: number;
+	z: number;
+}
+
 export interface ManorLayout {
 	seed: number;
 	rooms: Room[];
@@ -330,6 +354,8 @@ export interface ManorLayout {
 	valves: ValveStation[];
 	pickups: MaterialPickup[];
 	altars: Altar[];
+	walkies: WalkieSpot[];
+	stakes: StakeRoom[];
 	bounds: Bounds;
 	levels: Level[];
 }

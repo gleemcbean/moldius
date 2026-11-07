@@ -419,7 +419,7 @@ describe("Brume", () => {
 	}
 
 	function setup(playerTurn: number) {
-		const sim = quietSimulation();
+		const sim = quietSimulation(1);
 		const line = findClearLine(sim, 4, 30, 2.4);
 		placeBot(sim, "p1", line.origin, line.yaw + playerTurn);
 		sim.run(2.2);

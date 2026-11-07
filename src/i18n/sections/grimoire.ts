@@ -107,7 +107,7 @@ export const grimoireEn: typeof grimoireFr = {
 		double: {
 			name: "The Doppelgänger",
 			description:
-				"It mimics a mushroom of the team, its lantern and its gait. When approached or lit up, it tears open to reveal a mouth full of teeth.",
+				"It mimics a mushroom of the team, its lantern, its gait and sometimes its voice. Even the map is fooled. When approached or lit up, it tears open to reveal a mouth full of teeth.",
 			danger:
 				"Reveals itself up close or in light, then chases and bites (36 damage). Opens doors.",
 		},

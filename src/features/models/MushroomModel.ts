@@ -161,6 +161,7 @@ export class MushroomModel {
 		kit: ModelKit,
 		color: number,
 		pattern: HatPattern = DEFAULT_HAT_PATTERN,
+		lanternTint: number | null = null,
 	) {
 		const skin: MaterialOptions = { texture: "mushroomStem", roughness: 0.85 };
 		const limbs: MaterialOptions = { texture: "mushroomSkin", roughness: 0.85 };
@@ -203,7 +204,7 @@ export class MushroomModel {
 			this.arms.push(this.buildArm(kit, side, limbs));
 		}
 
-		this.lantern = new LanternModel(kit, 0.8);
+		this.lantern = new LanternModel(kit, 0.8, lanternTint);
 		this.arms[0].hand.root.add(this.lantern.root);
 		this.book = this.buildBook(kit);
 		this.body.add(this.book);

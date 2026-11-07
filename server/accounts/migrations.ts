@@ -2,7 +2,7 @@ import type { Database } from "./database.js";
 
 const MIGRATION_LOCK = 72_019_331;
 
-const MIGRATIONS: { version: number; statements: string[] }[] = [
+export const MIGRATIONS: { version: number; statements: string[] }[] = [
 	{
 		version: 1,
 		statements: [
@@ -133,6 +133,46 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
         signed_in integer NOT NULL,
         in_match integer NOT NULL
       )`,
+		],
+	},
+	{
+		version: 7,
+		statements: [
+			`ALTER TABLE accounts ADD COLUMN terms_accepted_at timestamptz`,
+		],
+	},
+	{
+		version: 8,
+		statements: [
+			`ALTER TABLE accounts ADD COLUMN total_captures integer NOT NULL DEFAULT 0`,
+			`ALTER TABLE accounts ADD COLUMN awards_earned integer NOT NULL DEFAULT 0`,
+			`ALTER TABLE accounts ADD COLUMN dailies_played integer NOT NULL DEFAULT 0`,
+			`ALTER TABLE accounts ADD COLUMN lantern_tint text NOT NULL DEFAULT 'amber'`,
+			`CREATE TABLE daily_scores (
+        challenge_date text NOT NULL,
+        account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        player_name text NOT NULL,
+        color integer NOT NULL,
+        pattern text NOT NULL,
+        best_score integer NOT NULL,
+        captures integer NOT NULL,
+        deaths integer NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (challenge_date, account_id)
+      )`,
+			`CREATE INDEX daily_scores_rank ON daily_scores (challenge_date, best_score DESC, updated_at ASC)`,
+		],
+	},
+	{
+		version: 9,
+		statements: [
+			`ALTER TABLE accounts ADD COLUMN challenge_progress jsonb NOT NULL DEFAULT '{}'`,
+			`UPDATE accounts SET challenge_progress = (
+        '{"games":{"total":' || games_played::text || ',"best":' || LEAST(games_played, 1)::text ||
+        '},"wins":{"total":' || wins::text || ',"best":' || LEAST(wins, 1)::text ||
+        '},"captures":{"total":' || total_captures::text || ',"best":' || LEAST(total_captures, 1)::text ||
+        '},"dailies":{"total":' || dailies_played::text || ',"best":' || LEAST(dailies_played, 1)::text || '}}'
+      )::jsonb`,
 		],
 	},
 ];

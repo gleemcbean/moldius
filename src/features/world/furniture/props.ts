@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { meterCircle, placed } from "../geometryUtils";
 import type { MaterialOptions } from "../MaterialLibrary";
 import {
 	BRASS,
@@ -15,6 +16,7 @@ import {
 	IRON,
 	lathe,
 	type Part,
+	part,
 	pickCarved,
 	pickWood,
 	sphere,
@@ -182,12 +184,18 @@ export const barrel: FurnitureBuilder = ({ item }) => {
 				[radius * 0.82, 0],
 				[radius, height * 0.5],
 				[radius * 0.82, height],
-				[0.001, height],
 			],
 			0,
 			0,
 			0,
 			20,
+		),
+		part(
+			placed(meterCircle(radius * 0.82, 20), 0, height, 0, 0, -Math.PI / 2),
+			{
+				texture: "woodMedium",
+				roughness: 0.9,
+			},
 		),
 	];
 	for (const t of [0.12, 0.38, 0.62, 0.88]) {

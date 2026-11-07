@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
 	inviteCodeFromText,
 	inviteUrl,
+	isAppPath,
 	readInviteLink,
 } from "../shared/inviteLink.js";
 
 describe("liens d'invitation", () => {
 	it("lit le code dans le chemin et ramène l'adresse à l'accueil", () => {
 		expect(readInviteLink("/admin", "")).toBeNull();
+		expect(readInviteLink("/ADMIN", "")?.code).toBe("ADMIN");
 		expect(readInviteLink("/AB3CD", "")).toEqual({
 			code: "AB3CD",
 			path: "/",
@@ -39,6 +41,17 @@ describe("liens d'invitation", () => {
 		expect(readInviteLink("/ABCD", "")).toBeNull();
 		expect(readInviteLink("/ABCDEF", "")).toBeNull();
 		expect(readInviteLink("/sw.js", "")).toBeNull();
+	});
+
+	it("ne garde que les vraies pages : le reste repart vers l'accueil", () => {
+		for (const path of ["/", "/terms", "/terms/", "/privacy", "/admin"]) {
+			expect(isAppPath(path), path).toBe(true);
+		}
+		for (const path of ["/gfhryeuifgye", "/ABCD", "/foo/bar", "/terms/x"]) {
+			expect(isAppPath(path), path).toBe(false);
+			expect(readInviteLink(path, "")).toBeNull();
+		}
+		expect(readInviteLink("/AB3CD", "")?.path).toBe("/");
 	});
 
 	it("tire le code d'une adresse du jeu copiée dans le presse-papiers", () => {

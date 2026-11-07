@@ -18,7 +18,14 @@ export const ACTION_GROUPS: { id: ActionGroupId; actions: ActionId[] }[] = [
 	},
 	{
 		id: "objects",
-		actions: ["grimoire", "lantern", "interact", "pagePrevious", "pageNext"],
+		actions: [
+			"grimoire",
+			"lantern",
+			"interact",
+			"radio",
+			"pagePrevious",
+			"pageNext",
+		],
 	},
 	{ id: "sabotage", actions: ["push", "shout"] },
 	{ id: "interface", actions: ["map", "leaderboard"] },

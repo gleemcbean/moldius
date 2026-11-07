@@ -432,6 +432,62 @@ export const PLAYER_SOUNDS: SoundRecipe[] = [
 		},
 	},
 	{
+		id: "radio-squelch",
+		duration: 0.28,
+		variants: 2,
+		render: (kit, variant) => {
+			const level = kit.hit(0, 0.004, 0.24, 0.32, kit.out);
+			kit.noise(
+				"white",
+				0,
+				0.26,
+				kit.filter("bandpass", 1900 + variant * 500, 1.6, level),
+			);
+			kit.osc(
+				"square",
+				1400 + variant * 300,
+				0,
+				0.05,
+				kit.hit(0, 0.002, 0.05, 0.1, kit.out),
+			);
+		},
+	},
+	{
+		id: "stake-bell",
+		duration: 2.6,
+		variants: 1,
+		render: (kit) => {
+			for (const [ratio, volume] of [
+				[1, 0.34],
+				[2.76, 0.16],
+				[5.4, 0.08],
+			]) {
+				kit.osc(
+					"sine",
+					196 * ratio,
+					0,
+					2.5,
+					kit.hit(0, 0.004, 2.4 / ratio, volume, kit.out),
+				);
+			}
+		},
+	},
+	{
+		id: "stake-pact",
+		duration: 1.4,
+		variants: 1,
+		render: (kit) => {
+			kit.osc(
+				"sawtooth",
+				62,
+				0,
+				1.3,
+				kit.filter("lowpass", 420, 1, kit.hit(0, 0.05, 1.2, 0.38, kit.out)),
+			);
+			kit.noise("brown", 0, 0.9, kit.hit(0, 0.02, 0.8, 0.3, kit.out));
+		},
+	},
+	{
 		id: "capture",
 		duration: 1.9,
 		variants: 1,

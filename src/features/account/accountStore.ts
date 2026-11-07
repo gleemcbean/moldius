@@ -5,6 +5,7 @@ import {
 	type DiscordOutcome,
 	type MatchHistoryEntry,
 } from "@shared/protocol/account";
+import type { LanternTint } from "@shared/rewards";
 import { openOverlay } from "../../app/appStore";
 import type { AccountNoticeKey } from "../../i18n/sections/account";
 import { createStore } from "../../utils/store";
@@ -58,7 +59,9 @@ function signedIn(account: AccountProfile): void {
 		playerName: account.displayName,
 		playerColor: account.color,
 		playerPattern: account.pattern,
+		playerLantern: account.lantern,
 		language: account.language,
+		...(account.termsAcceptedAt ? { termsAccepted: true } : {}),
 	});
 }
 
@@ -84,6 +87,34 @@ export async function refreshAccount(): Promise<void> {
 	}
 }
 
+/**
+ * Sur un compte, seul l'accord enregistré compte : celui d'un visiteur sur le même
+ * appareil n'est pas forcément venu de cette personne, on le redemande donc.
+ */
+export function termsAccepted(
+	account: { status: string; account: AccountProfile | null },
+	localChoice: boolean,
+): boolean {
+	return account.status === "signed-in"
+		? Boolean(account.account?.termsAcceptedAt)
+		: localChoice;
+}
+
+export async function acceptTerms(): Promise<boolean> {
+	if (accountStore.get().status === "signed-in") {
+		const result = await accountApi.acceptTerms();
+		if (result.ok) {
+			accountStore.set({ account: result.value.account });
+		} else if (result.status === 401) {
+			signedOut();
+		} else {
+			return false;
+		}
+	}
+	updateSettings({ termsAccepted: true });
+	return true;
+}
+
 function scheduleProfileSync(): void {
 	window.clearTimeout(syncTimer);
 	syncTimer = window.setTimeout(() => {
@@ -97,6 +128,7 @@ function scheduleProfileSync(): void {
 			displayName === account.displayName &&
 			settings.playerColor === account.color &&
 			settings.playerPattern === account.pattern &&
+			settings.playerLantern === account.lantern &&
 			settings.language === account.language
 		) {
 			return;
@@ -106,6 +138,7 @@ function scheduleProfileSync(): void {
 				displayName,
 				color: settings.playerColor,
 				pattern: settings.playerPattern,
+				lantern: settings.playerLantern,
 				language: settings.language,
 			})
 			.then((result) => {
@@ -146,6 +179,7 @@ function readDiscordResult(): boolean {
 					local.playerName.trim(),
 					local.playerColor,
 					local.playerPattern,
+					local.playerLantern,
 				);
 			}
 		});
@@ -271,11 +305,13 @@ export async function saveProfile(
 	displayName: string,
 	color: number,
 	pattern: HatPattern,
+	lantern: LanternTint,
 ): Promise<ApiResult<null>> {
 	const result = await accountApi.updateProfile({
 		displayName,
 		color,
 		pattern,
+		lantern,
 	});
 	if (!result.ok) {
 		if (result.status === 401) {

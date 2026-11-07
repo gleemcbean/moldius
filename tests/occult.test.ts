@@ -9,6 +9,8 @@ import {
 	OCCULT_IDS,
 	OCCULT_RECIPES,
 	PICKUP_MIN_PER_LEVEL,
+	SHOUT_LURE_STOP_DISTANCE,
+	STAKE_KINDS,
 } from "../shared/config/index.js";
 import { ENABLED_SPECIES_IDS } from "../shared/config/monsters.js";
 import { SPECIES_IDS, type SpeciesId } from "../shared/config/species.js";
@@ -16,6 +18,7 @@ import {
 	generateManor,
 	layoutChecksum,
 } from "../shared/manor/generateManor.js";
+import { OPTIONAL_ROOM_TYPES } from "../shared/manor/roomCatalog.js";
 import {
 	type ManorSize,
 	PUBLIC_MATCH_CONFIG,
@@ -398,8 +401,9 @@ describe("cri", () => {
 });
 
 describe("monstre attiré par un cri", () => {
-	function lured(species: SpeciesId) {
-		const sim = quiet(202);
+	function lured(species: SpeciesId, seed = 202, config = {}) {
+		const sim = new MatchSimulation({ seed, players: 1, config });
+		silenceAnomalies(sim);
 		const { match } = sim;
 		const player = match.players.get("p1") as NonNullable<
 			ReturnType<typeof match.players.get>
@@ -421,19 +425,40 @@ describe("monstre attiré par un cri", () => {
 	}
 
 	it("s'arrête à distance du joueur, sans entrer dans la caméra", () => {
-		const { sim, player, entity } = lured("murmure");
-		let closest = Infinity;
-		sim.run(14, () => {
-			closest = Math.min(
-				closest,
-				Math.hypot(
-					entity.position.x - player.position.x,
-					entity.position.z - player.position.z,
-				),
+		const withoutStakes = {
+			roomTypes: OPTIONAL_ROOM_TYPES.filter(
+				(type) => !(STAKE_KINDS as readonly string[]).includes(type),
+			),
+		};
+		for (const [seed, config] of [
+			[202, {}],
+			[5, withoutStakes],
+			[1, {}],
+			[2, {}],
+			[3, {}],
+			[8, {}],
+			[13, {}],
+			[21, {}],
+		] as const) {
+			const { sim, player, entity } = lured("murmure", seed, config);
+			let closest = Infinity;
+			// Après l'arrivée, il reprend sa patrouille : un Murmure n'a alors
+			// aucune raison d'éviter un joueur silencieux, qu'il ne perçoit pas.
+			for (let tick = 0; tick < 280 && entity.state === "investigate"; tick++) {
+				sim.run(0.05);
+				closest = Math.min(
+					closest,
+					Math.hypot(
+						entity.position.x - player.position.x,
+						entity.position.z - player.position.z,
+					),
+				);
+			}
+			expect(closest, `graine ${seed}`).toBeLessThan(6);
+			expect(closest, `graine ${seed}`).toBeGreaterThan(
+				SHOUT_LURE_STOP_DISTANCE - 0.5,
 			);
-		});
-		expect(closest).toBeLessThan(6);
-		expect(closest).toBeGreaterThan(1);
+		}
 	});
 
 	it("écarte un monstre posé sur un joueur", () => {

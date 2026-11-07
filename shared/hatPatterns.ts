@@ -7,6 +7,13 @@ export const HAT_PATTERNS = [
 	"stars",
 	"scales",
 	"swirl",
+	"web",
+	"flames",
+	"skull",
+	"crown",
+	"lightning",
+	"eyes",
+	"laurel",
 ] as const;
 
 export type HatPattern = (typeof HAT_PATTERNS)[number];

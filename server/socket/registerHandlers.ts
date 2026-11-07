@@ -12,6 +12,12 @@ import type {
 	IceServerConfig,
 	LobbyError,
 } from "../../shared/protocol/lobby.js";
+import {
+	hatUnlocked,
+	isLanternTint,
+	type LanternTint,
+	lanternUnlocked,
+} from "../../shared/rewards.js";
 import type { FriendStore } from "../accounts/FriendStore.js";
 import { normalizeLobbyCode } from "../lobby/codes.js";
 import type { LobbyManager } from "../lobby/LobbyManager.js";
@@ -75,9 +81,26 @@ function preferredColor(payload: unknown): number | null {
 		: null;
 }
 
-function preferredPattern(payload: unknown): HatPattern | null {
-	return isRecord(payload) && isHatPattern(payload.pattern)
+/** Un motif verrouillé est ignoré : la récompense se gagne, elle ne se réclame pas. */
+function preferredPattern(
+	payload: unknown,
+	session: Session,
+): HatPattern | null {
+	return isRecord(payload) &&
+		isHatPattern(payload.pattern) &&
+		hatUnlocked(payload.pattern, session.account?.progress ?? null)
 		? payload.pattern
+		: null;
+}
+
+function preferredLantern(
+	payload: unknown,
+	session: Session,
+): LanternTint | null {
+	return isRecord(payload) &&
+		isLanternTint(payload.lantern) &&
+		lanternUnlocked(payload.lantern, session.account?.progress ?? null)
+		? payload.lantern
 		: null;
 }
 
@@ -110,7 +133,11 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 		}
 		const current = deps.sessions.hello(socket.id, token);
 		current.account = account
-			? { accountId: account.accountId, tokenHash: account.tokenHash }
+			? {
+					accountId: account.accountId,
+					tokenHash: account.tokenHash,
+					progress: account.progress,
+				}
 			: null;
 		ack({
 			ok: true,
@@ -159,7 +186,8 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				name,
 				lobbyId,
 				preferredColor(payload),
-				preferredPattern(payload),
+				preferredPattern(payload, current),
+				preferredLantern(payload, current),
 			);
 		});
 	});
@@ -180,7 +208,8 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				current,
 				name,
 				preferredColor(payload),
-				preferredPattern(payload),
+				preferredPattern(payload, current),
+				preferredLantern(payload, current),
 			);
 		});
 	});
@@ -201,7 +230,30 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				current,
 				name,
 				preferredColor(payload),
-				preferredPattern(payload),
+				preferredPattern(payload, current),
+				preferredLantern(payload, current),
+			);
+		});
+	});
+
+	socket.on("lobby:createDaily", (payload, ack) => {
+		respond(ack, allow("lobby:join"), session(), (current) => {
+			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+			if (!name) {
+				return {
+					ok: false,
+					error: {
+						code: "invalid-name",
+						message: "Choisissez un pseudonyme de 2 à 18 caractères.",
+					},
+				};
+			}
+			return deps.lobbies.createDaily(
+				current,
+				name,
+				preferredColor(payload),
+				preferredPattern(payload, current),
+				preferredLantern(payload, current),
 			);
 		});
 	});
@@ -233,7 +285,8 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				name,
 				code,
 				preferredColor(payload),
-				preferredPattern(payload),
+				preferredPattern(payload, current),
+				preferredLantern(payload, current),
 			);
 		});
 	});
@@ -311,6 +364,18 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 			const error = deps.lobbies.start(current);
 			return error ? { ok: false, error } : { ok: true, value: null };
 		});
+	});
+
+	socket.on("game:radio", (payload) => {
+		const current = session();
+		if (
+			current &&
+			allow("game:radio") &&
+			isRecord(payload) &&
+			typeof payload.on === "boolean"
+		) {
+			deps.lobbies.matchOf(current)?.handleRadio(current.playerId, payload.on);
+		}
 	});
 
 	socket.on("voice:signal", (payload) => {

@@ -50,7 +50,7 @@ export class LanternModel {
 	private openness = 0;
 	private time = Math.random() * 10;
 
-	constructor(kit: ModelKit, scale = 1) {
+	constructor(kit: ModelKit, scale = 1, tint: number | null = null) {
 		const base = kit.lathe(
 			[
 				[0.001, 0],
@@ -167,7 +167,10 @@ export class LanternModel {
 		candle.position.y = 0.055;
 		this.root.add(candle);
 		for (const rotation of [0, Math.PI / 3, (Math.PI * 2) / 3]) {
-			const flame = kit.mesh(new THREE.PlaneGeometry(0.04, 0.075), FLAME);
+			const flame = kit.mesh(
+				new THREE.PlaneGeometry(0.04, 0.075),
+				tint === null ? FLAME : { ...FLAME, color: tint },
+			);
 			flame.position.y = 0.115;
 			flame.rotation.y = rotation;
 			this.root.add(flame);

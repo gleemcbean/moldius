@@ -108,78 +108,151 @@
   }
 }
 
-.colorRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.appearance {
+  position: relative;
   margin-top: 4px;
 }
 
-.patternRow {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 6px;
+.triggers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.patternChoice {
-  width: 36px;
-  padding: 2px 2px 1px;
-  border: 2px solid transparent;
-  background: rgba(10, 12, 10, 0.6);
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 2px solid $line-strong;
+  background: rgba(10, 12, 10, 0.86);
   cursor: pointer;
-  transition:
-    transform $transition-fast,
-    border-color $transition-fast;
+  font-family: $font-text;
+  font-size: 15px;
+  font-weight: 700;
+  color: $text;
 
   &:hover {
-    transform: translateY(-2px);
+    border-color: $yellow;
   }
 }
 
-.patternActive {
+.triggerOpen {
   border-color: $yellow;
-  transform: translateY(-2px);
 }
 
-.colorLabel {
-  @include label;
+.triggerPreview {
   flex-shrink: 0;
-  width: 70px;
-}
-
-.swatch {
-  position: relative;
   width: 26px;
   height: 26px;
+}
+
+.triggerLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.triggerArrow {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: $text-muted;
+}
+
+/* Par-dessus les boutons du dessous : ouvrir la sélection ne décale rien. */
+.options {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(8, 34px);
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid $yellow;
+  background: $background-raised;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.option {
+  width: 34px;
+  height: 34px;
   padding: 0;
-  border: 2px solid rgba(10, 12, 10, 0.9);
-  box-shadow: 0 0 0 1px $line-strong;
+  border: 0;
+  background: transparent;
   cursor: pointer;
   transition: transform $transition-fast;
 
-  &::after {
-    content: '';
-    position: absolute;
-    top: 5px;
-    left: 5px;
-    width: 5px;
-    height: 5px;
-    background: rgba(255, 248, 230, 0.85);
-    box-shadow: 8px 6px 0 -1px rgba(255, 248, 230, 0.85);
-  }
-
-  &:hover {
+  &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 0 0 1px $yellow;
+
+    .swatch {
+      box-shadow: 0 0 0 1px $yellow;
+    }
   }
 }
 
-.swatchActive {
+.option.optionActive .swatch {
   box-shadow:
     0 0 0 2px $yellow,
     0 0 0 4px rgba(10, 12, 10, 0.9);
-  transform: translateY(-2px);
+}
+
+.locked {
+  opacity: 0.32;
+  filter: grayscale(0.7);
+  cursor: not-allowed;
+}
+
+/* Le même cadre partout : couleur, motif et lanterne. */
+.swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(10, 12, 10, 0.9);
+  box-shadow: 0 0 0 1px $line-strong;
+
+  canvas {
+    display: block;
+    width: 100%;
+    padding: 0 1px;
+  }
+}
+
+/* Deux taches bien séparées, à la même place quelle que soit la taille du cadre. */
+.swatchColor::before,
+.swatchColor::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 248, 230, 0.85);
+}
+
+.swatchColor::before {
+  top: 14%;
+  left: 14%;
+  width: 20%;
+  height: 20%;
+}
+
+.swatchColor::after {
+  right: 16%;
+  bottom: 16%;
+  width: 14%;
+  height: 14%;
+}
+
+/* Une lanterne allumée, pour ne pas la confondre avec la couleur du chapeau. */
+.lanternIcon svg {
+  width: 70%;
+  height: 70%;
+  filter: drop-shadow(0 0 3px currentColor);
 }
 
 .actions {
@@ -259,6 +332,23 @@
 .hintAnchor:focus-within .sideHint {
   opacity: 1;
   transform: translateX(0);
+}
+
+.dailyRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.dailyCountdown {
+  display: grid;
+  place-items: center;
+  padding: 0 10px;
+  border: 2px solid $line-strong;
+  background: $background-panel;
+  @include numeric;
+  font-size: 16px;
+  color: $yellow;
 }
 
 .codeRow {
@@ -386,4 +476,29 @@
   margin: 0;
   @include label;
   color: $danger;
+}
+
+@media (max-height: 820px) {
+  .panel {
+    gap: 12px;
+    max-height: calc(100% - 12px);
+    overflow: hidden auto;
+  }
+
+  .title {
+    font-size: 68px;
+  }
+
+  .actions {
+    gap: 8px;
+  }
+
+  .more {
+    padding-top: 10px;
+  }
+
+  .tile {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }

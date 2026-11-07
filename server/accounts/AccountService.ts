@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { dailyDateKey, isDailyDateKey } from "../../shared/dailyChallenge.js";
 import { DEFAULT_HAT_PATTERN, isHatPattern } from "../../shared/hatPatterns.js";
 import type {
 	AccountMessageKey,
@@ -18,6 +19,7 @@ import {
 import {
 	type AccountField,
 	type AccountProfile,
+	type DailyBoard,
 	type DiscordOutcome,
 	EMAIL_MAX_LENGTH,
 	emailKey,
@@ -29,6 +31,12 @@ import {
 	validateEmail,
 	validatePassword,
 } from "../../shared/protocol/account.js";
+import {
+	accountProgress,
+	hatUnlocked,
+	isLanternTint,
+	lanternUnlocked,
+} from "../../shared/rewards.js";
 import type { Mailer, MailMessage } from "../mail/mailer.js";
 import {
 	alreadyRegisteredEmail,
@@ -59,6 +67,7 @@ import {
 } from "./tokens.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DAILY_BOARD_LIMIT = 20;
 export const SESSION_IDLE_MS = 30 * DAY_MS;
 export const SESSION_ABSOLUTE_MS = 90 * DAY_MS;
 const SESSION_REFRESH_MS = DAY_MS;
@@ -228,7 +237,10 @@ export class AccountService {
 		if (!isPlayerColor(input.color)) {
 			return fail(400, "colorInvalid", "color");
 		}
-		if (input.pattern !== undefined && !isHatPattern(input.pattern)) {
+		if (
+			input.pattern !== undefined &&
+			(!isHatPattern(input.pattern) || !hatUnlocked(input.pattern, null))
+		) {
 			return fail(400, "patternInvalid", "pattern");
 		}
 		if (input.language !== undefined && !isLanguage(input.language)) {
@@ -473,6 +485,7 @@ export class AccountService {
 			displayName?: unknown;
 			color?: unknown;
 			pattern?: unknown;
+			lantern?: unknown;
 			language?: unknown;
 		},
 	): Promise<ServiceResult<AccountProfile>> {
@@ -483,6 +496,7 @@ export class AccountService {
 		let displayName = account.profile.displayName;
 		let color = account.profile.color;
 		let pattern = account.profile.pattern;
+		let lantern = account.profile.lantern;
 		let language = account.profile.language;
 		if (patch.displayName !== undefined) {
 			const cleaned = sanitizeName(patch.displayName);
@@ -498,10 +512,22 @@ export class AccountService {
 			color = patch.color;
 		}
 		if (patch.pattern !== undefined) {
-			if (!isHatPattern(patch.pattern)) {
+			if (
+				!isHatPattern(patch.pattern) ||
+				!hatUnlocked(patch.pattern, accountProgress(account.profile))
+			) {
 				return fail(400, "patternInvalid", "pattern");
 			}
 			pattern = patch.pattern;
+		}
+		if (patch.lantern !== undefined) {
+			if (
+				!isLanternTint(patch.lantern) ||
+				!lanternUnlocked(patch.lantern, accountProgress(account.profile))
+			) {
+				return fail(400, "patternInvalid", "pattern");
+			}
+			lantern = patch.lantern;
 		}
 		if (patch.language !== undefined) {
 			if (!isLanguage(patch.language)) {
@@ -513,8 +539,16 @@ export class AccountService {
 			displayName,
 			color,
 			pattern,
+			lantern,
 			language,
 		});
+		return updated
+			? { ok: true, value: updated.profile }
+			: fail(401, "sessionExpired");
+	}
+
+	async acceptTerms(accountId: string): Promise<ServiceResult<AccountProfile>> {
+		const updated = await this.store.acceptTerms(accountId);
 		return updated
 			? { ok: true, value: updated.profile }
 			: fail(401, "sessionExpired");
@@ -698,6 +732,14 @@ export class AccountService {
 
 	recordMatch(record: MatchRecord): Promise<boolean> {
 		return this.store.recordMatch(record, MATCH_HISTORY_LIMIT);
+	}
+
+	dailyBoard(date: unknown, accountId: string | null): Promise<DailyBoard> {
+		return this.store.dailyBoard(
+			isDailyDateKey(date) ? date : dailyDateKey(this.now()),
+			accountId,
+			DAILY_BOARD_LIMIT,
+		);
 	}
 
 	purgeExpired(): Promise<void> {

@@ -3,6 +3,7 @@ import {
 	DOOR_INTERACT_RANGE,
 	HIDE_INTERACT_RANGE,
 	PICKUP_INTERACT_RANGE,
+	STAKE_INTERACT_RANGE,
 	VALVE_INTERACT_RANGE,
 } from "@shared/config/index";
 import { doorPanelBox } from "@shared/manor/doors";
@@ -19,6 +20,7 @@ import {
 import type { ClientWorldState } from "../state/ClientWorldState";
 import type { DoorViews } from "../world/DoorViews";
 import type { PickupViews } from "../world/PickupViews";
+import type { WalkieViews } from "../world/WalkieViews";
 
 export interface InteractionTarget {
 	kind: InteractionKind | "altar";
@@ -46,6 +48,7 @@ export class InteractionFinder {
 		private readonly doors: DoorViews,
 		private readonly state: ClientWorldState,
 		private readonly pickups: PickupViews,
+		private readonly walkies: WalkieViews,
 		private readonly tutorial: boolean,
 	) {}
 
@@ -183,6 +186,43 @@ export class InteractionFinder {
 										),
 					},
 					score: distance + angle * 2 - 0.5,
+				});
+			}
+		}
+		for (const spot of this.layout.walkies) {
+			if (!this.walkies.isAvailable(spot.id) || this.state.selfHasWalkie) {
+				continue;
+			}
+			const point = new THREE.Vector3(spot.x, spot.y + 0.1, spot.z);
+			const distance = point.distanceTo(eye);
+			if (distance > PICKUP_INTERACT_RANGE) {
+				continue;
+			}
+			const angle = angleTo(eye, forward, point);
+			if (angle < 0.5 && this.clearLine(eye, point)) {
+				candidates.push({
+					target: { kind: "walkie", id: spot.id, label: labels.takeWalkie },
+					score: distance + angle * 2 - 0.5,
+				});
+			}
+		}
+		for (const stake of this.layout.stakes) {
+			const point = new THREE.Vector3(stake.x, stake.y + 0.9, stake.z);
+			const distance = point.distanceTo(eye);
+			if (distance > STAKE_INTERACT_RANGE) {
+				continue;
+			}
+			const angle = angleTo(eye, forward, point);
+			if (angle < 0.7 && this.clearLine(eye, point)) {
+				const state = this.state.stakes.get(stake.id);
+				const resting = state !== undefined && serverTime < state.cooldownUntil;
+				candidates.push({
+					target: {
+						kind: "stake",
+						id: stake.id,
+						label: resting ? labels.stakeResting : labels.stakes[stake.kind],
+					},
+					score: distance + angle * 2,
 				});
 			}
 		}

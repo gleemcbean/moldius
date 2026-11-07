@@ -64,7 +64,7 @@ export function LegalPage({ document }: { document: LegalDocument }) {
 					<h1>{copy.title}</h1>
 					<p className={styles.lead}>{copy.intro}</p>
 					<p className={styles.date}>
-						{lang === "fr" ? "Dernière mise à jour" : "Last updated"} 16.10.2026
+						{lang === "fr" ? "Dernière mise à jour" : "Last updated"} 07.11.2026
 					</p>
 				</header>
 				<div className={styles.content}>

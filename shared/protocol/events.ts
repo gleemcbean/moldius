@@ -1,3 +1,4 @@
+import type { MatchMetrics } from "../challenges.js";
 import type { DevModes } from "../devModes.js";
 import type { MatchConfig } from "../matchConfig.js";
 import type {
@@ -40,6 +41,7 @@ export interface ClientToServerEvents {
 	) => void;
 	"lobby:quickJoin": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:createPrivate": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
+	"lobby:createDaily": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:joinPrivate": (
 		payload: JoinPrivateRequest,
 		ack: Ack<LobbyState>,
@@ -89,6 +91,7 @@ export interface ClientToServerEvents {
 	"game:cast": (payload: CastRequest) => void;
 	"game:push": (payload: { yaw: number }) => void;
 	"game:shout": () => void;
+	"game:radio": (payload: { on: boolean }) => void;
 	"game:craft": (payload: { altarId: number; object: string }) => void;
 	"game:tutorialSummon": () => void;
 	"game:tutorialWound": () => void;
@@ -112,6 +115,7 @@ export interface ServerToClientEvents {
 	"game:forcedMove": (payload: ForcedMove) => void;
 	"game:castResult": (payload: CastResult) => void;
 	"game:inventory": (payload: PlayerInventory) => void;
+	"game:challenges": (payload: MatchMetrics) => void;
 	"game:end": (payload: MatchResults) => void;
 	"game:aborted": (payload: { reason: AbortReason }) => void;
 }

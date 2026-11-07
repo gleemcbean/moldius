@@ -1,5 +1,6 @@
 import { DEFAULT_HAT_PATTERN, isHatPattern } from "@shared/hatPatterns";
 import { DEFAULT_PLAYER_COLOR, isPlayerColor } from "@shared/playerColors";
+import { DEFAULT_LANTERN_TINT, isLanternTint } from "@shared/rewards";
 import { DEFAULT_KEYS } from "../../config/defaultKeys";
 import { COLOR_LEVELS } from "../../config/graphics";
 import {
@@ -30,6 +31,7 @@ export function defaultSettings(
 		playerName: randomDefaultName(language),
 		playerColor: DEFAULT_PLAYER_COLOR,
 		playerPattern: DEFAULT_HAT_PATTERN,
+		playerLantern: DEFAULT_LANTERN_TINT,
 		keys: { ...DEFAULT_KEYS },
 		mouseSensitivity: 1,
 		invertY: false,
@@ -54,6 +56,7 @@ export function defaultSettings(
 		},
 		micDeviceId: null,
 		voiceGate: 0.06,
+		termsAccepted: false,
 	};
 }
 
@@ -95,6 +98,9 @@ function sanitize(raw: Partial<PlayerSettings> | null): PlayerSettings {
 		playerPattern: isHatPattern(raw.playerPattern)
 			? raw.playerPattern
 			: base.playerPattern,
+		playerLantern: isLanternTint(raw.playerLantern)
+			? raw.playerLantern
+			: base.playerLantern,
 		keys,
 		mouseSensitivity: clampNumber(
 			raw.mouseSensitivity,
@@ -137,6 +143,7 @@ function sanitize(raw: Partial<PlayerSettings> | null): PlayerSettings {
 		},
 		micDeviceId: typeof raw.micDeviceId === "string" ? raw.micDeviceId : null,
 		voiceGate: clampNumber(raw.voiceGate, 0, 0.3, base.voiceGate),
+		termsAccepted: raw.termsAccepted === true,
 	};
 }
 

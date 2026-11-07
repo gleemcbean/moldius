@@ -2,9 +2,25 @@ import type { LobbyErrorCode } from "@shared/protocol/lobby";
 
 export const lobbyFr = {
 	connecting: "Connexion au lobby…",
+	termsNotice: {
+		title: "Conditions d'utilisation",
+		question:
+			"Avez-vous bien lu et accepté les conditions d'utilisation ? Il faut les accepter pour jouer. Sinon, quittez le lobby.",
+		recording:
+			"Elles prévoient notamment l'enregistrement de votre micro pendant les parties : le Doppelgänger, un monstre qui imite les joueurs, rejoue de courts extraits de votre voix aux autres joueurs, et les meilleurs moments de fin de partie font entendre votre voix.",
+		deletion:
+			"À la fin de chaque partie, une fois les meilleurs moments terminés, tous les extraits sont supprimés. Ils ne sont ni envoyés au serveur du jeu ni sauvegardés.",
+		terms: "Lire les conditions d'utilisation",
+		failed:
+			"Votre acceptation n'a pas pu être enregistrée sur votre compte. Réessayez.",
+		accept: "J'ai lu et j'accepte",
+		leave: "Quitter",
+	},
 	kickerPrivate: "Lobby privé",
 	kickerPublic: "Lobby public",
 	title: "Antichambre du manoir",
+	playerCount: (count: number, capacity: number) =>
+		`${count} / ${capacity} joueurs`,
 	copyCode: "Copier le lien d'invitation",
 	codeLabel: "Code à partager",
 	publicNote: (minPlayers: number) =>
@@ -38,9 +54,31 @@ export const lobbyFr = {
 		"Le microphone est indispensable pour jouer : il sert aux incantations, au tchat de proximité et à la détection par les anomalies.",
 	rules: {
 		title: "Règles de la partie",
+		edit: "Modifier les règles",
+		view: "Voir les règles",
+		groupMatch: "La partie",
+		groupManor: "Le manoir",
+		manor: "Manoir",
+		floorCount: (floors: number) =>
+			floors === 0
+				? "sans étage"
+				: floors === 1
+					? "1 étage"
+					: `${floors} étages`,
 		hostNote: "Vous êtes l'hôte : réglez la partie pour votre groupe.",
 		guestNote: "Seul l'hôte peut modifier ces règles.",
-		anomalies: "Anomalies (moyenne)",
+		dailyNote: "Mêmes règles et même manoir pour tout le monde aujourd'hui.",
+		anomalies: "Anomalies en simultané",
+		walkies: "Talkies-walkies",
+		walkiesHint:
+			"Quelques talkies à trouver dans le manoir pour se parler à distance.",
+		stakeHints: {
+			sanctuary: (seconds: number) =>
+				`Enjeu : soigne toute la salle pendant ${seconds} s, mais attire les anomalies.`,
+			reliquary: (fragments: number) =>
+				`Enjeu : ${fragments} fragments à prendre, mais l'alarme sonne et les portes claquent.`,
+			pact: (health: number) => `Enjeu : un objet occulte contre ${health} PV.`,
+		},
 		itemsPerPlayer: "Morceaux d'objets par joueur",
 		itemsPerPlayerHint:
 			"Nombre de matériaux par joueur dans un manoir moyen à un étage. Il augmente ou diminue avec la taille du manoir et le nombre d'étages.",
@@ -97,9 +135,25 @@ export const lobbyFr = {
 
 export const lobbyEn: typeof lobbyFr = {
 	connecting: "Joining the lobby…",
+	termsNotice: {
+		title: "Terms of Service",
+		question:
+			"Have you read and accepted the Terms of Service? You must accept them to play. Otherwise, leave the lobby.",
+		recording:
+			"They include recording your microphone during matches: the Doppelgänger, a monster that imitates players, plays short clips of your voice to other players, and the best moments at the end of a match let everyone hear your voice.",
+		deletion:
+			"At the end of every match, once the best moments are over, all clips are deleted. They are neither sent to the game server nor saved.",
+		terms: "Read the Terms of Service",
+		failed:
+			"Your acceptance could not be saved to your account. Please try again.",
+		accept: "I have read and accept",
+		leave: "Leave",
+	},
 	kickerPrivate: "Private lobby",
 	kickerPublic: "Public lobby",
 	title: "Manor antechamber",
+	playerCount: (count: number, capacity: number) =>
+		`${count} / ${capacity} players`,
 	copyCode: "Copy the invite link",
 	codeLabel: "Code to share",
 	publicNote: (minPlayers: number) =>
@@ -133,9 +187,31 @@ export const lobbyEn: typeof lobbyFr = {
 		"A microphone is required to play: it is used for incantations, proximity chat and by the anomalies to hear you.",
 	rules: {
 		title: "Game rules",
+		edit: "Edit the rules",
+		view: "View the rules",
+		groupMatch: "The game",
+		groupManor: "The manor",
+		manor: "Manor",
+		floorCount: (floors: number) =>
+			floors === 0
+				? "no upper floor"
+				: floors === 1
+					? "1 upper floor"
+					: `${floors} upper floors`,
 		hostNote: "You are the host: set up the game for your group.",
 		guestNote: "Only the host can change these rules.",
-		anomalies: "Anomalies (average)",
+		dailyNote: "Same rules and same manor for everyone today.",
+		anomalies: "Simultaneous anomalies",
+		walkies: "Walkie-talkies",
+		walkiesHint:
+			"A few walkie-talkies to find in the manor, to talk at a distance.",
+		stakeHints: {
+			sanctuary: (seconds: number) =>
+				`At stake: heals the whole room for ${seconds} s, but draws the anomalies.`,
+			reliquary: (fragments: number) =>
+				`At stake: ${fragments} fragments to grab, but the alarm rings and the doors slam.`,
+			pact: (health: number) => `At stake: an occult object for ${health} HP.`,
+		},
 		itemsPerPlayer: "Object pieces per player",
 		itemsPerPlayerHint:
 			"How many materials each player gets in a medium manor with one upper floor. It goes up or down with the manor size and number of floors.",

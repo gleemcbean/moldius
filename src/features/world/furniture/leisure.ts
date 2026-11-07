@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { meterLathe, placed } from "../geometryUtils";
+import { meterCircle, meterLathe, placed } from "../geometryUtils";
 import type { MaterialOptions } from "../MaterialLibrary";
 import {
 	BRASS,
@@ -667,15 +667,10 @@ export const barrelStack: FurnitureBuilder = ({ item, rng }) => {
 					Math.PI / 2,
 					14,
 				),
-				part(
-					placed(
-						new THREE.CircleGeometry(radius * 0.86, 14),
-						x,
-						y,
-						length / 2 + 0.002,
-					),
-					{ texture: "woodDark", roughness: 0.9 },
-				),
+				part(placed(meterCircle(radius * 0.86, 14), x, y, length / 2 + 0.002), {
+					texture: "woodDark",
+					roughness: 0.9,
+				}),
 				torus(IRON, radius * 1.01, 0.012, x, y, -length * 0.25, 0, 0),
 				torus(IRON, radius * 1.01, 0.012, x, y, length * 0.25, 0, 0),
 			);

@@ -14,6 +14,7 @@ import {
 	type ProjectileKind,
 	type WorldSnapshot,
 } from "@shared/protocol/game";
+import { DEFAULT_LANTERN_TINT, type LanternTint } from "@shared/rewards";
 import { SnapshotBuffer } from "../net/SnapshotBuffer";
 
 export interface RemotePlayerState {
@@ -21,6 +22,7 @@ export interface RemotePlayerState {
 	name: string;
 	color: number;
 	pattern: HatPattern;
+	lantern: LanternTint;
 	team: number | null;
 	buffer: SnapshotBuffer<PlayerSnapshot>;
 	latest: PlayerSnapshot | null;
@@ -71,6 +73,14 @@ export class ClientWorldState {
 		number,
 		{ activeUntil: number; cooldownUntil: number }
 	>();
+	readonly stakes = new Map<
+		number,
+		{ activeUntil: number; cooldownUntil: number }
+	>();
+	readonly walkies = new Map<
+		number,
+		{ holder: string | null; available: boolean }
+	>();
 	readonly puddles = new Map<number, PuddleClientState>();
 	readonly projectiles = new Map<number, ProjectileClientState>();
 	readonly listeners = new Set<EventListener>();
@@ -90,6 +100,7 @@ export class ClientWorldState {
 				name: player.name,
 				color: player.color,
 				pattern: player.pattern ?? DEFAULT_HAT_PATTERN,
+				lantern: player.lantern ?? DEFAULT_LANTERN_TINT,
 				team: player.team ?? null,
 				buffer: new SnapshotBuffer(),
 				latest: null,
@@ -120,6 +131,35 @@ export class ClientWorldState {
 
 	get self(): RemotePlayerState | undefined {
 		return this.players.get(this.selfId);
+	}
+
+	get selfHasWalkie(): boolean {
+		return [...this.walkies.values()].some(
+			(walkie) => walkie.holder === this.selfId,
+		);
+	}
+
+	/** Repart de zéro pour rejouer un extrait, avec les portes telles qu'elles étaient. */
+	resetForReplay(doorsOpen: readonly number[]): void {
+		this.lastTick = -1;
+		this.latestSnapshotTime = -Infinity;
+		this.puddles.clear();
+		this.projectiles.clear();
+		for (const player of this.players.values()) {
+			player.buffer.reset();
+			player.latest = null;
+		}
+		for (const anomaly of this.anomalies.values()) {
+			anomaly.active = false;
+			anomaly.buffer.reset();
+			anomaly.latest = null;
+			anomaly.screamUntil = 0;
+		}
+		const open = new Set(doorsOpen);
+		for (const [doorId, door] of this.doors) {
+			door.open = open.has(doorId);
+			this.world.setDoorClosed(doorId, !door.open);
+		}
 	}
 
 	applySnapshot(snapshot: WorldSnapshot): void {
@@ -183,6 +223,18 @@ export class ClientWorldState {
 				this.valves.set(event.valveId, {
 					activeUntil: event.activeUntil,
 					cooldownUntil: event.cooldownUntil,
+				});
+				break;
+			case "stake":
+				this.stakes.set(event.id, {
+					activeUntil: event.activeUntil,
+					cooldownUntil: event.cooldownUntil,
+				});
+				break;
+			case "walkie":
+				this.walkies.set(event.id, {
+					holder: event.holder,
+					available: event.available,
 				});
 				break;
 			case "puddle":

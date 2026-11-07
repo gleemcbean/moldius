@@ -131,6 +131,17 @@ export class DoorViews {
 		door.predictedUntil = predictedUntil;
 	}
 
+	/** Sans animation : pour remettre une porte en place d'un coup. */
+	snap(doorId: number): void {
+		const door = this.doors.get(doorId);
+		if (door) {
+			door.angle = door.targetOpen
+				? door.geometry.openAngle
+				: door.geometry.closedAngle;
+			door.pivot.rotation.y = -door.angle;
+		}
+	}
+
 	update(dt: number): void {
 		const step = (Math.PI / 2 / (DOOR_ANIMATION_MS / 1000)) * dt;
 		for (const door of this.doors.values()) {

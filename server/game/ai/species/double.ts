@@ -30,7 +30,7 @@ export function updateDouble(
 	entity: AnomalyEntity,
 	dt: number,
 ): void {
-	if (!entity.mimicPlayerId || !match.players.has(entity.mimicPlayerId)) {
+	if (needsNewMimic(match, entity)) {
 		chooseMimic(match, entity);
 	}
 	const perception = perceive(match, entity, dt);
@@ -76,9 +76,40 @@ export function updateDouble(
 	updateHunter(match, entity, dt, DISGUISED, perception);
 }
 
+function canBeMimicked(player: MatchPlayer): boolean {
+	return player.alive && player.connected;
+}
+
+/** Imiter un mort ou un absent le trahirait aussitôt sur la carte et au classement. */
+function needsNewMimic(match: Match, entity: AnomalyEntity): boolean {
+	const mimic = entity.mimicPlayerId
+		? match.players.get(entity.mimicPlayerId)
+		: undefined;
+	if (!mimic) {
+		return true;
+	}
+	return (
+		!canBeMimicked(mimic) && [...match.players.values()].some(canBeMimicked)
+	);
+}
+
+/** Entre deux joueurs tirés au sort, prend le plus loin : le vrai a moins de chances d'être à côté. */
 function chooseMimic(match: Match, entity: AnomalyEntity): void {
 	const players = [...match.players.values()];
-	entity.mimicPlayerId = players.length > 0 ? match.rng.pick(players).id : null;
+	const active = players.filter(canBeMimicked);
+	const pool = active.length > 0 ? active : players;
+	if (pool.length === 0) {
+		entity.mimicPlayerId = null;
+		return;
+	}
+	const away = (player: MatchPlayer) =>
+		Math.hypot(
+			player.position.x - entity.position.x,
+			player.position.z - entity.position.z,
+		);
+	const first = match.rng.pick(pool);
+	const second = match.rng.pick(pool);
+	entity.mimicPlayerId = (away(first) >= away(second) ? first : second).id;
 }
 
 function revealTrigger(

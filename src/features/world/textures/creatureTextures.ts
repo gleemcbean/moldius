@@ -34,7 +34,115 @@ function star(p: PixelPainter, cx: number, cy: number, color: RGB): void {
 	}
 }
 
+const WEB_SPOKES = 5;
+const WEB_RINGS = [9, 18, 28];
+
 const PATTERN_PAINTERS: Record<HatPattern, PatternPainter> = {
+	lightning: (p) => {
+		const bolt: RGB = hexToRgb(0xffe14d);
+		for (let index = 0; index < 4; index += 1) {
+			const left = 4 + index * 16;
+			for (let y = 1; y < CAP_HEIGHT - 3; y += 1) {
+				const phase = y % 12;
+				const x = left + (phase < 8 ? 8 - phase : phase - 8);
+				p.rect(x, y, 3, 1, bolt);
+			}
+		}
+	},
+	eyes: (p, light) => {
+		const dark: RGB = hexToRgb(0x14100f);
+		for (let index = 0; index < 5; index += 1) {
+			const x = 6 + index * 13;
+			const y = 9 + (index % 2) * 10;
+			p.circle(x, y, 4, light);
+			p.circle(x, y, 1.8, dark);
+			p.set(x + 1, y - 1, light);
+		}
+	},
+	laurel: (p, _light, base) => {
+		const leaf: RGB = hexToRgb(0x8fce55);
+		const shadow: RGB = shade(leaf, 0.65);
+		p.rect(0, CAP_HEIGHT - 12, CAP_WIDTH, 2, shade(base, 0.6));
+		for (let x = 0; x < CAP_WIDTH; x += 6) {
+			for (let step = 0; step < 4; step += 1) {
+				p.set(x + step, CAP_HEIGHT - 13 - step, leaf);
+				p.set(x + step + 1, CAP_HEIGHT - 13 - step, shadow);
+				p.set(x + step, CAP_HEIGHT - 10 + step, leaf);
+				p.set(x + step + 1, CAP_HEIGHT - 10 + step, shadow);
+			}
+		}
+	},
+	// Le haut de la texture devient le sommet du chapeau : les rayons y convergent.
+	web: (p, light) => {
+		const spacing = CAP_WIDTH / WEB_SPOKES;
+		for (let spoke = 0; spoke < WEB_SPOKES; spoke += 1) {
+			const x = Math.round(spoke * spacing);
+			for (let y = 0; y < CAP_HEIGHT; y += 1) {
+				p.set(x, y, light, 240);
+			}
+		}
+		for (const [index, ring] of WEB_RINGS.entries()) {
+			const sag = 3 + index;
+			let previous = ring;
+			for (let x = 0; x <= CAP_WIDTH; x += 1) {
+				const along = (x % spacing) / spacing;
+				const y = Math.round(ring - Math.sin(along * Math.PI) * sag);
+				for (
+					let step = Math.min(previous, y);
+					step <= Math.max(previous, y);
+					step += 1
+				) {
+					p.set(x % CAP_WIDTH, step, light, 240);
+				}
+				previous = y;
+			}
+		}
+	},
+	flames: (p, _light, base) => {
+		const hot: RGB = hexToRgb(0xffb12e);
+		const core: RGB = hexToRgb(0xfff0a0);
+		for (let x = 0; x < CAP_WIDTH; x += 1) {
+			const tip = 8 + Math.abs(Math.sin(x * 0.39)) * 12 + Math.sin(x * 1.3) * 2;
+			for (let y = Math.round(tip); y < CAP_HEIGHT; y += 1) {
+				p.set(x, y, y > tip + 6 ? core : hot, 240);
+			}
+		}
+		p.rect(0, 0, CAP_WIDTH, 3, shade(base, 0.7), 150);
+	},
+	skull: (p, light) => {
+		const dark: RGB = shade(light, 0.2);
+		for (let index = 0; index < 5; index += 1) {
+			const x = 6 + index * 13;
+			const y = 9 + (index % 2) * 9;
+			p.circle(x, y, 4.4, light);
+			p.rect(x - 2, y + 3, 5, 3, light);
+			p.circle(x - 1.8, y - 0.4, 1.2, dark);
+			p.circle(x + 1.8, y - 0.4, 1.2, dark);
+			p.set(x, y + 2, dark);
+			p.set(x - 1, y + 5, dark);
+			p.set(x + 1, y + 5, dark);
+		}
+	},
+	crown: (p, _light, base) => {
+		const gold: RGB = hexToRgb(0xf2c23a);
+		const gem: RGB = hexToRgb(0xd63a5a);
+		p.rect(0, CAP_HEIGHT - 11, CAP_WIDTH, 7, gold, 245);
+		for (let index = 0; index < 8; index += 1) {
+			const x = 4 + index * 8;
+			for (let step = 0; step < 7; step += 1) {
+				p.rect(
+					x - 3 + Math.ceil(step / 2),
+					CAP_HEIGHT - 12 - step,
+					Math.max(1, 7 - step),
+					1,
+					gold,
+					245,
+				);
+			}
+			p.circle(x, CAP_HEIGHT - 8, 1.3, gem);
+		}
+		p.rect(0, CAP_HEIGHT - 4, CAP_WIDTH, 2, shade(base, 0.75), 180);
+	},
 	spots: (p, light) => {
 		for (let index = 0; index < 9; index += 1) {
 			const x = 4 + index * 7 + p.rng.int(-1, 1);

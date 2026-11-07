@@ -11,7 +11,12 @@ export const commonFr = {
 	number: (value: number) => value.toLocaleString("fr-FR"),
 	documentTitle: "MOLDIUS",
 	language: "Langue",
-	teams: ["Les Cèpes", "Les Morilles", "Les Girolles"] as readonly string[],
+	teams: [
+		"Les Cèpes",
+		"Les Morilles",
+		"Les Girolles",
+		"Les Truffes",
+	] as readonly string[],
 	desktopOnly: {
 		title: "Clavier et souris requis",
 		text: "MOLDIUS se joue sur ordinateur, au clavier et à la souris, avec un micro. Ouvrez cette page sur un ordinateur pour rejoindre la chasse.",
@@ -32,7 +37,7 @@ export const commonEn: typeof commonFr = {
 	number: (value: number) => value.toLocaleString("en-GB"),
 	documentTitle: "MOLDIUS",
 	language: "Language",
-	teams: ["The Porcini", "The Morels", "The Chanterelles"],
+	teams: ["The Porcini", "The Morels", "The Chanterelles", "The Truffles"],
 	desktopOnly: {
 		title: "Keyboard and mouse required",
 		text: "MOLDIUS is played on a computer, with a keyboard, a mouse and a microphone. Open this page on a computer to join the hunt.",

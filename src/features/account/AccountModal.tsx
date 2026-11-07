@@ -1,5 +1,5 @@
 import { PLAYER_NAME_MAX_LENGTH } from "@shared/config/index";
-import { HAT_PATTERNS } from "@shared/hatPatterns";
+import { HAT_PATTERNS, type HatPattern } from "@shared/hatPatterns";
 import {
 	type AccountProblem,
 	accountMessage,
@@ -16,6 +16,19 @@ import {
 	validatePassword,
 } from "@shared/protocol/account";
 import {
+	accountProgress,
+	hatUnlocked,
+	LANTERN_TINT_COLORS,
+	LANTERN_TINTS,
+	type LanternTint,
+	lanternUnlocked,
+	REWARDS,
+	type Reward,
+	rewardFor,
+	rewardProgress,
+	rewardUnlocked,
+} from "@shared/rewards";
+import {
 	type FormEvent,
 	type InputHTMLAttributes,
 	useEffect,
@@ -23,13 +36,14 @@ import {
 } from "react";
 import { showToast } from "../../app/appStore";
 import { Button } from "../../components/Button";
-import { Segmented } from "../../components/Controls";
+import { Meter, Segmented } from "../../components/Controls";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
 import { shallowEqual, useStore } from "../../hooks/useStore";
 import { useLanguage, useT } from "../../i18n";
 import { hexColor } from "../../utils/format";
+import { rewardName, rewardRequirement } from "../challenges/rewardLabels";
 import { settingsStore } from "../settings/settingsStore";
 import styles from "./AccountModal.module.scss";
 import {
@@ -516,12 +530,21 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 	const [displayName, setDisplayName] = useState(account.displayName);
 	const [color, setColor] = useState(account.color);
 	const [pattern, setPattern] = useState(account.pattern);
+	const [lantern, setLantern] = useState(account.lantern);
+	const progress = accountProgress(account);
+	const lockedTitle = (
+		name: string,
+		unlocked: boolean,
+		reward: Reward | undefined,
+	) =>
+		unlocked || !reward ? name : `${name} : ${rewardRequirement(t, reward)}`;
 	const [error, setError] = useState<FormError | null>(null);
 	const [busy, setBusy] = useState(false);
 	const changed =
 		displayName.trim() !== account.displayName ||
 		color !== account.color ||
-		pattern !== account.pattern;
+		pattern !== account.pattern ||
+		lantern !== account.lantern;
 
 	const submit = async (event: FormEvent) => {
 		event.preventDefault();
@@ -533,7 +556,12 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 			return;
 		}
 		setBusy(true);
-		const result = await saveProfile(displayName.trim(), color, pattern);
+		const result = await saveProfile(
+			displayName.trim(),
+			color,
+			pattern,
+			lantern,
+		);
 		setBusy(false);
 		if (!result.ok) {
 			setError({ text: result.error, field: result.field });
@@ -587,21 +615,65 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 					role="radiogroup"
 					aria-label={t.home.hatPattern}
 				>
-					{HAT_PATTERNS.map((choice) => (
-						<button
-							key={choice}
-							type="button"
-							title={t.appearance.patterns[choice]}
-							className={[
-								styles.patternChoice,
-								choice === pattern ? styles.swatchActive : "",
-							].join(" ")}
-							onClick={() => setPattern(choice)}
-							data-selectable=""
-						>
-							<HatPreview color={color} pattern={choice} />
-						</button>
-					))}
+					{HAT_PATTERNS.map((choice) => {
+						const unlocked = hatUnlocked(choice, progress);
+						return (
+							<button
+								key={choice}
+								type="button"
+								title={lockedTitle(
+									t.appearance.patterns[choice],
+									unlocked,
+									rewardFor("hat", choice),
+								)}
+								disabled={!unlocked}
+								className={[
+									styles.patternChoice,
+									choice === pattern ? styles.swatchActive : "",
+									unlocked ? "" : styles.locked,
+								].join(" ")}
+								onClick={() => setPattern(choice)}
+								data-selectable=""
+							>
+								<HatPreview color={color} pattern={choice} />
+							</button>
+						);
+					})}
+				</div>
+			</div>
+			<div className={styles.textField}>
+				<span className={styles.textLabel}>{t.home.lantern}</span>
+				<div
+					className={styles.patterns}
+					role="radiogroup"
+					aria-label={t.home.lanternTint}
+				>
+					{LANTERN_TINTS.map((choice) => {
+						const unlocked = lanternUnlocked(choice, progress);
+						return (
+							<button
+								key={choice}
+								type="button"
+								title={lockedTitle(
+									t.appearance.lanterns[choice],
+									unlocked,
+									rewardFor("lantern", choice),
+								)}
+								disabled={!unlocked}
+								className={[
+									styles.patternChoice,
+									styles.lanternChoice,
+									choice === lantern ? styles.swatchActive : "",
+									unlocked ? "" : styles.locked,
+								].join(" ")}
+								style={{ color: hexColor(LANTERN_TINT_COLORS[choice]) }}
+								onClick={() => setLantern(choice)}
+								data-selectable=""
+							>
+								<Icon name="lantern" />
+							</button>
+						);
+					})}
 				</div>
 			</div>
 			<p className={styles.hint}>{t.account.profile.hint}</p>
@@ -874,7 +946,92 @@ function SecurityPanel({ account }: { account: AccountProfile }) {
 	);
 }
 
-type AccountTab = "history" | "profile" | "security";
+type AccountTab = "history" | "rewards" | "profile" | "security";
+
+function RewardCard({
+	reward,
+	account,
+}: {
+	reward: Reward;
+	account: AccountProfile;
+}) {
+	const t = useT();
+	const stats = accountProgress(account);
+	const unlocked = rewardUnlocked(reward, stats);
+	const { value, target } = rewardProgress(reward, stats);
+	const name = rewardName(t, reward);
+	return (
+		<li className={unlocked ? styles.rewardOn : styles.rewardOff}>
+			<span className={styles.rewardPreview}>
+				{reward.kind === "hat" ? (
+					<HatPreview
+						color={account.color}
+						pattern={reward.value as HatPattern}
+					/>
+				) : (
+					<span
+						className={styles.rewardLantern}
+						style={{
+							color: hexColor(LANTERN_TINT_COLORS[reward.value as LanternTint]),
+						}}
+					>
+						<Icon name="lantern" />
+					</span>
+				)}
+			</span>
+			<span className={styles.rewardBody}>
+				<strong>{name}</strong>
+				{unlocked ? (
+					<span>{t.account.summary.rewardUnlocked}</span>
+				) : (
+					<>
+						<span>{rewardRequirement(t, reward)}</span>
+						<span className={styles.rewardProgress}>
+							<Meter value={value} max={target} label={name} />
+							<span className={styles.rewardCount}>
+								{value} / {target}
+							</span>
+						</span>
+					</>
+				)}
+			</span>
+		</li>
+	);
+}
+
+function RewardsPanel({ account }: { account: AccountProfile }) {
+	const t = useT();
+	const groups = [
+		{ kind: "hat", title: t.home.hatPattern },
+		{ kind: "lantern", title: t.home.lanternTint },
+	] as const;
+	return (
+		<div className={styles.rewards}>
+			{groups.map(({ kind, title }) => {
+				const rewards = REWARDS.filter((reward) => reward.kind === kind);
+				const done = rewards.filter((reward) =>
+					rewardUnlocked(reward, accountProgress(account)),
+				).length;
+				return (
+					<section key={kind}>
+						<h3 className={styles.section}>
+							{title} ({done} / {rewards.length})
+						</h3>
+						<ul>
+							{rewards.map((reward) => (
+								<RewardCard
+									key={reward.value}
+									reward={reward}
+									account={account}
+								/>
+							))}
+						</ul>
+					</section>
+				);
+			})}
+		</div>
+	);
+}
 
 function AccountPanel({ account }: { account: AccountProfile }) {
 	const t = useT();
@@ -934,12 +1091,14 @@ function AccountPanel({ account }: { account: AccountProfile }) {
 					onChange={setTab}
 					options={[
 						{ value: "history", label: t.account.panels.history },
+						{ value: "rewards", label: t.account.panels.rewards },
 						{ value: "profile", label: t.account.panels.profile },
 						{ value: "security", label: t.account.panels.security },
 					]}
 				/>
 			</div>
 			{tab === "history" ? <HistoryPanel /> : null}
+			{tab === "rewards" ? <RewardsPanel account={account} /> : null}
 			{tab === "profile" ? <ProfilePanel account={account} /> : null}
 			{tab === "security" ? <SecurityPanel account={account} /> : null}
 		</div>

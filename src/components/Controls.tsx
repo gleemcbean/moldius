@@ -130,6 +130,13 @@ export function Segmented<T extends string | number>({
 	);
 }
 
+const METER_TONES = {
+	yellow: styles.meterYellow,
+	red: styles.meterRed,
+	blue: styles.meterBlue,
+	green: styles.meterGreen,
+};
+
 export function Meter({
 	value,
 	max = 100,
@@ -144,7 +151,7 @@ export function Meter({
 	const percent = Math.max(0, Math.min(100, (value / max) * 100));
 	return (
 		<span
-			className={[styles.meter, styles[`meter_${tone}`]].join(" ")}
+			className={[styles.meter, METER_TONES[tone]].join(" ")}
 			role="meter"
 			aria-valuenow={Math.round(value)}
 			aria-valuemin={0}

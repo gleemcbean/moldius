@@ -3,7 +3,9 @@ import { useStore } from "../hooks/useStore";
 import type { Language } from "./language";
 import { accountEn, accountFr } from "./sections/account";
 import { bestiaryEn, bestiaryFr } from "./sections/bestiary";
+import { challengesEn, challengesFr } from "./sections/challenges";
 import { commonEn, commonFr } from "./sections/common";
+import { dailyEn, dailyFr } from "./sections/daily";
 import { friendsEn, friendsFr } from "./sections/friends";
 import { gameEn, gameFr } from "./sections/game";
 import { grimoireEn, grimoireFr } from "./sections/grimoire";
@@ -15,6 +17,8 @@ import { worldEn, worldFr } from "./sections/world";
 const fr = {
 	common: commonFr,
 	home: homeFr,
+	daily: dailyFr,
+	challenges: challengesFr,
 	appearance: appearanceFr,
 	lobby: lobbyFr,
 	settings: settingsFr,
@@ -31,6 +35,8 @@ export type Messages = typeof fr;
 const en: Messages = {
 	common: commonEn,
 	home: homeEn,
+	daily: dailyEn,
+	challenges: challengesEn,
 	appearance: appearanceEn,
 	lobby: lobbyEn,
 	settings: settingsEn,

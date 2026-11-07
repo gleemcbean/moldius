@@ -31,12 +31,10 @@ const SPECIES_CAPS: Partial<Record<SpeciesId, number>> = {
 
 export function planRoster(
 	rng: SeededRandom,
-	averageCount: number,
+	count: number,
 	previousWords: ReadonlySet<string>,
 	allowed: readonly SpeciesId[] = ENABLED_SPECIES_IDS,
 ): RosterPlan {
-	const variation = averageCount >= 3 ? rng.int(-1, 1) : 0;
-	const count = Math.max(1, Math.min(20, averageCount + variation));
 	const poolSize = Math.min(count, rng.int(6, 8));
 	const pool = rng
 		.shuffle(SPECIES_IDS.filter((id) => allowed.includes(id)))

@@ -43,6 +43,15 @@ export function meterBox(
 	return geometry;
 }
 
+/** Disque dont la texture garde son échelle en mètres, sans étirer les planches. */
+export function meterCircle(
+	radius: number,
+	segments = 20,
+): THREE.BufferGeometry {
+	const size = radius * 2;
+	return scaleUv(new THREE.CircleGeometry(radius, segments), size, size);
+}
+
 export function meterCylinder(
 	radiusTop: number,
 	radiusBottom: number,

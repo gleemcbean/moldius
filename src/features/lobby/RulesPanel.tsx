@@ -1,11 +1,14 @@
 import {
-	MAX_ANOMALY_COUNT,
 	MAX_ITEMS_PER_PLAYER,
 	MAX_MATCH_MINUTES,
+	MAX_SIMULTANEOUS_ANOMALIES,
 	MAX_UPPER_FLOORS,
-	MIN_ANOMALY_COUNT,
 	MIN_ITEMS_PER_PLAYER,
 	MIN_MATCH_MINUTES,
+	MIN_SIMULTANEOUS_ANOMALIES,
+	PACT_HEALTH_COST,
+	RELIQUARY_FRAGMENTS,
+	SANCTUARY_DURATION_MS,
 } from "@shared/config/index";
 import { ENABLED_SPECIES_IDS } from "@shared/config/monsters";
 import type { SpeciesId } from "@shared/config/species";
@@ -18,18 +21,78 @@ import {
 } from "@shared/matchConfig";
 import type { LobbyState } from "@shared/protocol/lobby";
 import { TEAM_COUNT_CHOICES } from "@shared/teams";
-import { Field, Segmented, Slider } from "../../components/Controls";
+import { useState } from "react";
+import { createPortal } from "react-dom";
+import { Button } from "../../components/Button";
+import { Field, Segmented, Slider, Toggle } from "../../components/Controls";
+import { Modal } from "../../components/Modal";
 import { useStore } from "../../hooks/useStore";
-import { useT } from "../../i18n";
+import { type Messages, useT } from "../../i18n";
 import styles from "./LobbyScreen.module.scss";
 import { configDraftStore, updateLobbyConfig } from "./lobbyClient";
 
-export function RulesPanel({
+function useRulesConfig(lobby: LobbyState, editable: boolean): MatchConfig {
+	const draft = useStore(configDraftStore, (state) => state.config);
+	return editable && draft ? draft : lobby.config;
+}
+
+/** L'essentiel des règles dans le lobby : tout se règle dans le modal. */
+export function RulesSummary({
 	lobby,
 	editable,
+	onOpen,
 }: {
 	lobby: LobbyState;
 	editable: boolean;
+	onOpen: () => void;
+}) {
+	const t = useT();
+	const labels = t.lobby.rules;
+	const config = useRulesConfig(lobby, editable);
+	const rows = [
+		{ label: labels.anomalies, value: String(config.simultaneousAnomalies) },
+		{ label: labels.itemsPerPlayer, value: String(config.itemsPerPlayer) },
+		{ label: labels.duration, value: labels.minutes(config.durationMinutes) },
+		{
+			label: labels.teams,
+			value: config.teamCount === 0 ? labels.noTeams : String(config.teamCount),
+		},
+		{
+			label: labels.manor,
+			value: `${t.world.manorSizes[config.manorSize]}, ${labels.floorCount(config.floors)}`,
+		},
+	];
+	return (
+		<section className={styles.rules}>
+			<h2 className={styles.rulesTitle}>{labels.title}</h2>
+			<div className={styles.rulesBody}>
+				<dl className={styles.rulesList}>
+					{rows.map((row) => (
+						<div key={row.label} className={styles.rulesRow}>
+							<dt>{row.label}</dt>
+							<dd>{row.value}</dd>
+						</div>
+					))}
+				</dl>
+				{config.walkies ? (
+					<p className={styles.rulesExtras}>{labels.walkies}</p>
+				) : null}
+			</div>
+			<Button variant="secondary" wide onClick={onOpen}>
+				{editable ? labels.edit : labels.view}
+			</Button>
+		</section>
+	);
+}
+
+export function RulesModal({
+	lobby,
+	editable,
+	onClose,
+}: {
+	lobby: LobbyState;
+	editable: boolean;
+	onClose: () => void;
 }) {
 	const t = useT();
 	const labels = t.lobby.rules;
@@ -37,8 +100,7 @@ export function RulesPanel({
 		value: size,
 		label: t.world.manorSizes[size],
 	}));
-	const draft = useStore(configDraftStore, (state) => state.config);
-	const config = editable && draft ? draft : lobby.config;
+	const config = useRulesConfig(lobby, editable);
 	const update = (patch: Partial<MatchConfig>) => {
 		if (editable) {
 			updateLobbyConfig({ ...config, ...patch });
@@ -66,124 +128,164 @@ export function RulesPanel({
 		});
 	};
 	return (
-		<aside className={styles.rules}>
-			<h2 className={styles.rulesTitle}>{labels.title}</h2>
+		<Modal title={labels.title} onClose={onClose} wide>
 			<p className={styles.rulesNote}>
-				{editable ? labels.hostNote : labels.guestNote}
+				{lobby.daily
+					? labels.dailyNote
+					: editable
+						? labels.hostNote
+						: labels.guestNote}
 			</p>
-			<Field label={labels.anomalies}>
-				<Slider
-					value={config.anomalyCount}
-					min={MIN_ANOMALY_COUNT}
-					max={MAX_ANOMALY_COUNT}
-					step={1}
-					disabled={!editable}
-					onChange={(anomalyCount) => update({ anomalyCount })}
-				/>
-			</Field>
-			<Field label={labels.itemsPerPlayer} hint={labels.itemsPerPlayerHint}>
-				<Slider
-					value={config.itemsPerPlayer}
-					min={MIN_ITEMS_PER_PLAYER}
-					max={MAX_ITEMS_PER_PLAYER}
-					step={1}
-					disabled={!editable}
-					onChange={(itemsPerPlayer) => update({ itemsPerPlayer })}
-				/>
-			</Field>
-			<Field label={labels.duration}>
-				<Slider
-					value={config.durationMinutes}
-					min={MIN_MATCH_MINUTES}
-					max={MAX_MATCH_MINUTES}
-					step={1}
-					disabled={!editable}
-					format={labels.minutes}
-					onChange={(durationMinutes) => update({ durationMinutes })}
-				/>
-			</Field>
-			<Field label={labels.teams}>
-				<Segmented<number>
-					value={config.teamCount}
-					options={TEAM_COUNT_CHOICES.map((count) => ({
-						value: count,
-						label: count === 0 ? labels.noTeams : String(count),
-					}))}
-					disabled={!editable}
-					onChange={(teamCount) => update({ teamCount })}
-				/>
-			</Field>
-			<Field label={labels.manorSize}>
-				<Segmented<ManorSize>
-					value={config.manorSize}
-					options={sizeOptions}
-					disabled={!editable}
-					onChange={(manorSize) => update({ manorSize })}
-				/>
-			</Field>
-			<Field label={labels.floors}>
-				<Segmented<number>
-					value={config.floors}
-					options={Array.from(
-						{ length: MAX_UPPER_FLOORS + 1 },
-						(_, floors) => ({
-							value: floors,
-							label: floors === 0 ? labels.noFloor : String(floors),
-						}),
-					)}
-					disabled={!editable}
-					onChange={(floors) => update({ floors })}
-				/>
-			</Field>
-			{config.floors > 0 ? (
-				<>
-					<Field label={labels.upperFloorSize}>
+			<div className={styles.rulesGroups}>
+				<section>
+					<h3 className={styles.rulesGroupTitle}>{labels.groupMatch}</h3>
+					<Field label={labels.anomalies}>
+						<Slider
+							value={config.simultaneousAnomalies}
+							min={MIN_SIMULTANEOUS_ANOMALIES}
+							max={MAX_SIMULTANEOUS_ANOMALIES}
+							step={1}
+							disabled={!editable}
+							onChange={(simultaneousAnomalies) =>
+								update({ simultaneousAnomalies })
+							}
+						/>
+					</Field>
+					<Field label={labels.itemsPerPlayer} hint={labels.itemsPerPlayerHint}>
+						<Slider
+							value={config.itemsPerPlayer}
+							min={MIN_ITEMS_PER_PLAYER}
+							max={MAX_ITEMS_PER_PLAYER}
+							step={1}
+							disabled={!editable}
+							onChange={(itemsPerPlayer) => update({ itemsPerPlayer })}
+						/>
+					</Field>
+					<Field label={labels.duration}>
+						<Slider
+							value={config.durationMinutes}
+							min={MIN_MATCH_MINUTES}
+							max={MAX_MATCH_MINUTES}
+							step={1}
+							disabled={!editable}
+							format={labels.minutes}
+							onChange={(durationMinutes) => update({ durationMinutes })}
+						/>
+					</Field>
+					<Field label={labels.teams}>
+						<Segmented<number>
+							value={config.teamCount}
+							options={TEAM_COUNT_CHOICES.map((count) => ({
+								value: count,
+								label: count === 0 ? labels.noTeams : String(count),
+							}))}
+							disabled={!editable}
+							onChange={(teamCount) => update({ teamCount })}
+						/>
+					</Field>
+					<Field label={labels.walkies} hint={labels.walkiesHint}>
+						<Toggle
+							checked={config.walkies}
+							disabled={!editable}
+							onChange={(walkies) => update({ walkies })}
+						/>
+					</Field>
+					<ChipSection
+						title={labels.species}
+						count={config.species.length}
+						total={ENABLED_SPECIES_IDS.length}
+						editable={editable}
+						chips={ENABLED_SPECIES_IDS.map((id) => ({
+							key: id,
+							label: t.grimoire.species[id].name,
+							enabled: config.species.includes(id),
+							toggle: () => toggleSpecies(id),
+						}))}
+					/>
+				</section>
+				<section>
+					<h3 className={styles.rulesGroupTitle}>{labels.groupManor}</h3>
+					<Field label={labels.manorSize}>
 						<Segmented<ManorSize>
-							value={config.upperFloorSize}
+							value={config.manorSize}
 							options={sizeOptions}
 							disabled={!editable}
-							onChange={(upperFloorSize) => update({ upperFloorSize })}
+							onChange={(manorSize) => update({ manorSize })}
 						/>
 					</Field>
-					<Field label={labels.stairs}>
-						<Segmented<1 | 2>
-							value={config.stairCount}
+					<Field label={labels.floors}>
+						<Segmented<number>
+							value={config.floors}
+							options={Array.from(
+								{ length: MAX_UPPER_FLOORS + 1 },
+								(_, floors) => ({
+									value: floors,
+									label: floors === 0 ? labels.noFloor : String(floors),
+								}),
+							)}
 							disabled={!editable}
-							options={[
-								{ value: 1, label: "1" },
-								{ value: 2, label: "2" },
-							]}
-							onChange={(stairCount) => update({ stairCount })}
+							onChange={(floors) => update({ floors })}
 						/>
 					</Field>
-				</>
-			) : null}
-			<ChipSection
-				title={labels.roomTypes}
-				count={config.roomTypes.length}
-				total={OPTIONAL_ROOM_TYPES.length}
-				editable={editable}
-				chips={OPTIONAL_ROOM_TYPES.map((type) => ({
-					key: type,
-					label: t.world.roomChips[type],
-					enabled: config.roomTypes.includes(type),
-					toggle: () => toggleRoom(type),
-				}))}
-			/>
-			<ChipSection
-				title={labels.species}
-				count={config.species.length}
-				total={ENABLED_SPECIES_IDS.length}
-				editable={editable}
-				chips={ENABLED_SPECIES_IDS.map((id) => ({
-					key: id,
-					label: t.grimoire.species[id].name,
-					enabled: config.species.includes(id),
-					toggle: () => toggleSpecies(id),
-				}))}
-			/>
-		</aside>
+					{config.floors > 0 ? (
+						<>
+							<Field label={labels.upperFloorSize}>
+								<Segmented<ManorSize>
+									value={config.upperFloorSize}
+									options={sizeOptions}
+									disabled={!editable}
+									onChange={(upperFloorSize) => update({ upperFloorSize })}
+								/>
+							</Field>
+							<Field label={labels.stairs}>
+								<Segmented<1 | 2>
+									value={config.stairCount}
+									disabled={!editable}
+									options={[
+										{ value: 1, label: "1" },
+										{ value: 2, label: "2" },
+									]}
+									onChange={(stairCount) => update({ stairCount })}
+								/>
+							</Field>
+						</>
+					) : null}
+					<ChipSection
+						title={labels.roomTypes}
+						count={config.roomTypes.length}
+						total={OPTIONAL_ROOM_TYPES.length}
+						editable={editable}
+						chips={OPTIONAL_ROOM_TYPES.map((type) => ({
+							key: type,
+							label: t.world.roomChips[type],
+							enabled: config.roomTypes.includes(type),
+							hint: stakeHint(type, labels.stakeHints),
+							toggle: () => toggleRoom(type),
+						}))}
+					/>
+				</section>
+			</div>
+			<div className={styles.rulesActions}>
+				<Button onClick={onClose}>{t.common.close}</Button>
+			</div>
+		</Modal>
 	);
+}
+
+function stakeHint(
+	type: RoomType,
+	hints: Messages["lobby"]["rules"]["stakeHints"],
+): string | undefined {
+	switch (type) {
+		case "sanctuary":
+			return hints.sanctuary(SANCTUARY_DURATION_MS / 1000);
+		case "reliquary":
+			return hints.reliquary(RELIQUARY_FRAGMENTS);
+		case "pact":
+			return hints.pact(PACT_HEALTH_COST);
+		default:
+			return undefined;
+	}
 }
 
 function ChipSection({
@@ -197,34 +299,73 @@ function ChipSection({
 	count: number;
 	total: number;
 	editable: boolean;
-	chips: { key: string; label: string; enabled: boolean; toggle: () => void }[];
+	chips: {
+		key: string;
+		label: string;
+		enabled: boolean;
+		hint?: string;
+		toggle: () => void;
+	}[];
 }) {
+	const [tip, setTip] = useState<{
+		text: string;
+		x: number;
+		y: number;
+	} | null>(null);
+	const showTip = (element: HTMLElement, text: string | undefined) => {
+		if (text) {
+			const box = element.getBoundingClientRect();
+			setTip({ text, x: box.left + box.width / 2, y: box.top });
+		}
+	};
 	return (
-		<details className={styles.chipSection}>
-			<summary className={styles.roomTitle}>
+		<div className={styles.chipSection}>
+			<p className={styles.roomTitle}>
 				{title}
 				<span className={styles.chipCount}>
 					{count}/{total}
 				</span>
-			</summary>
+			</p>
 			<div className={styles.roomChips}>
 				{chips.map((chip) => (
-					<button
+					// biome-ignore lint/a11y/noStaticElementInteractions: un bouton désactivé doit aussi afficher son infobulle
+					<span
 						key={chip.key}
-						type="button"
-						disabled={!editable}
-						className={[
-							styles.roomChip,
-							chip.enabled ? styles.roomChipOn : "",
-						].join(" ")}
-						onClick={chip.toggle}
-						aria-pressed={chip.enabled}
-						data-selectable=""
+						className={styles.roomChipAnchor}
+						onPointerEnter={(event) => showTip(event.currentTarget, chip.hint)}
+						onPointerLeave={() => setTip(null)}
+						onFocus={(event) => showTip(event.currentTarget, chip.hint)}
+						onBlur={() => setTip(null)}
 					>
-						{chip.label}
-					</button>
+						<button
+							type="button"
+							disabled={!editable}
+							className={[
+								styles.roomChip,
+								chip.enabled ? styles.roomChipOn : "",
+							].join(" ")}
+							onClick={chip.toggle}
+							aria-pressed={chip.enabled}
+							aria-description={chip.hint}
+							data-selectable=""
+						>
+							{chip.label}
+						</button>
+					</span>
 				))}
 			</div>
-		</details>
+			{tip
+				? createPortal(
+						<span
+							role="tooltip"
+							className={styles.roomChipTip}
+							style={{ left: tip.x, top: tip.y }}
+						>
+							{tip.text}
+						</span>,
+						document.body,
+					)
+				: null}
+		</div>
 	);
 }

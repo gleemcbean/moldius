@@ -1,14 +1,20 @@
 import {
 	PLAYER_NAME_MAX_LENGTH,
 	PRIVATE_CODE_LENGTH,
+	PRIVATE_LOBBY_CAPACITY,
 } from "@shared/config/index";
-import { HAT_PATTERNS } from "@shared/hatPatterns";
+import { dailyChallenge, formatDailyCountdown } from "@shared/dailyChallenge";
+import { DEFAULT_HAT_PATTERN } from "@shared/hatPatterns";
 import { inviteCodeFromText } from "@shared/inviteLink";
-import { colorHex, PLAYER_COLOR_CHOICES } from "@shared/playerColors";
+import {
+	accountProgress,
+	DEFAULT_LANTERN_TINT,
+	hatUnlocked,
+	lanternUnlocked,
+} from "@shared/rewards";
 import { useEffect, useMemo, useState } from "react";
 import { openOverlay } from "../../app/appStore";
 import { Button } from "../../components/Button";
-import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
 import { SelectorGroup } from "../../components/SelectorGroup";
 import { useStore } from "../../hooks/useStore";
@@ -16,6 +22,7 @@ import { useLanguage, useT } from "../../i18n";
 import type { Language } from "../../i18n/language";
 import { defaultNames } from "../../i18n/names";
 import { accountStore } from "../account/accountStore";
+import { useDailyClock } from "../daily/useDailyClock";
 import { friendsStore } from "../friends/friendsStore";
 import { installStore, promptInstall } from "../install/installStore";
 import { consumeInvite, inviteStore } from "../lobby/inviteStore";
@@ -28,6 +35,7 @@ import {
 import { lobbyStore } from "../lobby/lobbyStore";
 import { sessionStore } from "../network/sessionStore";
 import { settingsStore, updateSettings } from "../settings/settingsStore";
+import { AppearancePicker } from "./AppearancePicker";
 import { HomeBackdrop } from "./HomeBackdrop";
 import styles from "./HomeScreen.module.scss";
 import { PublicLobbyPreview } from "./PublicLobbyPreview";
@@ -38,6 +46,33 @@ function pickSuggestions(language: Language, current: string): string[] {
 	return shuffled.slice(0, 3);
 }
 
+function DailyButton() {
+	const t = useT();
+	const { date, remainingMs } = useDailyClock();
+	const { theme } = dailyChallenge(date);
+	return (
+		<div className={[styles.hintAnchor, styles.dailyRow].join(" ")}>
+			<Button
+				variant="secondary"
+				wide
+				icon={<Icon name="crown" />}
+				onClick={() => openOverlay("daily")}
+			>
+				{t.home.daily(t.daily.themes[theme].name)}
+			</Button>
+			<span
+				className={styles.dailyCountdown}
+				title={t.daily.nextIn(formatDailyCountdown(remainingMs))}
+			>
+				{formatDailyCountdown(remainingMs)}
+			</span>
+			<span role="tooltip" className={styles.sideHint}>
+				{t.home.dailyHint}
+			</span>
+		</div>
+	);
+}
+
 export function HomeScreen() {
 	const t = useT();
 	const friendAlerts = useStore(
@@ -46,8 +81,8 @@ export function HomeScreen() {
 	);
 	const language = useLanguage();
 	const name = useStore(settingsStore, (state) => state.playerName);
-	const color = useStore(settingsStore, (state) => state.playerColor);
 	const pattern = useStore(settingsStore, (state) => state.playerPattern);
+	const lantern = useStore(settingsStore, (state) => state.playerLantern);
 	const connection = useStore(sessionStore, (state) => state.status);
 	const pending = useStore(lobbyStore, (state) => state.pending);
 	const accountStatus = useStore(accountStore, (state) => state.status);
@@ -64,6 +99,22 @@ export function HomeScreen() {
 	const ready = connection === "connected" && nameValid && !pending;
 	const codeValid = code.length === PRIVATE_CODE_LENGTH;
 	const invite = useStore(inviteStore, (state) => state.code);
+	const stats = useMemo(
+		() => (account ? accountProgress(account) : null),
+		[account],
+	);
+
+	useEffect(() => {
+		if (accountStatus === "loading") {
+			return;
+		}
+		if (!hatUnlocked(pattern, stats)) {
+			updateSettings({ playerPattern: DEFAULT_HAT_PATTERN });
+		}
+		if (!lanternUnlocked(lantern, stats)) {
+			updateSettings({ playerLantern: DEFAULT_LANTERN_TINT });
+		}
+	}, [accountStatus, pattern, lantern, stats]);
 
 	useEffect(() => {
 		if (invite) {
@@ -126,49 +177,7 @@ export function HomeScreen() {
 							↻
 						</button>
 					</div>
-					<div
-						className={styles.colorRow}
-						role="radiogroup"
-						aria-label={t.home.hatColor}
-					>
-						<span className={styles.colorLabel}>{t.home.hat}</span>
-						{PLAYER_COLOR_CHOICES.map((choice) => (
-							<button
-								key={choice}
-								type="button"
-								title={t.appearance.colors[colorHex(choice)]}
-								className={[
-									styles.swatch,
-									choice === color ? styles.swatchActive : "",
-								].join(" ")}
-								style={{ background: `#${colorHex(choice)}` }}
-								onClick={() => updateSettings({ playerColor: choice })}
-								data-selectable=""
-							/>
-						))}
-					</div>
-					<div
-						className={styles.patternRow}
-						role="radiogroup"
-						aria-label={t.home.hatPattern}
-					>
-						<span className={styles.colorLabel}>{t.home.pattern}</span>
-						{HAT_PATTERNS.map((choice) => (
-							<button
-								key={choice}
-								type="button"
-								title={t.appearance.patterns[choice]}
-								className={[
-									styles.patternChoice,
-									choice === pattern ? styles.patternActive : "",
-								].join(" ")}
-								onClick={() => updateSettings({ playerPattern: choice })}
-								data-selectable=""
-							>
-								<HatPreview color={color} pattern={choice} />
-							</button>
-						))}
-					</div>
+					<AppearancePicker stats={stats} />
 				</section>
 
 				<div className={styles.actions}>
@@ -185,15 +194,26 @@ export function HomeScreen() {
 						</Button>
 						<PublicLobbyPreview />
 					</div>
-					<Button
-						variant="secondary"
-						wide
-						icon={<Icon name="lock" />}
-						disabled={!ready}
-						onClick={() => createPrivateLobby(trimmed)}
-					>
-						{t.home.createPrivate}
-					</Button>
+					<div className={styles.hintAnchor}>
+						<Button
+							variant="secondary"
+							wide
+							icon={<Icon name="lock" />}
+							disabled={!ready}
+							aria-describedby="private-lobby-hint"
+							onClick={() => createPrivateLobby(trimmed)}
+						>
+							{t.home.createPrivate}
+						</Button>
+						<span
+							id="private-lobby-hint"
+							role="tooltip"
+							className={styles.sideHint}
+						>
+							{t.home.createPrivateHint(PRIVATE_LOBBY_CAPACITY)}
+						</span>
+					</div>
+					<DailyButton />
 					<form
 						className={styles.codeRow}
 						onSubmit={(event) => {
@@ -261,6 +281,18 @@ export function HomeScreen() {
 					>
 						<span className={styles.tileIcon}>
 							<Icon name="book" />
+						</span>
+					</button>
+					<button
+						type="button"
+						className={styles.tile}
+						onClick={() => openOverlay("challenges")}
+						title={t.challenges.button}
+						aria-label={t.challenges.button}
+						data-selectable=""
+					>
+						<span className={styles.tileIcon}>
+							<Icon name="check" />
 						</span>
 					</button>
 					{accountStatus === "loading" ||

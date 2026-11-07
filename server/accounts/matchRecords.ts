@@ -1,3 +1,5 @@
+import { AWARD_FALLBACK } from "../../shared/awards.js";
+import { entryWon } from "../../shared/challenges.js";
 import type {
 	MatchResultEntry,
 	MatchResults,
@@ -29,10 +31,14 @@ export function buildMatchRecords(
 			score: entry.score,
 			captures: entry.captures,
 			deaths: entry.deaths,
-			won:
-				results.teams.length > 0
-					? results.winnerTeam !== null && results.winnerTeam === entry.team
-					: results.winnerId === entry.playerId,
+			won: entryWon(results, entry),
+			awarded: results.awards.some(
+				(award) =>
+					award.playerId === entry.playerId && award.id !== AWARD_FALLBACK,
+			),
+			dailyDate: results.daily,
+			pattern: entry.pattern,
+			metrics: results.metrics[entry.playerId],
 		});
 	}
 	return records;

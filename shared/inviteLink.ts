@@ -4,6 +4,12 @@ export const INVITE_PARAM = "lobby";
 
 const RESERVED_PATHS = new Set(["terms", "privacy", "admin"]);
 
+/** Toute autre adresse sans code de partie repart vers l'accueil. */
+export function isAppPath(pathname: string): boolean {
+	const path = pathname.replace(/\/+$/, "");
+	return path === "" || RESERVED_PATHS.has(path.slice(1));
+}
+
 export interface InviteLink {
 	code: string | null;
 	path: string;
@@ -23,7 +29,7 @@ export function readInviteLink(
 	const fromPath =
 		segment !== null &&
 		segment.length === PRIVATE_CODE_LENGTH &&
-		!RESERVED_PATHS.has(segment.toLowerCase())
+		!RESERVED_PATHS.has(segment)
 			? segment
 			: null;
 	if (fromPath === null && !params.has(INVITE_PARAM)) {

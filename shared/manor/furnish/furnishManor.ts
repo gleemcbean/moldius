@@ -1,6 +1,8 @@
 import {
 	ALTAR_MAX_PER_LEVEL,
 	ALTAR_ROOMS_PER_ALTAR,
+	STAKE_FURNITURE,
+	STAKE_KINDS,
 } from "../../config/index.js";
 import type { SeededRandom } from "../../random.js";
 import { furnitureDefinition } from "../furnitureCatalog.js";
@@ -23,7 +25,12 @@ export interface FurnishResult {
 	valves: ValveStation[];
 }
 
-const ALTAR_AVOID_TYPES: RoomType[] = ["corridor", "closet", "toilets"];
+const ALTAR_AVOID_TYPES: RoomType[] = [
+	"corridor",
+	"closet",
+	"toilets",
+	...STAKE_KINDS,
+];
 
 const VALVE_PREFERENCE: RoomType[][] = [
 	["cellar", "workshop"],
@@ -61,16 +68,19 @@ export function furnishManor(
 	const ids: IdAllocator = { furniture: 0, hide: 0, light: 0, valve: 0 };
 	const valveTarget = Math.max(3, Math.round(rooms.length / 7));
 	const valveRooms = chooseValveRooms(rooms, rng, valveTarget);
-	const furnishers = rooms.map((room) => {
-		const furnisher = new RoomFurnisher(
-			room,
-			room.openingIds.map((id) => openings[id]),
-			rng.fork(`room-${room.id}`),
-			ids,
-		);
-		furnishRoomByType(furnisher, { valve: valveRooms.has(room.id) });
-		return furnisher;
-	});
+	const furnishers = rooms.map(
+		(room) =>
+			new RoomFurnisher(
+				room,
+				room.openingIds.map((id) => openings[id]),
+				rng.fork(`room-${room.id}`),
+				ids,
+			),
+	);
+	placeStakes(furnishers);
+	for (const furnisher of furnishers) {
+		furnishRoomByType(furnisher, { valve: valveRooms.has(furnisher.room.id) });
+	}
 
 	ensureValveCount(furnishers, valveTarget, rng);
 	ensureHidingSpots(furnishers, Math.ceil(rooms.length * 0.55), rng);
@@ -79,6 +89,19 @@ export function furnishManor(
 		balanceRoom(furnisher);
 	}
 	return collect(furnishers);
+}
+
+/** Avant les meubles : la salle s'arrange ensuite autour de ce qui fait son enjeu. */
+function placeStakes(furnishers: RoomFurnisher[]): void {
+	for (const furnisher of furnishers) {
+		const kind = STAKE_KINDS.find((entry) => entry === furnisher.room.type);
+		if (kind) {
+			const item = STAKE_FURNITURE[kind];
+			furnisher.floorItem(item, { wallMargin: 0.7 }) ??
+				furnisher.floorItem(item, { wallMargin: 0.3 }) ??
+				furnisher.floorItem(item, { wallMargin: 0.05 });
+		}
+	}
 }
 
 function altarTarget(roomCount: number): number {

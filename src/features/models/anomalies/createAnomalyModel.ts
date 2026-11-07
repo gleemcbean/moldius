@@ -25,6 +25,7 @@ export function createAnomalyModel(
 	kit: ModelKit,
 	mimicColor = 0xd8442f,
 	mimicPattern: HatPattern = DEFAULT_HAT_PATTERN,
+	mimicLantern: number | null = null,
 ): AnomalyModel {
 	switch (species) {
 		case "murmure":
@@ -40,7 +41,7 @@ export function createAnomalyModel(
 		case "luciole":
 			return new FeuFolletModel(kit);
 		case "double":
-			return new DoubleModel(kit, mimicColor, mimicPattern);
+			return new DoubleModel(kit, mimicColor, mimicPattern, mimicLantern);
 		case "hurleur":
 			return new HurleurModel(kit);
 		case "suinteur":

@@ -1,3 +1,4 @@
+import { dailyChallenge } from "@shared/dailyChallenge";
 import { inviteUrl } from "@shared/inviteLink";
 import type { LobbyState } from "@shared/protocol/lobby";
 import { useState } from "react";
@@ -26,9 +27,18 @@ export function LobbyHeader({ lobby }: { lobby: LobbyState }) {
 		<header className={styles.header}>
 			<div>
 				<p className={styles.kicker}>
-					{lobby.visibility === "private"
-						? t.lobby.kickerPrivate
-						: t.lobby.kickerPublic}
+					<span>
+						{lobby.daily
+							? t.home.daily(
+									t.daily.themes[dailyChallenge(lobby.daily).theme].name,
+								)
+							: lobby.visibility === "private"
+								? t.lobby.kickerPrivate
+								: t.lobby.kickerPublic}
+					</span>
+					<span className={styles.playerCount}>
+						{t.lobby.playerCount(lobby.players.length, lobby.capacity)}
+					</span>
 				</p>
 				<h1 className={styles.title}>{t.lobby.title}</h1>
 			</div>

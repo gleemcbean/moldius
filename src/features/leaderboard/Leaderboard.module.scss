@@ -131,3 +131,43 @@
 .energy {
   background: $energy;
 }
+
+/* En équipes, tout doit tenir : le jeu garde la souris, ce tableau ne peut pas défiler. */
+.compact {
+  padding-block: 14px;
+
+  .title {
+    margin-bottom: 8px;
+    font-size: 34px;
+  }
+
+  .head {
+    padding-bottom: 4px;
+  }
+
+  .row {
+    padding: 3px 12px;
+    margin-bottom: 3px;
+  }
+
+  .teamHead {
+    padding-bottom: 0;
+  }
+
+  .team {
+    margin-bottom: 6px;
+  }
+
+  .rank,
+  .points {
+    font-size: 24px;
+  }
+
+  .name {
+    font-size: 22px;
+  }
+
+  .meter {
+    height: 18px;
+  }
+}

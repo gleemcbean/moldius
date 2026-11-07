@@ -681,6 +681,20 @@ export function createAccountRouter(accounts: AccountModule): AccountRouter {
 		response.json({ account: result.value });
 	});
 
+	router.post("/terms-acceptance", async (request, response) => {
+		const ready = service(request, response);
+		const session = ready && (await authenticated(request, response, ready));
+		if (!ready || !session) {
+			return;
+		}
+		const result = await ready.acceptTerms(session.accountId);
+		if (!result.ok) {
+			sendProblem(request, response, result.status, result.problem);
+			return;
+		}
+		response.json({ account: result.value });
+	});
+
 	router.post("/password", async (request, response) => {
 		const ready = service(request, response);
 		const session = ready && (await authenticated(request, response, ready));
@@ -755,6 +769,17 @@ export function createAccountRouter(accounts: AccountModule): AccountRouter {
 		}
 		clearSession(response);
 		response.status(204).end();
+	});
+
+	router.get("/daily", async (request, response) => {
+		const ready = service(request, response);
+		if (!ready) {
+			return;
+		}
+		const session = await ready.authenticate(cookieToken(request));
+		response.json(
+			await ready.dailyBoard(request.query.date, session?.accountId ?? null),
+		);
 	});
 
 	router.get("/history", async (request, response) => {

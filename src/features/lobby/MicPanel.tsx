@@ -52,16 +52,20 @@ export function MicPanel() {
 				) : null}
 			</div>
 			<MicLevelMeter level={mic.level} label={t.lobby.mic.meter} />
-			<p className={styles.micHint}>
-				{t.lobby.mic.hint}{" "}
-				{
+			{ok ? (
+				<p className={styles.micHint}>
+					{t.lobby.mic.hint}{" "}
 					{
-						native: t.lobby.mic.speechAvailable,
-						vosk: t.lobby.mic.speechOffline,
-						none: t.lobby.mic.speechMissing,
-					}[speechEngine() ?? "none"]
-				}
-			</p>
+						{
+							native: t.lobby.mic.speechAvailable,
+							vosk: t.lobby.mic.speechOffline,
+							none: t.lobby.mic.speechMissing,
+						}[speechEngine() ?? "none"]
+					}
+				</p>
+			) : (
+				<p className={styles.micWarning}>{t.lobby.micWarning}</p>
+			)}
 		</section>
 	);
 }

@@ -78,6 +78,9 @@ export interface HudState {
 	showLeaderboard: boolean;
 	paused: boolean;
 	fps: number;
+	walkieHeld: boolean;
+	walkieTalking: boolean;
+	walkieHearing: string | null;
 	level: Level;
 	serverNow: number;
 }
@@ -131,6 +134,9 @@ export function initialHud(): HudState {
 		showLeaderboard: false,
 		paused: false,
 		fps: 0,
+		walkieHeld: false,
+		walkieTalking: false,
+		walkieHearing: null,
 		level: 0,
 		serverNow: 0,
 	};

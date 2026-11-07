@@ -5,6 +5,7 @@ import {
 	PICKUP_CONTAINER_KINDS,
 	PICKUP_MAX_SURFACE_HEIGHT,
 	PICKUP_MIN_PER_LEVEL,
+	WALKIE_SPOT_COUNT,
 } from "../../config/index.js";
 import { rotate2 } from "../../math.js";
 import type { SeededRandom } from "../../random.js";
@@ -15,6 +16,7 @@ import type {
 	MaterialPickup,
 	PickupSpot,
 	Room,
+	WalkieSpot,
 } from "../types.js";
 
 const FLOOR_MARGIN = 0.35;
@@ -155,6 +157,63 @@ export function placePickups(
 		places.map((_, index) => MATERIAL_IDS[index % MATERIAL_IDS.length]),
 	);
 	return places.map((place, id) => ({ id, material: deck[id], ...place }));
+}
+
+const WALKIE_MIN_SPACING = 10;
+
+/** Toujours en évidence, jamais au fond d'un coffre : on doit pouvoir les repérer. */
+export function placeWalkies(
+	rooms: Room[],
+	furniture: FurnitureItem[],
+	rng: SeededRandom,
+): WalkieSpot[] {
+	const spots: WalkieSpot[] = [];
+	const usable = rng.shuffle(
+		rooms.filter((room) => room.type !== "stairwell" && room.type !== "closet"),
+	);
+	for (const spacing of [WALKIE_MIN_SPACING, 0]) {
+		for (const room of usable) {
+			if (
+				spots.length >= WALKIE_SPOT_COUNT ||
+				spots.some((spot) => spot.roomId === room.id) ||
+				spots.some(
+					(spot) =>
+						spot.level === room.level &&
+						Math.hypot(spot.x - room.labelPoint.x, spot.z - room.labelPoint.z) <
+							spacing,
+				)
+			) {
+				continue;
+			}
+			const items = furniture.filter((item) => item.roomId === room.id);
+			const surface = rng.shuffle(items.filter(canHoldLoot))[0];
+			const point = surface
+				? {
+						x: surface.x,
+						y: surface.y + surface.height + 0.05,
+						z: surface.z,
+					}
+				: floorSpot(room, items, rng);
+			if (point) {
+				spots.push({
+					id: spots.length,
+					roomId: room.id,
+					level: room.level,
+					...point,
+				});
+			}
+		}
+	}
+	return spots;
+}
+
+function floorSpot(
+	room: Room,
+	items: FurnitureItem[],
+	rng: SeededRandom,
+): { x: number; y: number; z: number } | null {
+	const point = floorPoint(room, items, rng);
+	return point ? { x: point.x, y: room.floorY + 0.05, z: point.z } : null;
 }
 
 export function recipeDeck(recipe: OccultRecipe): MaterialId[] {

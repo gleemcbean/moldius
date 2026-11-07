@@ -1,4 +1,5 @@
 import type { AdminLiveStats } from "../../shared/protocol/admin.js";
+import { accountProgress, type ProgressStats } from "../../shared/rewards.js";
 import {
 	type AccountRevocation,
 	AccountService,
@@ -111,15 +112,23 @@ export class AccountModule {
 
 	async identify(
 		cookieHeader: string | undefined,
-	): Promise<AuthenticatedSession | null> {
+	): Promise<(AuthenticatedSession & { progress?: ProgressStats }) | null> {
 		const service = this.service;
 		if (!service) {
 			return null;
 		}
 		try {
-			return await service.authenticate(
+			const session = await service.authenticate(
 				readCookie(cookieHeader, sessionCookieName(this.cookieSecure)),
 			);
+			if (!session) {
+				return null;
+			}
+			const profile = await service.profile(session.accountId);
+			return {
+				...session,
+				progress: profile ? accountProgress(profile) : undefined,
+			};
 		} catch (error) {
 			console.error("Comptes : identification impossible", describe(error));
 			return null;

@@ -1,5 +1,6 @@
 import type { HatPattern } from "../hatPatterns.js";
 import type { MatchConfig } from "../matchConfig.js";
+import type { LanternTint } from "../rewards.js";
 
 export type LobbyVisibility = "public" | "private";
 
@@ -18,6 +19,7 @@ export interface LobbyPlayerInfo {
 	connected: boolean;
 	color: number;
 	pattern: HatPattern;
+	lantern: LanternTint;
 	team: number | null;
 }
 
@@ -34,12 +36,14 @@ export interface LobbyState {
 	phase: LobbyPhase;
 	countdownEndsAt: number | null;
 	matchId: string | null;
+	daily: string | null;
 }
 
 export interface JoinRequest {
 	name: string;
 	color?: number;
 	pattern?: HatPattern;
+	lantern?: LanternTint;
 }
 
 export interface JoinPrivateRequest extends JoinRequest {

@@ -56,6 +56,13 @@ export function PauseOverlay({ session }: { session: GameSession }) {
 				<Button
 					variant="secondary"
 					wide
+					onClick={() => openOverlay("challenges")}
+				>
+					{t.challenges.button}
+				</Button>
+				<Button
+					variant="secondary"
+					wide
 					onClick={() => openOverlay("settings")}
 				>
 					{t.game.pause.settings}

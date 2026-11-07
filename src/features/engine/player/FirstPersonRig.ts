@@ -137,8 +137,8 @@ export class FirstPersonRig {
 	private heldShown: OccultId | null = null;
 	private heldBlend = 0;
 
-	constructor(kit: ModelKit) {
-		this.lantern = new LanternModel(kit, LANTERN_SCALE);
+	constructor(kit: ModelKit, lanternTint: number | null = null) {
+		this.lantern = new LanternModel(kit, LANTERN_SCALE, lanternTint);
 		this.root.add(this.lantern.root);
 		this.grimoire = new GrimoireModel(kit);
 		this.root.add(this.grimoire.root);

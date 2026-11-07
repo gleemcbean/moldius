@@ -8,3 +8,25 @@
   color: $text;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
+
+.walkie {
+  position: absolute;
+  left: 20px;
+  bottom: 108px;
+  padding: 6px 14px;
+  font-size: 15px;
+  white-space: nowrap;
+  background: rgba(11, 13, 11, 0.72);
+  box-shadow: inset 0 0 0 2px rgba(159, 220, 138, 0.45);
+  color: #cfeac4;
+}
+
+.walkieTalking {
+  box-shadow: inset 0 0 0 2px #e0553f;
+  color: #ffd8cf;
+}
+
+.walkieHearing {
+  box-shadow: inset 0 0 0 2px #9fdc8a;
+  color: #eaffdf;
+}

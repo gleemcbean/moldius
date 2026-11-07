@@ -8,6 +8,7 @@ import {
 } from "../shared/matchConfig.js";
 import { yawToDirection } from "../shared/math.js";
 import type { MatchResults } from "../shared/protocol/game.js";
+import { MAX_TEAM_COUNT, TEAM_COLORS } from "../shared/teams.js";
 import {
 	findClearLine,
 	placeBot,
@@ -28,15 +29,16 @@ function teamsOf(lobby: Lobby): (number | null)[] {
 }
 
 describe("mode équipes", () => {
-	it("n'accepte que 0, 2 ou 3 équipes", () => {
+	it("n'accepte que 0, 2, 3 ou 4 équipes", () => {
 		const fallback = defaultPrivateConfig();
 		expect(fallback.teamCount).toBe(0);
 		for (const [input, expected] of [
 			[2, 2],
 			[3, 3],
 			[0, 0],
+			[4, 4],
 			[1, 0],
-			[4, 0],
+			[5, 0],
 			["2", 0],
 		] as const) {
 			expect(
@@ -60,6 +62,15 @@ describe("mode équipes", () => {
 		expect(teamsOf(lobby)).toEqual([0, 1, 0, 1]);
 		lobby.updateConfig("p1", { ...lobby.config, teamCount: 0 });
 		expect(teamsOf(lobby)).toEqual([null, null, null, null]);
+	});
+
+	it("répartit 8 joueurs en 4 équipes de 2", () => {
+		const lobby = privateLobby(8);
+		lobby.updateConfig("p1", { ...lobby.config, teamCount: 4 });
+		expect(teamsOf(lobby)).toEqual([0, 1, 2, 3, 0, 1, 2, 3]);
+		expect(lobby.setTeam("p1", 3).ok).toBe(true);
+		expect(lobby.setTeam("p1", 4).ok).toBe(false);
+		expect(TEAM_COLORS).toHaveLength(MAX_TEAM_COUNT);
 	});
 
 	it("laisse chacun choisir une équipe existante, seulement en attente", () => {
@@ -99,6 +110,27 @@ describe("mode équipes", () => {
 			[0, 500, ["p1"]],
 		]);
 		expect(results.entries.map((entry) => entry.team)).toEqual([0, 1, 1]);
+	});
+
+	it("classe les 4 équipes d'une partie à 8 joueurs", () => {
+		const sim = new MatchSimulation({
+			seed: 9,
+			players: 8,
+			config: { teamCount: 4 },
+			teams: [0, 1, 2, 3, 0, 1, 2, 3],
+		});
+		silenceAnomalies(sim);
+		for (let index = 0; index < 8; index += 1) {
+			const player = sim.match.players.get(`p${index + 1}`) as MatchPlayer;
+			player.score = (index % 4) * 100 + 50;
+		}
+		sim.run(MATCH_DURATION_MS / 1000 + 1);
+		const results = sim.results as MatchResults;
+		expect(results.winnerTeam).toBe(3);
+		expect(results.teams.map((team) => team.team)).toEqual([3, 2, 1, 0]);
+		expect(results.teams.every((team) => team.playerIds.length === 2)).toBe(
+			true,
+		);
 	});
 
 	it("empêche de saboter ses coéquipiers, mais pas ses adversaires", () => {

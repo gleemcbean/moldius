@@ -1,12 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { openOverlay } from "../../app/appStore";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { SelectorGroup } from "../../components/SelectorGroup";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
-import { accountStore } from "../account/accountStore";
+import { accountStore, termsAccepted } from "../account/accountStore";
 import { sessionStore } from "../network/sessionStore";
+import { settingsStore } from "../settings/settingsStore";
 import { micIsUsable, micStore } from "../voice/micManager";
 import { voiceChat } from "../voice/voiceChat";
 import {
@@ -21,14 +22,25 @@ import { leaveLobby, setReady, startMatch } from "./lobbyClient";
 import { lobbyStore } from "./lobbyStore";
 import { MicPanel } from "./MicPanel";
 import { PlayerSlots } from "./PlayerSlots";
-import { RulesPanel } from "./RulesPanel";
+import { RulesModal, RulesSummary } from "./RulesPanel";
+import { TermsNotice } from "./TermsNotice";
 
 export function LobbyScreen() {
 	const t = useT();
+	const [rulesOpen, setRulesOpen] = useState(false);
 	const lobby = useStore(lobbyStore, (state) => state.lobby);
 	const playerId = useStore(sessionStore, (state) => state.playerId);
 	const micStatus = useStore(micStore, (state) => state.status);
 	const accountStatus = useStore(accountStore, (state) => state.status);
+	const account = useStore(accountStore, (state) => state.account);
+	const localTermsChoice = useStore(
+		settingsStore,
+		(state) => state.termsAccepted,
+	);
+	const accepted = termsAccepted(
+		{ status: accountStatus, account },
+		localTermsChoice,
+	);
 
 	useEffect(() => {
 		initVoiceController();
@@ -53,37 +65,38 @@ export function LobbyScreen() {
 	);
 	const enoughPlayers = connected.length >= lobby.minPlayers;
 	const inMatch = lobby.phase === "loading" || lobby.phase === "playing";
+	const isPrivate = lobby.visibility === "private";
+	const rulesEditable =
+		isHost && lobby.configEditable && lobby.phase === "waiting";
+	const quit = () => {
+		leaveVoice();
+		leaveLobby();
+	};
 
 	return (
 		<main className={styles.lobby}>
 			<SelectorGroup className={styles.layout}>
 				<LobbyHeader lobby={lobby} />
 				<div
-					className={[
-						styles.columns,
-						lobby.visibility === "public" ? styles.single : "",
-					].join(" ")}
+					className={[styles.columns, isPrivate ? "" : styles.single].join(" ")}
 				>
 					<section className={styles.main}>
 						<PlayerSlots lobby={lobby} selfId={playerId} />
-						<MicPanel />
+						{isPrivate ? null : <MicPanel />}
 					</section>
-					{lobby.visibility === "private" ? (
-						<RulesPanel
-							lobby={lobby}
-							editable={isHost && lobby.phase === "waiting"}
-						/>
+					{isPrivate ? (
+						<aside className={styles.side}>
+							<RulesSummary
+								lobby={lobby}
+								editable={rulesEditable}
+								onOpen={() => setRulesOpen(true)}
+							/>
+							<MicPanel />
+						</aside>
 					) : null}
 				</div>
 				<footer className={styles.footer}>
-					<Button
-						variant="ghost"
-						icon={<Icon name="door" />}
-						onClick={() => {
-							leaveVoice();
-							leaveLobby();
-						}}
-					>
+					<Button variant="ghost" icon={<Icon name="door" />} onClick={quit}>
 						{t.lobby.leave}
 					</Button>
 					<Button
@@ -92,6 +105,13 @@ export function LobbyScreen() {
 						onClick={() => openOverlay("settings")}
 					>
 						{t.lobby.settings}
+					</Button>
+					<Button
+						variant="ghost"
+						icon={<Icon name="check" />}
+						onClick={() => openOverlay("challenges")}
+					>
+						{t.challenges.button}
 					</Button>
 					{accountStatus === "loading" ||
 					accountStatus === "disabled" ? null : (
@@ -103,7 +123,13 @@ export function LobbyScreen() {
 							{t.friends.lobbyButton}
 						</Button>
 					)}
-					<div className={styles.spacer} />
+					<div className={styles.status}>
+						{!inMatch && !enoughPlayers ? (
+							<p className={styles.needPlayers}>
+								{t.lobby.needPlayers(lobby.minPlayers, connected.length)}
+							</p>
+						) : null}
+					</div>
 					{lobby.phase === "countdown" && lobby.countdownEndsAt ? (
 						<Countdown endsAt={lobby.countdownEndsAt} />
 					) : null}
@@ -114,13 +140,13 @@ export function LobbyScreen() {
 					<Button
 						variant={me?.ready ? "secondary" : "primary"}
 						size="large"
-						disabled={!micReady || inMatch}
+						disabled={!micReady || inMatch || !accepted}
 						title={micReady ? undefined : t.lobby.micRequiredTitle}
 						onClick={() => setReady(!me?.ready)}
 					>
 						{me?.ready ? t.lobby.notReadyButton : t.lobby.readyButton}
 					</Button>
-					{lobby.visibility === "private" ? (
+					{isPrivate ? (
 						<Button
 							size="large"
 							icon={<Icon name="play" />}
@@ -131,15 +157,17 @@ export function LobbyScreen() {
 						</Button>
 					) : null}
 				</footer>
-				{!inMatch && !enoughPlayers ? (
-					<p className={styles.needPlayers}>
-						{t.lobby.needPlayers(lobby.minPlayers, connected.length)}
-					</p>
-				) : null}
-				{!micReady ? (
-					<p className={styles.micWarning}>{t.lobby.micWarning}</p>
-				) : null}
 			</SelectorGroup>
+			{isPrivate && rulesOpen ? (
+				<RulesModal
+					lobby={lobby}
+					editable={rulesEditable}
+					onClose={() => setRulesOpen(false)}
+				/>
+			) : null}
+			{accepted || accountStatus === "loading" ? null : (
+				<TermsNotice onLeave={quit} />
+			)}
 		</main>
 	);
 }

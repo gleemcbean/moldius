@@ -48,6 +48,7 @@ export const SOCKET_RATE_RULES: Record<string, RateRule> = {
 	"game:castBegin": { perSecond: 4, burst: 6 },
 	"game:push": { perSecond: 4, burst: 4 },
 	"game:shout": { perSecond: 4, burst: 4 },
+	"game:radio": { perSecond: 8, burst: 12 },
 	"friends:list": { perSecond: 1, burst: 5 },
 	"friends:write": { perSecond: 1, burst: 6 },
 	"friends:invite": { perSecond: 1, burst: 4 },

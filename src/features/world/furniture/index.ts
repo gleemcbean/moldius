@@ -152,6 +152,7 @@ import {
 	vase,
 	vialCluster,
 } from "./props";
+import { stakePact, stakeReliquary, stakeSanctuary } from "./stakes";
 import {
 	bookcase,
 	cabinet,
@@ -189,6 +190,9 @@ import {
 
 export const FURNITURE_BUILDERS: Record<string, FurnitureBuilder> = {
 	occultAltar,
+	stakeSanctuary,
+	stakeReliquary,
+	stakePact,
 	wardrobe,
 	lockers,
 	confessional,

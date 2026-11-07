@@ -1,9 +1,11 @@
 import { randomBytes } from "node:crypto";
+import type { ProgressStats } from "../../shared/rewards.js";
 import type { AccountRevocation } from "../accounts/AccountService.js";
 
 export interface SessionAccount {
 	accountId: string;
 	tokenHash: string;
+	progress?: ProgressStats;
 }
 
 export interface Session {

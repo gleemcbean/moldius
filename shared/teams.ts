@@ -1,6 +1,8 @@
-export const MAX_TEAM_COUNT = 3;
-export const TEAM_COUNT_CHOICES: readonly number[] = [0, 2, MAX_TEAM_COUNT];
-export const TEAM_COLORS: readonly number[] = [0xe0a43a, 0x3fb8a4, 0xb27ae0];
+export const MAX_TEAM_COUNT = 4;
+export const TEAM_COUNT_CHOICES: readonly number[] = [0, 2, 3, MAX_TEAM_COUNT];
+export const TEAM_COLORS: readonly number[] = [
+	0xe0a43a, 0x3fb8a4, 0xb27ae0, 0xe8e4d8,
+];
 
 export interface TeamMember {
 	team: number | null;

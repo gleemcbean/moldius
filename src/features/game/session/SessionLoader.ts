@@ -9,6 +9,7 @@ import { layoutChecksum } from "@shared/manor/generateManor";
 import type { ManorLayout } from "@shared/manor/types";
 import { CollisionWorld } from "@shared/physics/collisionWorld";
 import type { MatchInit } from "@shared/protocol/game";
+import { DEFAULT_LANTERN_TINT, LANTERN_TINT_COLORS } from "@shared/rewards";
 import * as THREE from "three";
 import { QUALITY_PRESETS } from "../../../config/graphics";
 import { currentMessages } from "../../../i18n";
@@ -29,6 +30,8 @@ import { ClientWorldState } from "../../engine/state/ClientWorldState";
 import { AltarViews } from "../../engine/world/AltarViews";
 import { DoorViews } from "../../engine/world/DoorViews";
 import { PickupViews } from "../../engine/world/PickupViews";
+import { StakeViews } from "../../engine/world/StakeViews";
+import { WalkieViews } from "../../engine/world/WalkieViews";
 import { GrimoireController } from "../../grimoire/GrimoireController";
 import { renderIllustrations } from "../../grimoire/illustrations";
 import { renderObjectArt } from "../../grimoire/objectArt";
@@ -63,6 +66,8 @@ export interface LoadedWorld {
 	decor: DecorAnimator;
 	pickups: PickupViews;
 	altars: AltarViews;
+	walkies: WalkieViews;
+	stakes: StakeViews;
 	layout: ManorLayout;
 	world: CollisionWorld;
 	state: ClientWorldState;
@@ -267,6 +272,10 @@ export async function loadSession(
 	scene.add(pickups.group);
 	const altars = new AltarViews(layout, kit);
 	scene.add(altars.group);
+	const walkies = new WalkieViews(layout, kit, init.walkieTotal);
+	scene.add(walkies.group);
+	const stakes = new StakeViews(layout, state);
+	scene.add(stakes.group);
 	const lights = new LightPool(
 		scene,
 		preset.lightPool,
@@ -274,7 +283,15 @@ export async function loadSession(
 		layout.rooms,
 	);
 	lights.reduceFlicker = settings.reduceMotion;
-	const rig = new FirstPersonRig(kit);
+	const selfLantern =
+		init.players.find((player) => player.id === selfId)?.lantern ??
+		DEFAULT_LANTERN_TINT;
+	const rig = new FirstPersonRig(
+		kit,
+		selfLantern === DEFAULT_LANTERN_TINT
+			? null
+			: LANTERN_TINT_COLORS[selfLantern],
+	);
 	camera.add(rig.root);
 	const body = new FirstPersonBody(kit);
 	scene.add(body.root);
@@ -283,7 +300,7 @@ export async function loadSession(
 	const appearances = new Map(
 		init.players.map((player) => [
 			player.id,
-			{ color: player.color, pattern: player.pattern },
+			{ color: player.color, pattern: player.pattern, lantern: player.lantern },
 		]),
 	);
 	const remotePlayers = new RemotePlayers(state, kit, world);
@@ -295,7 +312,11 @@ export async function loadSession(
 		world,
 		particles,
 		(id) =>
-			appearances.get(id) ?? { color: 0xd8442f, pattern: DEFAULT_HAT_PATTERN },
+			appearances.get(id) ?? {
+				color: 0xd8442f,
+				pattern: DEFAULT_HAT_PATTERN,
+				lantern: DEFAULT_LANTERN_TINT,
+			},
 	);
 	scene.add(anomalies.group);
 	progress("models", 1);
@@ -385,6 +406,8 @@ export async function loadSession(
 		hazards,
 		pickups,
 		altars,
+		walkies,
+		stakes,
 		particles,
 		motes,
 		lights,

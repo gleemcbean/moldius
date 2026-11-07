@@ -1,9 +1,11 @@
+import type { ChallengeProgress } from "../challenges.js";
 import type { HatPattern } from "../hatPatterns.js";
 import type {
 	AccountMessageKey,
 	AccountProblem,
 } from "../i18n/accountMessages.js";
 import type { Language } from "../i18n/languages.js";
+import type { LanternTint } from "../rewards.js";
 
 export const EMAIL_MAX_LENGTH = 254;
 export const EMAIL_PATTERN =
@@ -17,6 +19,26 @@ export interface AccountStats {
 	wins: number;
 	bestScore: number;
 	totalScore: number;
+	captures: number;
+	dailies: number;
+	awards: number;
+}
+
+export interface DailyScoreEntry {
+	rank: number;
+	name: string;
+	color: number;
+	pattern: HatPattern;
+	score: number;
+	captures: number;
+	deaths: number;
+	self: boolean;
+}
+
+export interface DailyBoard {
+	date: string;
+	entries: DailyScoreEntry[];
+	me: DailyScoreEntry | null;
 }
 
 export interface DiscordLink {
@@ -29,11 +51,15 @@ export interface AccountProfile {
 	displayName: string;
 	color: number;
 	pattern: HatPattern;
+	lantern: LanternTint;
 	language: Language;
 	createdAt: string;
+	/** Date à laquelle le joueur a accepté les conditions d'utilisation. */
+	termsAcceptedAt: string | null;
 	hasPassword: boolean;
 	discord: DiscordLink | null;
 	stats: AccountStats;
+	challenges: ChallengeProgress;
 }
 
 export const DISCORD_OUTCOMES = [
@@ -117,6 +143,7 @@ export interface ProfileUpdateRequest {
 	displayName?: string;
 	color?: number;
 	pattern?: HatPattern;
+	lantern?: LanternTint;
 	language?: Language;
 }
 
