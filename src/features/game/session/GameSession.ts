@@ -184,6 +184,8 @@ export class GameSession {
 	private readonly selfDamageAt = { value: 0 };
 	private radioOn = false;
 	private cameraRaised = false;
+	/** La visée (clic gauche maintenu) : l'appareil devant les yeux, l'écran en grand. */
+	private cameraAiming = false;
 	private photoPending = false;
 	private radioGhostAt = 0;
 	private radioGhostName: string | null = null;
@@ -1248,13 +1250,16 @@ export class GameSession {
 			this.altarId === null;
 		if (!canAim) {
 			this.cameraRaised = false;
+			this.setCameraAiming(loaded, false);
 			return;
 		}
 		if (frame.pressed.has("camera")) {
 			this.cameraRaised = !this.cameraRaised;
 		}
+		// Viser lève l'appareil le temps du clic, même s'il était baissé.
+		this.setCameraAiming(loaded, frame.held.has("aim"));
 		if (
-			this.cameraRaised &&
+			this.cameraUp &&
 			frame.pressed.has("photo") &&
 			loaded.rig.cameraUp &&
 			!this.photoPending
@@ -1270,9 +1275,23 @@ export class GameSession {
 		}
 	}
 
+	/** Levé à la main (touche de l'appareil) ou le temps d'une visée. */
+	private get cameraUp(): boolean {
+		return this.cameraRaised || this.cameraAiming;
+	}
+
+	/** En visée, l'écran est grand : son image passe en meilleure définition. */
+	private setCameraAiming(loaded: LoadedWorld, aiming: boolean): void {
+		if (aiming === this.cameraAiming) {
+			return;
+		}
+		this.cameraAiming = aiming;
+		loaded.photoCamera.setPreviewDetail(aiming);
+	}
+
 	/** Juste avant l'image normale : le viseur, et la photo si on vient de déclencher. */
 	private renderCamera(loaded: LoadedWorld): void {
-		if (!this.cameraRaised && !this.photoPending) {
+		if (!this.cameraUp && !this.photoPending) {
 			return;
 		}
 		const { renderer, scene, camera, photoCamera } = loaded;
@@ -1308,7 +1327,8 @@ export class GameSession {
 		loaded.rig.update(dt, {
 			grimoireOpen: loaded.grimoire.isOpen,
 			heldObject: this.heldObject(),
-			cameraRaised: this.cameraRaised,
+			cameraRaised: this.cameraUp,
+			cameraAimed: this.cameraAiming,
 			lanternOpen: this.lanternIntent && this.hideSpot < 0,
 			speed: player.speed,
 			crouch: player.character.crouch,
@@ -1493,7 +1513,7 @@ export class GameSession {
 			sprint: input.sprint,
 			moveInput: Math.abs(input.forward) > 0 || Math.abs(input.strafe) > 0,
 			grimoire: (this.loadedWorld as LoadedWorld).grimoire.isOpen,
-			camera: this.cameraRaised,
+			camera: this.cameraUp,
 			voiceLevel: Math.min(1, this.voicePeak),
 			voicePeakMs: Math.min(2000, Math.round(this.voiceActiveMs)),
 			held: this.heldSlot,
@@ -1704,7 +1724,8 @@ export class GameSession {
 			walkieTalking: this.radioOn,
 			walkieSpeakers: this.walkieSpeakers(),
 			cameraHeld: loaded.state.selfHasCamera,
-			cameraRaised: this.cameraRaised,
+			cameraRaised: this.cameraUp,
+			cameraAiming: this.cameraAiming,
 			photoCount: photoStore.get().photos.length,
 			...this.brewHud((flags & PLAYER_FLAG.dead) === 0),
 			level: this.currentLevel(),
@@ -2044,6 +2065,7 @@ export class GameSession {
 					soundBank.play("camera-shutter", { volume: 0.35 });
 					pushFeedback(
 						currentMessages().game.camera.taken(
+							keyLabel(settingsStore.get().keys.aim),
 							keyLabel(settingsStore.get().keys.camera),
 						),
 						"info",

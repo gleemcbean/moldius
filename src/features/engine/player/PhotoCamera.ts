@@ -3,6 +3,8 @@ import * as THREE from "three";
 import type { PostEffects } from "../render/PostEffects";
 
 const PREVIEW_SIZE = 256;
+/** En visée, l'écran de l'appareil est grand : son image gagne en définition. */
+const AIMED_PREVIEW_SIZE = 512;
 const PHOTO_QUALITY = 0.9;
 
 /**
@@ -26,6 +28,13 @@ export class PhotoCamera {
 			depthBuffer: true,
 		});
 		this.camera.layers.set(0);
+	}
+
+	setPreviewDetail(aimed: boolean): void {
+		const size = aimed ? AIMED_PREVIEW_SIZE : PREVIEW_SIZE;
+		if (this.preview.width !== size) {
+			this.preview.setSize(size, size);
+		}
 	}
 
 	private follow(view: THREE.PerspectiveCamera): void {

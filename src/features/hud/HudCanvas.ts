@@ -1176,13 +1176,20 @@ export class HudCanvas {
 		}
 		const labels = currentMessages().game.camera;
 		const keys = settingsStore.get().keys;
-		const line = hud.cameraRaised
-			? labels.raised(
+		const line = hud.cameraAiming
+			? labels.aiming(
 					keyLabel(keys.photo),
 					hud.photoCount,
 					MAX_PHOTOS_PER_MATCH,
 				)
-			: labels.lowered(keyLabel(keys.camera));
+			: hud.cameraRaised
+				? labels.raised(
+						keyLabel(keys.photo),
+						hud.photoCount,
+						MAX_PHOTOS_PER_MATCH,
+						keyLabel(keys.aim),
+					)
+				: labels.lowered(keyLabel(keys.aim), keyLabel(keys.camera));
 		const color = hud.cameraRaised ? YELLOW : TEXT_MUTED;
 		const font = `500 18px ${BODY}`;
 		const context = this.context;

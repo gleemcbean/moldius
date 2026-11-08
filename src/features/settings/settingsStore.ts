@@ -76,6 +76,37 @@ function clampNumber(
 		: fallback;
 }
 
+/**
+ * Les réglages d'avant la visée n'ont pas de touche « aim » : le clic gauche y prenait
+ * la photo. Il vise désormais, et la photo passe au clic droit s'il est libre.
+ * Jamais deux actions sur la même touche.
+ */
+export function migrateAimKey(
+	keys: Record<ActionId, string>,
+	saved: Partial<Record<ActionId, string>> | undefined,
+): void {
+	if (!saved || typeof saved.aim === "string") {
+		return;
+	}
+	const usedBy = (code: string, except: ActionId) =>
+		(Object.keys(keys) as ActionId[]).some(
+			(action) => action !== except && keys[action] === code,
+		);
+	if (keys.photo === DEFAULT_KEYS.aim && !usedBy(DEFAULT_KEYS.photo, "photo")) {
+		keys.photo = DEFAULT_KEYS.photo;
+	}
+	if (usedBy(keys.aim, "aim")) {
+		const free = [
+			"MouseLeft",
+			"MouseRight",
+			"MouseMiddle",
+			"KeyB",
+			"KeyZ",
+		].find((code) => !usedBy(code, "aim"));
+		keys.aim = free ?? keys.aim;
+	}
+}
+
 function sanitize(raw: Partial<PlayerSettings> | null): PlayerSettings {
 	const base = defaultSettings(
 		isLanguage(raw?.language) ? raw.language : undefined,
@@ -90,6 +121,7 @@ function sanitize(raw: Partial<PlayerSettings> | null): PlayerSettings {
 			keys[action] = code;
 		}
 	}
+	migrateAimKey(keys, raw.keys);
 	return {
 		version: 1,
 		language: base.language,

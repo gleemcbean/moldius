@@ -16,6 +16,7 @@ import {
 } from "../../grimoire/GrimoireModel";
 import {
 	CAMERA_BODY,
+	CAMERA_SCREEN_SIZE,
 	type CameraModel,
 	createCameraModel,
 } from "../../models/cameraModel";
@@ -34,6 +35,8 @@ export interface RigInput {
 	heldObject: OccultId | null;
 	/** L'appareil photo levé devant soi : il prend la place de l'objet occulte. */
 	cameraRaised: boolean;
+	/** En visée : l'appareil devant les yeux, son écran au centre et en grand. */
+	cameraAimed: boolean;
 	lanternOpen: boolean;
 	speed: number;
 	crouch: number;
@@ -88,6 +91,11 @@ const CAMERA_LOWERED = new THREE.Vector3(-0.08, -0.62, -0.32);
 const CAMERA_ELBOW = new THREE.Vector3(-0.4, -0.55, -0.08);
 const CAMERA_FLASH_MS = 160;
 const CAMERA_BODY_HALF = CAMERA_BODY.height / 2;
+/** En visée, l'écran de l'appareil occupe cette part de la hauteur de vue, quel que soit le FOV. */
+const CAMERA_AIM_SCREEN_SHARE = 0.4;
+/** Le centre de l'écran, vu depuis le centre de l'appareil (voir createCameraModel). */
+const CAMERA_SCREEN_OFFSET_X = -0.012;
+const CAMERA_AIM_SECONDS = 0.18;
 const BOOK_WIDTH = (BOOK_PAGE_WIDTH + 0.015) * 2;
 const BOOK_HEIGHT = BOOK_PAGE_HEIGHT + 0.025;
 const BOOK_HEIGHT_SHARE = 0.54;
@@ -150,6 +158,7 @@ export class FirstPersonRig {
 	private heldBlend = 0;
 	private readonly photoCamera: CameraModel;
 	private cameraBlend = 0;
+	private aimBlend = 0;
 	private flashUntil = 0;
 
 	constructor(
@@ -270,29 +279,53 @@ export class FirstPersonRig {
 			this.cameraBlend < target
 				? Math.min(target, this.cameraBlend + step)
 				: Math.max(target, this.cameraBlend - step);
+		const aimTarget = input.cameraAimed && target === 1 ? 1 : 0;
+		const aimStep = dt / CAMERA_AIM_SECONDS;
+		this.aimBlend =
+			this.aimBlend < aimTarget
+				? Math.min(aimTarget, this.aimBlend + aimStep)
+				: Math.max(aimTarget, this.aimBlend - aimStep);
 		const model = this.photoCamera.root;
 		model.visible = this.cameraBlend > 0.01;
 		if (!model.visible) {
 			return;
 		}
-		const position = new THREE.Vector3().lerpVectors(
-			CAMERA_LOWERED,
-			CAMERA_RAISED,
-			easeInOut(this.cameraBlend),
-		);
-		const steady = 0.5;
+		const aim = easeInOut(this.aimBlend);
+		const position = new THREE.Vector3()
+			.lerpVectors(CAMERA_LOWERED, CAMERA_RAISED, easeInOut(this.cameraBlend))
+			.lerp(this.aimedCameraPosition(input.fov), aim);
+		// En visée, les mains se calment : l'écran doit rester lisible.
+		const steady = 0.5 - aim * 0.38;
 		position.x += (this.sway.x + bobX) * steady;
 		position.y += (this.sway.y - bobY) * steady - input.crouch * 0.01;
 		model.position.copy(position);
 		model.position.y -= CAMERA_BODY_HALF;
-		model.rotation.set(0.05 - (1 - this.cameraBlend) * 0.9, 0.04, 0);
+		model.rotation.set(
+			(0.05 - (1 - this.cameraBlend) * 0.9) * (1 - aim),
+			0.04 * (1 - aim),
+			0,
+		);
 		const flashing = performance.now() < this.flashUntil;
 		this.photoCamera.flash.material.color.setHex(
 			flashing ? 0xffffff : 0xd8dde4,
 		);
 		const contact = position.clone();
-		contact.x -= 0.075;
+		// En visée, la main tient l'appareil par en dessous, hors de l'écran.
+		contact.x -= 0.075 + aim * 0.012;
+		contact.y -= aim * 0.04;
 		this.placeArm(this.leftArm, contact, CAMERA_ELBOW);
+	}
+
+	/** Devant les yeux, l'écran centré, assez près pour en occuper une bonne part. */
+	private aimedCameraPosition(fov: number): THREE.Vector3 {
+		const viewHeight = 2 * Math.tan(THREE.MathUtils.degToRad(fov) / 2);
+		const distance =
+			CAMERA_SCREEN_SIZE / (viewHeight * CAMERA_AIM_SCREEN_SHARE);
+		return new THREE.Vector3(
+			-CAMERA_SCREEN_OFFSET_X,
+			0,
+			-(distance + CAMERA_BODY.depth / 2),
+		);
 	}
 
 	private createArm(): ArmMesh {

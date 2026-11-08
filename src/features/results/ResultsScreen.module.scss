@@ -112,8 +112,6 @@
 .side {
   min-height: 0;
   overflow: hidden auto;
-  scrollbar-width: thin;
-  scrollbar-color: $line-strong transparent;
   display: flex;
   flex-direction: column;
   gap: 14px;

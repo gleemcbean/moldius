@@ -190,11 +190,14 @@ export const gameFr = {
 		taken: "Talkie récupéré : ceux qui en ont un vous entendent partout",
 	},
 	camera: {
-		taken: (key: string) =>
-			`Appareil photo récupéré : ${key} pour le lever et viser`,
-		lowered: (key: string) => `Appareil photo : ${key} pour viser`,
-		raised: (key: string, count: number, max: number) =>
-			`${key} : photo (${count}/${max})`,
+		taken: (aimKey: string, cameraKey: string) =>
+			`Appareil photo récupéré : ${aimKey} maintenu pour viser, ${cameraKey} pour le lever`,
+		lowered: (aimKey: string, cameraKey: string) =>
+			`Appareil photo : ${aimKey} pour viser · ${cameraKey} pour le lever`,
+		raised: (photoKey: string, count: number, max: number, aimKey: string) =>
+			`${photoKey} : photo (${count}/${max}) · ${aimKey} : viser`,
+		aiming: (photoKey: string, count: number, max: number) =>
+			`Visée · ${photoKey} : photo (${count}/${max})`,
 		full: (max: number) => `Pellicule pleine : ${max} photos au maximum`,
 	},
 	brew: {
@@ -641,10 +644,14 @@ export const gameEn: typeof gameFr = {
 		taken: "Walkie picked up: anyone holding one hears you everywhere",
 	},
 	camera: {
-		taken: (key: string) => `Camera picked up: ${key} to raise it and aim`,
-		lowered: (key: string) => `Camera: ${key} to aim`,
-		raised: (key: string, count: number, max: number) =>
-			`${key}: photo (${count}/${max})`,
+		taken: (aimKey, cameraKey) =>
+			`Camera picked up: hold ${aimKey} to aim, ${cameraKey} to raise it`,
+		lowered: (aimKey, cameraKey) =>
+			`Camera: ${aimKey} to aim · ${cameraKey} to raise it`,
+		raised: (photoKey, count, max, aimKey) =>
+			`${photoKey}: photo (${count}/${max}) · ${aimKey}: aim`,
+		aiming: (photoKey, count, max) =>
+			`Aiming · ${photoKey}: photo (${count}/${max})`,
 		full: (max: number) => `Film full: ${max} photos at most`,
 	},
 	brew: {

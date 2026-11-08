@@ -17,6 +17,7 @@ export const ACTION_IDS = [
 	"shout",
 	"radio",
 	"camera",
+	"aim",
 	"photo",
 	"map",
 	"leaderboard",

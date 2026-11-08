@@ -88,6 +88,7 @@ export interface HudState {
 	walkieSpeakers: string[];
 	cameraHeld: boolean;
 	cameraRaised: boolean;
+	cameraAiming: boolean;
 	photoCount: number;
 	photoFlashAt: number;
 	/** L'effet de chaudron en cours et ce qu'il en reste. */
@@ -152,6 +153,7 @@ export function initialHud(): HudState {
 		walkieSpeakers: [],
 		cameraHeld: false,
 		cameraRaised: false,
+		cameraAiming: false,
 		photoCount: 0,
 		photoFlashAt: 0,
 		brew: null,
