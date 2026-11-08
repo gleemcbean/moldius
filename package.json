@@ -14,7 +14,7 @@
 		"dev:client": "vite",
 		"dev:server": "tsx watch --clear-screen=false server/main.ts",
 		"build": "npm run build:client && npm run build:server && npm run export:source",
-		"build:client": "vite build",
+		"build:client": "node scripts/vosk-setup.mjs && vite build",
 		"build:server": "tsc -p tsconfig.server.json",
 		"start": "node dist-server/server/main.js",
 		"typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.test.json --noEmit",
@@ -23,7 +23,7 @@
 		"format": "biome format --write .",
 		"format:check": "biome .",
 		"export:source": "tsx scripts/export-source.ts",
-		"vosk:worker": "node scripts/vosk-worker.mjs",
+		"vosk:setup": "node scripts/vosk-setup.mjs",
 		"lan:open": "node scripts/lan.mjs open",
 		"lan:close": "node scripts/lan.mjs close",
 		"lan:status": "node scripts/lan.mjs status"

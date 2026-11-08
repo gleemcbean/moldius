@@ -151,6 +151,46 @@ function createWindow() {
 	if (SMOKE_TEST) {
 		contents.once("did-finish-load", () => {
 			setTimeout(async () => {
+				// Diagnostic de la reconnaissance hors ligne : le worker charge-t-il le modèle ?
+				const vosk = process.env.MOLDIUS_SMOKE_VOSK
+					? await contents.executeJavaScript(`new Promise((resolve) => {
+						const started = performance.now();
+						const done = (value) => resolve(JSON.stringify({ ...value, ms: Math.round(performance.now() - started) }));
+						let worker;
+						try { worker = new Worker("/vosk/worker.js"); } catch (error) { done({ step: "worker", error: String(error) }); return; }
+						worker.onerror = (event) => done({ step: "worker-error", error: event.message || "?" });
+						worker.onmessage = (event) => { if (event.data && event.data.event) done({ step: event.data.event, data: event.data }); };
+						worker.postMessage({ action: "load", modelUrl: new URL("/vosk/model-fr-0.22.tar.gz", location.href).href });
+						setTimeout(() => done({ step: "timeout" }), 90000);
+					})`)
+					: "";
+				// Une phrase enregistrée, transcrite par le modèle anglais comme le ferait une incantation.
+				const heard = process.env.MOLDIUS_SMOKE_WAV
+					? await contents.executeJavaScript(`(async () => {
+						const bytes = Uint8Array.from(atob("${fs.readFileSync(process.env.MOLDIUS_SMOKE_WAV).toString("base64")}"), (c) => c.charCodeAt(0));
+						const context = new AudioContext();
+						const audio = await context.decodeAudioData(bytes.buffer);
+						const worker = new Worker("/vosk/worker.js");
+						const reply = (wanted) => new Promise((resolve) => {
+							const listener = (event) => { if (wanted.includes(event.data.event)) { worker.removeEventListener("message", listener); resolve(event.data); } };
+							worker.addEventListener("message", listener);
+						});
+						worker.postMessage({ action: "load", modelUrl: new URL("/vosk/model-en-us-0.15.tar.gz", location.href).href });
+						await reply(["load"]);
+						worker.postMessage({ action: "create", recognizerId: "test", sampleRate: audio.sampleRate });
+						const samples = audio.getChannelData(0);
+						for (let start = 0; start < samples.length; start += 4096) {
+							const chunk = samples.slice(start, start + 4096).map((value) => value * 32768);
+							worker.postMessage({ action: "audioChunk", recognizerId: "test", data: chunk, sampleRate: audio.sampleRate }, [chunk.buffer]);
+						}
+						worker.postMessage({ action: "retrieveFinalResult", recognizerId: "test" });
+						const final = await Promise.race([reply(["result", "error"]), new Promise((resolve) => setTimeout(() => resolve({ event: "timeout" }), 30000))]);
+						return JSON.stringify(final);
+					})()`)
+					: "";
+				const mic = process.env.MOLDIUS_SMOKE_VOSK
+					? await contents.executeJavaScript(`navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => { stream.getTracks().forEach((track) => track.stop()); return "micro ok"; }, (error) => "micro: " + error.name)`)
+					: "";
 				const image = await contents.capturePage();
 				const page = await contents.executeJavaScript(
 					`JSON.stringify({ controls: Boolean(document.getElementById("moldius-window-controls")), desktop: Boolean(window.moldiusDesktop), root: document.getElementById("root")?.childElementCount ?? 0, boot: Boolean(document.getElementById("boot")), title: document.querySelector("h1")?.textContent ?? null, fullscreen: window.moldiusDesktop?.isFullscreen() ?? null, nativeSpeech: typeof window.webkitSpeechRecognition, wasm: typeof WebAssembly, worker: typeof Worker })`,
@@ -158,7 +198,7 @@ function createWindow() {
 				fs.writeFileSync(SMOKE_TEST, image.toPNG());
 				fs.writeFileSync(
 					`${SMOKE_TEST}.txt`,
-					`${contents.getURL()}\n${contents.getTitle()}\n${image.isEmpty() ? "image vide" : "image ok"}\n${JSON.stringify({ bounds: window.getBounds(), visible: window.isVisible(), fullscreen: window.isFullScreen(), crashed: contents.isCrashed(), size: image.getSize() })}\n${page}\n`,
+					`${contents.getURL()}\n${contents.getTitle()}\n${image.isEmpty() ? "image vide" : "image ok"}\n${JSON.stringify({ bounds: window.getBounds(), visible: window.isVisible(), fullscreen: window.isFullScreen(), crashed: contents.isCrashed(), size: image.getSize() })}\n${page}\n${vosk}\n${mic}\n${heard}\n`,
 				);
 				app.quit();
 			}, 6000);
