@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import express, { type Express } from "express";
 import type { AdminLiveStats } from "../shared/protocol/admin.js";
@@ -84,6 +84,25 @@ export function createApp(
 		});
 	});
 
+	// L'installateur Windows le plus récent de l'application de bureau.
+	app.get("/download/MOLDIUS-Setup.exe", (_request, response) => {
+		const installer = latestInstaller(config.desktopReleaseDir);
+		if (!installer) {
+			response.status(404).json({ error: "Installateur indisponible." });
+			return;
+		}
+		response.setHeader(
+			"Content-Type",
+			"application/vnd.microsoft.portable-executable",
+		);
+		response.setHeader(
+			"Content-Disposition",
+			`attachment; filename="${basename(installer)}"`,
+		);
+		response.setHeader("Cache-Control", "no-cache");
+		response.sendFile(installer);
+	});
+
 	app.get("/download/mycelium-source.zip", (_request, response) => {
 		const sendArchive = (send: () => void) => {
 			response.setHeader("Content-Type", "application/zip");
@@ -148,4 +167,16 @@ export function createApp(
 		});
 	}
 	return { app, dispose: accountRouter.dispose };
+}
+
+/** Le plus récent des MOLDIUS-Setup-<version>.exe du dossier, s'il y en a un. */
+export function latestInstaller(directory: string): string | null {
+	if (!existsSync(directory)) {
+		return null;
+	}
+	const candidates = readdirSync(directory)
+		.filter((name) => /^MOLDIUS-Setup-[\w.-]+\.exe$/.test(name))
+		.map((name) => resolve(directory, name))
+		.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
+	return candidates[0] ?? null;
 }

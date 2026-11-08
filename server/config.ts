@@ -15,6 +15,8 @@ export interface ServerConfig {
 	projectRoot: string;
 	clientDistDir: string;
 	sourceArchivePath: string;
+	/** Où l'installateur Windows de l'application de bureau est déposé (desktop/release). */
+	desktopReleaseDir: string;
 	trustProxy: boolean;
 	dev: boolean;
 	databaseUrl: string | null;
@@ -135,6 +137,10 @@ export function loadServerConfig(): ServerConfig {
 		iceServers: parseIceServers(),
 		projectRoot,
 		clientDistDir: resolve(projectRoot, process.env.CLIENT_DIST_DIR ?? "dist"),
+		desktopReleaseDir: resolve(
+			projectRoot,
+			process.env.DESKTOP_RELEASE_DIR ?? "desktop/release",
+		),
 		sourceArchivePath: resolve(
 			projectRoot,
 			process.env.SOURCE_ARCHIVE ?? "release/mycelium-source.zip",

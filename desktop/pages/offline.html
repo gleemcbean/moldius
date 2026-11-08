@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self'" />
+		<title>MOLDIUS</title>
+		<style>
+			html,
+			body {
+				height: 100%;
+				margin: 0;
+			}
+			body {
+				display: grid;
+				place-items: center;
+				padding: 16px;
+				box-sizing: border-box;
+				background: radial-gradient(ellipse at 50% 35%, #1c241b 0%, #111512 70%);
+				color: #ecefe2;
+				font-family: Georgia, serif;
+				text-align: center;
+				user-select: none;
+			}
+			img {
+				width: 112px;
+				height: 112px;
+				filter: drop-shadow(5px 5px 0 rgba(0, 0, 0, 0.55));
+			}
+			h1 {
+				margin: 12px 0 18px;
+				color: #dce54d;
+				font-size: 72px;
+				font-weight: 400;
+				letter-spacing: 0.02em;
+				text-shadow:
+					4px 4px 0 #3b4115,
+					8px 8px 0 rgba(0, 0, 0, 0.6);
+			}
+			p {
+				margin: 0 0 6px;
+				font-size: 19px;
+				color: #9fa894;
+			}
+			.actions {
+				display: flex;
+				gap: 12px;
+				justify-content: center;
+				margin-top: 26px;
+			}
+			button {
+				padding: 12px 30px;
+				border: 2px solid #dce54d;
+				background: #dce54d;
+				color: #111512;
+				font: 700 20px Georgia, serif;
+				cursor: pointer;
+			}
+			button.quiet {
+				background: transparent;
+				color: #dce54d;
+			}
+			button:hover,
+			button:focus-visible {
+				background: #eef46a;
+				color: #111512;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<img src="favicon.svg" alt="" />
+			<h1>MOLDIUS</h1>
+			<p id="message">Le serveur du jeu est injoignable. Vérifiez votre connexion.</p>
+			<div class="actions">
+				<button id="retry" type="button">Réessayer</button>
+				<button id="quit" class="quiet" type="button">Quitter</button>
+			</div>
+		</main>
+		<script>
+			const english = new URLSearchParams(location.search).get("lang") === "en";
+			if (english) {
+				document.documentElement.lang = "en";
+				document.getElementById("message").textContent =
+					"The game server is unreachable. Check your connection.";
+				document.getElementById("retry").textContent = "Retry";
+				document.getElementById("quit").textContent = "Quit";
+			}
+			document.getElementById("retry").addEventListener("click", () => window.moldiusDesktop?.retry());
+			document.getElementById("quit").addEventListener("click", () => window.moldiusDesktop?.quit());
+			// Nouvel essai tout seul, toutes les 10 secondes.
+			setInterval(() => window.moldiusDesktop?.retry(), 10000);
+		</script>
+	</body>
+</html>

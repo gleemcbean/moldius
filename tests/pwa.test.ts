@@ -1,59 +1,44 @@
-import { existsSync, readFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	utimesSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { latestInstaller } from "../server/app.js";
 
 const PUBLIC = new URL("../public/", import.meta.url);
 
-interface ManifestIcon {
-	src: string;
-	sizes: string;
-	type: string;
-	purpose: string;
-}
-
-const manifest = JSON.parse(
-	readFileSync(new URL("manifest.webmanifest", PUBLIC), "utf8"),
-) as {
-	name: string;
-	start_url: string;
-	display: string;
-	icons: ManifestIcon[];
-};
-
-function pngSize(path: URL): string {
-	const bytes = readFileSync(path);
-	expect(bytes.subarray(1, 4).toString("ascii")).toBe("PNG");
-	return `${bytes.readUInt32BE(16)}x${bytes.readUInt32BE(20)}`;
-}
-
-describe("application installable", () => {
-	it("décrit une application autonome lancée à la racine", () => {
-		expect(manifest.name).toBe("MOLDIUS");
-		expect(manifest.start_url).toBe("/");
-		expect(manifest.display).toBe("standalone");
+describe("application de bureau à la place de l'application web", () => {
+	it("ne déclare plus d'application web installable", () => {
 		const html = readFileSync(
 			new URL("../index.html", import.meta.url),
 			"utf8",
 		);
-		expect(html).toContain('rel="manifest" href="/manifest.webmanifest"');
+		expect(html).not.toContain('rel="manifest"');
 	});
 
-	it("fournit des icônes PNG 192 et 512 px aux dimensions annoncées", () => {
-		const sizes = manifest.icons.map((icon) => icon.sizes);
-		expect(sizes).toContain("192x192");
-		expect(sizes).toContain("512x512");
-		expect(manifest.icons.some((icon) => icon.purpose === "maskable")).toBe(
-			true,
-		);
-		for (const icon of manifest.icons) {
-			expect(icon.type).toBe("image/png");
-			expect(pngSize(new URL(`.${icon.src}`, PUBLIC))).toBe(icon.sizes);
-		}
-	});
-
-	it("met en cache la page hors ligne référencée par le service worker", () => {
+	it("garde un service worker qui se retire de lui-même", () => {
 		const worker = readFileSync(new URL("sw.js", PUBLIC), "utf8");
-		const offline = /OFFLINE_URL = "\/([^"]+)"/.exec(worker)?.[1];
-		expect(offline).toBeDefined();
-		expect(existsSync(new URL(offline as string, PUBLIC))).toBe(true);
+		expect(worker).toContain("registration.unregister()");
+		expect(worker).not.toContain('addEventListener("fetch"');
+	});
+
+	it("sert le plus récent des installateurs Windows", () => {
+		const directory = mkdtempSync(join(tmpdir(), "moldius-release-"));
+		expect(latestInstaller(join(directory, "absent"))).toBeNull();
+		mkdirSync(directory, { recursive: true });
+		expect(latestInstaller(directory)).toBeNull();
+		const older = join(directory, "MOLDIUS-Setup-1.0.0.exe");
+		const newer = join(directory, "MOLDIUS-Setup-1.1.0.exe");
+		writeFileSync(older, "a");
+		writeFileSync(newer, "b");
+		writeFileSync(join(directory, "MOLDIUS-Setup-1.1.0.exe.blockmap"), "c");
+		utimesSync(older, new Date(2026, 0, 2), new Date(2026, 0, 2));
+		utimesSync(newer, new Date(2026, 0, 1), new Date(2026, 0, 1));
+		expect(latestInstaller(directory)).toBe(older);
 	});
 });

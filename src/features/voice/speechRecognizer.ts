@@ -1,5 +1,6 @@
 import { INCANTATION_VOCABULARY } from "@shared/anomalies/vocabulary";
 import { CAST_LISTEN_MAX_MS } from "@shared/config/index";
+import { desktopApp } from "../../app/desktopApp";
 import { currentLanguage, currentMessages } from "../../i18n";
 import { speechLocale } from "../../i18n/language";
 import { preloadVosk, VoskListener, voskSupported } from "./voskRecognizer";
@@ -54,6 +55,11 @@ function speechScope(): Window & SpeechScope {
 }
 
 function recognitionConstructor(): RecognitionConstructor | null {
+	// Dans l'application de bureau, la reconnaissance native existe mais ne marche pas
+	// (service de Google réservé à Chrome) : on passe directement à Vosk.
+	if (desktopApp) {
+		return null;
+	}
 	const scope = speechScope();
 	return scope.SpeechRecognition ?? scope.webkitSpeechRecognition ?? null;
 }

@@ -15,6 +15,7 @@ import {
 } from "@shared/rewards";
 import { useEffect, useMemo, useState } from "react";
 import { openOverlay } from "../../app/appStore";
+import { desktopApp } from "../../app/desktopApp";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { SelectorGroup } from "../../components/SelectorGroup";
@@ -275,6 +276,16 @@ export function HomeScreen() {
 							{t.home.tutorialHint}
 						</span>
 					</div>
+					{desktopApp ? (
+						<Button
+							variant="ghost"
+							wide
+							icon={<Icon name="door" />}
+							onClick={() => desktopApp?.quit()}
+						>
+							{t.home.quitGame}
+						</Button>
+					) : null}
 				</div>
 
 				<div className={styles.more}>
@@ -346,7 +357,9 @@ export function HomeScreen() {
 						<button
 							type="button"
 							className={styles.tile}
-							onClick={() => void promptInstall()}
+							onClick={promptInstall}
+							title={t.home.install}
+							aria-label={t.home.install}
 							data-selectable=""
 						>
 							<span className={styles.tileIcon}>

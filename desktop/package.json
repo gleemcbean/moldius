@@ -1,0 +1,46 @@
+{
+	"name": "moldius-desktop",
+	"productName": "MOLDIUS",
+	"version": "1.0.0",
+	"description": "MOLDIUS, le jeu d'horreur multijoueur, en application de bureau.",
+	"author": "Glee McBean",
+	"private": true,
+	"main": "main.cjs",
+	"scripts": {
+		"start": "node scripts/prepare.mjs && electron .",
+		"dist:win": "node scripts/prepare.mjs && electron-builder --win nsis",
+		"dist:dir": "node scripts/prepare.mjs && electron-builder --win dir"
+	},
+	"devDependencies": {
+		"electron": "^39.2.0",
+		"electron-builder": "^26.0.12"
+	},
+	"build": {
+		"appId": "fr.moldius.game",
+		"productName": "MOLDIUS",
+		"copyright": "© MOLDIUS",
+		"directories": {
+			"output": "release",
+			"buildResources": "build"
+		},
+		"files": ["main.cjs", "preload.cjs", "app-config.json", "pages/**/*", "build/icon.png"],
+		"win": {
+			"target": "nsis",
+			"icon": "build/icon.png",
+			"artifactName": "MOLDIUS-Setup-${version}.${ext}"
+		},
+		"nsis": {
+			"oneClick": false,
+			"perMachine": false,
+			"allowToChangeInstallationDirectory": true,
+			"createDesktopShortcut": true,
+			"createStartMenuShortcut": true,
+			"shortcutName": "MOLDIUS",
+			"uninstallDisplayName": "MOLDIUS",
+			"installerIcon": "build/icon.ico",
+			"uninstallerIcon": "build/icon.ico",
+			"installerHeaderIcon": "build/icon.ico",
+			"runAfterFinish": true
+		}
+	}
+}

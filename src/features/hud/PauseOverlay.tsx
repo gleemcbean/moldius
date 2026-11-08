@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { openOverlay } from "../../app/appStore";
+import { desktopApp } from "../../app/desktopApp";
 import { Button } from "../../components/Button";
 import { SelectorGroup } from "../../components/SelectorGroup";
 import { useT } from "../../i18n";
@@ -70,6 +71,11 @@ export function PauseOverlay({ session }: { session: GameSession }) {
 				<Button variant="ghost" wide onClick={leaveMatch}>
 					{t.game.pause.leave}
 				</Button>
+				{desktopApp ? (
+					<Button variant="ghost" wide onClick={() => desktopApp?.quit()}>
+						{t.home.quitGame}
+					</Button>
+				) : null}
 				<p className={styles.pauseHint}>
 					{keyboardLockSupported()
 						? t.game.pause.keyboardLock
