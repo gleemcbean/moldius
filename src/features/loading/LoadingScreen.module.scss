@@ -104,3 +104,26 @@
   font-style: italic;
   color: $text-muted;
 }
+
+/* ——— Apparition ——— */
+@include enter-keyframes;
+
+.kicker {
+  @include enter(fade, 60ms);
+}
+
+.title {
+  @include enter(left, 120ms);
+}
+
+.bar {
+  @include enter(up, 220ms);
+}
+
+.steps li {
+  @include enter-stagger(left, 300ms, 50ms, 8);
+}
+
+.hint {
+  @include enter(fade, 700ms);
+}

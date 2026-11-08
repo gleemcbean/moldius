@@ -6,6 +6,7 @@ import {
 	INCREMENTAL_CHALLENGES,
 } from "./challenges.js";
 import type { HatPattern } from "./hatPatterns.js";
+import { levelOf } from "./progression.js";
 
 export const LANTERN_TINTS = [
 	"amber",
@@ -16,6 +17,9 @@ export const LANTERN_TINTS = [
 	"gold",
 	"specter",
 	"toxic",
+	"rose",
+	"abyss",
+	"aurora",
 ] as const;
 
 export type LanternTint = (typeof LANTERN_TINTS)[number];
@@ -31,6 +35,9 @@ export const LANTERN_TINT_COLORS: Record<LanternTint, number> = {
 	gold: 0xffd84a,
 	specter: 0xe6e0ff,
 	toxic: 0xc8f03a,
+	rose: 0xff8cc8,
+	abyss: 0x6a7cff,
+	aurora: 0x5affd8,
 };
 
 export function isLanternTint(value: unknown): value is LanternTint {
@@ -54,6 +61,10 @@ export const TAGLINES = [
 	"bigGame",
 	"veteran",
 	"faithful",
+	"sprout",
+	"seasoned",
+	"elder",
+	"legend",
 ] as const;
 
 export type Tagline = (typeof TAGLINES)[number];
@@ -70,16 +81,28 @@ export interface ProgressStats {
 	captures: number;
 	dailies: number;
 	awards: number;
+	xp?: number;
 	challenges?: ChallengeProgress;
 }
 
-/** Une récompense se gagne toujours par un défi de la liste, jamais à part. */
+/** Une récompense se gagne par un défi de la liste ou en atteignant un niveau. */
 export interface Reward {
 	kind: "hat" | "lantern" | "tagline";
 	value: HatPattern | LanternTint | Tagline;
-	challenge: ChallengeId;
+	/** null pour une récompense de niveau. */
+	challenge: ChallengeId | null;
 	/** Le palier à atteindre, à partir de 1 ; null pour un défi classique. */
 	tier: number | null;
+	/** Le niveau qui la débloque, pour les récompenses de niveau. */
+	level?: number;
+}
+
+function levelReward(
+	level: number,
+	kind: Reward["kind"],
+	value: Reward["value"],
+): Reward {
+	return { kind, value, challenge: null, tier: null, level };
 }
 
 /** Purement visuel : débloquer une récompense ne donne aucun avantage en jeu. */
@@ -110,7 +133,23 @@ export const REWARDS: readonly Reward[] = [
 	{ kind: "tagline", value: "bigGame", challenge: "hunter", tier: 3 },
 	{ kind: "tagline", value: "veteran", challenge: "veteran", tier: 3 },
 	{ kind: "tagline", value: "faithful", challenge: "regular", tier: 3 },
+	levelReward(5, "tagline", "sprout"),
+	levelReward(10, "lantern", "rose"),
+	levelReward(15, "hat", "hearts"),
+	levelReward(20, "tagline", "seasoned"),
+	levelReward(30, "lantern", "abyss"),
+	levelReward(40, "tagline", "elder"),
+	levelReward(50, "hat", "mycelium"),
+	levelReward(75, "tagline", "legend"),
+	levelReward(100, "lantern", "aurora"),
 ];
+
+/** Les récompenses de niveau, de la plus proche à la plus lointaine. */
+export function levelRewards(): Reward[] {
+	return REWARDS.filter((reward) => reward.level !== undefined).sort(
+		(a, b) => (a.level ?? 0) - (b.level ?? 0),
+	);
+}
 
 export function accountProgress(account: {
 	stats: Omit<ProgressStats, "challenges">;
@@ -123,6 +162,12 @@ export function rewardProgress(
 	reward: Reward,
 	stats: ProgressStats | null,
 ): { value: number; target: number } {
+	if (reward.level !== undefined) {
+		return {
+			value: Math.min(levelOf(stats?.xp ?? 0), reward.level),
+			target: reward.level,
+		};
+	}
 	const progress = stats?.challenges ?? {};
 	const classic = CLASSIC_CHALLENGES.find(({ id }) => id === reward.challenge);
 	if (classic) {

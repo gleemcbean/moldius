@@ -10,6 +10,7 @@ import {
 	type Vec2,
 } from "../../math.js";
 import type { SeededRandom } from "../../random.js";
+import { cauldronBrew } from "../brews.js";
 import {
 	type FurnitureDefinition,
 	type FurnitureLightSpec,
@@ -1274,7 +1275,8 @@ export class RoomFurnisher {
 				y,
 				z: round(item.z + local.z),
 			},
-			color: light.color,
+			color:
+				item.kind === "cauldron" ? cauldronBrew(item.seed).light : light.color,
 			intensity: grand ? light.intensity * 2.2 : light.intensity,
 			radius: grand ? light.radius * 1.8 : light.radius,
 			kind: light.kind,

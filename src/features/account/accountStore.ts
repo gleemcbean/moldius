@@ -332,6 +332,21 @@ export async function saveProfile(
 	return { ok: true, value: null };
 }
 
+/** S'enregistre aussitôt, sans attendre le reste du formulaire de profil. */
+export async function setPrivateProfile(
+	privateProfile: boolean,
+): Promise<ApiResult<null>> {
+	const result = await accountApi.updateProfile({ privateProfile });
+	if (!result.ok) {
+		if (result.status === 401) {
+			signedOut();
+		}
+		return result;
+	}
+	signedIn(result.value.account);
+	return { ok: true, value: null };
+}
+
 export async function logout(): Promise<void> {
 	await accountApi.logout();
 	signedOut();

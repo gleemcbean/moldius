@@ -106,6 +106,8 @@ export const appearanceFr = {
 		lightning: "Éclairs",
 		eyes: "Yeux",
 		laurel: "Lauriers",
+		hearts: "Cœurs",
+		mycelium: "Mycélium",
 	} satisfies Record<HatPattern, string>,
 	lanterns: {
 		amber: "Ambre",
@@ -116,6 +118,9 @@ export const appearanceFr = {
 		gold: "Or",
 		specter: "Spectre",
 		toxic: "Poison",
+		rose: "Rose",
+		abyss: "Abysse",
+		aurora: "Aurore",
 	} satisfies Record<LanternTint, string>,
 	taglines: {
 		smile: ":)",
@@ -130,6 +135,10 @@ export const appearanceFr = {
 		bigGame: "Grand chasseur",
 		veteran: "Vétéran",
 		faithful: "Fidèle au poste",
+		sprout: "Jeune pousse",
+		seasoned: "Aguerri",
+		elder: "Ancien",
+		legend: "Légende",
 	} satisfies Record<Tagline, string>,
 	names: [
 		"Morille Hardie",
@@ -180,6 +189,8 @@ export const appearanceEn: typeof appearanceFr = {
 		lightning: "Lightning",
 		eyes: "Eyes",
 		laurel: "Laurels",
+		hearts: "Hearts",
+		mycelium: "Mycelium",
 	},
 	lanterns: {
 		amber: "Amber",
@@ -190,6 +201,9 @@ export const appearanceEn: typeof appearanceFr = {
 		gold: "Gold",
 		specter: "Specter",
 		toxic: "Toxic",
+		rose: "Rose",
+		abyss: "Abyss",
+		aurora: "Aurora",
 	},
 	taglines: {
 		smile: ":)",
@@ -204,6 +218,10 @@ export const appearanceEn: typeof appearanceFr = {
 		bigGame: "Big game hunter",
 		veteran: "Veteran",
 		faithful: "Always on duty",
+		sprout: "Sprout",
+		seasoned: "Seasoned",
+		elder: "Elder",
+		legend: "Legend",
 	},
 	names: [
 		"Bold Morel",

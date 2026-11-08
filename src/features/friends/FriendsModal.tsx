@@ -15,6 +15,7 @@ import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
 import { accountStore } from "../account/accountStore";
 import { lobbyStore } from "../lobby/lobbyStore";
+import { ProfileLink } from "../profile/ProfileLink";
 import styles from "./FriendsModal.module.scss";
 import {
 	addFriend,
@@ -41,7 +42,7 @@ function Person({
 	children?: React.ReactNode;
 }) {
 	return (
-		<li className={styles.person}>
+		<li className={styles.person} data-selector-row="">
 			<HatPreview
 				color={person.color}
 				pattern={person.pattern}
@@ -49,7 +50,9 @@ function Person({
 			/>
 			<span className={styles.identity}>
 				<span className={styles.name}>
-					{person.name}
+					<ProfileLink profileId={person.accountId} name={person.name}>
+						{person.name}
+					</ProfileLink>
 					<TaglineBadge tagline={person.tagline} />
 				</span>
 				{detail ? (

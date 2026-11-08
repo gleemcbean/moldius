@@ -19,16 +19,22 @@ import { treatPathAsInvite } from "../features/lobby/inviteStore";
 import { LobbyScreen } from "../features/lobby/LobbyScreen";
 import { listenLobbyUpdates } from "../features/lobby/lobbyClient";
 import { initConnection } from "../features/network/connection";
+import { PlayerProfileModal } from "../features/profile/PlayerProfileModal";
 import { ResultsScreen } from "../features/results/ResultsScreen";
 import { SettingsModal } from "../features/settings/SettingsModal";
 import { settingsStore } from "../features/settings/settingsStore";
 import { micManager } from "../features/voice/micManager";
 import { initVoiceController } from "../features/voice/voiceController";
-import { useStore } from "../hooks/useStore";
 import { initLanguage } from "../i18n";
 import { appStore, closeOverlay } from "./appStore";
+import { appMounted } from "./boot";
 import { DesktopOnly } from "./DesktopOnly";
 import { hasDesktopInput } from "./desktopOnly";
+import {
+	type AppView,
+	runTransition,
+	transitionKind,
+} from "./screenTransitions";
 import { Toasts } from "./Toasts";
 
 const ADMIN_CHECK_TIMEOUT_MS = 3000;
@@ -50,6 +56,11 @@ function useGlobalSetup(): void {
 		void loadKeyboardLayout();
 		const applySettings = () => {
 			const settings = settingsStore.get();
+			// Les animations d'interface suivent aussi « Réduire les effets gênants ».
+			document.documentElement.toggleAttribute(
+				"data-reduce-motion",
+				settings.reduceMotion,
+			);
 			audioEngine.setVolumes(settings.volumes);
 			micManager.setVoiceGate(settings.voiceGate);
 		};
@@ -75,6 +86,8 @@ function useGlobalSetup(): void {
 }
 
 export function App() {
+	// Les effets des enfants passent avant : le décor de l'accueil a déjà retenu l'écran.
+	useEffect(() => appMounted(), []);
 	const pathname = window.location.pathname.replace(/\/$/, "");
 	if (pathname === "/terms" || pathname === "/privacy") {
 		return <LegalPage document={pathname === "/terms" ? "terms" : "privacy"} />;
@@ -125,10 +138,41 @@ function AdminGate() {
 	);
 }
 
+/**
+ * L'écran et la fenêtre affichés suivent ceux de appStore à travers une transition :
+ * la logique du jeu voit le nouvel écran tout de suite, l'affichage glisse vers lui.
+ */
+function useShownView(): AppView {
+	const [view, setView] = useState<AppView>(() => {
+		const { screen, overlay } = appStore.get();
+		return { screen, overlay };
+	});
+	useEffect(() => {
+		const sync = () => {
+			const { screen, overlay } = appStore.get();
+			setView((shown) =>
+				shown.screen === screen && shown.overlay === overlay
+					? shown
+					: { screen, overlay },
+			);
+		};
+		sync();
+		return appStore.subscribe((state, previous) => {
+			if (
+				state.screen === previous.screen &&
+				state.overlay === previous.overlay
+			) {
+				return;
+			}
+			runTransition(transitionKind(previous, state), sync);
+		});
+	}, []);
+	return view;
+}
+
 function GameApp() {
 	useGlobalSetup();
-	const screen = useStore(appStore, (state) => state.screen);
-	const overlay = useStore(appStore, (state) => state.overlay);
+	const { screen, overlay } = useShownView();
 	return (
 		<>
 			{screen === "home" ? <HomeScreen /> : null}
@@ -144,6 +188,7 @@ function GameApp() {
 			{overlay === "challenges" ? (
 				<ChallengesModal onClose={closeOverlay} />
 			) : null}
+			<PlayerProfileModal />
 			{screen === "home" || screen === "lobby" ? <FriendInvites /> : null}
 			<Toasts />
 		</>

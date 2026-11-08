@@ -21,6 +21,7 @@ export const challengesFr = {
 	tierReward: (tier: number, name: string) =>
 		`Récompense au palier ${tier} : ${name}`,
 	requireClassic: (name: string, task: string) => `Défi ${name} : ${task}`,
+	requireLevel: (level: number) => `Atteindre le niveau ${level}`,
 	requireTier: (tier: number, name: string, task: string) =>
 		`Défi ${name}, palier ${tier} : ${task}`,
 	guestRequirement: (requirement: string) => `${requirement} (avec un compte)`,
@@ -147,6 +148,7 @@ export const challengesEn: typeof challengesFr = {
 	reward: (name) => `Reward: ${name}`,
 	tierReward: (tier, name) => `Reward at tier ${tier}: ${name}`,
 	requireClassic: (name, task) => `${name} challenge: ${task}`,
+	requireLevel: (level) => `Reach level ${level}`,
 	requireTier: (tier, name, task) => `${name} challenge, tier ${tier}: ${task}`,
 	guestRequirement: (requirement) => `${requirement} (with an account)`,
 	resultsTitle: (names) => `Challenges completed: ${names}`,

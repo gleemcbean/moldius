@@ -251,6 +251,17 @@
   text-overflow: ellipsis;
 }
 
+/* Un petit repère à côté du nom, à la taille des étiquettes du dessous plutôt qu'à celle du nom.
+   Deux classes : passe devant le style du badge quel que soit l'ordre des feuilles. */
+.slotName .slotLevel {
+  flex-shrink: 0;
+  margin-left: 0;
+  padding: 0 5px;
+  font-size: 15px;
+  line-height: 19px;
+  letter-spacing: 0.04em;
+}
+
 .you {
   flex-shrink: 0;
   padding: 0 5px;
@@ -671,4 +682,31 @@
   justify-content: flex-end;
   gap: 12px;
   margin-top: 6px;
+}
+
+/* ——— Apparition : l'en-tête descend, les joueurs arrivent un à un, les règles par la droite ——— */
+@include enter-keyframes;
+
+.header {
+  @include enter(down, 40ms);
+}
+
+.slots > li {
+  @include enter-stagger(left, 140ms, 50ms, 8);
+}
+
+.teamPicker {
+  @include enter(fade, 120ms);
+}
+
+.side {
+  @include enter(right, 240ms, 620ms);
+}
+
+.main > .micPanel {
+  @include enter(up, 520ms);
+}
+
+.footer {
+  @include enter(up, 380ms);
 }

@@ -1,0 +1,30 @@
+@use '../../styles/tokens' as *;
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    color: $yellow;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+// Dans une ligne de joueur (classement, carte du lobby, ami), le lien couvre
+// toute la ligne : on clique n'importe où dessus pour ouvrir le profil.
+:global([data-selector-row]) {
+  position: relative;
+}
+
+:global([data-selector-row]) .link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}

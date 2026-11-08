@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-booting>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -32,9 +32,229 @@
       crossorigin
     />
     <link rel="preload" href="/fonts/alegreya-700.woff2" as="font" type="font/woff2" crossorigin />
+    <link
+      rel="preload"
+      href="/fonts/im-fell-english-sc-400.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <title>Moldius</title>
+    <style>
+      /* Écran de chargement : affiché avant tout JavaScript, retiré par src/app/boot.ts. */
+      @font-face {
+        font-family: 'Moldius Boot Title';
+        src: url('/fonts/im-fell-english-sc-400.woff2') format('woff2');
+        font-display: block;
+      }
+      @font-face {
+        font-family: 'Moldius Boot Text';
+        src: url('/fonts/alegreya-500.woff2') format('woff2');
+        font-display: swap;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #111512;
+      }
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 50% 40%, rgba(220, 229, 77, 0.09) 0, rgba(220, 229, 77, 0) 34%),
+          radial-gradient(ellipse at 50% 30%, #1c241b 0%, #111512 70%);
+        color: #ecefe2;
+        font-family: 'Moldius Boot Text', 'Georgia', serif;
+        transition:
+          opacity 480ms ease,
+          visibility 0s linear 480ms;
+      }
+      #boot.boot-done {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      #boot::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0.55) 100%);
+      }
+      .boot-stage {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        padding: 16px;
+        text-align: center;
+      }
+      .boot-mark {
+        position: relative;
+        width: 128px;
+        height: 128px;
+        display: grid;
+        place-items: center;
+      }
+      .boot-mark::before {
+        content: '';
+        position: absolute;
+        inset: -46px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 176, 96, 0.28) 0, rgba(255, 176, 96, 0) 62%);
+        animation: boot-flicker 1.9s ease-in-out infinite;
+      }
+      .boot-mark img {
+        position: relative;
+        width: 112px;
+        height: 112px;
+        filter: drop-shadow(5px 5px 0 rgba(0, 0, 0, 0.55));
+        animation: boot-hop 0.9s ease-in-out infinite;
+      }
+      .boot-mark i {
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        width: 72px;
+        height: 9px;
+        margin-left: -36px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.55);
+        animation: boot-shadow 0.9s ease-in-out infinite;
+      }
+      .boot-title {
+        margin: 0;
+        font-family: 'Moldius Boot Title', 'IM Fell English SC', 'Georgia', serif;
+        font-size: clamp(56px, 8vw, 96px);
+        line-height: 1;
+        letter-spacing: 0.02em;
+        color: #dce54d;
+        text-shadow:
+          4px 4px 0 #3b4115,
+          8px 8px 0 rgba(0, 0, 0, 0.6);
+      }
+      .boot-bar {
+        position: relative;
+        width: min(300px, calc(100vw - 64px));
+        height: 18px;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.5);
+        box-shadow: inset 0 0 0 2px #46543f;
+      }
+      .boot-bar span {
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        left: 3px;
+        width: 38%;
+        background: repeating-linear-gradient(90deg, #dce54d 0 10px, #b9c22f 10px 12px);
+        animation: boot-sweep 1.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+      }
+      .boot-text {
+        margin: 0;
+        font-size: 17px;
+        letter-spacing: 0.02em;
+        color: #9fa894;
+      }
+      .boot-slow {
+        margin: 0;
+        font-size: 15px;
+        color: #9fa894;
+      }
+      .boot-slow a {
+        margin-left: 6px;
+        color: #dce54d;
+      }
+      /* Hors de la grille : sinon il prend une rangée et pousse le contenu vers le bas. */
+      .boot-spores {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .boot-spores span {
+        position: absolute;
+        bottom: -12px;
+        width: 4px;
+        height: 4px;
+        background: #dce54d;
+        opacity: 0;
+        animation: boot-spore 7s linear infinite;
+      }
+      .boot-spores span:nth-child(1) { left: 12%; animation-delay: 0s; }
+      .boot-spores span:nth-child(2) { left: 27%; animation-delay: 2.6s; width: 3px; height: 3px; }
+      .boot-spores span:nth-child(3) { left: 44%; animation-delay: 5.1s; }
+      .boot-spores span:nth-child(4) { left: 61%; animation-delay: 1.3s; width: 3px; height: 3px; }
+      .boot-spores span:nth-child(5) { left: 76%; animation-delay: 3.9s; }
+      .boot-spores span:nth-child(6) { left: 90%; animation-delay: 6.2s; width: 3px; height: 3px; }
+      @keyframes boot-hop {
+        0%, 100% { transform: translateY(0) rotate(-3deg); }
+        50% { transform: translateY(-10px) rotate(3deg); }
+      }
+      @keyframes boot-shadow {
+        0%, 100% { transform: scaleX(1); opacity: 0.55; }
+        50% { transform: scaleX(0.78); opacity: 0.3; }
+      }
+      @keyframes boot-flicker {
+        0%, 100% { opacity: 1; }
+        40% { opacity: 0.75; }
+        55% { opacity: 0.95; }
+        70% { opacity: 0.7; }
+      }
+      @keyframes boot-sweep {
+        0% { transform: translateX(-70%); }
+        100% { transform: translateX(250%); }
+      }
+      @keyframes boot-spore {
+        0% { transform: translate(0, 0); opacity: 0; }
+        15% { opacity: 0.55; }
+        100% { transform: translate(24px, -105vh); opacity: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot *,
+        #boot *::before {
+          animation: none !important;
+        }
+        .boot-bar span {
+          width: 60%;
+        }
+        .boot-spores {
+          display: none;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="boot" role="status" aria-live="polite">
+      <div class="boot-spores" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="boot-stage">
+        <div class="boot-mark" aria-hidden="true">
+          <i></i>
+          <img src="/favicon.svg" alt="" width="112" height="112" />
+        </div>
+        <p class="boot-title">MOLDIUS</p>
+        <div class="boot-bar" aria-hidden="true"><span></span></div>
+        <p class="boot-text" data-fr="Le manoir s'éveille…" data-en="The manor is waking up…">
+          Le manoir s'éveille…
+        </p>
+        <p id="boot-slow" class="boot-slow" hidden>
+          <span
+            data-fr="Le chargement prend plus de temps que prévu."
+            data-en="Loading is taking longer than expected."
+            >Le chargement prend plus de temps que prévu.</span
+          ><a href="" data-fr="Recharger" data-en="Reload">Recharger</a>
+        </p>
+      </div>
+    </div>
+    <script src="/boot.js"></script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

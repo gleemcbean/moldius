@@ -22,6 +22,9 @@ export interface LobbyPlayerInfo {
 	lantern: LanternTint;
 	tagline: Tagline | null;
 	team: number | null;
+	/** Le compte du joueur, pour ouvrir son profil ; null pour un invité. */
+	profileId: string | null;
+	level: number | null;
 }
 
 /** Ce que le joueur a choisi sur l'accueil ; le serveur écarte ce qui est verrouillé. */

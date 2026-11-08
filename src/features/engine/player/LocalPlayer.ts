@@ -38,6 +38,7 @@ export interface LocalContext {
 	sprintAllowed: boolean;
 	jumpAllowed: boolean;
 	speedFactor: number;
+	gravityFactor: number;
 	pull: Vec2;
 	alive: boolean;
 	carriedAnchor: Vec3 | null;
@@ -180,6 +181,7 @@ export class LocalPlayer {
 		this.lastInput = input;
 		const modifiers: MovementModifiers = {
 			speedFactor: context.speedFactor,
+			gravityFactor: context.gravityFactor,
 			externalVelocity: { x: context.pull.x, z: context.pull.z },
 			sprintAllowed: context.sprintAllowed,
 			fly: context.devModes.fly,

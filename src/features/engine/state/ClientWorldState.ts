@@ -1,5 +1,6 @@
 import { SPECIES, type SpeciesId } from "@shared/config/species";
 import { DEFAULT_HAT_PATTERN, type HatPattern } from "@shared/hatPatterns";
+import type { BrewEffect } from "@shared/manor/brews";
 import type { ManorLayout } from "@shared/manor/types";
 import type { Vec3 } from "@shared/math";
 import type { CollisionWorld } from "@shared/physics/collisionWorld";
@@ -85,6 +86,7 @@ export class ClientWorldState {
 		number,
 		{ holder: string | null; available: boolean }
 	>();
+	readonly brews = new Map<string, { effect: BrewEffect; until: number }>();
 	readonly puddles = new Map<number, PuddleClientState>();
 	readonly projectiles = new Map<number, ProjectileClientState>();
 	readonly listeners = new Set<EventListener>();
@@ -141,6 +143,12 @@ export class ClientWorldState {
 		return [...this.walkies.values()].some(
 			(walkie) => walkie.holder === this.selfId,
 		);
+	}
+
+	/** L'effet de chaudron du joueur local, s'il dure encore. */
+	selfBrew(serverNow: number): { effect: BrewEffect; until: number } | null {
+		const brew = this.brews.get(this.selfId);
+		return brew && brew.until > serverNow ? brew : null;
 	}
 
 	get selfHasCamera(): boolean {
@@ -246,6 +254,16 @@ export class ClientWorldState {
 					holder: event.holder,
 					available: event.available,
 				});
+				break;
+			case "brew":
+				if (event.effect === null) {
+					this.brews.delete(event.playerId);
+				} else {
+					this.brews.set(event.playerId, {
+						effect: event.effect,
+						until: event.until,
+					});
+				}
 				break;
 			case "camera":
 				this.cameras.set(event.id, {

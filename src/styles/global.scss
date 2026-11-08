@@ -68,3 +68,136 @@ a {
     transition-duration: 1ms !important;
   }
 }
+
+/* Tant que l'écran de chargement couvre la page, ses animations d'entrée attendent. */
+html[data-booting] #root * {
+  animation-play-state: paused !important;
+}
+
+/*
+ * Transitions entre écrans (API View Transitions, voir src/app/screenTransitions.ts).
+ * forward : l'écran suivant glisse par la droite et recouvre le précédent, qui recule dans l'ombre.
+ * back    : l'écran précédent revient par la gauche. dive : plongée dans le manoir. rise : les résultats montent.
+ * close   : une fenêtre qui se ferme fond rapidement.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 560ms;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  animation-fill-mode: both;
+}
+
+html[data-transition='forward']::view-transition-old(root),
+html[data-transition='forward']::view-transition-new(root),
+html[data-transition='back']::view-transition-old(root),
+html[data-transition='back']::view-transition-new(root),
+html[data-transition='rise']::view-transition-old(root),
+html[data-transition='rise']::view-transition-new(root),
+html[data-transition='dive']::view-transition-old(root),
+html[data-transition='dive']::view-transition-new(root) {
+  mix-blend-mode: normal;
+}
+
+html[data-transition='forward']::view-transition-old(root) {
+  animation-name: screen-recede-left;
+}
+
+html[data-transition='forward']::view-transition-new(root) {
+  animation-name: screen-enter-right;
+  box-shadow: -32px 0 64px rgba(0, 0, 0, 0.6), -2px 0 0 $yellow;
+}
+
+// Pas de z-index sur l'ancienne image : Chrome interrompt alors la transition.
+// Au retour, l'écran précédent revient donc par la gauche, par-dessus, en miroir de l'avance.
+html[data-transition='back']::view-transition-old(root) {
+  animation-name: screen-recede-right;
+}
+
+html[data-transition='back']::view-transition-new(root) {
+  animation-name: screen-enter-left;
+  box-shadow: 32px 0 64px rgba(0, 0, 0, 0.6), 2px 0 0 $yellow;
+}
+
+html[data-transition='rise']::view-transition-old(root) {
+  animation-name: screen-sink;
+}
+
+html[data-transition='rise']::view-transition-new(root) {
+  animation-name: screen-rise;
+  animation-duration: 620ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 -32px 64px rgba(0, 0, 0, 0.6), 0 -2px 0 $yellow;
+}
+
+// Plongée : le manoir s'ouvre en iris depuis le centre pendant que l'écran de chargement s'enfonce.
+html[data-transition='dive']::view-transition-old(root) {
+  animation-name: screen-dive-out;
+  animation-duration: 760ms;
+}
+
+html[data-transition='dive']::view-transition-new(root) {
+  animation-name: screen-iris-in;
+  animation-duration: 760ms;
+  animation-timing-function: cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+html[data-transition='close']::view-transition-old(root),
+html[data-transition='close']::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+}
+
+@keyframes screen-enter-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes screen-recede-left {
+  to {
+    transform: translateX(-30%);
+    filter: brightness(0.35);
+  }
+}
+
+@keyframes screen-enter-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes screen-recede-right {
+  to {
+    transform: translateX(30%);
+    filter: brightness(0.35);
+  }
+}
+
+@keyframes screen-rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes screen-sink {
+  to {
+    transform: scale(0.92);
+    filter: brightness(0.3);
+  }
+}
+
+@keyframes screen-dive-out {
+  to {
+    transform: scale(1.18);
+    filter: brightness(0.2);
+  }
+}
+
+@keyframes screen-iris-in {
+  from {
+    clip-path: circle(0% at 50% 50%);
+  }
+  to {
+    clip-path: circle(75% at 50% 50%);
+  }
+}

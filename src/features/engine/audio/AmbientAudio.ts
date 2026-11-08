@@ -133,6 +133,7 @@ export class AmbientAudio {
 			grounded: boolean;
 			crouching: boolean;
 			slimed: boolean;
+			wading: boolean;
 			tension: number;
 			lowHealth: boolean;
 			waterAt: THREE.Vector3 | null;
@@ -168,6 +169,7 @@ export class AmbientAudio {
 			grounded: boolean;
 			crouching: boolean;
 			slimed: boolean;
+			wading: boolean;
 		},
 	): void {
 		if (!options.grounded || options.stepSpeed < 0.5) {
@@ -184,7 +186,11 @@ export class AmbientAudio {
 			return;
 		}
 		this.stepDistance = 0;
-		const id = options.slimed ? "step-slime" : footstepSound(room?.style.floor);
+		const id = options.wading
+			? "step-water"
+			: options.slimed
+				? "step-slime"
+				: footstepSound(room?.style.floor);
 		soundBank.play(id, {
 			volume: options.crouching ? 0.22 : options.stepSpeed > 4 ? 0.7 : 0.45,
 			rate: 0.9 + Math.random() * 0.2,

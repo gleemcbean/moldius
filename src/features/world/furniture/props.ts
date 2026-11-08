@@ -1,3 +1,4 @@
+import { cauldronBrew } from "@shared/manor/brews";
 import * as THREE from "three";
 import { meterCircle, placed } from "../geometryUtils";
 import type { MaterialOptions } from "../MaterialLibrary";
@@ -37,6 +38,7 @@ const POTION_COLORS = [0x6dff7a, 0xff4fd8, 0x4fa8ff, 0xffb84f, 0xd04040];
 export const cauldron: FurnitureBuilder = ({ item }) => {
 	const radius = item.width / 2;
 	const height = item.height;
+	const brew = cauldronBrew(item.seed);
 	const parts: Part[] = [
 		lathe(
 			IRON,
@@ -60,8 +62,8 @@ export const cauldron: FurnitureBuilder = ({ item }) => {
 		),
 		cylinder(
 			{
-				color: 0x2a7a2a,
-				emissive: 0x3aff5a,
+				color: brew.liquid,
+				emissive: brew.glow,
 				emissiveIntensity: 0.7,
 				roughness: 0.25,
 			},
@@ -93,8 +95,8 @@ export const cauldron: FurnitureBuilder = ({ item }) => {
 		parts.push(
 			sphere(
 				{
-					color: 0x4aaa3a,
-					emissive: 0x3aff5a,
+					color: brew.bubble,
+					emissive: brew.glow,
 					emissiveIntensity: 0.8,
 					roughness: 0.2,
 				},

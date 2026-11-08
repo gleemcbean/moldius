@@ -17,6 +17,20 @@ interface SelectorRect {
 
 const PADDING = 6;
 
+/**
+ * Un élément marqué `data-selectable="row"` (le pseudo d'un joueur) fait
+ * encadrer toute sa ligne `data-selector-row` : la carte du joueur, pas son nom.
+ */
+function frameOf(element: HTMLElement, root: HTMLElement): HTMLElement {
+	if (element.dataset.selectable !== "row") {
+		return element;
+	}
+	const row = element.parentElement?.closest<HTMLElement>(
+		"[data-selector-row]",
+	);
+	return row && root.contains(row) ? row : element;
+}
+
 export function SelectorGroup({
 	children,
 	className,
@@ -41,7 +55,7 @@ export function SelectorGroup({
 			return;
 		}
 		const bounds = root.getBoundingClientRect();
-		const target = element.getBoundingClientRect();
+		const target = frameOf(element, root).getBoundingClientRect();
 		setRect({
 			x: target.left - bounds.left - PADDING,
 			y: target.top - bounds.top - PADDING,
@@ -91,16 +105,16 @@ export function SelectorGroup({
 			const element = findSelectable(event.target);
 			if (element && root.contains(element)) {
 				if (current.current && current.current !== element) {
-					resize.unobserve(current.current);
+					resize.unobserve(frameOf(current.current, root));
 				}
 				current.current = element;
-				resize.observe(element);
+				resize.observe(frameOf(element, root));
 				measure(element);
 			}
 		};
 		const onLeave = () => {
 			if (current.current) {
-				resize.unobserve(current.current);
+				resize.unobserve(frameOf(current.current, root));
 			}
 			current.current = null;
 			hide();

@@ -669,6 +669,7 @@ export function createAccountRouter(accounts: AccountModule): AccountRouter {
 			lantern: body.lantern,
 			tagline: body.tagline,
 			language: body.language,
+			privateProfile: body.privateProfile,
 		});
 		if (!result.ok) {
 			sendProblem(
@@ -808,6 +809,23 @@ export function createAccountRouter(accounts: AccountModule): AccountRouter {
 			return;
 		}
 		response.json({ match: detail });
+	});
+
+	router.get("/players/:profileId", async (request, response) => {
+		const ready = service(request, response);
+		if (!ready) {
+			return;
+		}
+		const viewer = await ready.authenticate(cookieToken(request));
+		const profile = await ready.publicProfile(
+			request.params.profileId,
+			viewer?.accountId ?? null,
+		);
+		if (!profile) {
+			sendError(request, response, 404, "notFound");
+			return;
+		}
+		response.json({ profile });
 	});
 
 	router.use((request: Request, response: Response) => {

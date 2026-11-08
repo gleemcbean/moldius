@@ -211,6 +211,48 @@
   gap: 28px;
 }
 
+.privacy {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 2px solid $line;
+  background: rgba(10, 12, 10, 0.5);
+  cursor: pointer;
+
+  &:has(input:checked) {
+    border-color: $yellow;
+  }
+
+  input {
+    margin-top: 4px;
+    accent-color: $yellow;
+  }
+
+  strong {
+    display: block;
+    font-weight: 700;
+    color: $text;
+  }
+
+  small {
+    display: block;
+    margin-top: 2px;
+    font-family: $font-text;
+    font-size: 14px;
+    line-height: 1.35;
+    color: $text-muted;
+  }
+}
+
+.privacyIcon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  color: $yellow;
+}
+
 .summary {
   display: flex;
   flex-direction: column;
@@ -304,6 +346,11 @@
 
 .number {
   @include numeric;
+  text-align: right;
+}
+
+// L'en-tête d'une colonne de chiffres s'aligne sur ses chiffres, à droite.
+.history th.number {
   text-align: right;
 }
 
@@ -532,4 +579,15 @@
   font-size: 15px;
   color: $yellow;
   white-space: nowrap;
+}
+
+@include enter-keyframes;
+
+/* Les lignes de l'historique et les récompenses arrivent l'une après l'autre. */
+.history tbody tr {
+  @include enter-stagger(up, 120ms, 35ms, 12);
+}
+
+.rewards li {
+  @include enter-stagger(pop, 120ms, 30ms, 12);
 }

@@ -37,6 +37,10 @@ function parsePlayer(raw: unknown): MatchDetailPlayer | null {
 	}
 	const awards = Array.isArray(raw.awards) ? raw.awards : [];
 	return {
+		profileId:
+			typeof raw.profileId === "string" && /^[\w-]{1,64}$/.test(raw.profileId)
+				? raw.profileId
+				: null,
 		name: raw.name.slice(0, 32),
 		color: count(raw.color),
 		pattern: isHatPattern(raw.pattern) ? raw.pattern : DEFAULT_HAT_PATTERN,

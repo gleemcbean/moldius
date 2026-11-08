@@ -14,6 +14,8 @@ export const HAT_PATTERNS = [
 	"lightning",
 	"eyes",
 	"laurel",
+	"hearts",
+	"mycelium",
 ] as const;
 
 export type HatPattern = (typeof HAT_PATTERNS)[number];

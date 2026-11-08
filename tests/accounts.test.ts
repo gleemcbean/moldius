@@ -35,6 +35,7 @@ import { SessionRegistry } from "../server/sessions/SessionRegistry.js";
 import { accountMessage } from "../shared/i18n/accountMessages.js";
 import { parseLanguage } from "../shared/i18n/languages.js";
 import { PUBLIC_MATCH_CONFIG } from "../shared/matchConfig.js";
+import { levelOf, matchXp } from "../shared/progression.js";
 import type { AccountProfile } from "../shared/protocol/account.js";
 import {
 	isDeleteConfirmation,
@@ -503,11 +504,13 @@ describe("API des comptes", () => {
 			"language",
 			"lantern",
 			"pattern",
+			"privateProfile",
 			"stats",
 			"tagline",
 			"termsAcceptedAt",
 		]);
 		expect(account).toMatchObject({
+			privateProfile: false,
 			hasPassword: true,
 			discord: null,
 			language: "fr",
@@ -1426,6 +1429,143 @@ describe("historique et sessions", () => {
 		}
 	});
 
+	it("montre un profil public avec le niveau, sans email ni réglages", async () => {
+		const { database, service, token } = await serviceWithClock();
+		try {
+			const session = await service.authenticate(token);
+			if (!session) {
+				throw new Error("Session should not be null");
+			}
+			const won = await service.recordMatch({
+				accountId: session.accountId,
+				matchId: "m_public",
+				playedAt: new Date("2026-03-01T12:30:00Z"),
+				durationMs: 480_000,
+				visibility: "public",
+				playerName: "Girolle",
+				color: BLUE,
+				rank: 1,
+				playerCount: 4,
+				score: 1_500,
+				captures: 3,
+				deaths: 0,
+				won: true,
+				xp: matchXp({ score: 1_500, won: true }),
+			});
+			expect(won).toBe(true);
+			const profile = await service.publicProfile(session.accountId);
+			expect(profile).toMatchObject({
+				profileId: session.accountId,
+				displayName: "Girolle",
+				stats: { gamesPlayed: 1, wins: 1, xp: 40 + 150 + 60 },
+				recent: [{ rank: 1, playerCount: 4, score: 1_500, won: true }],
+			});
+			const text = JSON.stringify(profile);
+			expect(text).not.toContain("@");
+			expect(text).not.toContain("language");
+			expect((await service.history(session.accountId))[0].xp).toBe(250);
+			expect(await service.publicProfile("pas-un-identifiant")).toBeNull();
+			expect(
+				await service.publicProfile("00000000-0000-4000-8000-000000000000"),
+			).toBeNull();
+		} finally {
+			await database.close();
+		}
+	});
+
+	it("réserve un profil privé au joueur et à ses amis", async () => {
+		const { database, service, token, create } = await serviceWithClock();
+		try {
+			const owner = await service.authenticate(token);
+			const friend = await service.authenticate(
+				await create("cepe@example.org"),
+			);
+			const stranger = await service.authenticate(
+				await create("morille@example.org"),
+			);
+			if (!owner || !friend || !stranger) {
+				throw new Error("Session should not be null");
+			}
+			await service.recordMatch({
+				accountId: owner.accountId,
+				matchId: "m_secret",
+				playedAt: new Date("2026-03-01T12:30:00Z"),
+				durationMs: 480_000,
+				visibility: "public",
+				playerName: "Girolle",
+				color: BLUE,
+				rank: 1,
+				playerCount: 4,
+				score: 1_500,
+				captures: 3,
+				deaths: 0,
+				won: true,
+				xp: matchXp({ score: 1_500, won: true }),
+			});
+			expect(
+				(
+					await service.updateProfile(owner.accountId, {
+						privateProfile: "oui",
+					})
+				).ok,
+			).toBe(false);
+			const updated = await service.updateProfile(owner.accountId, {
+				privateProfile: true,
+			});
+			expect(updated.ok && updated.value.privateProfile).toBe(true);
+			// Le reste du profil ne bouge pas quand seule la confidentialité change.
+			expect(updated.ok && updated.value.displayName).toBe("Girolle");
+
+			const hidden = {
+				private: true,
+				displayName: "Girolle",
+				level: levelOf(250),
+				createdAt: null,
+				stats: null,
+				recent: [],
+			};
+			expect(await service.publicProfile(owner.accountId)).toMatchObject(
+				hidden,
+			);
+			expect(
+				await service.publicProfile(owner.accountId, stranger.accountId),
+			).toMatchObject(hidden);
+
+			const shown = {
+				private: true,
+				stats: { gamesPlayed: 1, xp: 250 },
+				recent: [{ score: 1_500 }],
+			};
+			expect(
+				await service.publicProfile(owner.accountId, owner.accountId),
+			).toMatchObject(shown);
+			const [low, high] = [owner.accountId, friend.accountId].sort();
+			await database.query(
+				`INSERT INTO friendships (account_low, account_high, requester_id, status, created_at)
+         VALUES ($1, $2, $1, 'pending', now())`,
+				[low, high],
+			);
+			// Une demande pas encore acceptée ne suffit pas.
+			expect(
+				await service.publicProfile(owner.accountId, friend.accountId),
+			).toMatchObject(hidden);
+			await database.query(
+				"UPDATE friendships SET status = 'accepted' WHERE account_low = $1 AND account_high = $2",
+				[low, high],
+			);
+			expect(
+				await service.publicProfile(owner.accountId, friend.accountId),
+			).toMatchObject(shown);
+
+			await service.updateProfile(owner.accountId, { privateProfile: false });
+			expect(
+				await service.publicProfile(owner.accountId, stranger.accountId),
+			).toMatchObject({ private: false, stats: { gamesPlayed: 1 } });
+		} finally {
+			await database.close();
+		}
+	});
+
 	it("garde le classement détaillé d'une partie, lisible par ses seuls joueurs", async () => {
 		const { database, service, token, create } = await serviceWithClock();
 		try {
@@ -1494,6 +1634,7 @@ describe("historique et sessions", () => {
 			const detail = await service.historyDetail(first.accountId, "m_detail");
 			expect(detail?.players).toEqual([
 				expect.objectContaining({
+					profileId: first.accountId,
 					name: "Girolle",
 					self: true,
 					tagline: "cat",
@@ -1501,6 +1642,7 @@ describe("historique et sessions", () => {
 					awards: [],
 				}),
 				expect.objectContaining({
+					profileId: null,
 					name: "Invité",
 					self: false,
 					tagline: null,
@@ -1509,7 +1651,9 @@ describe("historique et sessions", () => {
 			]);
 			expect(detail?.metrics).toEqual({ fragments: 12, sprintMeters: 340 });
 			expect(detail?.rules).toMatchObject({ manorSize: "medium", floors: 1 });
-			expect(JSON.stringify(detail)).not.toContain(first.accountId);
+			// L'identifiant du compte ouvre le profil public, rien de plus : jamais d'email ni de jeton.
+			expect(JSON.stringify(detail)).not.toContain("@");
+			expect(JSON.stringify(detail)).not.toContain(token);
 			expect(
 				await service.historyDetail(other.accountId, "m_detail"),
 			).toBeNull();
@@ -1577,6 +1721,7 @@ describe("historique et sessions", () => {
 					captures: index % 4,
 					deaths: 1,
 					won: index % 3 === 0,
+					xp: matchXp({ score: index * 10, won: index % 3 === 0 }),
 				};
 				expect(await service.recordMatch(record)).toBe(true);
 			}
@@ -1616,6 +1761,7 @@ describe("historique et sessions", () => {
 				captures: 43,
 				dailies: 0,
 				awards: 0,
+				xp: 40 * 30 + 435 + 60 * 10,
 			});
 			const rows = await database.query<{ total: number }>(
 				"SELECT count(*)::int AS total FROM match_history",

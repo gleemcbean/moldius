@@ -16,6 +16,7 @@ import {
   OCCULT_IDS,
 } from '../../../shared/config/index.js';
 import { movesFreely } from '../../../shared/devModes.js';
+import { BREW_SPEED_FACTOR } from '../../../shared/manor/brews.js';
 import { movementCrossesWall } from '../../../shared/physics/lineOfSight.js';
 import type { ClientStateMessage } from '../../../shared/protocol/game.js';
 import type { Match } from '../Match.js';
@@ -78,8 +79,11 @@ export function applyClientState(
   const sprintAllowed =
     !player.sprintLocked || now - match.sprintLockedAt(player) < SPRINT_GRACE_MS;
   const free = movesFreely(player.devModes);
+  // Le chaudron de vitesse fait courir plus vite : le budget suit, sans jamais rétrécir.
+  const brewBoost =
+    player.brew !== null && now < player.brewUntil ? Math.max(1, BREW_SPEED_FACTOR[player.brew]) : 1;
   const maxSpeed =
-    (player.devModes.fly ? DEV_FLY_FAST_SPEED : sprintAllowed ? SPRINT_SPEED : WALK_SPEED) +
+    (player.devModes.fly ? DEV_FLY_FAST_SPEED : sprintAllowed ? SPRINT_SPEED : WALK_SPEED) * brewBoost +
     Math.hypot(pull.x, pull.z);
   player.movementBudget = Math.min(
     free ? DEV_MOVEMENT_BUDGET_CAP : MOVEMENT_BUDGET_CAP,
@@ -109,7 +113,8 @@ export function applyClientState(
   player.position = next;
   player.velocity = { x: message.vx, y: message.vy, z: message.vz };
   player.grounded = message.grounded;
-  trackFall(match, player, previous.y, free);
+  // Avec la potion de légèreté, on retombe en douceur : pas de dégâts de chute.
+  trackFall(match, player, previous.y, free || player.brewActive('feather', now));
   player.crouch = message.crouch;
   const wasSprinting = player.sprintIntent;
   player.sprintIntent = message.sprint && sprintAllowed;

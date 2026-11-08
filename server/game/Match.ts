@@ -37,6 +37,7 @@ import {
 	DEFAULT_HAT_PATTERN,
 	type HatPattern,
 } from "../../shared/hatPatterns.js";
+import { BREW_DURATION_MS } from "../../shared/manor/brews.js";
 import {
 	assignRecipeMaterials,
 	recipeDeck,
@@ -45,6 +46,11 @@ import {
 	generateManor,
 	layoutChecksum,
 } from "../../shared/manor/generateManor.js";
+import {
+	type LiquidVolume,
+	liquidAt,
+	liquidVolumes,
+} from "../../shared/manor/liquids.js";
 import type { Level, ManorLayout } from "../../shared/manor/types.js";
 import {
 	type MatchConfig,
@@ -178,6 +184,7 @@ export class Match {
 	readonly doors: DoorSystem;
 	readonly valves: ValveSystem;
 	readonly hazards: HazardSystem;
+	readonly liquids: LiquidVolume[];
 	readonly loot = new LootSystem();
 	readonly walkies: WalkieSystem;
 	readonly stakes: StakeSystem;
@@ -245,6 +252,7 @@ export class Match {
 		this.doors = new DoorSystem(this.layout, this.world);
 		this.valves = new ValveSystem(this.layout.valves);
 		this.hazards = new HazardSystem(this.world);
+		this.liquids = liquidVolumes(this.layout.furniture);
 		this.walkieTotal = Math.min(
 			this.layout.walkies.length,
 			walkieCount(options.participants.length),
@@ -654,9 +662,51 @@ export class Match {
 				this.sprintLockTimes.set(player.id, this.now);
 			}
 			this.updateSlime(player);
+			this.updateBrew(player);
 			this.trackRoom(player);
 			this.emitPlayerSounds(player);
 		}
+	}
+
+	/** Tremper dans un chaudron donne son effet ; y rester ne le relance pas. */
+	private updateBrew(player: MatchPlayer): void {
+		if (player.brew !== null && this.now >= player.brewUntil) {
+			player.brew = null;
+		}
+		const liquid =
+			player.hidden || player.carried
+				? null
+				: liquidAt(this.liquids, player.position);
+		const cauldron = liquid?.brew ? liquid : null;
+		const entered =
+			cauldron !== null && cauldron.itemId !== player.brewCauldron;
+		player.brewCauldron = cauldron?.itemId ?? null;
+		if (!entered || !cauldron.brew) {
+			return;
+		}
+		const effect = cauldron.brew.effect;
+		player.brew = effect;
+		player.brewUntil = this.now + BREW_DURATION_MS[effect];
+		if (effect === "vigor") {
+			player.energy = ENERGY_MAX;
+			player.sprintLocked = false;
+		}
+		this.emit({
+			type: "brew",
+			playerId: player.id,
+			effect,
+			until: player.brewUntil,
+		});
+	}
+
+	private clearBrew(player: MatchPlayer): void {
+		player.brewCauldron = null;
+		if (player.brew === null) {
+			return;
+		}
+		player.brew = null;
+		player.brewUntil = 0;
+		this.emit({ type: "brew", playerId: player.id, effect: null, until: 0 });
 	}
 
 	private updateSlime(player: MatchPlayer): void {
@@ -1051,6 +1101,7 @@ export class Match {
 		player.protectedUntil = this.now + PLAYER_RESPAWN_PROTECTION_MS;
 		player.petrifiedUntil = 0;
 		player.castBlockedUntil = 0;
+		this.clearBrew(player);
 		this.forcedMove(player, "respawn", spawn, spawn.yaw, 0);
 		player.roomId = this.roomIdAt(player.position);
 		this.emit({

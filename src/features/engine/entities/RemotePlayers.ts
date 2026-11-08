@@ -3,6 +3,7 @@ import {
 	LANTERN_LIGHT_RANGE,
 } from "@shared/config/index";
 import { OCCULT_IDS } from "@shared/config/occult";
+import { type LiquidVolume, liquidAt } from "@shared/manor/liquids";
 import type { CollisionWorld } from "@shared/physics/collisionWorld";
 import {
 	countWallsBetween,
@@ -38,6 +39,7 @@ interface RemoteView {
 	position: THREE.Vector3;
 	visible: boolean;
 	pose: PoseSmoother;
+	liquidId: number | null;
 }
 
 export class RemotePlayers {
@@ -53,6 +55,7 @@ export class RemotePlayers {
 		private readonly state: ClientWorldState,
 		kit: ModelKit,
 		private readonly world: CollisionWorld,
+		private readonly liquids: readonly LiquidVolume[] = [],
 	) {
 		for (const player of state.players.values()) {
 			const lanternColor = LANTERN_TINT_COLORS[player.lantern];
@@ -86,6 +89,7 @@ export class RemotePlayers {
 				position: new THREE.Vector3(),
 				visible: false,
 				pose: new PoseSmoother(),
+				liquidId: null,
 			});
 			if (player.id === state.selfId) {
 				model.root.visible = false;
@@ -224,7 +228,9 @@ export class RemotePlayers {
 					distance,
 				);
 			}
-			this.footsteps(view, view.pose.speed, dt, flags, distance);
+			const liquid = hidden ? null : liquidAt(this.liquids, view.position);
+			this.splash(view, liquid, distance);
+			this.footsteps(view, view.pose.speed, dt, flags, distance, liquid);
 		}
 	}
 
@@ -234,6 +240,7 @@ export class RemotePlayers {
 		dt: number,
 		flags: number,
 		distance: number,
+		liquid: LiquidVolume | null,
 	): void {
 		if (
 			speed < 0.6 ||
@@ -252,7 +259,7 @@ export class RemotePlayers {
 				{ x: view.position.x, z: view.position.z },
 				view.position.y + 0.1,
 			);
-			soundBank.play(footstepSound(room?.style.floor), {
+			soundBank.play(liquid ? "step-water" : footstepSound(room?.style.floor), {
 				position: view.position,
 				volume: crouch ? 0.25 : 0.55,
 				refDistance: 1.5,
@@ -260,6 +267,30 @@ export class RemotePlayers {
 				occlusion: view.occlusion,
 			});
 		}
+	}
+
+	/** On entend les autres tomber dans un chaudron ou entrer dans un bassin. */
+	private splash(
+		view: RemoteView,
+		liquid: LiquidVolume | null,
+		distance: number,
+	): void {
+		const id = liquid?.itemId ?? null;
+		if (id === view.liquidId) {
+			return;
+		}
+		view.liquidId = id;
+		if (!liquid || distance > 24) {
+			return;
+		}
+		const shallow = liquid.kind === "pond" || liquid.kind === "birdbath";
+		soundBank.play(shallow ? "step-water" : "splash", {
+			position: view.position,
+			volume: shallow ? 0.5 : 0.85,
+			refDistance: 2,
+			maxDistance: 24,
+			occlusion: view.occlusion,
+		});
 	}
 
 	private setVisible(view: RemoteView, visible: boolean): void {

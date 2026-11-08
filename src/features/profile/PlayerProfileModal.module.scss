@@ -1,0 +1,224 @@
+@use '../../styles/tokens' as *;
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: min(440px, 100%);
+}
+
+.identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.hat {
+  display: block;
+  width: 64px;
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  @include title(30px);
+  color: $text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagline {
+  margin-left: 0;
+  font-size: 16px;
+}
+
+.since {
+  @include label;
+  font-size: 13px;
+}
+
+.lantern {
+  display: flex;
+  width: 30px;
+  height: 30px;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+
+  div {
+    padding: 8px 10px;
+    background: $background-panel;
+    box-shadow: inset 0 0 0 1px $line;
+  }
+
+  dt {
+    @include label;
+    font-size: 12px;
+  }
+
+  dd {
+    margin: 4px 0 0;
+    @include figures(24px);
+    color: $yellow;
+  }
+}
+
+.section {
+  margin: 0 0 8px;
+  @include label;
+  color: $text;
+}
+
+.note {
+  margin: 0;
+  @include label;
+}
+
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: 70px 90px minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 10px;
+    background: $background-panel;
+    box-shadow: inset 0 0 0 1px $line;
+  }
+}
+
+.won {
+  box-shadow: inset 3px 0 0 $yellow, inset 0 0 0 1px $line !important;
+}
+
+.date,
+.rank {
+  @include numeric;
+  font-size: 15px;
+  color: $text-muted;
+}
+
+.tags {
+  font-size: 14px;
+  color: $yellow-deep;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score {
+  @include figures(18px);
+  color: $text;
+}
+
+@media (max-width: 560px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .recent li {
+    grid-template-columns: 60px minmax(0, 1fr) auto;
+  }
+
+  .tags {
+    display: none;
+  }
+}
+
+// Un profil privé : l'apparence et le niveau restent, le reste est sous clé.
+.locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 20px 20px;
+  border: 2px dashed $line-strong;
+  background: $background-panel;
+  text-align: center;
+
+  strong {
+    @include title(24px);
+    color: $text;
+  }
+
+  p {
+    max-width: 34ch;
+    margin: 0;
+    font-family: $font-text;
+    font-size: 15px;
+    line-height: 1.4;
+    color: $text-muted;
+  }
+}
+
+.lockedLevel {
+  margin-bottom: 6px;
+  padding: 2px 10px;
+  border: 2px solid $yellow;
+  @include figures(20px);
+  color: $yellow;
+}
+
+.lockedIcon {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  color: $yellow;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.sharedPrivate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  @include label;
+  font-size: 13px;
+  color: $yellow;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+@include enter-keyframes;
+
+.stats > div {
+  @include enter-stagger(pop, 200ms, 50ms, 4);
+}
+
+.recent li {
+  @include enter-stagger(left, 360ms, 50ms, 5);
+}
+
+.locked {
+  @include enter(pop, 160ms);
+}

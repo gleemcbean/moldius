@@ -13,6 +13,7 @@ import {
 	DEFAULT_HAT_PATTERN,
 	type HatPattern,
 } from "../../shared/hatPatterns.js";
+import type { BrewEffect } from "../../shared/manor/brews.js";
 import type { Vec3 } from "../../shared/math.js";
 import {
 	PLAYER_FLAG,
@@ -61,6 +62,12 @@ export class MatchPlayer {
 	hiddenSpot = -1;
 	carriedBy = -1;
 	slimed = false;
+	/** L'effet du dernier chaudron, actif jusqu'à brewUntil. */
+	brew: BrewEffect | null = null;
+	brewUntil = 0;
+	/** Le chaudron où trempe le joueur : y rester ne relance pas l'effet. */
+	brewCauldron: number | null = null;
+
 	slimeDamageAt = -Infinity;
 	lastStateAt = 0;
 	lastSeq = -1;
@@ -115,6 +122,10 @@ export class MatchPlayer {
 
 	get crouching(): boolean {
 		return this.crouch >= 0.6;
+	}
+
+	brewActive(effect: BrewEffect, now: number): boolean {
+		return this.brew === effect && now < this.brewUntil;
 	}
 
 	get hidden(): boolean {

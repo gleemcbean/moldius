@@ -1,0 +1,68 @@
+@use '../../styles/tokens' as *;
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.level {
+  @include figures(22px);
+  color: $yellow;
+}
+
+.gained {
+  @include figures(18px);
+  color: $ok;
+}
+
+.count {
+  margin-left: auto;
+  @include numeric;
+  font-size: 15px;
+  color: $text-muted;
+  white-space: nowrap;
+}
+
+.bar {
+  position: relative;
+  display: block;
+  height: 10px;
+  border: 1px solid $line-strong;
+  background: $background;
+  overflow: hidden;
+}
+
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: $yellow;
+  transition: width 1.1s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.levelUp {
+  margin: 0;
+  @include title(20px);
+  color: $yellow-bright;
+}
+
+.next,
+.breakdown {
+  margin: 0;
+  @include label;
+  font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+}

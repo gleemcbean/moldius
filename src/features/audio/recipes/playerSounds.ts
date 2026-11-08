@@ -109,6 +109,129 @@ export const PLAYER_SOUNDS: SoundRecipe[] = [
 			kit.noise("brown", 0, 0.3, band);
 		},
 	},
+	// Un pas dans l'eau : le clapotis qui monte, puis quelques gouttes.
+	{
+		id: "step-water",
+		duration: 0.42,
+		variants: 4,
+		render: (kit) => {
+			const band = kit.filter(
+				"bandpass",
+				600,
+				2.2,
+				kit.hit(0, 0.012, 0.28, 0.75, kit.out),
+			);
+			kit.envelope(band.frequency, [
+				{ time: 0, value: kit.range(380, 520) },
+				{ time: 0.16, value: kit.range(1300, 1800) },
+				{ time: 0.32, value: 700 },
+			]);
+			kit.noise("brown", 0, 0.34, band);
+			kit.noise(
+				"white",
+				0.03,
+				0.12,
+				kit.filter(
+					"highpass",
+					3800,
+					0.8,
+					kit.hit(0.03, 0.004, 0.09, 0.12, kit.out),
+				),
+			);
+			for (let drop = 0; drop < 2; drop += 1) {
+				const at = 0.12 + kit.range(0, 0.2);
+				const blip = kit.osc(
+					"sine",
+					900,
+					at,
+					0.06,
+					kit.hit(at, 0.002, 0.05, 0.12, kit.out),
+				);
+				kit.expEnvelope(blip.frequency, [
+					{ time: at, value: kit.range(700, 1000) },
+					{ time: at + 0.05, value: kit.range(1700, 2400) },
+				]);
+			}
+		},
+	},
+	// Le plongeon dans un récipient : une gerbe, puis l'eau qui retombe.
+	{
+		id: "splash",
+		duration: 1,
+		variants: 3,
+		render: (kit) => {
+			const body = kit.filter(
+				"lowpass",
+				2600,
+				0.7,
+				kit.hit(0, 0.006, 0.55, 0.9, kit.out),
+			);
+			kit.envelope(body.frequency, [
+				{ time: 0, value: 3200 },
+				{ time: 0.6, value: 700 },
+			]);
+			kit.noise("white", 0, 0.7, body);
+			kit.noise(
+				"brown",
+				0,
+				0.5,
+				kit.filter("lowpass", 380, 0.8, kit.hit(0, 0.004, 0.35, 0.8, kit.out)),
+			);
+			for (let drop = 0; drop < 7; drop += 1) {
+				const at = 0.18 + kit.range(0, 0.7);
+				const blip = kit.osc(
+					"sine",
+					1000,
+					at,
+					0.07,
+					kit.hit(at, 0.002, 0.06, kit.range(0.06, 0.16), kit.out),
+				);
+				kit.expEnvelope(blip.frequency, [
+					{ time: at, value: kit.range(600, 1100) },
+					{ time: at + 0.06, value: kit.range(1500, 2800) },
+				]);
+			}
+		},
+	},
+	// Le chaudron fait effet : un gros glouglou qui remonte.
+	{
+		id: "brew-gulp",
+		duration: 1.2,
+		variants: 2,
+		render: (kit, variant) => {
+			for (let bubble = 0; bubble < 9; bubble += 1) {
+				const at = bubble * 0.1 + kit.range(0, 0.05);
+				const low = 140 + bubble * 22 + variant * 30;
+				const tone = kit.osc(
+					"sine",
+					low,
+					at,
+					0.14,
+					kit.filter(
+						"lowpass",
+						1400,
+						1,
+						kit.hit(at, 0.006, 0.11, 0.45, kit.out),
+					),
+				);
+				kit.expEnvelope(tone.frequency, [
+					{ time: at, value: low },
+					{ time: at + 0.12, value: low * 2.6 },
+				]);
+			}
+			const swell = kit.osc(
+				"triangle",
+				90,
+				0,
+				1.1,
+				kit.hit(0, 0.25, 0.9, 0.18, kit.out),
+			);
+			kit.expEnvelope(swell.frequency, [
+				{ time: 0, value: 70 },
+				{ time: 1, value: 260 },
+			]);
+		},
+	},
 	{
 		id: "land",
 		duration: 0.35,

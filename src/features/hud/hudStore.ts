@@ -1,3 +1,4 @@
+import type { BrewEffect } from "@shared/manor/brews";
 import type { Level } from "@shared/manor/types";
 import type { CastFailureReason, PlayerInventory } from "@shared/protocol/game";
 import type { Tagline } from "@shared/rewards";
@@ -89,6 +90,10 @@ export interface HudState {
 	cameraRaised: boolean;
 	photoCount: number;
 	photoFlashAt: number;
+	/** L'effet de chaudron en cours et ce qu'il en reste. */
+	brew: BrewEffect | null;
+	brewLeftMs: number;
+	brewTotalMs: number;
 	level: Level;
 	serverNow: number;
 }
@@ -149,6 +154,9 @@ export function initialHud(): HudState {
 		cameraRaised: false,
 		photoCount: 0,
 		photoFlashAt: 0,
+		brew: null,
+		brewLeftMs: 0,
+		brewTotalMs: 1,
 		level: 0,
 		serverNow: 0,
 	};

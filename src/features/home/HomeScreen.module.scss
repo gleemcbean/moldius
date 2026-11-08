@@ -550,3 +550,26 @@
     min-width: 44px;
   }
 }
+
+/* ——— Apparition : le titre tombe, le panneau glisse depuis la gauche, les tuiles éclosent ——— */
+@include enter-keyframes;
+
+.brand {
+  @include enter(down, 80ms, 720ms);
+}
+
+.nameBlock {
+  @include enter(left, 220ms);
+}
+
+.actions > * {
+  @include enter-stagger(left, 300ms, 55ms, 6);
+}
+
+.more > * {
+  @include enter-stagger(pop, 660ms, 45ms, 7);
+}
+
+.legal {
+  @include enter(fade, 900ms, 700ms);
+}

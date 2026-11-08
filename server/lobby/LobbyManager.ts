@@ -8,6 +8,7 @@ import {
 	TUTORIAL_MATCH_CONFIG,
 	TUTORIAL_SEED,
 } from "../../shared/matchConfig.js";
+import { levelOf } from "../../shared/progression.js";
 import type {
 	ClientToServerEvents,
 	ServerToClientEvents,
@@ -268,7 +269,7 @@ export class LobbyManager {
 			: undefined;
 		void socket?.join(this.room(lobby));
 		this.broadcastState(lobby);
-		return { ok: true, value: lobby.toState() };
+		return { ok: true, value: this.stateOf(lobby) };
 	}
 
 	leave(session: Session): void {
@@ -327,7 +328,7 @@ export class LobbyManager {
 			};
 		}
 		this.broadcastState(lobby);
-		return { ok: true, value: lobby.toState() };
+		return { ok: true, value: this.stateOf(lobby) };
 	}
 
 	setTeam(session: Session, team: number): void {
@@ -376,6 +377,19 @@ export class LobbyManager {
 				}
 			}
 		}
+	}
+
+	/** Le lobby tel que les joueurs le voient : avec le compte et le niveau de chacun. */
+	private stateOf(lobby: Lobby): LobbyState {
+		const state = lobby.toState();
+		for (const player of state.players) {
+			const account = this.sessions.fromPlayer(player.id)?.account;
+			player.profileId = account?.accountId ?? null;
+			player.level = account?.progress
+				? levelOf(account.progress.xp ?? 0)
+				: null;
+		}
+		return state;
 	}
 
 	private startMatch(lobby: Lobby, tutorial = false): void {
@@ -478,6 +492,7 @@ export class LobbyManager {
 					progress.captures += record.captures;
 					progress.awards += record.awarded ? 1 : 0;
 					progress.dailies += record.dailyDate ? 1 : 0;
+					progress.xp = (progress.xp ?? 0) + (record.xp ?? 0);
 					progress.challenges = withMatchMetrics(
 						progress.challenges ?? {},
 						record.metrics ?? {},
@@ -589,7 +604,7 @@ export class LobbyManager {
 	}
 
 	broadcastState(lobby: Lobby): void {
-		this.io.to(this.room(lobby)).emit("lobby:state", lobby.toState());
+		this.io.to(this.room(lobby)).emit("lobby:state", this.stateOf(lobby));
 	}
 
 	private room(lobby: Lobby): string {

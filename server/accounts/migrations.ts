@@ -184,6 +184,21 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
 			`ALTER TABLE match_history ADD COLUMN details jsonb`,
 		],
 	},
+	{
+		version: 11,
+		statements: [
+			`ALTER TABLE accounts ADD COLUMN xp integer NOT NULL DEFAULT 0`,
+			`ALTER TABLE match_history ADD COLUMN xp integer NOT NULL DEFAULT 0`,
+			// Les parties déjà jouées comptent : la même règle que matchXp, sans le plafond par partie.
+			`UPDATE accounts SET xp = 40 * games_played + 60 * wins + total_score / 10`,
+		],
+	},
+	{
+		version: 12,
+		statements: [
+			`ALTER TABLE accounts ADD COLUMN private_profile boolean NOT NULL DEFAULT false`,
+		],
+	},
 ];
 
 export async function migrate(database: Database): Promise<number> {

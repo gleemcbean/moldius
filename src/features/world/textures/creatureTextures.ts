@@ -38,6 +38,44 @@ const WEB_SPOKES = 5;
 const WEB_RINGS = [9, 18, 28];
 
 const PATTERN_PAINTERS: Record<HatPattern, PatternPainter> = {
+	hearts: (p) => {
+		const heart: RGB = hexToRgb(0xff5a8a);
+		const shine: RGB = hexToRgb(0xffc2d6);
+		for (let index = 0; index < 6; index += 1) {
+			const x = 5 + index * 11;
+			const y = 8 + (index % 2) * 10;
+			p.circle(x - 1.6, y, 2.2, heart);
+			p.circle(x + 1.6, y, 2.2, heart);
+			for (let row = 0; row < 4; row += 1) {
+				p.rect(x - 3 + row, y + 1 + row, 7 - row * 2, 1, heart);
+			}
+			p.set(x - 2, y - 1, shine);
+		}
+	},
+	// Des filaments qui se ramifient depuis le sommet, comme le réseau sous la terre.
+	mycelium: (p, light) => {
+		const thread: RGB = shade(light, 1.05);
+		for (let root = 0; root < 6; root += 1) {
+			let x = 5 + root * 11;
+			let drift = root % 2 === 0 ? 0.35 : -0.35;
+			for (let y = 0; y < CAP_HEIGHT - 3; y += 1) {
+				p.set(Math.round(x) % CAP_WIDTH, y, thread, 230);
+				if (y % 7 === 6) {
+					for (let step = 1; step < 5; step += 1) {
+						p.set(
+							(Math.round(x) + step * Math.sign(drift)) % CAP_WIDTH,
+							y + step,
+							thread,
+							180,
+						);
+					}
+					drift = -drift;
+				}
+				x += drift + (p.rng.next() - 0.5) * 0.4;
+			}
+			p.circle(Math.round(x) % CAP_WIDTH, CAP_HEIGHT - 4, 1.2, thread);
+		}
+	},
 	lightning: (p) => {
 		const bolt: RGB = hexToRgb(0xffe14d);
 		for (let index = 0; index < 4; index += 1) {

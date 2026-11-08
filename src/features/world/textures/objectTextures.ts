@@ -557,6 +557,25 @@ export const OBJECT_TEXTURES: Record<string, TextureRecipe> = {
 			}
 		},
 	},
+	/** La même flamme en niveaux de gris : la couleur de la lanterne la teinte sans la salir. */
+	flameNeutral: {
+		size: [16, 32],
+		tile: 1,
+		draw: (p) => {
+			p.clear();
+			for (let y = 0; y < 32; y += 1) {
+				const width = Math.round(
+					Math.sin((y / 32) * Math.PI) * 7 * (y / 32 + 0.3),
+				);
+				const color: RGB = mix(
+					hexToRgb(0xffffff),
+					hexToRgb(0xa8a8a8),
+					1 - y / 32,
+				);
+				p.rect(8 - width, y, width * 2, 1, color);
+			}
+		},
+	},
 	cobweb: {
 		size: [64, 64],
 		tile: 1,

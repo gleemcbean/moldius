@@ -12,6 +12,7 @@ import type {
 	PasswordResetConfirmRequest,
 	PasswordResetRequest,
 	ProfileUpdateRequest,
+	PublicProfile,
 	RegisterRequest,
 	RegisterResponse,
 } from "@shared/protocol/account";
@@ -96,4 +97,9 @@ export const accountApi = {
 			`/history/${encodeURIComponent(matchId)}`,
 		),
 	daily: (date: string) => request<DailyBoard>("GET", `/daily?date=${date}`),
+	publicProfile: (profileId: string) =>
+		request<{ profile: PublicProfile }>(
+			"GET",
+			`/players/${encodeURIComponent(profileId)}`,
+		),
 };

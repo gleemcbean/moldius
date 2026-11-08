@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { holdBoot } from "../../app/boot";
 import { useStore } from "../../hooks/useStore";
 import { settingsStore } from "../settings/settingsStore";
 import styles from "./HomeBackdrop.module.scss";
@@ -14,6 +15,8 @@ export function HomeBackdrop() {
 		if (!element) {
 			return;
 		}
+		// L'écran de chargement attend la première image du décor, shaders compilés.
+		const release = holdBoot();
 		try {
 			const settings = settingsStore.get();
 			scene.current = new HomeScene(
@@ -21,10 +24,13 @@ export function HomeBackdrop() {
 				settings.playerColor,
 				settings.playerPattern,
 			);
+			scene.current.onFirstFrame = release;
 		} catch {
 			scene.current = null;
+			release();
 		}
 		return () => {
+			release();
 			scene.current?.dispose();
 			scene.current = null;
 		};

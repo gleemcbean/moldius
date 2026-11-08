@@ -7,6 +7,8 @@ export interface PostEffectsFrame {
 	animated: boolean;
 	levels: number;
 	desaturate?: number;
+	/** De 0 à 1 : la distorsion après un chaudron de nausée. */
+	nausea?: number;
 }
 
 export const POST_BULGE = 0.3;
@@ -36,6 +38,7 @@ uniform float strength;
 uniform float tension;
 uniform float animated;
 uniform float levels;
+uniform float nausea;
 varying vec2 vUv;
 
 const vec3 LUMA = vec3(0.299, 0.587, 0.114);
@@ -70,6 +73,17 @@ void main() {
   float bulge = ${POST_BULGE.toFixed(3)} * strength;
   vec2 uv = 0.5 + centered * (1.0 + bulge * spread) / (1.0 + bulge * (0.25 + 0.25 * aspect.x * aspect.x));
   vec2 shift = centered * spread * (0.012 + tension * 0.014) * strength;
+  // La nausée du chaudron : l'image ondule, tourne un peu et se dédouble.
+  vec2 doubled = vec2(0.0);
+  if (nausea > 0.001) {
+    uv += vec2(sin(uv.y * 9.0 + time * 1.7), cos(uv.x * 7.0 + time * 1.3)) * 0.014 * nausea;
+    float turn = sin(time * 0.55) * 0.05 * nausea;
+    vec2 around = (uv - 0.5) * aspect;
+    around = mat2(cos(turn), -sin(turn), sin(turn), cos(turn)) * around;
+    uv = 0.5 + around / aspect;
+    shift += vec2(sin(time * 2.1), cos(time * 1.7)) * 0.007 * nausea;
+    doubled = vec2(sin(time * 0.9), cos(time * 0.7)) * 0.016 * nausea;
+  }
   vec3 color = vec3(
     texture2D(scene, uv + shift).r,
     texture2D(scene, uv).g,
@@ -78,6 +92,10 @@ void main() {
   vec2 smear = vec2(1.6 / resolution.x, 0.0);
   vec3 bleed = (color + texture2D(scene, uv - smear).rgb + texture2D(scene, uv - smear * 2.0).rgb) / 3.0;
   color = mix(color, bleed - dot(bleed, LUMA) + dot(color, LUMA), 0.7 * strength);
+  if (nausea > 0.001) {
+    color = mix(color, texture2D(scene, uv + doubled).rgb, 0.38 * nausea);
+    color *= mix(vec3(1.0), vec3(0.86, 1.08, 0.78), nausea * 0.6);
+  }
 
   vec2 corner = abs(centered) * 2.0;
   float edge = pow(corner.x, 6.0) + pow(corner.y, 6.0);
@@ -136,6 +154,7 @@ export class PostEffects {
 	private readonly size = new THREE.Vector2();
 	private time = 0;
 	private tension = 0;
+	private nausea = 0;
 
 	constructor(
 		private readonly renderer: THREE.WebGLRenderer,
@@ -163,6 +182,7 @@ export class PostEffects {
 				tension: { value: 0 },
 				animated: { value: 1 },
 				levels: { value: 127 },
+				nausea: { value: 0 },
 			},
 			depthTest: false,
 			depthWrite: false,
@@ -205,6 +225,10 @@ export class PostEffects {
 		uniforms.tension.value = this.tension;
 		uniforms.animated.value = frame.animated ? 1 : 0;
 		uniforms.levels.value = frame.levels;
+		this.nausea +=
+			(Math.min(1, Math.max(0, frame.nausea ?? 0)) - this.nausea) *
+			Math.min(1, frame.dt * 1.5);
+		uniforms.nausea.value = this.nausea;
 		uniforms.desaturate.value = (frame.desaturate ?? 0) * 0.75 * frame.strength;
 
 		const previous = this.renderer.getRenderTarget();

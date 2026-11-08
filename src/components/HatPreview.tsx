@@ -17,7 +17,7 @@ const DOME_TILT = 0.6;
 const DOME_WRAPS = 2;
 const DOME_SAMPLES = 3;
 /** Ces motifs rayonnent depuis le sommet : à plat, ils ne ressembleraient à rien. */
-const DOME_PATTERNS: ReadonlySet<HatPattern> = new Set(["web"]);
+const DOME_PATTERNS: ReadonlySet<HatPattern> = new Set(["web", "mycelium"]);
 
 function drawOnDome(
 	context: CanvasRenderingContext2D,

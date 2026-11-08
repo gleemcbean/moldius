@@ -27,10 +27,12 @@ import {
 	dailyChallenge,
 	dailyDateKey,
 } from "../shared/dailyChallenge.js";
+import { BREW_DURATION_MS, CAULDRON_BREWS } from "../shared/manor/brews.js";
 import {
 	generateManor,
 	layoutChecksum,
 } from "../shared/manor/generateManor.js";
+import { liquidAt, liquidVolumes } from "../shared/manor/liquids.js";
 import {
 	defaultPrivateConfig,
 	matchDurationMs,
@@ -218,6 +220,73 @@ describe("appareil photo", () => {
 			id: spot.id,
 			available: true,
 		});
+	});
+});
+
+describe("chaudrons et liquides", () => {
+	it("repère les pieds dans un récipient, même tourné, mais pas sur son bord", () => {
+		const cauldron = {
+			id: 4,
+			kind: "cauldron",
+			variant: 0,
+			roomId: 0,
+			level: 0,
+			x: 2,
+			y: 0,
+			z: 3,
+			rotation: Math.PI / 4,
+			width: 1,
+			depth: 1,
+			height: 0.85,
+			colliders: [],
+			hideSpotId: null,
+			valveId: null,
+			parentId: null,
+			seed: 3,
+		} as const;
+		const [volume] = liquidVolumes([{ ...cauldron, colliders: [] }]);
+		expect(volume.brew).toBe(CAULDRON_BREWS[3]);
+		expect(liquidAt([volume], { x: 2, y: 0.14, z: 3 })).toBe(volume);
+		expect(liquidAt([volume], { x: 2, y: 0.85, z: 3 })).toBeNull();
+		expect(liquidAt([volume], { x: 2.6, y: 0.14, z: 3 })).toBeNull();
+	});
+
+	it("donne l'effet en entrant, pas en restant, et l'efface à la réapparition", () => {
+		const sim = new MatchSimulation({ seed: 77, players: 1 });
+		silenceAnomalies(sim);
+		const player = playerOf(sim);
+		const { x, y, z } = player.position;
+		const haste = CAULDRON_BREWS.find(({ effect }) => effect === "haste");
+		sim.match.liquids.push({
+			itemId: 9_999,
+			kind: "cauldron",
+			x,
+			z,
+			rotation: 0,
+			halfWidth: 0.4,
+			halfDepth: 0.4,
+			elliptic: false,
+			floorY: y - 0.1,
+			surfaceY: y + 0.6,
+			brew: haste ?? null,
+		});
+		sim.run(0.2);
+		expect(player.brew).toBe("haste");
+		expect(player.brewUntil - sim.match.now).toBeLessThanOrEqual(
+			BREW_DURATION_MS.haste,
+		);
+		const events = () => sim.transport.eventsOfType("brew").length;
+		expect(events()).toBe(1);
+		sim.run(1);
+		expect(events()).toBe(1);
+		player.position = { x: x + 3, y, z };
+		sim.run(0.2);
+		player.position = { x, y, z };
+		sim.run(0.2);
+		expect(events()).toBe(2);
+		player.position = { x: x + 3, y, z };
+		sim.run(BREW_DURATION_MS.haste / 1000 + 0.5);
+		expect(player.brew).toBeNull();
 	});
 });
 

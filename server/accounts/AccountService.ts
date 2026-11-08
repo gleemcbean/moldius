@@ -28,6 +28,8 @@ import {
 	type MatchDetail,
 	type MatchHistoryEntry,
 	normalizeEmail,
+	PUBLIC_RECENT_LIMIT,
+	type PublicProfile,
 	type RegisterResponse,
 	validateEmail,
 	validatePassword,
@@ -491,6 +493,7 @@ export class AccountService {
 			lantern?: unknown;
 			tagline?: unknown;
 			language?: unknown;
+			privateProfile?: unknown;
 		},
 	): Promise<ServiceResult<AccountProfile>> {
 		const account = await this.store.findById(accountId);
@@ -503,6 +506,7 @@ export class AccountService {
 		let lantern = account.profile.lantern;
 		let tagline = account.profile.tagline;
 		let language = account.profile.language;
+		let privateProfile = account.profile.privateProfile;
 		if (patch.displayName !== undefined) {
 			const cleaned = sanitizeName(patch.displayName);
 			if (!cleaned) {
@@ -550,6 +554,12 @@ export class AccountService {
 			}
 			language = patch.language;
 		}
+		if (patch.privateProfile !== undefined) {
+			if (typeof patch.privateProfile !== "boolean") {
+				return fail(400, "invalidRequest");
+			}
+			privateProfile = patch.privateProfile;
+		}
 		const updated = await this.store.updateProfile(accountId, {
 			displayName,
 			color,
@@ -557,6 +567,7 @@ export class AccountService {
 			lantern,
 			tagline,
 			language,
+			privateProfile,
 		});
 		return updated
 			? { ok: true, value: updated.profile }
@@ -754,6 +765,22 @@ export class AccountService {
 			return Promise.resolve(null);
 		}
 		return this.store.historyDetail(accountId, matchId);
+	}
+
+	/** Le visiteur compte : un profil privé reste entier pour le joueur et ses amis. */
+	publicProfile(
+		profileId: unknown,
+		viewerId: string | null = null,
+	): Promise<PublicProfile | null> {
+		if (
+			typeof profileId !== "string" ||
+			!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+				profileId,
+			)
+		) {
+			return Promise.resolve(null);
+		}
+		return this.store.publicProfile(profileId, PUBLIC_RECENT_LIMIT, viewerId);
 	}
 
 	recordMatch(record: MatchRecord): Promise<boolean> {

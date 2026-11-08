@@ -4,6 +4,7 @@ import {
 	furnitureDefinition,
 	LOW_WALKABLE_MAX_HEIGHT,
 } from "../furnitureCatalog.js";
+import { type BasinShape, basinShape } from "../liquids.js";
 import type { FurnitureCollider, FurnitureItem } from "../types.js";
 
 const SOLID_KINDS = new Set([
@@ -82,6 +83,50 @@ export function buildFurnitureColliders(
 	});
 }
 
+/** Un récipient creux : un fond sous le liquide et quatre bords tout autour. */
+function basinBoxes(
+	item: FurnitureItem,
+	rimWalkable: boolean,
+	floorWalkable: boolean,
+): LocalBox[] {
+	const { width, depth, height } = item;
+	const shape = basinShape(item) as BasinShape;
+	const inner = {
+		width: Math.min(shape.width, width - 0.04),
+		depth: Math.min(shape.depth, depth - 0.04),
+	};
+	const sideDepth = (depth - inner.depth) / 2;
+	const sideWidth = (width - inner.width) / 2;
+	const rim = { yMin: 0, yMax: height, walkable: rimWalkable };
+	return [
+		{
+			x: 0,
+			z: 0,
+			width,
+			depth,
+			yMin: 0,
+			yMax: shape.floorY,
+			walkable: floorWalkable,
+		},
+		...[-1, 1].flatMap((side) => [
+			{
+				...rim,
+				x: 0,
+				z: side * (inner.depth / 2 + sideDepth / 2),
+				width,
+				depth: sideDepth,
+			},
+			{
+				...rim,
+				x: side * (inner.width / 2 + sideWidth / 2),
+				z: 0,
+				width: sideWidth,
+				depth: inner.depth,
+			},
+		]),
+	];
+}
+
 function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 	const { width, depth, height } = item;
 	const definition = furnitureDefinition(item.kind);
@@ -138,6 +183,13 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 			];
 		case "pond":
 			return [];
+		// Le liquide ne porte pas : on y entre jusqu'au fond, et le bord se franchit en sautant.
+		case "cauldron":
+		case "washtub":
+		case "bathtub":
+			return basinBoxes(item, walkable, true);
+		case "birdbath":
+			return basinBoxes(item, walkable, walkable);
 		case "flowerPot":
 			return [
 				{

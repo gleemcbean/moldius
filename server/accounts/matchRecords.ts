@@ -2,6 +2,7 @@ import { AWARD_FALLBACK } from "../../shared/awards.js";
 import { entryWon } from "../../shared/challenges.js";
 import { DEFAULT_HAT_PATTERN } from "../../shared/hatPatterns.js";
 import type { MatchConfig } from "../../shared/matchConfig.js";
+import { matchXp } from "../../shared/progression.js";
 import type {
 	MatchDetailData,
 	MatchDetailRules,
@@ -26,6 +27,7 @@ export function buildMatchRecords(
 		if (!accountId) {
 			continue;
 		}
+		const won = entryWon(results, entry);
 		records.push({
 			accountId,
 			matchId: results.matchId,
@@ -39,7 +41,8 @@ export function buildMatchRecords(
 			score: entry.score,
 			captures: entry.captures,
 			deaths: entry.deaths,
-			won: entryWon(results, entry),
+			won,
+			xp: matchXp({ score: entry.score, won }),
 			awarded: results.awards.some(
 				(award) =>
 					award.playerId === entry.playerId && award.id !== AWARD_FALLBACK,
@@ -48,7 +51,7 @@ export function buildMatchRecords(
 			pattern: entry.pattern,
 			metrics: results.metrics[entry.playerId],
 			teamCount: results.teams.length,
-			details: matchDetails(results, entry.playerId, rules),
+			details: matchDetails(results, entry.playerId, rules, accounts),
 		});
 	}
 	return records;
@@ -70,9 +73,11 @@ function matchDetails(
 	results: MatchResults,
 	selfId: string,
 	rules: MatchDetailRules | null,
+	accounts: Map<string, string | null>,
 ): MatchDetailData {
 	return {
 		players: results.entries.map((entry) => ({
+			profileId: accounts.get(entry.playerId) ?? null,
 			name: entry.name,
 			color: entry.color,
 			pattern: entry.pattern ?? DEFAULT_HAT_PATTERN,

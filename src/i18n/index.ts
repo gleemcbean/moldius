@@ -11,6 +11,7 @@ import { gameEn, gameFr } from "./sections/game";
 import { grimoireEn, grimoireFr } from "./sections/grimoire";
 import { appearanceEn, appearanceFr, homeEn, homeFr } from "./sections/home";
 import { lobbyEn, lobbyFr } from "./sections/lobby";
+import { progressionEn, progressionFr } from "./sections/progression";
 import { settingsEn, settingsFr } from "./sections/settings";
 import { worldEn, worldFr } from "./sections/world";
 
@@ -28,6 +29,7 @@ const fr = {
 	grimoire: grimoireFr,
 	bestiary: bestiaryFr,
 	world: worldFr,
+	progression: progressionFr,
 };
 
 export type Messages = typeof fr;
@@ -46,6 +48,7 @@ const en: Messages = {
 	grimoire: grimoireEn,
 	bestiary: bestiaryEn,
 	world: worldEn,
+	progression: progressionEn,
 };
 
 const MESSAGES: Record<Language, Messages> = { fr, en };

@@ -9,6 +9,7 @@
   padding: 24px;
   background: rgba(6, 8, 6, 0.78);
   backdrop-filter: blur(2px);
+  animation: modal-backdrop-in 220ms ease-out backwards;
 }
 
 .modal {
@@ -21,6 +22,35 @@
     0 0 0 2px $yellow,
     0 0 0 6px $background,
     0 24px 80px rgba(0, 0, 0, 0.6);
+  // « backwards » : aucun transform ne reste une fois ouverte.
+  animation: modal-in 360ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(32px) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .modal {
+    animation: none;
+  }
+}
+
+:global(html[data-reduce-motion]) {
+  .backdrop,
+  .modal {
+    animation: none;
+  }
 }
 
 .wide {
@@ -64,4 +94,11 @@
 .body {
   overflow: auto;
   padding: 10px 22px 22px;
+}
+
+@include enter-keyframes;
+
+/* Le contenu suit la fenêtre, un souffle après elle. */
+.body {
+  @include enter(up, 110ms, 460ms);
 }

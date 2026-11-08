@@ -97,3 +97,9 @@
   color: $yellow;
   font-variant-numeric: tabular-nums;
 }
+
+@include enter-keyframes;
+
+.board li {
+  @include enter-stagger(up, 160ms, 40ms, 10);
+}

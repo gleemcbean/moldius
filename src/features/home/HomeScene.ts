@@ -37,6 +37,8 @@ export class HomeScene {
 	private readonly hunterEye = new THREE.PointLight(0xff5a3a, 0.8, 2.2, 2);
 	private frame = 0;
 	private time = 0;
+	/** Appelé une fois, après la première image : l'écran de chargement peut partir. */
+	onFirstFrame: (() => void) | null = null;
 	private last = performance.now();
 	private readonly observer: ResizeObserver;
 
@@ -202,6 +204,11 @@ export class HomeScene {
 			},
 			() => this.renderer.render(this.scene, this.camera),
 		);
+		if (this.onFirstFrame) {
+			const done = this.onFirstFrame;
+			this.onFirstFrame = null;
+			done();
+		}
 	};
 
 	dispose(): void {

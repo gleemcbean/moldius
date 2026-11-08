@@ -25,11 +25,18 @@ import {
 	sanitizeMatchConfig,
 	TUTORIAL_MATCH_CONFIG,
 } from "../shared/matchConfig.js";
+import {
+	LEVEL_MILESTONES,
+	levelProgress,
+	matchXp,
+	xpForLevel,
+} from "../shared/progression.js";
 import type { MatchResults } from "../shared/protocol/game.js";
 import {
 	allowedTagline,
 	hatUnlocked,
 	lanternUnlocked,
+	levelRewards,
 	newlyUnlocked,
 	REWARDS,
 	rewardFor,
@@ -191,6 +198,13 @@ describe("récompenses de défis", () => {
 			...INCREMENTAL_CHALLENGES.map(({ id }) => id),
 		]);
 		for (const reward of REWARDS) {
+			if (reward.challenge === null) {
+				expect(
+					(LEVEL_MILESTONES as readonly number[]).includes(reward.level ?? 0),
+					reward.value,
+				).toBe(true);
+				continue;
+			}
 			expect(ids.has(reward.challenge), reward.value).toBe(true);
 		}
 	});
@@ -199,9 +213,47 @@ describe("récompenses de défis", () => {
 		for (const reward of REWARDS) {
 			const { target } = rewardProgress(reward, null);
 			expect(target, reward.value).toBeGreaterThan(0);
-			expect(rewardsForChallenge(reward.challenge)).toContain(reward);
+			if (reward.challenge !== null) {
+				expect(rewardsForChallenge(reward.challenge)).toContain(reward);
+			}
 		}
 		expect(rewardsForChallenge("artisan")).toEqual([]);
+	});
+});
+
+describe("niveaux", () => {
+	it("compte l'expérience d'une partie selon le score, avec un plafond", () => {
+		expect(matchXp({ score: 0, won: false })).toBe(40);
+		expect(matchXp({ score: 1234, won: true })).toBe(40 + 123 + 60);
+		expect(matchXp({ score: 999_999, won: true })).toBe(600);
+	});
+
+	it("monte de niveau à chaque seuil et garde le reste", () => {
+		expect(levelProgress(0)).toEqual({ level: 1, into: 0, needed: 100 });
+		expect(levelProgress(99).level).toBe(1);
+		expect(levelProgress(100)).toEqual({ level: 2, into: 0, needed: 125 });
+		expect(levelProgress(xpForLevel(50) - 1).level).toBe(49);
+		expect(levelProgress(xpForLevel(50)).level).toBe(50);
+	});
+
+	it("débloque une récompense à chaque palier", () => {
+		const stats = {
+			gamesPlayed: 0,
+			wins: 0,
+			captures: 0,
+			dailies: 0,
+			awards: 0,
+		};
+		const rewards = levelRewards();
+		expect(rewards.map(({ level }) => level)).toEqual([...LEVEL_MILESTONES]);
+		const before = { ...stats, xp: xpForLevel(5) - 1 };
+		const after = { ...stats, xp: xpForLevel(10) };
+		expect(newlyUnlocked(before, after).map(({ value }) => value)).toEqual([
+			"sprout",
+			"rose",
+		]);
+		expect(lanternUnlocked("rose", before)).toBe(false);
+		expect(lanternUnlocked("rose", after)).toBe(true);
 	});
 });
 

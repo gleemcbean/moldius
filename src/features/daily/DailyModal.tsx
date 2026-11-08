@@ -13,6 +13,7 @@ import { accountStore } from "../account/accountStore";
 import { createDailyLobby } from "../lobby/lobbyClient";
 import { lobbyStore } from "../lobby/lobbyStore";
 import { sessionStore } from "../network/sessionStore";
+import { ProfileLink } from "../profile/ProfileLink";
 import { settingsStore } from "../settings/settingsStore";
 import styles from "./DailyModal.module.scss";
 import { useDailyClock } from "./useDailyClock";
@@ -20,15 +21,19 @@ import { useDailyClock } from "./useDailyClock";
 function ScoreRow({ entry }: { entry: DailyScoreEntry }) {
 	const t = useT();
 	return (
-		<li className={entry.self ? styles.self : ""}>
+		<li className={entry.self ? styles.self : ""} data-selector-row="">
 			<span className={styles.rank}>{entry.rank}</span>
 			<span className={styles.hat}>
 				<HatPreview color={entry.color} pattern={entry.pattern} />
 			</span>
-			<span className={styles.name}>
+			<ProfileLink
+				profileId={entry.profileId}
+				name={entry.name}
+				className={styles.name}
+			>
 				{entry.name}
 				<TaglineBadge tagline={entry.tagline} />
-			</span>
+			</ProfileLink>
 			<span className={styles.stat}>
 				{t.game.results.captures(entry.captures)}
 			</span>

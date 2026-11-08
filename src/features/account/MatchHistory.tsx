@@ -14,6 +14,7 @@ import { Icon } from "../../components/Icon";
 import { TaglineBadge } from "../../components/TaglineBadge";
 import { type Messages, useT } from "../../i18n";
 import { hexColor } from "../../utils/format";
+import { ProfileLink } from "../profile/ProfileLink";
 import styles from "./AccountModal.module.scss";
 import { loadHistory, loadHistoryDetail } from "./accountStore";
 import detail from "./MatchHistory.module.scss";
@@ -221,6 +222,12 @@ function MatchDetailView({
 						label={labels.duration}
 						value={labels.minutes(minutes(entry.durationMs))}
 					/>
+					{entry.xp > 0 ? (
+						<Fact
+							label="XP"
+							value={t.progression.gained(t.common.number(entry.xp))}
+						/>
+					) : null}
 				</dl>
 			</header>
 			{error ? <p className={styles.error}>{error}</p> : null}
@@ -332,6 +339,7 @@ function Standings({ match }: { match: MatchDetail }) {
 				player.self ? detail.self : "",
 				shownRank === null ? detail.member : "",
 			].join(" ")}
+			data-selector-row=""
 		>
 			<td className={detail.rankCell}>{shownRank}</td>
 			<td>
@@ -339,10 +347,14 @@ function Standings({ match }: { match: MatchDetail }) {
 					<span className={detail.hat}>
 						<HatPreview color={player.color} pattern={player.pattern} />
 					</span>
-					<span className={detail.whoName}>
+					<ProfileLink
+						profileId={player.profileId}
+						name={player.name}
+						className={detail.whoName}
+					>
 						{player.name}
 						<TaglineBadge tagline={player.tagline} />
-					</span>
+					</ProfileLink>
 				</span>
 			</td>
 			<td className={styles.number}>{player.captures}</td>

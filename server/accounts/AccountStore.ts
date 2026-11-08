@@ -14,6 +14,7 @@ import {
 	isLanguage,
 	type Language,
 } from "../../shared/i18n/languages.js";
+import { levelOf } from "../../shared/progression.js";
 import type {
 	AccountProfile,
 	DailyBoard,
@@ -21,6 +22,7 @@ import type {
 	MatchDetail,
 	MatchDetailData,
 	MatchHistoryEntry,
+	PublicProfile,
 } from "../../shared/protocol/account.js";
 import {
 	DEFAULT_LANTERN_TINT,
@@ -65,6 +67,7 @@ export interface MatchRecord {
 	metrics?: MatchMetrics;
 	teamCount?: number;
 	details?: MatchDetailData;
+	xp?: number;
 }
 
 export interface PendingRegistration {
@@ -79,7 +82,13 @@ export interface PendingRegistration {
 
 export type ProfileFields = Pick<
 	AccountProfile,
-	"displayName" | "color" | "pattern" | "lantern" | "tagline" | "language"
+	| "displayName"
+	| "color"
+	| "pattern"
+	| "lantern"
+	| "tagline"
+	| "language"
+	| "privateProfile"
 >;
 
 interface PendingRow {
@@ -113,6 +122,8 @@ interface AccountRow {
 	wins: number;
 	best_score: number;
 	total_score: number;
+	xp: number;
+	private_profile: boolean | null;
 	created_at: Date;
 	terms_accepted_at: Date | string | null;
 }
@@ -139,15 +150,16 @@ interface HistoryRow {
 	won: boolean;
 	daily_date: string | null;
 	team_count: number | null;
+	xp?: number | null;
 	details?: unknown;
 	has_details?: boolean;
 }
 
 const HISTORY_COLUMNS =
-	"match_id, played_at, duration_ms, visibility, player_name, color, rank, player_count, score, captures, deaths, won, daily_date, team_count";
+	"match_id, played_at, duration_ms, visibility, player_name, color, rank, player_count, score, captures, deaths, won, daily_date, team_count, xp";
 
 const ACCOUNT_COLUMNS =
-	"id, email, password_hash, discord_id, discord_username, discord_avatar, display_name, hat_color, hat_pattern, lantern_tint, tagline, language, games_played, wins, best_score, total_score, total_captures, awards_earned, dailies_played, challenge_progress, created_at, terms_accepted_at";
+	"id, email, password_hash, discord_id, discord_username, discord_avatar, display_name, hat_color, hat_pattern, lantern_tint, tagline, language, games_played, wins, best_score, total_score, total_captures, awards_earned, dailies_played, xp, private_profile, challenge_progress, created_at, terms_accepted_at";
 
 function toAccount(row: AccountRow): StoredAccount {
 	return {
@@ -177,6 +189,7 @@ function toAccount(row: AccountRow): StoredAccount {
 			termsAcceptedAt: row.terms_accepted_at
 				? new Date(row.terms_accepted_at).toISOString()
 				: null,
+			privateProfile: Boolean(row.private_profile),
 			stats: {
 				gamesPlayed: Number(row.games_played),
 				wins: Number(row.wins),
@@ -185,6 +198,7 @@ function toAccount(row: AccountRow): StoredAccount {
 				captures: Number(row.total_captures),
 				dailies: Number(row.dailies_played),
 				awards: Number(row.awards_earned),
+				xp: Number(row.xp ?? 0),
 			},
 			challenges: sanitizeChallengeProgress(row.challenge_progress),
 		},
@@ -208,6 +222,7 @@ function toHistory(row: HistoryRow): MatchHistoryEntry {
 		daily: row.daily_date ?? null,
 		teamCount: Number(row.team_count ?? 0),
 		hasDetails: Boolean(row.has_details),
+		xp: Number(row.xp ?? 0),
 	};
 }
 
@@ -410,7 +425,7 @@ export class AccountStore {
 	): Promise<StoredAccount | null> {
 		const { rows } = await this.database.query<AccountRow>(
 			`UPDATE accounts SET display_name = $2, hat_color = $3, hat_pattern = $4, language = $5,
-         lantern_tint = $6, tagline = $7, updated_at = now()
+         lantern_tint = $6, tagline = $7, private_profile = $8, updated_at = now()
        WHERE id = $1
        RETURNING ${ACCOUNT_COLUMNS}`,
 			[
@@ -421,6 +436,7 @@ export class AccountStore {
 				fields.language,
 				fields.lantern,
 				fields.tagline,
+				fields.privateProfile,
 			],
 		);
 		return rows[0] ? toAccount(rows[0]) : null;
@@ -440,12 +456,14 @@ export class AccountStore {
 			captures: number;
 			deaths: number;
 			tagline: string | null;
+			profile_id: string | null;
 		}
 		const columns =
-			"d.account_id, d.player_name, d.color, d.pattern, d.best_score, d.captures, d.deaths, a.tagline";
+			"d.account_id, d.player_name, d.color, d.pattern, d.best_score, d.captures, d.deaths, a.tagline, a.id AS profile_id";
 		const from = "daily_scores d LEFT JOIN accounts a ON a.id = d.account_id";
 		const toEntry = (row: ScoreRow, rank: number): DailyScoreEntry => ({
 			rank,
+			profileId: row.profile_id ?? null,
 			name: row.player_name,
 			color: Number(row.color),
 			pattern: isHatPattern(row.pattern) ? row.pattern : DEFAULT_HAT_PATTERN,
@@ -599,9 +617,9 @@ export class AccountStore {
 			const inserted = await client.query<{ id: string }>(
 				`INSERT INTO match_history (
            id, account_id, match_id, played_at, duration_ms, visibility, player_name, color,
-           rank, player_count, score, captures, deaths, won, daily_date, team_count, details
+           rank, player_count, score, captures, deaths, won, daily_date, team_count, details, xp
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
          ON CONFLICT (account_id, match_id) DO NOTHING
          RETURNING id`,
 				[
@@ -622,6 +640,7 @@ export class AccountStore {
 					record.dailyDate ?? null,
 					record.teamCount ?? 0,
 					record.details ? JSON.stringify(record.details) : null,
+					record.xp ?? 0,
 				],
 			);
 			if (inserted.rows.length === 0) {
@@ -634,7 +653,8 @@ export class AccountStore {
            best_score = greatest(best_score, $3),
            total_score = total_score + $3,
            total_captures = total_captures + $4,
-           awards_earned = awards_earned + $5
+           awards_earned = awards_earned + $5,
+           xp = xp + $6
          WHERE id = $1`,
 				[
 					record.accountId,
@@ -642,6 +662,7 @@ export class AccountStore {
 					record.score,
 					record.captures,
 					record.awarded ? 1 : 0,
+					record.xp ?? 0,
 				],
 			);
 			if (record.metrics) {
@@ -745,5 +766,80 @@ export class AccountStore {
 			return null;
 		}
 		return { ...toHistory({ ...row, has_details: true }), ...details };
+	}
+
+	/**
+	 * Le profil vu par les autres : apparence, niveau, statistiques et dernières parties.
+	 * Privé, il ne garde que l'apparence et le niveau, sauf pour le joueur et ses amis.
+	 */
+	async publicProfile(
+		accountId: string,
+		recentLimit: number,
+		viewerId: string | null,
+	): Promise<PublicProfile | null> {
+		const account = await this.findById(accountId);
+		if (!account) {
+			return null;
+		}
+		const { profile } = account;
+		const identity = {
+			profileId: account.id,
+			displayName: profile.displayName,
+			color: profile.color,
+			pattern: profile.pattern,
+			lantern: profile.lantern,
+			tagline: profile.tagline,
+			level: levelOf(profile.stats.xp ?? 0),
+			private: profile.privateProfile,
+		};
+		if (
+			profile.privateProfile &&
+			!(viewerId && (await this.canSeePrivate(account.id, viewerId)))
+		) {
+			return { ...identity, createdAt: null, stats: null, recent: [] };
+		}
+		const { rows } = await this.database.query<HistoryRow>(
+			`SELECT ${HISTORY_COLUMNS}
+       FROM match_history
+       WHERE account_id = $1
+       ORDER BY played_at DESC, id DESC
+       LIMIT $2`,
+			[accountId, recentLimit],
+		);
+		return {
+			...identity,
+			createdAt: profile.createdAt,
+			stats: profile.stats,
+			recent: rows.map((row) => {
+				const entry = toHistory(row);
+				return {
+					playedAt: entry.playedAt,
+					rank: entry.rank,
+					playerCount: entry.playerCount,
+					score: entry.score,
+					won: entry.won,
+					daily: entry.daily,
+					teamCount: entry.teamCount,
+				};
+			}),
+		};
+	}
+
+	/** Le joueur lui-même, ou un ami accepté. */
+	private async canSeePrivate(
+		accountId: string,
+		viewerId: string,
+	): Promise<boolean> {
+		if (accountId === viewerId) {
+			return true;
+		}
+		const [low, high] =
+			accountId < viewerId ? [accountId, viewerId] : [viewerId, accountId];
+		const { rows } = await this.database.query(
+			`SELECT 1 FROM friendships
+       WHERE account_low = $1 AND account_high = $2 AND status = 'accepted'`,
+			[low, high],
+		);
+		return rows.length > 0;
 	}
 }

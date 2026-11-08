@@ -354,6 +354,8 @@ export class Lobby {
 			lantern: member.lantern,
 			tagline: member.tagline,
 			team: member.team,
+			profileId: null,
+			level: null,
 		}));
 		return {
 			id: this.id,

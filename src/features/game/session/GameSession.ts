@@ -23,7 +23,17 @@ import {
 	WATER_SPEED_FACTOR,
 } from "@shared/config/index";
 import { PlayerMarkerBlender } from "@shared/doubleDisguise";
+import {
+	BREW_DURATION_MS,
+	BREW_GRAVITY_FACTOR,
+	BREW_SPEED_FACTOR,
+	type BrewEffect,
+} from "@shared/manor/brews";
 import { levelForHeight } from "@shared/manor/levels";
+
+const BREW_MALUS: ReadonlySet<BrewEffect> = new Set(["nausea", "sluggish"]);
+
+import { type LiquidVolume, liquidAt } from "@shared/manor/liquids";
 import type { Level } from "@shared/manor/types";
 import { pullBackToSight } from "@shared/physics/lineOfSight";
 import {
@@ -143,6 +153,9 @@ export class GameSession {
 	private carriedBy: number | null = null;
 	private wasPetrified = false;
 	private hideSpot = -1;
+	private selfLiquid: LiquidVolume | null = null;
+	private nausea = 0;
+	private brewShown: BrewEffect | null = null;
 	private gaze = 0;
 	private readonly gorgonGaze = new Map<number, number>();
 	private jumpSpentAt: number[] = [];
@@ -715,6 +728,8 @@ export class GameSession {
 				});
 			}
 		}
+		this.trackLiquid(player);
+		this.nausea = this.nauseaLevel(alive, settings.reduceMotion);
 		this.updateCamera(dt, context, settings);
 
 		loaded.camera.updateMatrixWorld(true);
@@ -806,6 +821,7 @@ export class GameSession {
 				animated: !settings.reduceMotion,
 				levels: settings.colorLevels,
 				desaturate: spotted,
+				nausea: this.nausea,
 			},
 			() => this.render(loaded),
 		);
@@ -832,24 +848,68 @@ export class GameSession {
 		});
 	}
 
+	/** La nausée monte vite et retombe sur les deux dernières secondes de l'effet. */
+	private nauseaLevel(alive: boolean, reduceMotion: boolean): number {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const serverNow = clockSync.serverNow();
+		const brew = alive ? loaded.state.selfBrew(serverNow) : null;
+		if (brew?.effect !== "nausea") {
+			return 0;
+		}
+		return (
+			Math.min(1, (brew.until - serverNow) / 2000) * (reduceMotion ? 0.35 : 1)
+		);
+	}
+
+	/** Le panneau du HUD, et le message quand l'effet s'arrête. */
+	private brewHud(alive: boolean): {
+		brew: BrewEffect | null;
+		brewLeftMs: number;
+		brewTotalMs: number;
+	} {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const serverNow = clockSync.serverNow();
+		const brew = alive ? loaded.state.selfBrew(serverNow) : null;
+		if (!brew && this.brewShown && alive) {
+			pushFeedback(currentMessages().game.brew.ended, "info");
+		}
+		this.brewShown = brew?.effect ?? null;
+		return brew
+			? {
+					brew: brew.effect,
+					brewLeftMs: brew.until - serverNow,
+					brewTotalMs: BREW_DURATION_MS[brew.effect],
+				}
+			: { brew: null, brewLeftMs: 0, brewTotalMs: 1 };
+	}
+
+	/** Le bruit d'eau quand on entre dans un liquide ou qu'on en sort. */
+	private trackLiquid(player: LocalPlayer): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const liquid =
+			this.hideSpot >= 0 || this.carriedBy !== null
+				? null
+				: liquidAt(loaded.liquids, player.position);
+		const previous = this.selfLiquid;
+		this.selfLiquid = liquid;
+		if (liquid?.itemId === previous?.itemId) {
+			return;
+		}
+		if (liquid) {
+			const shallow = liquid.kind === "pond" || liquid.kind === "birdbath";
+			const fall = Math.max(0, -player.character.vy);
+			soundBank.play(shallow ? "step-water" : "splash", {
+				volume: shallow ? 0.55 : Math.min(1, 0.5 + fall * 0.08),
+				rate: 0.9 + Math.random() * 0.2,
+			});
+		} else if (previous) {
+			soundBank.play("step-water", { volume: 0.4, rate: 1.1 });
+		}
+	}
+
 	private inWater(position: { x: number; y: number; z: number }): boolean {
 		const loaded = this.loadedWorld as LoadedWorld;
-		return loaded.layout.furniture.some((item) => {
-			if (item.kind !== "pond" || Math.abs(position.y - item.y) > 0.3) {
-				return false;
-			}
-			const dx = position.x - item.x;
-			const dz = position.z - item.z;
-			const cos = Math.cos(-item.rotation);
-			const sin = Math.sin(-item.rotation);
-			const localX = dx * cos - dz * sin;
-			const localZ = dx * sin + dz * cos;
-			return (
-				(localX / (item.width / 2 - 0.15)) ** 2 +
-					(localZ / (item.depth / 2 - 0.15)) ** 2 <=
-				1
-			);
-		});
+		return liquidAt(loaded.liquids, position) !== null;
 	}
 
 	private localContext(
@@ -877,16 +937,16 @@ export class GameSession {
 			player.character.grounded,
 		);
 		const wading = this.inWater(position);
+		const brew = alive ? loaded.state.selfBrew(clockSync.serverNow()) : null;
 		return {
 			sensitivity: settings.mouseSensitivity,
 			invertY: settings.invertY,
 			sprintAllowed: (flags & PLAYER_FLAG.sprintLocked) === 0,
 			jumpAllowed: this.availableEnergy() >= JUMP_MIN_ENERGY,
-			speedFactor: slimed
-				? SLIME_SPEED_FACTOR
-				: wading
-					? WATER_SPEED_FACTOR
-					: 1,
+			speedFactor:
+				(slimed ? SLIME_SPEED_FACTOR : wading ? WATER_SPEED_FACTOR : 1) *
+				(brew ? BREW_SPEED_FACTOR[brew.effect] : 1),
+			gravityFactor: brew ? BREW_GRAVITY_FACTOR[brew.effect] : 1,
 			pull: this.archivistPull(position, renderTime),
 			alive,
 			carriedAnchor,
@@ -1157,6 +1217,11 @@ export class GameSession {
 			roll +=
 				Math.sin(time * (3 + speed * 0.8)) * 0.004 * Math.min(1, speed / 3);
 		}
+		if (this.nausea > 0) {
+			const time = performance.now() / 1000;
+			roll += Math.sin(time * 0.8) * 0.07 * this.nausea;
+			camera.position.x += Math.sin(time * 0.53) * 0.03 * this.nausea;
+		}
 		camera.rotation.set(player.pitch, player.yaw, roll, "YXZ");
 		if (camera.fov !== settings.fov) {
 			camera.fov = settings.fov;
@@ -1389,6 +1454,7 @@ export class GameSession {
 			grounded: player.character.grounded,
 			crouching: player.character.crouch > 0.5,
 			slimed: (flags & PLAYER_FLAG.slimed) !== 0,
+			wading: this.selfLiquid !== null,
 			tension: spotted,
 			lowHealth: (self?.hp ?? 100) < 30 && (flags & PLAYER_FLAG.dead) === 0,
 			waterAt:
@@ -1640,6 +1706,7 @@ export class GameSession {
 			cameraHeld: loaded.state.selfHasCamera,
 			cameraRaised: this.cameraRaised,
 			photoCount: photoStore.get().photos.length,
+			...this.brewHud((flags & PLAYER_FLAG.dead) === 0),
 			level: this.currentLevel(),
 			serverNow,
 		});
@@ -1960,6 +2027,15 @@ export class GameSession {
 				if (event.holder === this.selfId) {
 					soundBank.play("radio-squelch", { volume: 0.6 });
 					pushFeedback(currentMessages().game.walkie.taken, "info");
+				}
+				break;
+			case "brew":
+				if (event.playerId === this.selfId && event.effect) {
+					soundBank.play("brew-gulp", { volume: 0.8 });
+					pushFeedback(
+						currentMessages().game.brew.start[event.effect],
+						BREW_MALUS.has(event.effect) ? "warning" : "success",
+					);
 				}
 				break;
 			case "camera":

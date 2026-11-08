@@ -52,6 +52,8 @@ export interface MovementModifiers {
 	sprintAllowed: boolean;
 	fly?: boolean;
 	passThrough?: boolean;
+	/** Multiplie la pesanteur : moins de 1 pour flotter. */
+	gravityFactor?: number;
 }
 
 export const DEFAULT_MODIFIERS: MovementModifiers = {
@@ -173,7 +175,13 @@ export function stepCharacter(
 		state.vy = JUMP_VELOCITY;
 		state.grounded = false;
 	}
-	updateVertical(world, state, dt, modifiers.passThrough ?? false);
+	updateVertical(
+		world,
+		state,
+		dt,
+		modifiers.passThrough ?? false,
+		modifiers.gravityFactor ?? 1,
+	);
 }
 
 function stepFlying(
@@ -431,9 +439,10 @@ function updateVertical(
 	state: CharacterState,
 	dt: number,
 	passThrough: boolean,
+	gravityFactor: number,
 ): void {
 	const wasGrounded = state.grounded;
-	state.vy = Math.max(-MAX_FALL_SPEED, state.vy - GRAVITY * dt);
+	state.vy = Math.max(-MAX_FALL_SPEED, state.vy - GRAVITY * gravityFactor * dt);
 	const nextY = state.y + state.vy * dt;
 	const rising = state.vy > 0;
 	const tolerance = wasGrounded ? STEP_UP_HEIGHT : AIR_STEP_HEIGHT;

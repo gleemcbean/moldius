@@ -10,6 +10,7 @@ import {
 	OCCULT_IDS,
 	OCCULT_RECIPES,
 } from "@shared/config/occult";
+import type { BrewEffect } from "@shared/manor/brews";
 import type { Level } from "@shared/manor/types";
 import { TEAM_COLORS, teamStandings } from "@shared/teams";
 import * as THREE from "three";
@@ -66,6 +67,13 @@ const ALTAR = "#2ee6d6";
 const DARK_PANEL = "rgba(10, 12, 10, 0.78)";
 
 const BODY = "Alegreya, Georgia, serif";
+const BREW_COLORS: Record<BrewEffect, string> = {
+	nausea: "#7dff5a",
+	feather: "#c39bff",
+	haste: "#6cc4ff",
+	sluggish: "#ffb45a",
+	vigor: "#ff6a5a",
+};
 const FIGURES = '"Barlow Condensed", "Arial Narrow", sans-serif';
 const TITLE = '"IM Fell English SC", Alegreya, Georgia, serif';
 
@@ -218,6 +226,7 @@ export class HudCanvas {
 		this.paintTopBar(hud, now);
 		this.paintMaterials(hud);
 		this.paintStatus(hud, now, dt);
+		this.paintBrew(hud, now);
 		this.paintWalkie(hud, now);
 		this.paintCamera(hud);
 		this.paintAbilities(hud);
@@ -1006,6 +1015,57 @@ export class HudCanvas {
 				energyHeight + 4,
 			);
 		}
+	}
+
+	/** L'effet de chaudron, à droite des barres : son nom, le temps restant et une jauge. */
+	private paintBrew(hud: HudState, now: number): void {
+		if (!hud.brew || hud.dead || hud.showMap || hud.paused) {
+			return;
+		}
+		const labels = currentMessages().game.brew;
+		const color = BREW_COLORS[hud.brew];
+		const name = labels.names[hud.brew];
+		const seconds = `${Math.max(0, Math.ceil(hud.brewLeftMs / 1000))} s`;
+		const context = this.context;
+		const nameFont = `600 18px ${BODY}`;
+		const timeFont = `700 22px ${FIGURES}`;
+		context.font = nameFont;
+		const nameWidth = context.measureText(name).width;
+		context.font = timeFont;
+		const timeWidth = context.measureText(seconds).width;
+		const width = 14 + 14 + 10 + nameWidth + 12 + timeWidth + 14;
+		const height = 46;
+		const { x, y } = this.place(
+			20 + 72 + 270 + 18,
+			this.height - 16,
+			width,
+			height,
+			"left",
+			"bottom",
+		);
+		const ending = hud.brewLeftMs < 3000;
+		const blink = ending ? 0.55 + 0.45 * Math.sin(now / 90) : 1;
+		this.panel(x, y, width, height, DARK_PANEL, color);
+		context.globalAlpha = blink;
+		context.fillStyle = color;
+		context.beginPath();
+		context.arc(x + 14 + 7, y + height / 2 - 3, 7, 0, Math.PI * 2);
+		context.fill();
+		context.globalAlpha = 1;
+		this.text(name, x + 14 + 14 + 10, y + height / 2 - 2, {
+			font: nameFont,
+			color: TEXT,
+		});
+		this.text(seconds, x + width - 14, y + height / 2 - 2, {
+			font: timeFont,
+			color,
+			align: "right",
+		});
+		const fraction = Math.min(1, Math.max(0, hud.brewLeftMs / hud.brewTotalMs));
+		context.fillStyle = "rgba(255, 255, 255, 0.12)";
+		context.fillRect(x + 8, y + height - 9, width - 16, 3);
+		context.fillStyle = color;
+		context.fillRect(x + 8, y + height - 9, (width - 16) * fraction, 3);
 	}
 
 	/** L'icône du talkie ; quand quelqu'un parle, des ondes partent de son antenne. */

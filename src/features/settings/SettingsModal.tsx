@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Segmented } from "../../components/Controls";
 import { Modal } from "../../components/Modal";
+import { PageSwap } from "../../components/PageSwap";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
 import { sessionStore } from "../network/sessionStore";
@@ -11,6 +12,8 @@ import { DisplaySettings } from "./DisplaySettings";
 import styles from "./SettingsModal.module.scss";
 
 type Tab = "controls" | "display" | "audio" | "dev";
+
+const TABS: readonly Tab[] = ["controls", "display", "audio", "dev"];
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
 	const t = useT();
@@ -32,10 +35,12 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 					]}
 				/>
 			</div>
-			{tab === "controls" ? <ControlsSettings /> : null}
-			{tab === "display" ? <DisplaySettings /> : null}
-			{tab === "audio" ? <AudioSettings /> : null}
-			{tab === "dev" && dev ? <DevSettings /> : null}
+			<PageSwap page={tab} order={TABS}>
+				{tab === "controls" ? <ControlsSettings /> : null}
+				{tab === "display" ? <DisplaySettings /> : null}
+				{tab === "audio" ? <AudioSettings /> : null}
+				{tab === "dev" && dev ? <DevSettings /> : null}
+			</PageSwap>
 		</Modal>
 	);
 }

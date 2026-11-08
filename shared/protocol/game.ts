@@ -4,6 +4,7 @@ import type { StakeKind } from "../config/items.js";
 import type { MaterialId, OccultId } from "../config/occult.js";
 import type { SpeciesId } from "../config/species.js";
 import type { HatPattern } from "../hatPatterns.js";
+import type { BrewEffect } from "../manor/brews.js";
 import type { MatchConfig } from "../matchConfig.js";
 import type { Vec3 } from "../math.js";
 import type { LanternTint, Tagline } from "../rewards.js";
@@ -383,6 +384,13 @@ export type GameEvent =
 	  }
 	| { type: "walkie"; id: number; holder: string | null; available: boolean }
 	| { type: "camera"; id: number; holder: string | null; available: boolean }
+	/** Un bain de chaudron : son effet jusqu'à `until` (heure du serveur), ou sa fin avec null. */
+	| {
+			type: "brew";
+			playerId: string;
+			effect: BrewEffect | null;
+			until: number;
+	  }
 	| { type: "voiceWindows"; windows: TimeWindow[] }
 	| {
 			type: "stake";

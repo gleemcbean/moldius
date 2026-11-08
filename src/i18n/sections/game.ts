@@ -1,4 +1,5 @@
 import type { AwardId } from "@shared/awards";
+import type { BrewEffect } from "@shared/manor/brews";
 import type { HighlightKind } from "@shared/protocol/game";
 
 export interface HighlightContext {
@@ -196,6 +197,23 @@ export const gameFr = {
 			`${key} : photo (${count}/${max})`,
 		full: (max: number) => `Pellicule pleine : ${max} photos au maximum`,
 	},
+	brew: {
+		names: {
+			nausea: "Nausée",
+			feather: "Légèreté",
+			haste: "Célérité",
+			sluggish: "Lourdeur",
+			vigor: "Vigueur",
+		} satisfies Record<BrewEffect, string>,
+		start: {
+			nausea: "Beurk… la potion vous retourne l'estomac",
+			feather: "Vous vous sentez léger comme une spore",
+			haste: "Vos pieds s'emballent : vous filez plus vite",
+			sluggish: "Une mélasse épaisse vous colle aux jambes",
+			vigor: "Une vigueur brûlante : vous courez sans vous fatiguer",
+		} satisfies Record<BrewEffect, string>,
+		ended: "L'effet du chaudron se dissipe",
+	},
 	fragmentsLost: (count: number) =>
 		count > 1
 			? `La chute vous coûte ${count} fragments`
@@ -254,7 +272,7 @@ export const gameFr = {
 		> as Record<HighlightKind, (context: HighlightContext) => string>,
 	},
 	awards: {
-		title: "Titres de la partie",
+		title: "Distinctions de la partie",
 		names: {
 			abandoner: "A abandonné ses amis",
 			hider: "Champion de cache-cache",
@@ -376,6 +394,17 @@ export const gameFr = {
 		},
 		backToLobby: "Retour au lobby",
 		home: "Accueil",
+		duration: (minutes: number) => `${minutes} min de chasse`,
+		players: (count: number) => `${count} joueur${count > 1 ? "s" : ""}`,
+		standings: "Classement",
+		yourGame: "Votre chasse",
+		place: "Place",
+		score: "Score",
+		capturesLabel: "Captures",
+		deathsLabel: "Chutes",
+		unlocksTitle: "Débloqué pendant la partie",
+		challengeTag: "Défi",
+		rewardTag: "Récompense",
 	},
 	loading: {
 		kicker: "Ouverture du manoir",
@@ -618,6 +647,23 @@ export const gameEn: typeof gameFr = {
 			`${key}: photo (${count}/${max})`,
 		full: (max: number) => `Film full: ${max} photos at most`,
 	},
+	brew: {
+		names: {
+			nausea: "Nausea",
+			feather: "Featherweight",
+			haste: "Haste",
+			sluggish: "Sluggish",
+			vigor: "Vigour",
+		},
+		start: {
+			nausea: "Yuck… the brew turns your stomach",
+			feather: "You feel as light as a spore",
+			haste: "Your feet race ahead: you move faster",
+			sluggish: "Thick sludge clings to your legs",
+			vigor: "A burning vigour: you run without tiring",
+		},
+		ended: "The cauldron's effect wears off",
+	},
 	fragmentsLost: (count: number) =>
 		count > 1
 			? `The fall costs you ${count} fragments`
@@ -670,7 +716,7 @@ export const gameEn: typeof gameFr = {
 		},
 	},
 	awards: {
-		title: "Match titles",
+		title: "Match honours",
 		names: {
 			abandoner: "Left their friends behind",
 			hider: "Hide-and-seek champion",
@@ -786,6 +832,17 @@ export const gameEn: typeof gameFr = {
 		},
 		backToLobby: "Back to lobby",
 		home: "Home",
+		duration: (minutes) => `${minutes}-minute hunt`,
+		players: (count) => `${count} player${count === 1 ? "" : "s"}`,
+		standings: "Standings",
+		yourGame: "Your hunt",
+		place: "Place",
+		score: "Score",
+		capturesLabel: "Captures",
+		deathsLabel: "Falls",
+		unlocksTitle: "Unlocked this game",
+		challengeTag: "Challenge",
+		rewardTag: "Reward",
 	},
 	loading: {
 		kicker: "Opening the manor",

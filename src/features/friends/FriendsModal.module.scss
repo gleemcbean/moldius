@@ -179,7 +179,16 @@ i.offline {
 }
 
 .actions {
+  // Au-dessus du lien qui couvre la ligne, pour rester cliquables.
+  position: relative;
+  z-index: 1;
   flex: none;
   display: flex;
   gap: 6px;
+}
+
+@include enter-keyframes;
+
+.person {
+  @include enter-stagger(left, 140ms, 45ms, 8);
 }

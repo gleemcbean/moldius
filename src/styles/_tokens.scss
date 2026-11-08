@@ -63,3 +63,88 @@ $transition: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * Apparition des éléments d'une page. « translate » et « scale » sont des propriétés
+ * à part : elles s'ajoutent au transform de l'élément (un panneau centré par
+ * translateY(-50%) reste centré). « backwards » : rien ne reste après l'animation.
+ * Chaque module qui s'en sert inclut une fois enter-keyframes à sa racine.
+ */
+$enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+@mixin enter-keyframes {
+  @keyframes enter-up {
+    from {
+      opacity: 0;
+      translate: 0 22px;
+    }
+  }
+
+  @keyframes enter-down {
+    from {
+      opacity: 0;
+      translate: 0 -28px;
+    }
+  }
+
+  @keyframes enter-left {
+    from {
+      opacity: 0;
+      translate: -36px 0;
+    }
+  }
+
+  @keyframes enter-right {
+    from {
+      opacity: 0;
+      translate: 36px 0;
+    }
+  }
+
+  @keyframes enter-pop {
+    from {
+      opacity: 0;
+      scale: 0.8;
+    }
+    60% {
+      scale: 1.05;
+    }
+  }
+
+  @keyframes enter-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes enter-grow {
+    from {
+      scale: 1 0;
+    }
+  }
+}
+
+@mixin enter($kind: up, $delay: 0ms, $duration: 560ms) {
+  animation: enter-#{$kind} $duration $enter-ease $delay backwards;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+
+  :global(html[data-reduce-motion]) & {
+    animation: none;
+  }
+}
+
+/* Les enfants d'une liste arrivent l'un après l'autre (les suivants tous ensemble). */
+@mixin enter-stagger($kind: up, $start: 0ms, $step: 60ms, $count: 10) {
+  @for $index from 1 through $count {
+    &:nth-child(#{$index}) {
+      @include enter($kind, $start + ($index - 1) * $step);
+    }
+  }
+
+  &:nth-child(n + #{$count + 1}) {
+    @include enter($kind, $start + $count * $step);
+  }
+}

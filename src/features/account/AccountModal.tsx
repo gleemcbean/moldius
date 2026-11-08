@@ -37,11 +37,13 @@ import { Meter, Segmented } from "../../components/Controls";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
+import { PageSwap } from "../../components/PageSwap";
 import { TaglineBadge } from "../../components/TaglineBadge";
 import { shallowEqual, useStore } from "../../hooks/useStore";
 import { useLanguage, useT } from "../../i18n";
 import { hexColor } from "../../utils/format";
 import { rewardName, rewardRequirement } from "../challenges/rewardLabels";
+import { LevelProgress } from "../profile/LevelProgress";
 import { settingsStore } from "../settings/settingsStore";
 import styles from "./AccountModal.module.scss";
 import {
@@ -57,6 +59,7 @@ import {
 	register,
 	requestPasswordReset,
 	saveProfile,
+	setPrivateProfile,
 	startDiscord,
 	unlinkDiscord,
 } from "./accountStore";
@@ -640,6 +643,45 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 	);
 }
 
+/** Un réglage à part du formulaire : il s'applique dès qu'on coche la case. */
+function PrivacySection({ account }: { account: AccountProfile }) {
+	const t = useT();
+	const labels = t.account.profile;
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState<FormError | null>(null);
+	const toggle = async (privateProfile: boolean) => {
+		setBusy(true);
+		const result = await setPrivateProfile(privateProfile);
+		setBusy(false);
+		if (!result.ok) {
+			setError({ text: result.error });
+			return;
+		}
+		setError(null);
+		showToast(privateProfile ? labels.privateOn : labels.privateOff, "info");
+	};
+	return (
+		<div className={styles.form}>
+			<h3 className={styles.section}>{labels.privacyTitle}</h3>
+			<label className={styles.privacy}>
+				<input
+					type="checkbox"
+					checked={account.privateProfile}
+					disabled={busy}
+					onChange={(event) => void toggle(event.target.checked)}
+					data-selectable=""
+				/>
+				<Icon name="lock" className={styles.privacyIcon} />
+				<span>
+					<strong>{labels.privateProfile}</strong>
+					<small>{labels.privateProfileHint}</small>
+				</span>
+			</label>
+			<ErrorLine error={error} />
+		</div>
+	);
+}
+
 function PasswordForm() {
 	const t = useT();
 	const describe = useProblem();
@@ -901,6 +943,13 @@ function SecurityPanel({ account }: { account: AccountProfile }) {
 
 type AccountTab = "history" | "rewards" | "profile" | "security";
 
+const ACCOUNT_TABS: readonly AccountTab[] = [
+	"history",
+	"rewards",
+	"profile",
+	"security",
+];
+
 function RewardCard({
 	reward,
 	account,
@@ -1022,6 +1071,7 @@ function AccountPanel({ account }: { account: AccountProfile }) {
 						{labels.signOut}
 					</Button>
 				</div>
+				<LevelProgress xp={stats.xp} />
 				<dl className={styles.stats}>
 					<div>
 						<dt>{labels.games}</dt>
@@ -1053,10 +1103,17 @@ function AccountPanel({ account }: { account: AccountProfile }) {
 					]}
 				/>
 			</div>
-			{tab === "history" ? <HistoryPanel /> : null}
-			{tab === "rewards" ? <RewardsPanel account={account} /> : null}
-			{tab === "profile" ? <ProfilePanel account={account} /> : null}
-			{tab === "security" ? <SecurityPanel account={account} /> : null}
+			<PageSwap page={tab} order={ACCOUNT_TABS}>
+				{tab === "history" ? <HistoryPanel /> : null}
+				{tab === "rewards" ? <RewardsPanel account={account} /> : null}
+				{tab === "profile" ? (
+					<div className={styles.security}>
+						<ProfilePanel account={account} />
+						<PrivacySection account={account} />
+					</div>
+				) : null}
+				{tab === "security" ? <SecurityPanel account={account} /> : null}
+			</PageSwap>
 		</div>
 	);
 }

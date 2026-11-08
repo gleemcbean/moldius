@@ -6,6 +6,7 @@ import {
 import { DEFAULT_HAT_PATTERN } from "@shared/hatPatterns";
 import { assignRecipeMaterials } from "@shared/manor/furnish/pickups";
 import { layoutChecksum } from "@shared/manor/generateManor";
+import { type LiquidVolume, liquidVolumes } from "@shared/manor/liquids";
 import type { ManorLayout } from "@shared/manor/types";
 import { CollisionWorld } from "@shared/physics/collisionWorld";
 import type { MatchInit } from "@shared/protocol/game";
@@ -74,6 +75,7 @@ export interface LoadedWorld {
 	photoCamera: PhotoCamera;
 	stakes: StakeViews;
 	layout: ManorLayout;
+	liquids: LiquidVolume[];
 	world: CollisionWorld;
 	state: ClientWorldState;
 	renderer: THREE.WebGLRenderer;
@@ -324,7 +326,8 @@ export async function loadSession(
 			{ color: player.color, pattern: player.pattern, lantern: player.lantern },
 		]),
 	);
-	const remotePlayers = new RemotePlayers(state, kit, world);
+	const liquids = liquidVolumes(layout.furniture);
+	const remotePlayers = new RemotePlayers(state, kit, world, liquids);
 	scene.add(remotePlayers.group);
 	const anomalies = new AnomalyViews(
 		state,
@@ -412,6 +415,7 @@ export async function loadSession(
 	return {
 		decor,
 		layout,
+		liquids,
 		world,
 		state,
 		renderer,

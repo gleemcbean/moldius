@@ -1,8 +1,11 @@
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { useT } from "../i18n";
 import { Icon } from "./Icon";
 import styles from "./Modal.module.scss";
 import { SelectorGroup } from "./SelectorGroup";
+
+/** Échap ne ferme que la fenêtre du dessus, quand un profil s'ouvre par-dessus un classement. */
+const openModals: symbol[] = [];
 
 export function Modal({
 	title,
@@ -18,19 +21,26 @@ export function Modal({
 	dismissible?: boolean;
 }) {
 	const t = useT();
+	const closeRef = useRef(onClose);
+	closeRef.current = onClose;
 	useEffect(() => {
 		if (!dismissible) {
 			return;
 		}
+		const token = Symbol("modal");
+		openModals.push(token);
 		const onKey = (event: KeyboardEvent) => {
-			if (event.code === "Escape") {
+			if (event.code === "Escape" && openModals.at(-1) === token) {
 				event.stopPropagation();
-				onClose();
+				closeRef.current();
 			}
 		};
 		window.addEventListener("keydown", onKey, true);
-		return () => window.removeEventListener("keydown", onKey, true);
-	}, [onClose, dismissible]);
+		return () => {
+			window.removeEventListener("keydown", onKey, true);
+			openModals.splice(openModals.indexOf(token), 1);
+		};
+	}, [dismissible]);
 
 	return (
 		<div

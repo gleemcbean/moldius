@@ -2,10 +2,12 @@ import type { LobbyPlayerInfo, LobbyState } from "@shared/protocol/lobby";
 import { TEAM_COLORS } from "@shared/teams";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
+import { LevelBadge } from "../../components/LevelBadge";
 import { TaglineBadge } from "../../components/TaglineBadge";
 import { useStore } from "../../hooks/useStore";
 import { type Messages, useT } from "../../i18n";
 import { hexColor } from "../../utils/format";
+import { ProfileLink } from "../profile/ProfileLink";
 import { micStore } from "../voice/micManager";
 import { voiceStore } from "../voice/voiceChat";
 import styles from "./LobbyScreen.module.scss";
@@ -77,13 +79,23 @@ function Occupied({
 }) {
 	const t = useT();
 	return (
-		<li className={[styles.slot, self ? styles.self : ""].join(" ")}>
+		<li
+			className={[styles.slot, self ? styles.self : ""].join(" ")}
+			data-selector-row=""
+		>
 			<span className={styles.capPreview}>
 				<HatPreview color={player.color} pattern={player.pattern} />
 			</span>
 			<span className={styles.slotBody}>
 				<span className={styles.slotName} title={player.name}>
-					<span className={styles.slotNameText}>{player.name}</span>
+					<ProfileLink
+						profileId={player.profileId}
+						name={player.name}
+						className={styles.slotNameText}
+					>
+						{player.name}
+					</ProfileLink>
+					<LevelBadge level={player.level} className={styles.slotLevel} />
 					<TaglineBadge
 						tagline={player.tagline}
 						className={styles.slotTagline}

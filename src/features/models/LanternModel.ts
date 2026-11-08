@@ -31,6 +31,13 @@ const FLAME: MaterialOptions = {
 	fixedRepeat: true,
 };
 
+/** Vers le blanc : le verre et le cœur restent lumineux, mais de la couleur choisie. */
+function towardWhite(color: number, amount: number): number {
+	return new THREE.Color(color)
+		.lerp(new THREE.Color(0xffffff), amount)
+		.getHex();
+}
+
 const SEGMENTS = 20;
 const GLASS_RADIUS = 0.058;
 const SHUTTER_RADIUS = 0.066;
@@ -75,7 +82,7 @@ export class LanternModel {
 				1,
 				true,
 			),
-			GLASS,
+			tint === null ? GLASS : { ...GLASS, color: towardWhite(tint, 0.55) },
 		);
 		glass.position.y = (GLASS_TOP + GLASS_BOTTOM) / 2;
 		this.root.add(glass);
@@ -169,7 +176,9 @@ export class LanternModel {
 		for (const rotation of [0, Math.PI / 3, (Math.PI * 2) / 3]) {
 			const flame = kit.mesh(
 				new THREE.PlaneGeometry(0.04, 0.075),
-				tint === null ? FLAME : { ...FLAME, color: tint },
+				tint === null
+					? FLAME
+					: { ...FLAME, texture: "flameNeutral", color: tint },
 			);
 			flame.position.y = 0.115;
 			flame.rotation.y = rotation;
@@ -178,7 +187,10 @@ export class LanternModel {
 		}
 		this.core = kit.sphere(
 			0.015,
-			{ color: 0xffe8a0, unlit: true },
+			{
+				color: tint === null ? 0xffe8a0 : towardWhite(tint, 0.6),
+				unlit: true,
+			},
 			[1, 1.6, 1],
 			8,
 		);
