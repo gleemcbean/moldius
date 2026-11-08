@@ -1,6 +1,6 @@
 import type { HatPattern } from "../hatPatterns.js";
 import type { MatchConfig } from "../matchConfig.js";
-import type { LanternTint } from "../rewards.js";
+import type { LanternTint, Tagline } from "../rewards.js";
 
 export type LobbyVisibility = "public" | "private";
 
@@ -20,7 +20,16 @@ export interface LobbyPlayerInfo {
 	color: number;
 	pattern: HatPattern;
 	lantern: LanternTint;
+	tagline: Tagline | null;
 	team: number | null;
+}
+
+/** Ce que le joueur a choisi sur l'accueil ; le serveur écarte ce qui est verrouillé. */
+export interface LookPreference {
+	color?: number | null;
+	pattern?: HatPattern | null;
+	lantern?: LanternTint | null;
+	tagline?: Tagline | null;
 }
 
 export interface LobbyState {
@@ -44,6 +53,7 @@ export interface JoinRequest {
 	color?: number;
 	pattern?: HatPattern;
 	lantern?: LanternTint;
+	tagline?: Tagline | null;
 }
 
 export interface JoinPrivateRequest extends JoinRequest {

@@ -11,6 +11,7 @@ import {
 	DEFAULT_LANTERN_TINT,
 	hatUnlocked,
 	lanternUnlocked,
+	taglineUnlocked,
 } from "@shared/rewards";
 import { useEffect, useMemo, useState } from "react";
 import { openOverlay } from "../../app/appStore";
@@ -83,6 +84,7 @@ export function HomeScreen() {
 	const name = useStore(settingsStore, (state) => state.playerName);
 	const pattern = useStore(settingsStore, (state) => state.playerPattern);
 	const lantern = useStore(settingsStore, (state) => state.playerLantern);
+	const tagline = useStore(settingsStore, (state) => state.playerTagline);
 	const connection = useStore(sessionStore, (state) => state.status);
 	const pending = useStore(lobbyStore, (state) => state.pending);
 	const accountStatus = useStore(accountStore, (state) => state.status);
@@ -114,7 +116,10 @@ export function HomeScreen() {
 		if (!lanternUnlocked(lantern, stats)) {
 			updateSettings({ playerLantern: DEFAULT_LANTERN_TINT });
 		}
-	}, [accountStatus, pattern, lantern, stats]);
+		if (!taglineUnlocked(tagline, stats)) {
+			updateSettings({ playerTagline: null });
+		}
+	}, [accountStatus, pattern, lantern, tagline, stats]);
 
 	useEffect(() => {
 		if (invite) {

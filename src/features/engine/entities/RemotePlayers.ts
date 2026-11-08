@@ -2,6 +2,7 @@ import {
 	LANTERN_LIGHT_INTENSITY,
 	LANTERN_LIGHT_RANGE,
 } from "@shared/config/index";
+import { OCCULT_IDS } from "@shared/config/occult";
 import type { CollisionWorld } from "@shared/physics/collisionWorld";
 import {
 	countWallsBetween,
@@ -45,8 +46,8 @@ export class RemotePlayers {
 	private readonly replayVoices = new Map<string, number>();
 	private spectating = false;
 	private time = 0;
-	/** Le dernier joueur entendu au talkie, pour l'afficher. */
-	radioSpeaker: string | null = null;
+	/** Les joueurs entendus au talkie en ce moment, pour les afficher. */
+	radioSpeakers: string[] = [];
 
 	constructor(
 		private readonly state: ClientWorldState,
@@ -96,7 +97,7 @@ export class RemotePlayers {
 	/** Dans les meilleurs moments, on se voit aussi soi-même, sans le son du tchat. */
 	spectate(): void {
 		this.spectating = true;
-		this.radioSpeaker = null;
+		this.radioSpeakers = [];
 	}
 
 	setReplayVoice(playerId: string, level: number): void {
@@ -124,7 +125,7 @@ export class RemotePlayers {
 	): void {
 		this.time += dt;
 		const listening = !this.spectating && this.state.selfHasWalkie;
-		this.radioSpeaker = null;
+		this.radioSpeakers = [];
 		for (const view of this.views.values()) {
 			if (view.id === this.state.selfId && !this.spectating) {
 				continue;
@@ -160,7 +161,7 @@ export class RemotePlayers {
 				voiceChat.setRadio(view.id, onRadio);
 			}
 			if (onRadio && talking > 0.12) {
-				this.radioSpeaker = player.name;
+				this.radioSpeakers.push(player.name);
 			}
 			view.model.update(dt, {
 				speed: view.pose.speed,
@@ -171,6 +172,14 @@ export class RemotePlayers {
 				grimoireOpen: (flags & PLAYER_FLAG.grimoire) !== 0,
 				dead,
 				talking,
+				camera:
+					(flags & PLAYER_FLAG.cameraHeld) === 0
+						? 0
+						: (flags & PLAYER_FLAG.camera) !== 0
+							? 2
+							: 1,
+				walkie: (flags & PLAYER_FLAG.walkieHeld) !== 0,
+				heldObject: OCCULT_IDS[sample.value.held ?? -1] ?? null,
 			});
 			const distance = view.position.distanceTo(listener);
 			view.tag.position.set(

@@ -6,6 +6,7 @@ import type {
 	DailyBoard,
 	EmailTokenRequest,
 	LoginRequest,
+	MatchDetail,
 	MatchHistoryEntry,
 	PasswordChangeRequest,
 	PasswordResetConfirmRequest,
@@ -89,5 +90,10 @@ export const accountApi = {
 	unlinkDiscord: () =>
 		request<{ account: AccountProfile }>("POST", "/discord/unlink", {}),
 	history: () => request<{ entries: MatchHistoryEntry[] }>("GET", "/history"),
+	historyDetail: (matchId: string) =>
+		request<{ match: MatchDetail }>(
+			"GET",
+			`/history/${encodeURIComponent(matchId)}`,
+		),
 	daily: (date: string) => request<DailyBoard>("GET", `/daily?date=${date}`),
 };

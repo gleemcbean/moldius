@@ -9,6 +9,19 @@ export function walkieCount(players: number): number {
 	return Math.min(WALKIE_SPOT_COUNT, Math.max(2, Math.ceil(players / 2)));
 }
 
+/** Un appareil photo pour deux joueurs : de quoi garder des souvenirs de la chasse. */
+export const CAMERA_RETURN_MS = 30_000;
+/** Au-delà, la mémoire du navigateur trinque : on garde les premières. */
+export const MAX_PHOTOS_PER_MATCH = 24;
+export const PHOTO_SIZE = 1024;
+
+export function cameraCount(players: number): number {
+	return Math.min(WALKIE_SPOT_COUNT, Math.max(1, Math.ceil(players / 2)));
+}
+
+/** Comme le talkie, quelques fragments ne survivent pas à une chute. */
+export const FALL_FRAGMENT_LOSS = 3;
+
 export const STAKE_KINDS = ["sanctuary", "reliquary", "pact"] as const;
 
 export type StakeKind = (typeof STAKE_KINDS)[number];

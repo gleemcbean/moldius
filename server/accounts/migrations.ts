@@ -175,6 +175,15 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
       )::jsonb`,
 		],
 	},
+	{
+		version: 10,
+		statements: [
+			`ALTER TABLE accounts ADD COLUMN tagline text`,
+			`ALTER TABLE match_history ADD COLUMN daily_date text`,
+			`ALTER TABLE match_history ADD COLUMN team_count integer NOT NULL DEFAULT 0`,
+			`ALTER TABLE match_history ADD COLUMN details jsonb`,
+		],
+	},
 ];
 
 export async function migrate(database: Database): Promise<number> {

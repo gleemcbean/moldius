@@ -18,11 +18,18 @@ import type {
 	AccountProfile,
 	DailyBoard,
 	DailyScoreEntry,
+	MatchDetail,
+	MatchDetailData,
 	MatchHistoryEntry,
 } from "../../shared/protocol/account.js";
-import { DEFAULT_LANTERN_TINT, isLanternTint } from "../../shared/rewards.js";
+import {
+	DEFAULT_LANTERN_TINT,
+	isLanternTint,
+	isTagline,
+} from "../../shared/rewards.js";
 import type { Database } from "./database.js";
 import { type DiscordProfile, discordAvatarUrl } from "./discord.js";
+import { parseMatchDetails } from "./matchDetails.js";
 
 export interface StoredAccount {
 	id: string;
@@ -56,6 +63,8 @@ export interface MatchRecord {
 	dailyDate?: string | null;
 	pattern?: HatPattern;
 	metrics?: MatchMetrics;
+	teamCount?: number;
+	details?: MatchDetailData;
 }
 
 export interface PendingRegistration {
@@ -70,7 +79,7 @@ export interface PendingRegistration {
 
 export type ProfileFields = Pick<
 	AccountProfile,
-	"displayName" | "color" | "pattern" | "lantern" | "language"
+	"displayName" | "color" | "pattern" | "lantern" | "tagline" | "language"
 >;
 
 interface PendingRow {
@@ -94,6 +103,7 @@ interface AccountRow {
 	hat_color: number;
 	hat_pattern: string;
 	lantern_tint: string;
+	tagline: string | null;
 	language: string;
 	total_captures: number;
 	awards_earned: number;
@@ -127,10 +137,17 @@ interface HistoryRow {
 	captures: number;
 	deaths: number;
 	won: boolean;
+	daily_date: string | null;
+	team_count: number | null;
+	details?: unknown;
+	has_details?: boolean;
 }
 
+const HISTORY_COLUMNS =
+	"match_id, played_at, duration_ms, visibility, player_name, color, rank, player_count, score, captures, deaths, won, daily_date, team_count";
+
 const ACCOUNT_COLUMNS =
-	"id, email, password_hash, discord_id, discord_username, discord_avatar, display_name, hat_color, hat_pattern, lantern_tint, language, games_played, wins, best_score, total_score, total_captures, awards_earned, dailies_played, challenge_progress, created_at, terms_accepted_at";
+	"id, email, password_hash, discord_id, discord_username, discord_avatar, display_name, hat_color, hat_pattern, lantern_tint, tagline, language, games_played, wins, best_score, total_score, total_captures, awards_earned, dailies_played, challenge_progress, created_at, terms_accepted_at";
 
 function toAccount(row: AccountRow): StoredAccount {
 	return {
@@ -154,6 +171,7 @@ function toAccount(row: AccountRow): StoredAccount {
 			lantern: isLanternTint(row.lantern_tint)
 				? row.lantern_tint
 				: DEFAULT_LANTERN_TINT,
+			tagline: isTagline(row.tagline) ? row.tagline : null,
 			language: isLanguage(row.language) ? row.language : DEFAULT_LANGUAGE,
 			createdAt: new Date(row.created_at).toISOString(),
 			termsAcceptedAt: row.terms_accepted_at
@@ -187,6 +205,9 @@ function toHistory(row: HistoryRow): MatchHistoryEntry {
 		captures: Number(row.captures),
 		deaths: Number(row.deaths),
 		won: Boolean(row.won),
+		daily: row.daily_date ?? null,
+		teamCount: Number(row.team_count ?? 0),
+		hasDetails: Boolean(row.has_details),
 	};
 }
 
@@ -389,7 +410,7 @@ export class AccountStore {
 	): Promise<StoredAccount | null> {
 		const { rows } = await this.database.query<AccountRow>(
 			`UPDATE accounts SET display_name = $2, hat_color = $3, hat_pattern = $4, language = $5,
-         lantern_tint = $6, updated_at = now()
+         lantern_tint = $6, tagline = $7, updated_at = now()
        WHERE id = $1
        RETURNING ${ACCOUNT_COLUMNS}`,
 			[
@@ -399,6 +420,7 @@ export class AccountStore {
 				fields.pattern,
 				fields.language,
 				fields.lantern,
+				fields.tagline,
 			],
 		);
 		return rows[0] ? toAccount(rows[0]) : null;
@@ -417,29 +439,32 @@ export class AccountStore {
 			best_score: number;
 			captures: number;
 			deaths: number;
+			tagline: string | null;
 		}
 		const columns =
-			"account_id, player_name, color, pattern, best_score, captures, deaths";
+			"d.account_id, d.player_name, d.color, d.pattern, d.best_score, d.captures, d.deaths, a.tagline";
+		const from = "daily_scores d LEFT JOIN accounts a ON a.id = d.account_id";
 		const toEntry = (row: ScoreRow, rank: number): DailyScoreEntry => ({
 			rank,
 			name: row.player_name,
 			color: Number(row.color),
 			pattern: isHatPattern(row.pattern) ? row.pattern : DEFAULT_HAT_PATTERN,
+			tagline: isTagline(row.tagline) ? row.tagline : null,
 			score: Number(row.best_score),
 			captures: Number(row.captures),
 			deaths: Number(row.deaths),
 			self: row.account_id === accountId,
 		});
 		const { rows } = await this.database.query<ScoreRow>(
-			`SELECT ${columns} FROM daily_scores WHERE challenge_date = $1
-       ORDER BY best_score DESC, updated_at ASC LIMIT $2`,
+			`SELECT ${columns} FROM ${from} WHERE d.challenge_date = $1
+       ORDER BY d.best_score DESC, d.updated_at ASC LIMIT $2`,
 			[date, limit],
 		);
 		const entries = rows.map((row, index) => toEntry(row, index + 1));
 		let me = entries.find((entry) => entry.self) ?? null;
 		if (!me && accountId) {
 			const own = await this.database.query<ScoreRow>(
-				`SELECT ${columns} FROM daily_scores WHERE challenge_date = $1 AND account_id = $2`,
+				`SELECT ${columns} FROM ${from} WHERE d.challenge_date = $1 AND d.account_id = $2`,
 				[date, accountId],
 			);
 			if (own.rows[0]) {
@@ -574,9 +599,9 @@ export class AccountStore {
 			const inserted = await client.query<{ id: string }>(
 				`INSERT INTO match_history (
            id, account_id, match_id, played_at, duration_ms, visibility, player_name, color,
-           rank, player_count, score, captures, deaths, won
+           rank, player_count, score, captures, deaths, won, daily_date, team_count, details
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
          ON CONFLICT (account_id, match_id) DO NOTHING
          RETURNING id`,
 				[
@@ -594,6 +619,9 @@ export class AccountStore {
 					record.captures,
 					record.deaths,
 					record.won,
+					record.dailyDate ?? null,
+					record.teamCount ?? 0,
+					record.details ? JSON.stringify(record.details) : null,
 				],
 			);
 			if (inserted.rows.length === 0) {
@@ -690,8 +718,7 @@ export class AccountStore {
 		limit: number,
 	): Promise<MatchHistoryEntry[]> {
 		const { rows } = await this.database.query<HistoryRow>(
-			`SELECT match_id, played_at, duration_ms, visibility, player_name, color, rank,
-              player_count, score, captures, deaths, won
+			`SELECT ${HISTORY_COLUMNS}, details IS NOT NULL AS has_details
        FROM match_history
        WHERE account_id = $1
        ORDER BY played_at DESC, id DESC
@@ -699,5 +726,24 @@ export class AccountStore {
 			[accountId, limit],
 		);
 		return rows.map(toHistory);
+	}
+
+	/** Seulement une partie de son propre historique : l'identifiant seul ne suffit pas. */
+	async historyDetail(
+		accountId: string,
+		matchId: string,
+	): Promise<MatchDetail | null> {
+		const { rows } = await this.database.query<HistoryRow>(
+			`SELECT ${HISTORY_COLUMNS}, details
+       FROM match_history
+       WHERE account_id = $1 AND match_id = $2`,
+			[accountId, matchId],
+		);
+		const row = rows[0];
+		const details = row ? parseMatchDetails(row.details) : null;
+		if (!row || !details) {
+			return null;
+		}
+		return { ...toHistory({ ...row, has_details: true }), ...details };
 	}
 }

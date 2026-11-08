@@ -1,5 +1,6 @@
 import {
 	ALTAR_INTERACT_RANGE,
+	FALL_FRAGMENT_LOSS,
 	MATERIAL_IDS,
 	type MaterialId,
 	OCCULT_RECIPES,
@@ -64,6 +65,24 @@ export class LootSystem {
 		});
 		match.sendInventory(player);
 		return true;
+	}
+
+	/** Une chute coûte quelques fragments au hasard : les objets, eux, restent. */
+	loseFragments(match: Match, player: MatchPlayer): number {
+		this.rng ??= match.rng.fork("loot");
+		let lost = 0;
+		while (lost < FALL_FRAGMENT_LOSS) {
+			const owned = MATERIAL_IDS.filter((id) => player.materials[id] > 0);
+			if (owned.length === 0) {
+				break;
+			}
+			player.materials[this.rng.pick(owned)] -= 1;
+			lost += 1;
+		}
+		if (lost > 0) {
+			match.sendInventory(player);
+		}
+		return lost;
 	}
 
 	craft(

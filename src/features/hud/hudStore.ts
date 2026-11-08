@@ -1,5 +1,6 @@
 import type { Level } from "@shared/manor/types";
 import type { CastFailureReason, PlayerInventory } from "@shared/protocol/game";
+import type { Tagline } from "@shared/rewards";
 import { createStore } from "../../utils/store";
 
 export type CastPhase = "idle" | "listening" | "sent";
@@ -36,6 +37,9 @@ export interface LeaderboardRow {
 	alive: boolean;
 	self: boolean;
 	team: number | null;
+	walkie: boolean;
+	radio: boolean;
+	tagline: Tagline | null;
 }
 
 export interface HudState {
@@ -80,7 +84,11 @@ export interface HudState {
 	fps: number;
 	walkieHeld: boolean;
 	walkieTalking: boolean;
-	walkieHearing: string | null;
+	walkieSpeakers: string[];
+	cameraHeld: boolean;
+	cameraRaised: boolean;
+	photoCount: number;
+	photoFlashAt: number;
 	level: Level;
 	serverNow: number;
 }
@@ -136,7 +144,11 @@ export function initialHud(): HudState {
 		fps: 0,
 		walkieHeld: false,
 		walkieTalking: false,
-		walkieHearing: null,
+		walkieSpeakers: [],
+		cameraHeld: false,
+		cameraRaised: false,
+		photoCount: 0,
+		photoFlashAt: 0,
 		level: 0,
 		serverNow: 0,
 	};

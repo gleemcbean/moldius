@@ -22,6 +22,7 @@ import {
 import {
 	DEFAULT_LANTERN_TINT,
 	type LanternTint,
+	type Tagline,
 } from "../../shared/rewards.js";
 import { PoseHistory } from "./history.js";
 
@@ -71,6 +72,8 @@ export class MatchPlayer {
 	casting: CastingState | null = null;
 	held: OccultId | null = null;
 	walkie = -1;
+	camera = -1;
+	cameraRaised = false;
 	radioOn = false;
 	radioNoiseAt = -Infinity;
 	readonly materials = Object.fromEntries(
@@ -94,6 +97,7 @@ export class MatchPlayer {
 	readonly history = new PoseHistory();
 	pattern: HatPattern = DEFAULT_HAT_PATTERN;
 	lantern: LanternTint = DEFAULT_LANTERN_TINT;
+	tagline: Tagline | null = null;
 	team: number | null = null;
 	devModes: DevModes = noDevModes();
 
@@ -231,6 +235,15 @@ export class MatchPlayer {
 		if (this.radioOn) {
 			flags |= PLAYER_FLAG.radio;
 		}
+		if (this.cameraRaised && this.camera >= 0 && this.alive) {
+			flags |= PLAYER_FLAG.camera;
+		}
+		if (this.walkie >= 0) {
+			flags |= PLAYER_FLAG.walkieHeld;
+		}
+		if (this.camera >= 0) {
+			flags |= PLAYER_FLAG.cameraHeld;
+		}
 		return flags;
 	}
 
@@ -250,6 +263,9 @@ export class MatchPlayer {
 			score: this.score,
 			hideSpot: this.hiddenSpot,
 			moveId: this.lastForcedMoveId,
+			...(this.held && this.objects[this.held] > 0
+				? { held: OCCULT_IDS.indexOf(this.held) }
+				: {}),
 		};
 	}
 }

@@ -1,24 +1,22 @@
 import { newlyCompleted, withMatchMetrics } from "@shared/challenges";
-import type { HatPattern } from "@shared/hatPatterns";
 import type { MatchResultEntry, MatchResults } from "@shared/protocol/game";
-import {
-	accountProgress,
-	type LanternTint,
-	newlyUnlocked,
-} from "@shared/rewards";
+import { accountProgress, newlyUnlocked } from "@shared/rewards";
 import { TEAM_COLORS } from "@shared/teams";
 import { useEffect, useRef } from "react";
 import { openOverlay } from "../../app/appStore";
 import { Button } from "../../components/Button";
 import { SelectorGroup } from "../../components/SelectorGroup";
+import { TaglineBadge } from "../../components/TaglineBadge";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
 import { hexColor } from "../../utils/format";
 import { accountStore, refreshAccount } from "../account/accountStore";
 import { challengeLabel } from "../challenges/challengeStore";
+import { rewardName } from "../challenges/rewardLabels";
 import { closeResults } from "../game/matchController";
 import { matchStore } from "../game/matchStore";
 import { sessionStore } from "../network/sessionStore";
+import { PhotoGallery } from "./PhotoGallery";
 import styles from "./ResultsScreen.module.scss";
 
 function AwardList({
@@ -111,7 +109,10 @@ export function ResultsScreen() {
 				className={styles.swatch}
 				style={{ background: hexColor(entry.color) }}
 			/>
-			<span className={styles.name}>{entry.name}</span>
+			<span className={styles.name}>
+				{entry.name}
+				<TaglineBadge tagline={entry.tagline} />
+			</span>
 			<span className={styles.stat}>{labels.captures(entry.captures)}</span>
 			<span className={styles.stat}>{labels.deaths(entry.deaths)}</span>
 			<span className={styles.score}>{t.common.points(entry.score)}</span>
@@ -161,6 +162,7 @@ export function ResultsScreen() {
 						: results.entries.map((entry, index) => row(entry, index + 1))}
 				</ol>
 				<AwardList results={results} selfId={selfId} />
+				<PhotoGallery />
 				{completed.length > 0 ? (
 					<p className={styles.unlocked}>
 						{t.challenges.resultsTitle(
@@ -171,13 +173,7 @@ export function ResultsScreen() {
 				{unlocked.length > 0 ? (
 					<p className={styles.unlocked}>
 						{labels.unlocked(
-							unlocked
-								.map((reward) =>
-									reward.kind === "hat"
-										? t.appearance.patterns[reward.value as HatPattern]
-										: t.appearance.lanterns[reward.value as LanternTint],
-								)
-								.join(", "),
+							unlocked.map((reward) => rewardName(t, reward)).join(", "),
 						)}
 					</p>
 				) : null}

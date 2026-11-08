@@ -19,10 +19,12 @@ import type {
 	LobbyPlayerInfo,
 	LobbyState,
 	LobbyVisibility,
+	LookPreference,
 } from "../../shared/protocol/lobby.js";
 import {
 	DEFAULT_LANTERN_TINT,
 	type LanternTint,
+	type Tagline,
 } from "../../shared/rewards.js";
 import { smallestTeam } from "../../shared/teams.js";
 
@@ -35,6 +37,7 @@ export interface LobbyMember {
 	color: number;
 	pattern: HatPattern;
 	lantern: LanternTint;
+	tagline: Tagline | null;
 	team: number | null;
 	joinedAt: number;
 }
@@ -108,16 +111,16 @@ export class Lobby {
 		playerId: string,
 		name: string,
 		now: number,
-		preferredColor: number | null,
-		pattern: HatPattern | null = null,
-		lantern: LanternTint | null = null,
+		look: LookPreference = {},
 	): LobbyActionResult {
+		const preferredColor = look.color ?? null;
 		const existing = this.member(playerId);
 		if (existing) {
 			existing.name = name;
 			existing.connected = true;
-			existing.pattern = pattern ?? existing.pattern;
-			existing.lantern = lantern ?? existing.lantern;
+			existing.pattern = look.pattern ?? existing.pattern;
+			existing.lantern = look.lantern ?? existing.lantern;
+			existing.tagline = look.tagline ?? null;
 			return { ok: true };
 		}
 		if (this.phase !== "waiting" && this.phase !== "countdown") {
@@ -144,8 +147,9 @@ export class Lobby {
 			micReady: false,
 			connected: true,
 			color,
-			pattern: pattern ?? DEFAULT_HAT_PATTERN,
-			lantern: lantern ?? DEFAULT_LANTERN_TINT,
+			pattern: look.pattern ?? DEFAULT_HAT_PATTERN,
+			lantern: look.lantern ?? DEFAULT_LANTERN_TINT,
+			tagline: look.tagline ?? null,
 			team: null,
 			joinedAt: now,
 		});
@@ -348,6 +352,7 @@ export class Lobby {
 			color: member.color,
 			pattern: member.pattern,
 			lantern: member.lantern,
+			tagline: member.tagline,
 			team: member.team,
 		}));
 		return {

@@ -166,8 +166,11 @@ export function placeWalkies(
 	rooms: Room[],
 	furniture: FurnitureItem[],
 	rng: SeededRandom,
+	/** D'autres objets déjà posés : une pièce chacun, tant que c'est possible. */
+	avoid: readonly WalkieSpot[] = [],
 ): WalkieSpot[] {
 	const spots: WalkieSpot[] = [];
+	const taken = (room: Room) => avoid.some((spot) => spot.roomId === room.id);
 	const usable = rng.shuffle(
 		rooms.filter((room) => room.type !== "stairwell" && room.type !== "closet"),
 	);
@@ -176,6 +179,7 @@ export function placeWalkies(
 			if (
 				spots.length >= WALKIE_SPOT_COUNT ||
 				spots.some((spot) => spot.roomId === room.id) ||
+				(spacing > 0 && taken(room)) ||
 				spots.some(
 					(spot) =>
 						spot.level === room.level &&

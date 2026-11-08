@@ -55,6 +55,8 @@ export const PUBLIC_MATCH_CONFIG: MatchConfig = Object.freeze({
 export const TUTORIAL_SEED = 2024;
 export const TUTORIAL_WOUNDED_HEALTH = 50;
 
+const TUTORIAL_MATCH_MINUTES = 15;
+
 export const TUTORIAL_MATCH_CONFIG: MatchConfig = Object.freeze({
 	simultaneousAnomalies: 1,
 	manorSize: "small",
@@ -65,7 +67,7 @@ export const TUTORIAL_MATCH_CONFIG: MatchConfig = Object.freeze({
 	upperFloorSize: "small",
 	stairCount: 1,
 	species: ["murmure"],
-	durationMinutes: MAX_MATCH_MINUTES,
+	durationMinutes: TUTORIAL_MATCH_MINUTES,
 	teamCount: 0,
 	itemsPerPlayer: 10,
 	walkies: false,

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { hoverHeight } from "../server/game/ai/locomotion.js";
 import type { MatchPlayer } from "../server/game/MatchPlayer.js";
 import { ANOMALY_RETURN_DELAY_MS } from "../shared/config/index.js";
-import { SPECIES, SPECIES_LIST } from "../shared/config/species.js";
+import { SPECIES } from "../shared/config/species.js";
 import {
 	type ClearLine,
 	castAt,
@@ -93,25 +93,19 @@ describe("captures vocales validées par le serveur", () => {
 		expect(result.reason).toBe("wrong-words");
 	});
 
-	it("exige la lanterne ouverte pour le Veilleur", () => {
+	it("ignore la lanterne : ouverte ou fermée, la capture passe", () => {
+		prepareCaster(sim, "p1", { lantern: true });
+		const lit = installAnomaly(sim, 0, "murmure", line.target);
+		expect(castAt(sim, "p1", lit).ok).toBe(true);
 		prepareCaster(sim, "p1", { lantern: false });
-		const entity = installAnomaly(
+		const dark = installAnomaly(
 			sim,
 			0,
 			"veilleur",
 			line.target,
 			line.yaw + Math.PI,
 		);
-		expect(castAt(sim, "p1", entity).reason).toBe("lantern-open-required");
-	});
-
-	it("exige la lanterne fermée pour le Murmure, debout comme accroupi", () => {
-		prepareCaster(sim, "p1", { lantern: true });
-		const lit = installAnomaly(sim, 0, "murmure", line.target);
-		expect(castAt(sim, "p1", lit).reason).toBe("lantern-closed-required");
-		prepareCaster(sim, "p1", { lantern: false });
-		const ok = installAnomaly(sim, 0, "murmure", line.target);
-		expect(castAt(sim, "p1", ok).ok).toBe(true);
+		expect(castAt(sim, "p1", dark).ok).toBe(true);
 	});
 
 	it("n'exige plus de rester immobile", () => {
@@ -172,25 +166,17 @@ describe("captures vocales validées par le serveur", () => {
 		expect(result.reason).toBe("wrong-words");
 	});
 
-	it("respecte la portée maximale du Brasier, sans portée minimale", () => {
-		setup(2);
-		prepareCaster(sim, "p1", { voiceLevel: 0.95 });
-		const near = installAnomaly(sim, 0, "crache-cendre", line.target);
-		expect(castAt(sim, "p1", near).ok).toBe(true);
+	it("capture toutes les espèces jusqu'à 5 m, pas au-delà", () => {
+		for (const species of ["crache-cendre", "luciole", "veilleur"] as const) {
+			setup(4.6);
+			prepareCaster(sim, "p1", { voiceLevel: 0.95 });
+			const near = installAnomaly(sim, 0, species, line.target);
+			expect(castAt(sim, "p1", near).ok).toBe(true);
+		}
 		setup(6.6, 1, [4242, 7, 19, 23, 101, 202, 303, 404, 505, 606]);
 		prepareCaster(sim, "p1", { voiceLevel: 0.95 });
 		const far = installAnomaly(sim, 0, "crache-cendre", line.target);
 		expect(castAt(sim, "p1", far).reason).toBe("out-of-range");
-		setup(4);
-		prepareCaster(sim, "p1", { voiceLevel: 0.95 });
-		const right = installAnomaly(sim, 0, "crache-cendre", line.target);
-		expect(castAt(sim, "p1", right).ok).toBe(true);
-	});
-
-	it("refuse un Feu follet au-delà de 2,8 m", () => {
-		prepareCaster(sim, "p1", { crouch: true, stillSeconds: 2 });
-		const entity = installAnomaly(sim, 0, "luciole", line.target);
-		expect(castAt(sim, "p1", entity).reason).toBe("out-of-range");
 	});
 
 	it("capture un Doppelgänger même non révélé", () => {
@@ -281,15 +267,6 @@ describe("règles d'incantation supplémentaires", () => {
 		prepareCaster(sim, "p1", { voiceLevel: 0.3 });
 		const cendre = installAnomaly(sim, 0, "crache-cendre", line.target);
 		expect(castAt(sim, "p1", cendre)).toMatchObject({ ok: true });
-	});
-
-	it("n'a plus que la distance et la lanterne comme conditions", () => {
-		for (const species of SPECIES_LIST) {
-			expect(Object.keys(species.capture).sort()).toEqual([
-				"lantern",
-				"maxRange",
-			]);
-		}
 	});
 
 	it("un dégât subi n'annule pas l'incantation", () => {

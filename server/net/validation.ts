@@ -82,6 +82,7 @@ export function parseClientState(payload: unknown): ClientStateMessage | null {
 	const sprint = bool(payload.sprint);
 	const moveInput = bool(payload.moveInput);
 	const grimoire = bool(payload.grimoire);
+	const camera = bool(payload.camera);
 	if (
 		seq === null ||
 		x === null ||
@@ -119,6 +120,7 @@ export function parseClientState(payload: unknown): ClientStateMessage | null {
 		sprint,
 		moveInput,
 		grimoire,
+		camera: camera ?? false,
 		voiceLevel,
 		voicePeakMs,
 		held: held === null ? -1 : Math.round(held),
@@ -140,6 +142,7 @@ export function parseInteract(payload: unknown): InteractRequest | null {
 			kind !== "valve" &&
 			kind !== "pickup" &&
 			kind !== "walkie" &&
+			kind !== "camera" &&
 			kind !== "stake") ||
 		id === null
 	) {

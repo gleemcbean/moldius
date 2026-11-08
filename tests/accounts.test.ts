@@ -34,6 +34,7 @@ import { verificationEmail } from "../server/mail/templates.js";
 import { SessionRegistry } from "../server/sessions/SessionRegistry.js";
 import { accountMessage } from "../shared/i18n/accountMessages.js";
 import { parseLanguage } from "../shared/i18n/languages.js";
+import { PUBLIC_MATCH_CONFIG } from "../shared/matchConfig.js";
 import type { AccountProfile } from "../shared/protocol/account.js";
 import {
 	isDeleteConfirmation,
@@ -503,6 +504,7 @@ describe("API des comptes", () => {
 			"lantern",
 			"pattern",
 			"stats",
+			"tagline",
 			"termsAcceptedAt",
 		]);
 		expect(account).toMatchObject({
@@ -1419,6 +1421,133 @@ describe("historique et sessions", () => {
 			expect(
 				(await service.updateProfile(session.accountId, { pattern: "web" })).ok,
 			).toBe(true);
+		} finally {
+			await database.close();
+		}
+	});
+
+	it("garde le classement détaillé d'une partie, lisible par ses seuls joueurs", async () => {
+		const { database, service, token, create } = await serviceWithClock();
+		try {
+			const first = await service.authenticate(token);
+			const other = await service.authenticate(
+				await create("cepe@example.org"),
+			);
+			if (!first || !other) {
+				throw new Error("Session should not be null");
+			}
+			const results: MatchResults = {
+				matchId: "m_detail",
+				durationMs: 960_000,
+				winnerId: "p1",
+				teams: [],
+				winnerTeam: null,
+				awards: [{ playerId: "p2", id: "hider", value: 95.4 }],
+				highlights: [],
+				daily: null,
+				metrics: { p1: { fragments: 12, sprintMeters: 340 } },
+				entries: [
+					{
+						playerId: "p1",
+						name: "Girolle",
+						score: 300,
+						captures: 2,
+						deaths: 0,
+						color: BLUE,
+						pattern: "stars",
+						tagline: "cat",
+						team: null,
+					},
+					{
+						playerId: "p2",
+						name: "Invité",
+						score: 100,
+						captures: 1,
+						deaths: 1,
+						color: GREEN,
+						team: null,
+					},
+				],
+			};
+			const [record] = buildMatchRecords(
+				results,
+				"public",
+				new Map([
+					["p1", first.accountId],
+					["p2", null],
+				]),
+				new Date("2026-03-04T20:00:00Z"),
+				{
+					...PUBLIC_MATCH_CONFIG,
+					teamCount: 0,
+				},
+			);
+			expect(await service.recordMatch(record)).toBe(true);
+			const [entry] = await service.history(first.accountId);
+			expect(entry).toMatchObject({
+				matchId: "m_detail",
+				hasDetails: true,
+				teamCount: 0,
+				daily: null,
+				rank: 1,
+			});
+			const detail = await service.historyDetail(first.accountId, "m_detail");
+			expect(detail?.players).toEqual([
+				expect.objectContaining({
+					name: "Girolle",
+					self: true,
+					tagline: "cat",
+					pattern: "stars",
+					awards: [],
+				}),
+				expect.objectContaining({
+					name: "Invité",
+					self: false,
+					tagline: null,
+					awards: [{ id: "hider", value: 95 }],
+				}),
+			]);
+			expect(detail?.metrics).toEqual({ fragments: 12, sprintMeters: 340 });
+			expect(detail?.rules).toMatchObject({ manorSize: "medium", floors: 1 });
+			expect(JSON.stringify(detail)).not.toContain(first.accountId);
+			expect(
+				await service.historyDetail(other.accountId, "m_detail"),
+			).toBeNull();
+			expect(
+				await service.historyDetail(first.accountId, "../m_detail"),
+			).toBeNull();
+		} finally {
+			await database.close();
+		}
+	});
+
+	it("n'accepte une devise sur le profil qu'une fois débloquée", async () => {
+		const { database, service, token } = await serviceWithClock();
+		try {
+			const session = await service.authenticate(token);
+			if (!session) {
+				throw new Error("Session should not be null");
+			}
+			const locked = await service.updateProfile(session.accountId, {
+				tagline: "immortal",
+			});
+			expect(locked.ok).toBe(false);
+			expect(
+				(await service.updateProfile(session.accountId, { tagline: "nope" }))
+					.ok,
+			).toBe(false);
+			await database.query(
+				`UPDATE accounts SET challenge_progress = '{"flawless":{"total":1,"best":1}}' WHERE id = $1`,
+				[session.accountId],
+			);
+			const unlocked = await service.updateProfile(session.accountId, {
+				tagline: "immortal",
+			});
+			expect(unlocked.ok && unlocked.value.tagline).toBe("immortal");
+			const cleared = await service.updateProfile(session.accountId, {
+				tagline: null,
+			});
+			expect(cleared.ok && cleared.value.tagline).toBeNull();
 		} finally {
 			await database.close();
 		}

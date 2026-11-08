@@ -1,4 +1,5 @@
 import type { HatPattern } from "../hatPatterns.js";
+import type { Tagline } from "../rewards.js";
 
 export const FRIEND_CODE_LENGTH = 8;
 export const FRIEND_LIMIT = 100;
@@ -10,6 +11,7 @@ export interface FriendPerson {
 	name: string;
 	color: number;
 	pattern: HatPattern;
+	tagline: Tagline | null;
 }
 
 export interface FriendEntry extends FriendPerson {

@@ -1,3 +1,4 @@
+import type { OccultId } from "@shared/config/occult";
 import {
 	DEFAULT_HAT_PATTERN,
 	type HatPattern,
@@ -8,6 +9,7 @@ import { DEFAULT_PLAYER_COLOR, isPlayerColor } from "@shared/playerColors";
 import * as THREE from "three";
 import type { MaterialOptions } from "../world/MaterialLibrary";
 import { capTextureKey } from "../world/textures/creatureTextures";
+import { CAMERA_BODY, createCameraModel } from "./cameraModel";
 import { Eyeball } from "./eyes";
 import { LanternModel } from "./LanternModel";
 import {
@@ -17,6 +19,8 @@ import {
 	SUPPORT_HAND,
 } from "./MittenHand";
 import type { ModelKit } from "./modelKit";
+import { createOccultModel } from "./occultModels";
+import { createWalkieModel } from "./walkieModel";
 
 export interface MushroomPose {
 	speed: number;
@@ -27,7 +31,21 @@ export interface MushroomPose {
 	grimoireOpen: boolean;
 	dead: boolean;
 	talking: number;
+	/** 0 sans appareil photo, 1 porté à la ceinture, 2 levé pour viser. */
+	camera?: 0 | 1 | 2;
+	/** Un talkie accroché à la poitrine. */
+	walkie?: boolean;
+	/** L'objet occulte tenu dans la main libre. */
+	heldObject?: OccultId | null;
 }
+
+const WALKIE_SCALE = 1.25;
+const WALKIE_WORN = new THREE.Vector3(-0.17, 0.08, 0.3);
+const HELD_OBJECT_SIZE = 0.2;
+
+const CAMERA_SCALE = 1.5;
+const CAMERA_WORN = new THREE.Vector3(0.3, -0.02, 0.2);
+const CAMERA_AIMED = new THREE.Vector3(0.02, 0.26, 0.42);
 
 interface Leg {
 	hip: THREE.Group;
@@ -151,6 +169,12 @@ export class MushroomModel {
 	private crouchBlend = 0;
 	private airBlend = 0;
 	private readBlend = 0;
+	private aimBlend = 0;
+	private readonly camera: THREE.Group;
+	private readonly walkie: THREE.Group;
+	private readonly heldHolder = new THREE.Group();
+	private readonly heldModels = new Map<OccultId, THREE.Group>();
+	private heldShown: OccultId | null = null;
 	private time = Math.random() * 10;
 	private lastYaw: number | null = null;
 	private turnRate = 0;
@@ -208,6 +232,68 @@ export class MushroomModel {
 		this.arms[0].hand.root.add(this.lantern.root);
 		this.book = this.buildBook(kit);
 		this.body.add(this.book);
+		this.camera = createCameraModel(kit).root;
+		this.camera.scale.setScalar(CAMERA_SCALE);
+		this.camera.visible = false;
+		this.body.add(this.camera);
+		this.walkie = createWalkieModel(kit);
+		this.walkie.scale.setScalar(WALKIE_SCALE);
+		this.walkie.position.copy(WALKIE_WORN);
+		this.walkie.rotation.set(-0.25, 0.35, 0.12);
+		this.walkie.visible = false;
+		this.body.add(this.walkie);
+		this.heldHolder.position.copy(MittenHand.gripCenter(1));
+		this.arms[1].hand.root.add(this.heldHolder);
+		this.kit = kit;
+	}
+
+	private readonly kit: ModelKit;
+
+	/** Créé à la première prise en main : la plupart des champignons n'en tiennent jamais. */
+	private heldModel(id: OccultId): THREE.Group {
+		let model = this.heldModels.get(id);
+		if (!model) {
+			const inner = createOccultModel(this.kit, id);
+			const box = new THREE.Box3().setFromObject(inner);
+			const size = box.getSize(new THREE.Vector3());
+			const center = box.getCenter(new THREE.Vector3());
+			const scale = HELD_OBJECT_SIZE / Math.max(size.x, size.y, size.z);
+			inner.scale.setScalar(scale);
+			inner.position.set(
+				-center.x * scale,
+				-center.y * scale,
+				-center.z * scale,
+			);
+			model = new THREE.Group();
+			model.add(inner);
+			this.heldModels.set(id, model);
+			this.heldHolder.add(model);
+		}
+		return model;
+	}
+
+	private updateHeldItems(pose: MushroomPose): void {
+		this.walkie.visible = pose.walkie === true && !pose.dead;
+		const busy =
+			this.readBlend > 0.3 || this.aimBlend > 0.3 || pose.dead === true;
+		const wanted = busy ? null : (pose.heldObject ?? null);
+		if (wanted !== this.heldShown) {
+			for (const model of this.heldModels.values()) {
+				model.visible = false;
+			}
+			if (wanted) {
+				this.heldModel(wanted).visible = true;
+			}
+			this.heldShown = wanted;
+		}
+		if (wanted) {
+			const hand = this.arms[1].hand.root;
+			const handQuaternion = hand.getWorldQuaternion(new THREE.Quaternion());
+			const upright = this.figure.getWorldQuaternion(new THREE.Quaternion());
+			this.heldHolder.quaternion.copy(
+				handQuaternion.invert().multiply(upright),
+			);
+		}
 	}
 
 	private addEyes(kit: ModelKit): void {
@@ -403,6 +489,11 @@ export class MushroomModel {
 			8,
 		);
 		this.deathBlend = ease(this.deathBlend, pose.dead ? 1 : 0, 3);
+		this.aimBlend = ease(
+			this.aimBlend,
+			pose.camera === 2 && !pose.dead && !pose.grimoireOpen ? 1 : 0,
+			9,
+		);
 
 		this.updateLegs(speedFactor);
 		this.updateBody(speedFactor, pose);
@@ -411,6 +502,7 @@ export class MushroomModel {
 		this.lantern.update(dt, pose.lanternOpen && !pose.dead);
 		this.updateSwing(dt);
 		this.keepLanternUpright();
+		this.updateHeldItems(pose);
 		this.figure.rotation.x = -this.deathBlend * Math.PI * 0.47;
 		this.figure.position.y = this.deathBlend * 0.18;
 	}
@@ -457,6 +549,8 @@ export class MushroomModel {
 	private updateArms(speedFactor: number, pose: MushroomPose): void {
 		const swing = Math.sin(this.phase) * 0.6 * speedFactor;
 		const read = this.readBlend;
+		const aim = this.aimBlend;
+		const lift = Math.max(read, aim);
 		const lanternArm = this.arms[0];
 		const bookArm = this.arms[1];
 		const lanternRaise = pose.lanternOpen ? 0.3 : 0;
@@ -468,16 +562,26 @@ export class MushroomModel {
 		lanternArm.elbow.rotation.set(-0.8 - read * 0.5, 0, 0);
 		lanternArm.hand.setPose(GRIP_HAND);
 		bookArm.shoulder.rotation.set(
-			-swing * 0.9 * (1 - read) - read * 1.0,
+			-swing * 0.9 * (1 - lift) - lift * 1.0 - aim * 0.25,
 			0,
-			0.32 - read * 0.12,
+			0.32 - lift * 0.12 - aim * 0.1,
 		);
 		bookArm.elbow.rotation.set(
-			-0.25 - speedFactor * 0.3 * (1 - read) - read * 0.8,
+			-0.25 - speedFactor * 0.3 * (1 - lift) - lift * 0.8,
 			0,
 			0,
 		);
-		bookArm.hand.setPose(read > 0.5 ? SUPPORT_HAND : RELAXED_HAND);
+		bookArm.hand.setPose(lift > 0.5 ? SUPPORT_HAND : RELAXED_HAND);
+		this.camera.visible = (pose.camera ?? 0) > 0 && read < 0.5;
+		if (this.camera.visible) {
+			this.camera.position.lerpVectors(CAMERA_WORN, CAMERA_AIMED, aim);
+			this.camera.position.y -= (CAMERA_SCALE * CAMERA_BODY.height) / 2;
+			this.camera.rotation.set(
+				(1 - aim) * 0.25,
+				Math.PI + (1 - aim) * 0.9,
+				(1 - aim) * 0.15,
+			);
+		}
 		this.book.visible = read > 0.2;
 		if (this.stowedBook) {
 			this.stowedBook.visible = !this.book.visible;

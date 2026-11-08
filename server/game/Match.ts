@@ -6,6 +6,7 @@ import {
 	ANOMALY_SPAWN_RETRY_MS,
 	anomalyRosterSize,
 	anomalyTierCaps,
+	cameraCount,
 	DOOR_INTERACT_RANGE,
 	ENERGY_MAX,
 	ENERGY_USE_REGEN_PAUSE_SECONDS,
@@ -77,6 +78,7 @@ import { SeededRandom } from "../../shared/random.js";
 import {
 	DEFAULT_LANTERN_TINT,
 	type LanternTint,
+	type Tagline,
 } from "../../shared/rewards.js";
 import { teamStandings } from "../../shared/teams.js";
 import { AnomalyEntity } from "./ai/AnomalyEntity.js";
@@ -91,6 +93,7 @@ import { AwardTracker, liveChallengeMetrics, pickAwards } from "./awards.js";
 import { HighlightRecorder } from "./highlights.js";
 import { MatchPlayer } from "./MatchPlayer.js";
 import { formulaWords, planRoster, type RosterPlan } from "./roster.js";
+import { CameraSystem } from "./systems/cameras.js";
 import { validateCast } from "./systems/captures.js";
 import { type DoorState, DoorSystem } from "./systems/doors.js";
 import { drainEnergy, pauseEnergyRegen, stepEnergy } from "./systems/energy.js";
@@ -119,6 +122,7 @@ export interface MatchParticipant {
 	color: number;
 	pattern?: HatPattern;
 	lantern?: LanternTint;
+	tagline?: Tagline | null;
 	team?: number | null;
 }
 
@@ -178,6 +182,8 @@ export class Match {
 	readonly walkies: WalkieSystem;
 	readonly stakes: StakeSystem;
 	readonly walkieTotal: number;
+	readonly cameras: CameraSystem;
+	readonly cameraTotal: number;
 	readonly awards = new AwardTracker();
 	private readonly challengesSent = new Map<string, string>();
 	readonly highlights: HighlightRecorder | null;
@@ -246,6 +252,15 @@ export class Match {
 		this.walkies = new WalkieSystem(
 			this.layout.walkies.slice(0, this.walkieTotal).map((spot) => spot.id),
 		);
+		this.cameraTotal = this.tutorial
+			? 0
+			: Math.min(
+					this.layout.cameras.length,
+					cameraCount(options.participants.length),
+				);
+		this.cameras = new CameraSystem(
+			this.layout.cameras.slice(0, this.cameraTotal).map((spot) => spot.id),
+		);
 		this.stakes = new StakeSystem(this.layout.stakes);
 		this.highlights = this.tutorial
 			? null
@@ -298,6 +313,7 @@ export class Match {
 			);
 			player.pattern = participant.pattern ?? DEFAULT_HAT_PATTERN;
 			player.lantern = participant.lantern ?? DEFAULT_LANTERN_TINT;
+			player.tagline = participant.tagline ?? null;
 			player.team =
 				this.config.teamCount > 0 ? (participant.team ?? null) : null;
 			player.roomId = this.roomIdAt(player.position);
@@ -325,6 +341,7 @@ export class Match {
 				color: player.color,
 				pattern: player.pattern,
 				lantern: player.lantern,
+				tagline: player.tagline,
 				team: player.team,
 				spawn: {
 					x: player.position.x,
@@ -349,6 +366,7 @@ export class Match {
 			tutorial: this.tutorial,
 			pickupTotal: this.pickupTotal,
 			walkieTotal: this.walkieTotal,
+			cameraTotal: this.cameraTotal,
 		};
 	}
 
@@ -397,6 +415,7 @@ export class Match {
 		this.updateHazards();
 		this.loot.update(this);
 		this.walkies.update(this);
+		this.cameras.update(this);
 		this.stakes.update(this, dt);
 		this.updateAnomalies(dt);
 		checkVoiceSabotage(this);
@@ -997,6 +1016,10 @@ export class Match {
 
 	private kill(player: MatchPlayer, cause: SpeciesId | DamageCause): void {
 		this.walkies.release(this, player);
+		this.cameras.release(this, player);
+		const fragmentsLost = this.tutorial
+			? 0
+			: this.loot.loseFragments(this, player);
 		player.alive = false;
 		player.deaths += 1;
 		player.respawnAt = this.now + PLAYER_RESPAWN_DELAY_MS;
@@ -1008,6 +1031,7 @@ export class Match {
 			playerId: player.id,
 			respawnAt: player.respawnAt,
 			cause,
+			fragmentsLost,
 		});
 	}
 
@@ -1147,6 +1171,9 @@ export class Match {
 				break;
 			case "walkie":
 				this.walkies.take(this, player, request.id);
+				break;
+			case "camera":
+				this.cameras.take(this, player, request.id);
 				break;
 			case "stake":
 				this.stakes.interact(this, player, request.id);
@@ -1620,6 +1647,7 @@ export class Match {
 		player.disconnectedAt = this.now;
 		player.casting = null;
 		this.walkies.release(this, player);
+		this.cameras.release(this, player);
 		if (player.hidden) {
 			this.unhidePlayer(player, "unhide");
 		}
@@ -1690,7 +1718,11 @@ export class Match {
 				});
 			}
 		});
-		events.push(...this.walkies.stateEvents(), ...this.stakes.stateEvents());
+		events.push(
+			...this.walkies.stateEvents(),
+			...this.cameras.stateEvents(),
+			...this.stakes.stateEvents(),
+		);
 		for (const puddle of this.hazards.puddles) {
 			events.push({
 				type: "puddle",
@@ -1720,6 +1752,7 @@ export class Match {
 				deaths: player.deaths,
 				color: player.color,
 				pattern: player.pattern,
+				tagline: player.tagline,
 				team: player.team,
 			}))
 			.sort((a, b) => b.score - a.score || a.deaths - b.deaths);

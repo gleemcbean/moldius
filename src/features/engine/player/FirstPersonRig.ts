@@ -14,6 +14,11 @@ import {
 	BOOK_PAGE_WIDTH,
 	GrimoireModel,
 } from "../../grimoire/GrimoireModel";
+import {
+	CAMERA_BODY,
+	type CameraModel,
+	createCameraModel,
+} from "../../models/cameraModel";
 import { LanternModel } from "../../models/LanternModel";
 import type { ModelKit } from "../../models/modelKit";
 import { createOccultModel } from "../../models/occultModels";
@@ -27,6 +32,8 @@ type ArmMesh = THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
 export interface RigInput {
 	grimoireOpen: boolean;
 	heldObject: OccultId | null;
+	/** L'appareil photo levé devant soi : il prend la place de l'objet occulte. */
+	cameraRaised: boolean;
 	lanternOpen: boolean;
 	speed: number;
 	crouch: number;
@@ -76,6 +83,11 @@ const HELD_GLOW_INTENSITY = 0.9;
 const HELD_GLOW_RADIUS = 4.5;
 const HELD_ARM_TINT = 0.24;
 const HELD_ELBOW = new THREE.Vector3(-0.46, -0.62, -0.12);
+const CAMERA_RAISED = new THREE.Vector3(-0.02, -0.15, -0.3);
+const CAMERA_LOWERED = new THREE.Vector3(-0.08, -0.62, -0.32);
+const CAMERA_ELBOW = new THREE.Vector3(-0.4, -0.55, -0.08);
+const CAMERA_FLASH_MS = 160;
+const CAMERA_BODY_HALF = CAMERA_BODY.height / 2;
 const BOOK_WIDTH = (BOOK_PAGE_WIDTH + 0.015) * 2;
 const BOOK_HEIGHT = BOOK_PAGE_HEIGHT + 0.025;
 const BOOK_HEIGHT_SHARE = 0.54;
@@ -136,8 +148,15 @@ export class FirstPersonRig {
 	};
 	private heldShown: OccultId | null = null;
 	private heldBlend = 0;
+	private readonly photoCamera: CameraModel;
+	private cameraBlend = 0;
+	private flashUntil = 0;
 
-	constructor(kit: ModelKit, lanternTint: number | null = null) {
+	constructor(
+		kit: ModelKit,
+		lanternTint: number | null = null,
+		cameraScreen: THREE.Texture | null = null,
+	) {
 		this.lantern = new LanternModel(kit, LANTERN_SCALE, lanternTint);
 		this.root.add(this.lantern.root);
 		this.grimoire = new GrimoireModel(kit);
@@ -149,6 +168,9 @@ export class FirstPersonRig {
 		}
 		this.heldRoot.add(this.aura.root);
 		this.root.add(this.heldRoot);
+		this.photoCamera = createCameraModel(kit, cameraScreen);
+		this.photoCamera.root.visible = false;
+		this.root.add(this.photoCamera.root);
 		this.rightArm = this.createArm();
 		this.leftArm = this.createArm();
 		this.fpLight = new THREE.PointLight(0xffb468, 0, 1.6, 2);
@@ -183,7 +205,8 @@ export class FirstPersonRig {
 		bobX: number,
 		bobY: number,
 	): void {
-		const wanted = this.bookBlend > 0.05 ? null : input.heldObject;
+		const wanted =
+			this.bookBlend > 0.05 || input.cameraRaised ? null : input.heldObject;
 		if (wanted !== null && wanted !== this.heldShown) {
 			this.heldShown = wanted;
 			this.aura.show(wanted, this.heldHeights.get(wanted) ?? HELD_SIZE);
@@ -224,6 +247,52 @@ export class FirstPersonRig {
 			contact.y -= HELD_TIP_DROP;
 			this.placeArm(this.leftArm, contact, HELD_ELBOW);
 		}
+	}
+
+	/** Le petit éclair de l'appareil, au moment de la photo. */
+	flashPhoto(): void {
+		this.flashUntil = performance.now() + CAMERA_FLASH_MS;
+	}
+
+	get cameraUp(): boolean {
+		return this.cameraBlend > 0.98;
+	}
+
+	private updateCamera(
+		dt: number,
+		input: RigInput,
+		bobX: number,
+		bobY: number,
+	): void {
+		const target = input.cameraRaised && this.bookBlend <= 0.05 ? 1 : 0;
+		const step = dt / 0.22;
+		this.cameraBlend =
+			this.cameraBlend < target
+				? Math.min(target, this.cameraBlend + step)
+				: Math.max(target, this.cameraBlend - step);
+		const model = this.photoCamera.root;
+		model.visible = this.cameraBlend > 0.01;
+		if (!model.visible) {
+			return;
+		}
+		const position = new THREE.Vector3().lerpVectors(
+			CAMERA_LOWERED,
+			CAMERA_RAISED,
+			easeInOut(this.cameraBlend),
+		);
+		const steady = 0.5;
+		position.x += (this.sway.x + bobX) * steady;
+		position.y += (this.sway.y - bobY) * steady - input.crouch * 0.01;
+		model.position.copy(position);
+		model.position.y -= CAMERA_BODY_HALF;
+		model.rotation.set(0.05 - (1 - this.cameraBlend) * 0.9, 0.04, 0);
+		const flashing = performance.now() < this.flashUntil;
+		this.photoCamera.flash.material.color.setHex(
+			flashing ? 0xffffff : 0xd8dde4,
+		);
+		const contact = position.clone();
+		contact.x -= 0.075;
+		this.placeArm(this.leftArm, contact, CAMERA_ELBOW);
 	}
 
 	private createArm(): ArmMesh {
@@ -345,7 +414,9 @@ export class FirstPersonRig {
 			this.placeBookArm(bookPosition, this.grimoire.root.rotation);
 		}
 		this.updateHeld(dt, input, bobX, bobY);
-		this.leftArm.visible = this.bookBlend > 0.05 || this.heldBlend > 0.01;
+		this.updateCamera(dt, input, bobX, bobY);
+		this.leftArm.visible =
+			this.bookBlend > 0.05 || this.heldBlend > 0.01 || this.cameraBlend > 0.01;
 
 		this.lanternLevel = this.lantern.update(dt, input.lanternOpen);
 		this.updateArmTones();

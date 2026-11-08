@@ -666,6 +666,8 @@ export function createAccountRouter(accounts: AccountModule): AccountRouter {
 			displayName: body.displayName,
 			color: body.color,
 			pattern: body.pattern,
+			lantern: body.lantern,
+			tagline: body.tagline,
 			language: body.language,
 		});
 		if (!result.ok) {
@@ -789,6 +791,23 @@ export function createAccountRouter(accounts: AccountModule): AccountRouter {
 			return;
 		}
 		response.json({ entries: await ready.history(session.accountId) });
+	});
+
+	router.get("/history/:matchId", async (request, response) => {
+		const ready = service(request, response);
+		const session = ready && (await authenticated(request, response, ready));
+		if (!ready || !session) {
+			return;
+		}
+		const detail = await ready.historyDetail(
+			session.accountId,
+			request.params.matchId,
+		);
+		if (!detail) {
+			sendError(request, response, 404, "notFound");
+			return;
+		}
+		response.json({ match: detail });
 	});
 
 	router.use((request: Request, response: Response) => {

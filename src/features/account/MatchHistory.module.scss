@@ -1,0 +1,255 @@
+@use '../../styles/tokens' as *;
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.list td {
+  white-space: nowrap;
+}
+
+.clickable {
+  cursor: pointer;
+
+  &:hover td {
+    background: rgba(220, 229, 77, 0.12);
+  }
+}
+
+.openCell {
+  width: 1%;
+  text-align: right;
+}
+
+.openButton {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid $line-strong;
+  background: $background;
+  cursor: pointer;
+  font-family: $font-title;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: $yellow;
+
+  &:hover {
+    border-color: $yellow;
+  }
+}
+
+.noDetails {
+  display: inline-block;
+  width: 30px;
+  text-align: center;
+  color: $text-dim;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.toolbar {
+  display: flex;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 2px solid $line-strong;
+  background: rgba(10, 12, 10, 0.5);
+}
+
+.kicker {
+  margin: 0;
+  @include label;
+}
+
+.title,
+.titleWon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  @include title(34px);
+
+  svg {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+.titleWon {
+  color: $yellow;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 32px;
+  margin: 6px 0 0;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  dt {
+    @include label;
+  }
+
+  dd {
+    margin: 0;
+    @include figures(30px);
+  }
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+
+  h4 {
+    margin: 0;
+    @include title(24px);
+    color: $yellow;
+  }
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px 28px;
+}
+
+.standings {
+  td {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}
+
+.rankCell {
+  width: 36px;
+  text-align: center;
+  @include numeric;
+  color: $yellow;
+}
+
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.whoName {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hat {
+  flex-shrink: 0;
+  width: 34px;
+  height: 24px;
+}
+
+.score {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.teamRow td {
+  border-top: 2px solid $line-strong;
+  font-weight: 700;
+  @include title(21px);
+}
+
+.crown {
+  width: 15px;
+  height: 15px;
+  color: $yellow;
+}
+
+.member td:nth-child(2) {
+  padding-left: 30px;
+}
+
+.self td {
+  background: rgba(99, 198, 232, 0.08);
+}
+
+.self .whoName,
+.awards .self .awardName {
+  color: $yellow;
+}
+
+.numbers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 16px;
+
+  li::marker {
+    color: $yellow;
+  }
+}
+
+.awards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 2px 8px;
+    padding: 8px 10px;
+    background: rgba(10, 12, 10, 0.5);
+    box-shadow: 0 0 0 1px $line;
+  }
+
+  strong {
+    grid-column: 1 / -1;
+    color: $text;
+  }
+
+  em {
+    grid-column: 1 / -1;
+    font-size: 14px;
+    color: $text-muted;
+  }
+}
+
+.awardName {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rules {
+  margin: 0;
+  font-size: 16px;
+  color: $text-muted;
+}

@@ -47,6 +47,7 @@ export const gameFr = {
 		craft: (name: string) => `Fabriquer : ${name}`,
 		missingMaterials: "Matériaux manquants : refermer",
 		takeWalkie: "Prendre le talkie-walkie",
+		takeCamera: "Prendre l'appareil photo",
 		stakeResting: "Le feu s'est éteint : revenez plus tard",
 		stakes: {
 			sanctuary: "Sanctuaire : soigne, mais attire les anomalies",
@@ -66,7 +67,6 @@ export const gameFr = {
 		progress: (step: number, total: number) => `Étape ${step} sur ${total}`,
 		skip: "Entrée : passer cette étape",
 		checks: {
-			lantern: "Lanterne fermée",
 			range: (meters: number) => `À moins de ${meters} m du monstre`,
 			object: "Objet occulte en main",
 			voice: "Voix entendue par le micro",
@@ -130,9 +130,9 @@ export const gameFr = {
 				title: "Crier",
 				body: `Un Murmure vient de s'éveiller. Un cri attire les monstres à l'endroit où vous êtes : appuyez sur ${key} pour le faire venir.`,
 			}),
-			capture: (formula: string, lantern: string) => ({
+			capture: (formula: string) => ({
 				title: "Capturer",
-				body: `Lanterne fermée (${lantern}), à moins de 5 m et l'objet occulte en main : prononcez à voix haute « ${formula} ». Inutile de viser.`,
+				body: `À moins de 5 m, l'objet occulte en main : prononcez à voix haute « ${formula} ». Lanterne ouverte ou fermée, peu importe, et inutile de viser.`,
 			}),
 			end: () => ({
 				title: "Vous êtes prêt",
@@ -156,8 +156,6 @@ export const gameFr = {
 			"wrong-words": "Aucune anomalie présente ne répond à cette formule.",
 			"out-of-range": "Trop loin : rapprochez-vous.",
 			blocked: "Un obstacle coupe la ligne vers l'anomalie.",
-			"lantern-open-required": "Il faut ouvrir la lanterne.",
-			"lantern-closed-required": "Il faut fermer la lanterne.",
 			"missing-occult":
 				"Tenez en main l'objet occulte de cette anomalie : sa recette est dans le grimoire.",
 			"howler-scream": "Le cri du Hurleur couvre votre voix !",
@@ -190,6 +188,18 @@ export const gameFr = {
 		hearing: (name: string) => `Talkie : ${name}`,
 		taken: "Talkie récupéré : ceux qui en ont un vous entendent partout",
 	},
+	camera: {
+		taken: (key: string) =>
+			`Appareil photo récupéré : ${key} pour le lever et viser`,
+		lowered: (key: string) => `Appareil photo : ${key} pour viser`,
+		raised: (key: string, count: number, max: number) =>
+			`${key} : photo (${count}/${max})`,
+		full: (max: number) => `Pellicule pleine : ${max} photos au maximum`,
+	},
+	fragmentsLost: (count: number) =>
+		count > 1
+			? `La chute vous coûte ${count} fragments`
+			: "La chute vous coûte 1 fragment",
 	stakeResult: {
 		sanctuary: "Le sanctuaire vous soigne… et sonne l'appel",
 		reliquary: "Reliquaire pillé : tout le manoir l'a entendu, fuyez !",
@@ -356,6 +366,14 @@ export const gameFr = {
 		saved: (email: string) =>
 			`Partie enregistrée dans l'historique du compte ${email}.`,
 		unlocked: (names: string) => `Récompense débloquée : ${names} !`,
+		photos: {
+			title: (count: number) =>
+				count > 1 ? `Vos ${count} photos` : "Votre photo",
+			download: "Télécharger cette photo",
+			downloadAll: "Tout télécharger",
+			alt: (index: number) => `Photo ${index} de la partie`,
+			note: "Cliquez sur une photo pour la télécharger. Elles restent dans votre navigateur et disparaissent au lancement de la partie suivante.",
+		},
 		backToLobby: "Retour au lobby",
 		home: "Accueil",
 	},
@@ -451,6 +469,7 @@ export const gameEn: typeof gameFr = {
 		craft: (name: string) => `Craft: ${name}`,
 		missingMaterials: "Materials missing: close",
 		takeWalkie: "Take the walkie-talkie",
+		takeCamera: "Take the camera",
 		stakeResting: "The flame is out: come back later",
 		stakes: {
 			sanctuary: "Sanctuary: heals, but draws the anomalies",
@@ -470,7 +489,6 @@ export const gameEn: typeof gameFr = {
 		progress: (step: number, total: number) => `Step ${step} of ${total}`,
 		skip: "Enter: skip this step",
 		checks: {
-			lantern: "Lantern closed",
 			range: (meters: number) => `Within ${meters} m of the monster`,
 			object: "Occult object in hand",
 			voice: "Voice heard by the microphone",
@@ -534,9 +552,9 @@ export const gameEn: typeof gameFr = {
 				title: "Shouting",
 				body: `A Whisper has just awoken. A shout draws monsters to where you stand: press ${key} to bring it here.`,
 			}),
-			capture: (formula: string, lantern: string) => ({
+			capture: (formula: string) => ({
 				title: "Capturing",
-				body: `Lantern closed (${lantern}), within 5 m and with the occult object in hand: say "${formula}" out loud. No need to aim.`,
+				body: `Within 5 m, with the occult object in hand: say "${formula}" out loud. Lantern open or closed, it does not matter, and no need to aim.`,
 			}),
 			end: () => ({
 				title: "You are ready",
@@ -560,8 +578,6 @@ export const gameEn: typeof gameFr = {
 			"wrong-words": "No anomaly here answers to that formula.",
 			"out-of-range": "Too far: get closer.",
 			blocked: "Something blocks the line to the anomaly.",
-			"lantern-open-required": "You must open the lantern.",
-			"lantern-closed-required": "You must close the lantern.",
 			"missing-occult":
 				"Hold this anomaly's occult object in your hand: its recipe is in the grimoire.",
 			"howler-scream": "The Howler's scream drowns out your voice!",
@@ -595,6 +611,17 @@ export const gameEn: typeof gameFr = {
 		hearing: (name: string) => `Walkie: ${name}`,
 		taken: "Walkie picked up: anyone holding one hears you everywhere",
 	},
+	camera: {
+		taken: (key: string) => `Camera picked up: ${key} to raise it and aim`,
+		lowered: (key: string) => `Camera: ${key} to aim`,
+		raised: (key: string, count: number, max: number) =>
+			`${key}: photo (${count}/${max})`,
+		full: (max: number) => `Film full: ${max} photos at most`,
+	},
+	fragmentsLost: (count: number) =>
+		count > 1
+			? `The fall costs you ${count} fragments`
+			: "The fall costs you 1 fragment",
 	stakeResult: {
 		sanctuary: "The sanctuary heals you… and calls out",
 		reliquary: "Reliquary looted: the whole manor heard it, run!",
@@ -749,6 +776,14 @@ export const gameEn: typeof gameFr = {
 		deaths: (count: number) => `${count} fall${count === 1 ? "" : "s"}`,
 		saved: (email: string) => `Game saved to the history of account ${email}.`,
 		unlocked: (names: string) => `Reward unlocked: ${names}!`,
+		photos: {
+			title: (count: number) =>
+				count > 1 ? `Your ${count} photos` : "Your photo",
+			download: "Download this photo",
+			downloadAll: "Download all",
+			alt: (index: number) => `Photo ${index} of the game`,
+			note: "Click a photo to download it. They stay in your browser and are gone once the next game starts.",
+		},
 		backToLobby: "Back to lobby",
 		home: "Home",
 	},

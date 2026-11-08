@@ -19,8 +19,8 @@ import {
 } from "../../../i18n/sections/world";
 import type { ClientWorldState } from "../state/ClientWorldState";
 import type { DoorViews } from "../world/DoorViews";
+import type { GadgetViews } from "../world/GadgetViews";
 import type { PickupViews } from "../world/PickupViews";
-import type { WalkieViews } from "../world/WalkieViews";
 
 export interface InteractionTarget {
 	kind: InteractionKind | "altar";
@@ -48,7 +48,8 @@ export class InteractionFinder {
 		private readonly doors: DoorViews,
 		private readonly state: ClientWorldState,
 		private readonly pickups: PickupViews,
-		private readonly walkies: WalkieViews,
+		private readonly walkies: GadgetViews,
+		private readonly cameras: GadgetViews,
 		private readonly tutorial: boolean,
 	) {}
 
@@ -202,6 +203,23 @@ export class InteractionFinder {
 			if (angle < 0.5 && this.clearLine(eye, point)) {
 				candidates.push({
 					target: { kind: "walkie", id: spot.id, label: labels.takeWalkie },
+					score: distance + angle * 2 - 0.5,
+				});
+			}
+		}
+		for (const spot of this.layout.cameras) {
+			if (!this.cameras.isAvailable(spot.id) || this.state.selfHasCamera) {
+				continue;
+			}
+			const point = new THREE.Vector3(spot.x, spot.y + 0.08, spot.z);
+			const distance = point.distanceTo(eye);
+			if (distance > PICKUP_INTERACT_RANGE) {
+				continue;
+			}
+			const angle = angleTo(eye, forward, point);
+			if (angle < 0.5 && this.clearLine(eye, point)) {
+				candidates.push({
+					target: { kind: "camera", id: spot.id, label: labels.takeCamera },
 					score: distance + angle * 2 - 0.5,
 				});
 			}

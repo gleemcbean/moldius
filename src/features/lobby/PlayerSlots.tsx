@@ -2,6 +2,7 @@ import type { LobbyPlayerInfo, LobbyState } from "@shared/protocol/lobby";
 import { TEAM_COLORS } from "@shared/teams";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
+import { TaglineBadge } from "../../components/TaglineBadge";
 import { useStore } from "../../hooks/useStore";
 import { type Messages, useT } from "../../i18n";
 import { hexColor } from "../../utils/format";
@@ -83,6 +84,10 @@ function Occupied({
 			<span className={styles.slotBody}>
 				<span className={styles.slotName} title={player.name}>
 					<span className={styles.slotNameText}>{player.name}</span>
+					<TaglineBadge
+						tagline={player.tagline}
+						className={styles.slotTagline}
+					/>
 				</span>
 				<span className={styles.slotMeta}>
 					{self ? <span className={styles.you}>{t.lobby.you}</span> : null}

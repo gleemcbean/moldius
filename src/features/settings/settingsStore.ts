@@ -1,6 +1,10 @@
 import { DEFAULT_HAT_PATTERN, isHatPattern } from "@shared/hatPatterns";
 import { DEFAULT_PLAYER_COLOR, isPlayerColor } from "@shared/playerColors";
-import { DEFAULT_LANTERN_TINT, isLanternTint } from "@shared/rewards";
+import {
+	DEFAULT_LANTERN_TINT,
+	isLanternTint,
+	isTagline,
+} from "@shared/rewards";
 import { DEFAULT_KEYS } from "../../config/defaultKeys";
 import { COLOR_LEVELS } from "../../config/graphics";
 import {
@@ -32,6 +36,7 @@ export function defaultSettings(
 		playerColor: DEFAULT_PLAYER_COLOR,
 		playerPattern: DEFAULT_HAT_PATTERN,
 		playerLantern: DEFAULT_LANTERN_TINT,
+		playerTagline: null,
 		keys: { ...DEFAULT_KEYS },
 		mouseSensitivity: 1,
 		invertY: false,
@@ -101,6 +106,9 @@ function sanitize(raw: Partial<PlayerSettings> | null): PlayerSettings {
 		playerLantern: isLanternTint(raw.playerLantern)
 			? raw.playerLantern
 			: base.playerLantern,
+		playerTagline: isTagline(raw.playerTagline)
+			? raw.playerTagline
+			: base.playerTagline,
 		keys,
 		mouseSensitivity: clampNumber(
 			raw.mouseSensitivity,

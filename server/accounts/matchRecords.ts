@@ -1,5 +1,11 @@
 import { AWARD_FALLBACK } from "../../shared/awards.js";
 import { entryWon } from "../../shared/challenges.js";
+import { DEFAULT_HAT_PATTERN } from "../../shared/hatPatterns.js";
+import type { MatchConfig } from "../../shared/matchConfig.js";
+import type {
+	MatchDetailData,
+	MatchDetailRules,
+} from "../../shared/protocol/account.js";
 import type {
 	MatchResultEntry,
 	MatchResults,
@@ -11,8 +17,10 @@ export function buildMatchRecords(
 	visibility: "public" | "private",
 	accounts: Map<string, string | null>,
 	playedAt: Date,
+	config: MatchConfig | null = null,
 ): MatchRecord[] {
 	const records: MatchRecord[] = [];
+	const rules = config ? detailRules(config) : null;
 	for (const entry of results.entries) {
 		const accountId = accounts.get(entry.playerId);
 		if (!accountId) {
@@ -39,9 +47,55 @@ export function buildMatchRecords(
 			dailyDate: results.daily,
 			pattern: entry.pattern,
 			metrics: results.metrics[entry.playerId],
+			teamCount: results.teams.length,
+			details: matchDetails(results, entry.playerId, rules),
 		});
 	}
 	return records;
+}
+
+function detailRules(config: MatchConfig): MatchDetailRules {
+	return {
+		manorSize: config.manorSize,
+		floors: config.floors,
+		anomalies: config.simultaneousAnomalies,
+		durationMinutes: config.durationMinutes,
+		teamCount: config.teamCount,
+		walkies: config.walkies,
+	};
+}
+
+/** Le classement complet vu par un joueur : sans identifiant de compte ni de session. */
+function matchDetails(
+	results: MatchResults,
+	selfId: string,
+	rules: MatchDetailRules | null,
+): MatchDetailData {
+	return {
+		players: results.entries.map((entry) => ({
+			name: entry.name,
+			color: entry.color,
+			pattern: entry.pattern ?? DEFAULT_HAT_PATTERN,
+			tagline: entry.tagline ?? null,
+			team: entry.team,
+			score: entry.score,
+			captures: entry.captures,
+			deaths: entry.deaths,
+			self: entry.playerId === selfId,
+			awards: results.awards
+				.filter((award) => award.playerId === entry.playerId)
+				.map((award) => ({ id: award.id, value: Math.round(award.value) })),
+		})),
+		teams: results.teams.map(({ team, score, captures, deaths }) => ({
+			team,
+			score,
+			captures,
+			deaths,
+		})),
+		winnerTeam: results.winnerTeam,
+		rules,
+		metrics: results.metrics[selfId] ?? {},
+	};
 }
 
 function rankOf(results: MatchResults, entry: MatchResultEntry): number {

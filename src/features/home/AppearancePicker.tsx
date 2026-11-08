@@ -8,6 +8,9 @@ import {
 	type ProgressStats,
 	type Reward,
 	rewardFor,
+	TAGLINES,
+	type Tagline,
+	taglineUnlocked,
 } from "@shared/rewards";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { HatPreview } from "../../components/HatPreview";
@@ -18,7 +21,7 @@ import { rewardRequirement } from "../challenges/rewardLabels";
 import { settingsStore, updateSettings } from "../settings/settingsStore";
 import styles from "./HomeScreen.module.scss";
 
-type Category = "color" | "pattern" | "lantern";
+type Category = "color" | "pattern" | "lantern" | "tagline";
 
 function Trigger({
 	label,
@@ -58,6 +61,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 	const color = useStore(settingsStore, (state) => state.playerColor);
 	const pattern = useStore(settingsStore, (state) => state.playerPattern);
 	const lantern = useStore(settingsStore, (state) => state.playerLantern);
+	const tagline = useStore(settingsStore, (state) => state.playerTagline);
 	const [open, setOpen] = useState<Category | null>(null);
 	const root = useRef<HTMLDivElement>(null);
 
@@ -144,6 +148,19 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 					open={open === "lantern"}
 					onClick={() => toggle("lantern")}
 					preview={lanternIcon(lantern)}
+				/>
+				<Trigger
+					label={t.home.tagline}
+					title={`${t.home.tagline} : ${
+						tagline ? t.appearance.taglines[tagline] : t.home.noTagline
+					}`}
+					open={open === "tagline"}
+					onClick={() => toggle("tagline")}
+					preview={
+						<span className={[styles.swatch, styles.quoteIcon].join(" ")}>
+							<Icon name="quote" />
+						</span>
+					}
 				/>
 			</div>
 			{open === "color" ? (
@@ -243,6 +260,44 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 								data-selectable=""
 							>
 								{lanternIcon(choice)}
+							</button>
+						);
+					})}
+				</div>
+			) : null}
+			{open === "tagline" ? (
+				<div
+					className={[styles.options, styles.textOptions].join(" ")}
+					role="radiogroup"
+					aria-label={t.home.taglineHint}
+				>
+					{[null, ...TAGLINES].map((choice: Tagline | null) => {
+						const unlocked = taglineUnlocked(choice, stats);
+						const name = choice
+							? t.appearance.taglines[choice]
+							: t.home.noTagline;
+						return (
+							<button
+								key={choice ?? "none"}
+								type="button"
+								role="radio"
+								aria-checked={choice === tagline}
+								title={
+									choice
+										? optionTitle(name, unlocked, rewardFor("tagline", choice))
+										: t.home.taglineHint
+								}
+								disabled={!unlocked}
+								className={[
+									styles.textOption,
+									choice === tagline ? styles.textOptionActive : "",
+									choice === null ? styles.textOptionNone : "",
+									unlocked ? "" : styles.locked,
+								].join(" ")}
+								onClick={() => choose({ playerTagline: choice })}
+								data-selectable=""
+							>
+								{name}
 							</button>
 						);
 					})}

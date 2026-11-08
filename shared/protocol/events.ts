@@ -53,10 +53,7 @@ export interface ClientToServerEvents {
 		ack: Ack<LobbyState>,
 	) => void;
 	"lobby:peekPublic": (ack: Ack<PublicLobbyPreview>) => void;
-	"lobby:startTutorial": (
-		payload: { name: string },
-		ack: Ack<LobbyState>,
-	) => void;
+	"lobby:startTutorial": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"friends:list": (ack: Ack<FriendsOverview>) => void;
 	"friends:add": (payload: { code: string }, ack: Ack<FriendsOverview>) => void;
 	"friends:respond": (

@@ -25,20 +25,23 @@ import { RemotePlayers } from "../../engine/entities/RemotePlayers";
 import { LightPool } from "../../engine/lighting/LightPool";
 import { FirstPersonBody } from "../../engine/player/FirstPersonBody";
 import { FirstPersonRig } from "../../engine/player/FirstPersonRig";
+import { PhotoCamera } from "../../engine/player/PhotoCamera";
 import { PostEffects } from "../../engine/render/PostEffects";
 import { ClientWorldState } from "../../engine/state/ClientWorldState";
 import { AltarViews } from "../../engine/world/AltarViews";
 import { DoorViews } from "../../engine/world/DoorViews";
+import { GadgetViews } from "../../engine/world/GadgetViews";
 import { PickupViews } from "../../engine/world/PickupViews";
 import { StakeViews } from "../../engine/world/StakeViews";
-import { WalkieViews } from "../../engine/world/WalkieViews";
 import { GrimoireController } from "../../grimoire/GrimoireController";
 import { renderIllustrations } from "../../grimoire/illustrations";
 import { renderObjectArt } from "../../grimoire/objectArt";
 import { ensurePageFonts } from "../../grimoire/pageRenderer";
 import { ensureHudFonts, HudCanvas } from "../../hud/HudCanvas";
 import { createAnomalyModel } from "../../models/anomalies/createAnomalyModel";
+import { createCameraModel } from "../../models/cameraModel";
 import { ModelKit } from "../../models/modelKit";
+import { createWalkieModel } from "../../models/walkieModel";
 import { getSocket } from "../../network/socket";
 import { settingsStore } from "../../settings/settingsStore";
 import { DecorAnimator } from "../../world/DecorAnimator";
@@ -66,7 +69,9 @@ export interface LoadedWorld {
 	decor: DecorAnimator;
 	pickups: PickupViews;
 	altars: AltarViews;
-	walkies: WalkieViews;
+	walkies: GadgetViews;
+	cameras: GadgetViews;
+	photoCamera: PhotoCamera;
 	stakes: StakeViews;
 	layout: ManorLayout;
 	world: CollisionWorld;
@@ -272,8 +277,23 @@ export async function loadSession(
 	scene.add(pickups.group);
 	const altars = new AltarViews(layout, kit);
 	scene.add(altars.group);
-	const walkies = new WalkieViews(layout, kit, init.walkieTotal);
+	const walkies = new GadgetViews(
+		layout.walkies,
+		createWalkieModel(kit),
+		init.walkieTotal,
+		0x9fdc8a,
+		"walkie",
+	);
 	scene.add(walkies.group);
+	const cameras = new GadgetViews(
+		layout.cameras,
+		createCameraModel(kit).root,
+		init.cameraTotal,
+		0xffe2a8,
+		"camera",
+	);
+	scene.add(cameras.group);
+	const photoCamera = new PhotoCamera();
 	const stakes = new StakeViews(layout, state);
 	scene.add(stakes.group);
 	const lights = new LightPool(
@@ -291,6 +311,7 @@ export async function loadSession(
 		selfLantern === DEFAULT_LANTERN_TINT
 			? null
 			: LANTERN_TINT_COLORS[selfLantern],
+		photoCamera.preview.texture,
 	);
 	camera.add(rig.root);
 	const body = new FirstPersonBody(kit);
@@ -407,6 +428,8 @@ export async function loadSession(
 		pickups,
 		altars,
 		walkies,
+		cameras,
+		photoCamera,
 		stakes,
 		particles,
 		motes,

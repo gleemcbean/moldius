@@ -333,6 +333,9 @@ export interface WalkieSpot {
 	z: number;
 }
 
+/** Même emplacement qu'un talkie : un meuble ou le sol d'une pièce. */
+export type CameraSpot = WalkieSpot;
+
 export interface StakeRoom {
 	id: number;
 	kind: StakeKind;
@@ -355,6 +358,7 @@ export interface ManorLayout {
 	pickups: MaterialPickup[];
 	altars: Altar[];
 	walkies: WalkieSpot[];
+	cameras: CameraSpot[];
 	stakes: StakeRoom[];
 	bounds: Bounds;
 	levels: Level[];

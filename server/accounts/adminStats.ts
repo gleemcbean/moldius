@@ -95,9 +95,13 @@ export function summarizeDays(
 		string,
 		{ matches: Set<string>; registrations: number }
 	>();
+	// Compter en jours du calendrier : avec un changement d'heure, 24 h ne font pas un jour.
+	const today = Date.parse(`${localParts(now).date}T12:00:00Z`);
 	for (let offset = days - 1; offset >= 0; offset -= 1) {
-		const day = new Date(now.getTime() - offset * 86_400_000);
-		result.set(localParts(day).date, { matches: new Set(), registrations: 0 });
+		const date = new Date(today - offset * 86_400_000)
+			.toISOString()
+			.slice(0, 10);
+		result.set(date, { matches: new Set(), registrations: 0 });
 	}
 	for (const match of matches) {
 		result.get(localParts(match.at).date)?.matches.add(match.matchId);

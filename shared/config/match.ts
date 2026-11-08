@@ -1,6 +1,6 @@
-export const MATCH_DURATION_MS = 480_000;
+export const MATCH_DURATION_MS = 960_000;
 export const MIN_MATCH_MINUTES = 3;
-export const MAX_MATCH_MINUTES = 15;
+export const MAX_MATCH_MINUTES = 30;
 export const ANOMALY_FIRST_SPAWN_DELAY_MS = 30_000;
 export const ANOMALY_RETURN_DELAY_MS = 60_000;
 /** Anomalies en attente au-delà de celles en jeu : elles prennent le relais après une capture. */

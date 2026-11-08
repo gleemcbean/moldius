@@ -10,7 +10,6 @@ import {
 	DELETE_CONFIRMATIONS,
 	EMAIL_MAX_LENGTH,
 	MATCH_HISTORY_LIMIT,
-	type MatchHistoryEntry,
 	PASSWORD_MAX_LENGTH,
 	validateEmail,
 	validatePassword,
@@ -27,19 +26,18 @@ import {
 	rewardFor,
 	rewardProgress,
 	rewardUnlocked,
+	TAGLINES,
+	type Tagline,
+	taglineUnlocked,
 } from "@shared/rewards";
-import {
-	type FormEvent,
-	type InputHTMLAttributes,
-	useEffect,
-	useState,
-} from "react";
+import { type FormEvent, type InputHTMLAttributes, useState } from "react";
 import { showToast } from "../../app/appStore";
 import { Button } from "../../components/Button";
 import { Meter, Segmented } from "../../components/Controls";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
+import { TaglineBadge } from "../../components/TaglineBadge";
 import { shallowEqual, useStore } from "../../hooks/useStore";
 import { useLanguage, useT } from "../../i18n";
 import { hexColor } from "../../utils/format";
@@ -53,7 +51,6 @@ import {
 	clearAccountNotice,
 	confirmPasswordReset,
 	deleteAccount,
-	loadHistory,
 	login,
 	logout,
 	refreshAccount,
@@ -63,6 +60,7 @@ import {
 	startDiscord,
 	unlinkDiscord,
 } from "./accountStore";
+import { HistoryPanel } from "./MatchHistory";
 
 interface FormError {
 	text: string;
@@ -439,91 +437,6 @@ function NoticeBanner() {
 	);
 }
 
-function HistoryPanel() {
-	const t = useT();
-	const labels = t.account.history;
-	const [entries, setEntries] = useState<MatchHistoryEntry[] | null>(null);
-	const [error, setError] = useState<string | null>(null);
-
-	useEffect(() => {
-		let active = true;
-		void loadHistory().then((result) => {
-			if (!active) {
-				return;
-			}
-			if (result.ok) {
-				setEntries(result.value);
-			} else {
-				setError(result.error);
-			}
-		});
-		return () => {
-			active = false;
-		};
-	}, []);
-
-	if (error) {
-		return <p className={styles.error}>{error}</p>;
-	}
-	if (!entries) {
-		return <p className={styles.note}>{labels.loading}</p>;
-	}
-	if (entries.length === 0) {
-		return <p className={styles.empty}>{labels.empty}</p>;
-	}
-	return (
-		<div className={styles.historyWrap}>
-			<table className={styles.history}>
-				<thead>
-					<tr>
-						<th>{labels.date}</th>
-						<th>{labels.match}</th>
-						<th>{labels.name}</th>
-						<th>{labels.rank}</th>
-						<th>{labels.points}</th>
-						<th>{labels.captures}</th>
-						<th>{labels.deaths}</th>
-					</tr>
-				</thead>
-				<tbody>
-					{entries.map((entry) => (
-						<tr
-							key={entry.matchId}
-							className={entry.won ? styles.won : undefined}
-						>
-							<td>{labels.dateTime(new Date(entry.playedAt))}</td>
-							<td>
-								{entry.visibility === "private"
-									? labels.private
-									: labels.public}
-							</td>
-							<td>
-								<span className={styles.player}>
-									<span
-										className={styles.dot}
-										style={{ background: hexColor(entry.color) }}
-									/>
-									{entry.playerName}
-								</span>
-							</td>
-							<td>
-								<span className={styles.rank}>
-									{entry.won ? <Icon name="crown" /> : null}
-									{labels.rankLabel(entry.rank)} / {entry.playerCount}
-								</span>
-							</td>
-							<td className={styles.number}>{t.common.number(entry.score)}</td>
-							<td className={styles.number}>{entry.captures}</td>
-							<td className={styles.number}>{entry.deaths}</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-			<p className={styles.note}>{labels.limit(MATCH_HISTORY_LIMIT)}</p>
-		</div>
-	);
-}
-
 function ProfilePanel({ account }: { account: AccountProfile }) {
 	const t = useT();
 	const describe = useProblem();
@@ -531,6 +444,7 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 	const [color, setColor] = useState(account.color);
 	const [pattern, setPattern] = useState(account.pattern);
 	const [lantern, setLantern] = useState(account.lantern);
+	const [tagline, setTagline] = useState(account.tagline);
 	const progress = accountProgress(account);
 	const lockedTitle = (
 		name: string,
@@ -544,7 +458,8 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 		displayName.trim() !== account.displayName ||
 		color !== account.color ||
 		pattern !== account.pattern ||
-		lantern !== account.lantern;
+		lantern !== account.lantern ||
+		tagline !== account.tagline;
 
 	const submit = async (event: FormEvent) => {
 		event.preventDefault();
@@ -561,6 +476,7 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 			color,
 			pattern,
 			lantern,
+			tagline,
 		);
 		setBusy(false);
 		if (!result.ok) {
@@ -671,6 +587,43 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 								data-selectable=""
 							>
 								<Icon name="lantern" />
+							</button>
+						);
+					})}
+				</div>
+			</div>
+			<div className={styles.textField}>
+				<span className={styles.textLabel}>{t.home.tagline}</span>
+				<div
+					className={styles.patterns}
+					role="radiogroup"
+					aria-label={t.home.taglineHint}
+				>
+					{[null, ...TAGLINES].map((choice: Tagline | null) => {
+						const unlocked = taglineUnlocked(choice, progress);
+						const name = choice
+							? t.appearance.taglines[choice]
+							: t.home.noTagline;
+						return (
+							<button
+								key={choice ?? "none"}
+								type="button"
+								title={
+									choice
+										? lockedTitle(name, unlocked, rewardFor("tagline", choice))
+										: t.home.taglineHint
+								}
+								disabled={!unlocked}
+								className={[
+									styles.taglineChoice,
+									choice === tagline ? styles.swatchActive : "",
+									choice === null ? styles.taglineNone : "",
+									unlocked ? "" : styles.locked,
+								].join(" ")}
+								onClick={() => setTagline(choice)}
+								data-selectable=""
+							>
+								{name}
 							</button>
 						);
 					})}
@@ -968,6 +921,8 @@ function RewardCard({
 						color={account.color}
 						pattern={reward.value as HatPattern}
 					/>
+				) : reward.kind === "tagline" ? (
+					<TaglineBadge tagline={reward.value as Tagline} chip />
 				) : (
 					<span
 						className={styles.rewardLantern}
@@ -1004,6 +959,7 @@ function RewardsPanel({ account }: { account: AccountProfile }) {
 	const groups = [
 		{ kind: "hat", title: t.home.hatPattern },
 		{ kind: "lantern", title: t.home.lanternTint },
+		{ kind: "tagline", title: t.home.tagline },
 	] as const;
 	return (
 		<div className={styles.rewards}>

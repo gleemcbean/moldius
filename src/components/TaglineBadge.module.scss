@@ -1,0 +1,33 @@
+@use '../styles/tokens' as *;
+
+.tagline {
+  display: inline-block;
+  margin-left: 0.5em;
+  max-width: 100%;
+  overflow: hidden;
+  font-family: $font-text;
+  font-size: 0.82em;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.15;
+  color: $yellow-deep;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  vertical-align: baseline;
+}
+
+.chip {
+  margin-left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+  color: $yellow;
+  border: 1px solid $line-strong;
+  background: $background;
+}

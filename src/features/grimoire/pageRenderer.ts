@@ -200,7 +200,6 @@ export function renderRightPage(
 ): void {
 	const context = canvas.getContext("2d") as CanvasRenderingContext2D;
 	parchment(context, hashString(`${content.species.id}-right`), true);
-	const { species } = content;
 	const labels = currentMessages().grimoire;
 	const margin = 76;
 	const width = PAGE_WIDTH - margin * 2;
@@ -211,14 +210,6 @@ export function renderRightPage(
 	if (content.occult) {
 		y = drawRecipe(context, content, content.occult, margin, y, width) + 10;
 	}
-	y = heading(context, labels.capture, margin, y);
-	context.font = `400 31px ${HAND_FONT}`;
-	context.fillStyle = INK;
-	for (const criterion of labels.criteria(species.capture)) {
-		context.fillText("✦", margin, y);
-		y = drawParagraph(context, criterion, margin + 34, y, width - 34, 36) + 2;
-	}
-	y += 14;
 	y = heading(context, labels.incantation, margin, y);
 	drawFormulas(context, content, margin, y, width);
 }

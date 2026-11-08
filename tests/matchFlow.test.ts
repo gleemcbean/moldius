@@ -100,16 +100,16 @@ describe("pool d'espèces", () => {
 });
 
 describe("cycle de partie", () => {
-	it("règle la durée d'une partie personnalisée entre 3 et 15 minutes", () => {
+	it("règle la durée d'une partie personnalisée entre 3 et 30 minutes", () => {
 		const fallback = defaultPrivateConfig();
-		expect(fallback.durationMinutes).toBe(8);
+		expect(fallback.durationMinutes).toBe(16);
 		const clamp = (durationMinutes: unknown) =>
 			sanitizeMatchConfig({ ...fallback, durationMinutes }, fallback)
 				.durationMinutes;
 		expect(clamp(12.4)).toBe(12);
 		expect(clamp(1)).toBe(3);
-		expect(clamp(60)).toBe(15);
-		expect(clamp("long")).toBe(8);
+		expect(clamp(60)).toBe(30);
+		expect(clamp("long")).toBe(16);
 		const sim = new MatchSimulation({
 			seed: 77,
 			players: 1,

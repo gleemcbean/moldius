@@ -2,8 +2,8 @@ import { DEV_MODE_IDS } from "@shared/devModes";
 import { Field, Toggle } from "../../components/Controls";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
-import styles from "./SettingsModal.module.scss";
 import { devModesStore, setDevMode } from "./devModesStore";
+import styles from "./SettingsModal.module.scss";
 
 export function DevSettings() {
 	const t = useT();

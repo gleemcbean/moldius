@@ -1,11 +1,13 @@
-import type { ChallengeProgress } from "../challenges.js";
+import type { AwardId } from "../awards.js";
+import type { ChallengeProgress, MatchMetrics } from "../challenges.js";
 import type { HatPattern } from "../hatPatterns.js";
 import type {
 	AccountMessageKey,
 	AccountProblem,
 } from "../i18n/accountMessages.js";
 import type { Language } from "../i18n/languages.js";
-import type { LanternTint } from "../rewards.js";
+import type { ManorSize } from "../matchConfig.js";
+import type { LanternTint, Tagline } from "../rewards.js";
 
 export const EMAIL_MAX_LENGTH = 254;
 export const EMAIL_PATTERN =
@@ -29,6 +31,7 @@ export interface DailyScoreEntry {
 	name: string;
 	color: number;
 	pattern: HatPattern;
+	tagline: Tagline | null;
 	score: number;
 	captures: number;
 	deaths: number;
@@ -52,6 +55,7 @@ export interface AccountProfile {
 	color: number;
 	pattern: HatPattern;
 	lantern: LanternTint;
+	tagline: Tagline | null;
 	language: Language;
 	createdAt: string;
 	/** Date à laquelle le joueur a accepté les conditions d'utilisation. */
@@ -99,7 +103,53 @@ export interface MatchHistoryEntry {
 	captures: number;
 	deaths: number;
 	won: boolean;
+	/** Date du mode de jeu du jour, sinon null. */
+	daily: string | null;
+	/** 0 sans équipes : la place est alors celle du joueur, sinon celle de son équipe. */
+	teamCount: number;
+	hasDetails: boolean;
 }
+
+export interface MatchDetailPlayer {
+	name: string;
+	color: number;
+	pattern: HatPattern;
+	tagline: Tagline | null;
+	team: number | null;
+	score: number;
+	captures: number;
+	deaths: number;
+	self: boolean;
+	awards: { id: AwardId; value: number }[];
+}
+
+export interface MatchDetailTeam {
+	team: number;
+	score: number;
+	captures: number;
+	deaths: number;
+}
+
+export interface MatchDetailRules {
+	manorSize: ManorSize;
+	floors: number;
+	anomalies: number;
+	durationMinutes: number;
+	teamCount: number;
+	walkies: boolean;
+}
+
+/** Ce qu'une ligne d'historique garde de la partie, au-delà du résumé. */
+export interface MatchDetailData {
+	players: MatchDetailPlayer[];
+	teams: MatchDetailTeam[];
+	winnerTeam: number | null;
+	rules: MatchDetailRules | null;
+	/** Les mesures du joueur lui-même, celles qui nourrissent ses défis. */
+	metrics: MatchMetrics;
+}
+
+export interface MatchDetail extends MatchHistoryEntry, MatchDetailData {}
 
 export interface AccountStatus {
 	enabled: boolean;
@@ -144,6 +194,7 @@ export interface ProfileUpdateRequest {
 	color?: number;
 	pattern?: HatPattern;
 	lantern?: LanternTint;
+	tagline?: Tagline | null;
 	language?: Language;
 }
 

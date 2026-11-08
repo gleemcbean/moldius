@@ -1,11 +1,21 @@
 import type { HatPattern } from "@shared/hatPatterns";
-import { type LanternTint, type Reward, rewardProgress } from "@shared/rewards";
+import {
+	type LanternTint,
+	type Reward,
+	rewardProgress,
+	type Tagline,
+} from "@shared/rewards";
 import type { Messages } from "../../i18n";
 
 export function rewardName(t: Messages, reward: Reward): string {
-	return reward.kind === "hat"
-		? t.appearance.patterns[reward.value as HatPattern]
-		: t.appearance.lanterns[reward.value as LanternTint];
+	switch (reward.kind) {
+		case "hat":
+			return t.appearance.patterns[reward.value as HatPattern];
+		case "lantern":
+			return t.appearance.lanterns[reward.value as LanternTint];
+		case "tagline":
+			return t.appearance.taglines[reward.value as Tagline];
+	}
 }
 
 /** Le même texte partout : l'accueil, le profil et ses récompenses. */

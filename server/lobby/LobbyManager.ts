@@ -3,8 +3,8 @@ import type { Server } from "socket.io";
 import { withMatchMetrics } from "../../shared/challenges.js";
 import { PUBLIC_LOBBY_CAPACITY } from "../../shared/config/index.js";
 import { dailyChallenge, dailyDateKey } from "../../shared/dailyChallenge.js";
-import type { HatPattern } from "../../shared/hatPatterns.js";
 import {
+	type MatchConfig,
 	TUTORIAL_MATCH_CONFIG,
 	TUTORIAL_SEED,
 } from "../../shared/matchConfig.js";
@@ -14,8 +14,11 @@ import type {
 } from "../../shared/protocol/events.js";
 import type { PublicLobbyPreview } from "../../shared/protocol/friends.js";
 import type { MatchResults } from "../../shared/protocol/game.js";
-import type { LobbyError, LobbyState } from "../../shared/protocol/lobby.js";
-import type { LanternTint } from "../../shared/rewards.js";
+import type {
+	LobbyError,
+	LobbyState,
+	LookPreference,
+} from "../../shared/protocol/lobby.js";
 import type { MatchRecord } from "../accounts/AccountStore.js";
 import { buildMatchRecords } from "../accounts/matchRecords.js";
 import { Match, type MatchTransport } from "../game/Match.js";
@@ -80,9 +83,7 @@ export class LobbyManager {
 	quickJoin(
 		session: Session,
 		name: string,
-		color: number | null = null,
-		pattern: HatPattern | null = null,
-		lantern: LanternTint | null = null,
+		look: LookPreference = {},
 	): LobbyResult {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
@@ -93,16 +94,14 @@ export class LobbyManager {
 				(candidate) =>
 					candidate.visibility === "public" && candidate.acceptsPlayers,
 			) ?? this.createLobby("public");
-		return this.join(session, lobby, name, color, pattern, lantern);
+		return this.join(session, lobby, name, look);
 	}
 
 	/** Se joue aussi seul : le classement n'attend personne. */
 	createDaily(
 		session: Session,
 		name: string,
-		color: number | null = null,
-		pattern: HatPattern | null = null,
-		lantern: LanternTint | null = null,
+		look: LookPreference = {},
 	): LobbyResult {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
@@ -112,37 +111,26 @@ export class LobbyManager {
 		const challenge = dailyChallenge(dailyDateKey(Date.now()));
 		lobby.daily = challenge.date;
 		lobby.config = challenge.config;
-		return this.join(session, lobby, name, color, pattern, lantern);
+		return this.join(session, lobby, name, look);
 	}
 
 	createPrivate(
 		session: Session,
 		name: string,
-		color: number | null = null,
-		pattern: HatPattern | null = null,
-		lantern: LanternTint | null = null,
+		look: LookPreference = {},
 	): LobbyResult {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
 		this.leave(session);
-		return this.join(
-			session,
-			this.createLobby("private"),
-			name,
-			color,
-			pattern,
-			lantern,
-		);
+		return this.join(session, this.createLobby("private"), name, look);
 	}
 
 	joinPrivate(
 		session: Session,
 		name: string,
 		code: string,
-		color: number | null = null,
-		pattern: HatPattern | null = null,
-		lantern: LanternTint | null = null,
+		look: LookPreference = {},
 	): LobbyResult {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
@@ -161,16 +149,14 @@ export class LobbyManager {
 		if (session.lobbyId !== lobby.id) {
 			this.leave(session);
 		}
-		return this.join(session, lobby, name, color, pattern, lantern);
+		return this.join(session, lobby, name, look);
 	}
 
 	joinPublic(
 		session: Session,
 		name: string,
 		lobbyId: string,
-		color: number | null = null,
-		pattern: HatPattern | null = null,
-		lantern: LanternTint | null = null,
+		look: LookPreference = {},
 	): LobbyResult {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
@@ -185,7 +171,7 @@ export class LobbyManager {
 		if (session.lobbyId !== lobby.id) {
 			this.leave(session);
 		}
-		return this.join(session, lobby, name, color, pattern, lantern);
+		return this.join(session, lobby, name, look);
 	}
 
 	publicPreview(): PublicLobbyPreview {
@@ -204,14 +190,18 @@ export class LobbyManager {
 		};
 	}
 
-	startTutorial(session: Session, name: string): LobbyResult {
+	startTutorial(
+		session: Session,
+		name: string,
+		look: LookPreference = {},
+	): LobbyResult {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
 		this.leave(session);
 		const lobby = this.createLobby("private");
 		lobby.config = TUTORIAL_MATCH_CONFIG;
-		const joined = this.join(session, lobby, name, null, null);
+		const joined = this.join(session, lobby, name, look);
 		if (joined.ok) {
 			this.startMatch(lobby, true);
 		}
@@ -258,18 +248,9 @@ export class LobbyManager {
 		session: Session,
 		lobby: Lobby,
 		name: string,
-		color: number | null,
-		pattern: HatPattern | null,
-		lantern: LanternTint | null = null,
+		look: LookPreference,
 	): LobbyResult {
-		const result = lobby.add(
-			session.playerId,
-			name,
-			this.clock(),
-			color,
-			pattern,
-			lantern,
-		);
+		const result = lobby.add(session.playerId, name, this.clock(), look);
 		if (!result.ok) {
 			if (lobby.isEmpty) {
 				this.deleteLobby(lobby);
@@ -412,6 +393,7 @@ export class LobbyManager {
 		lobby.phase = "loading";
 		lobby.countdownEndsAt = null;
 		const matchId = `m_${randomBytes(6).toString("base64url")}`;
+		const config = lobby.config;
 		lobby.matchId = matchId;
 		const accounts = new Map(
 			participants.map((member) => [
@@ -422,13 +404,14 @@ export class LobbyManager {
 		const match = new Match({
 			id: matchId,
 			seed: tutorial ? TUTORIAL_SEED : (challenge?.seed ?? randomMatchSeed()),
-			config: lobby.config,
+			config,
 			participants: participants.map((member) => ({
 				id: member.id,
 				name: member.name,
 				color: member.color,
 				pattern: member.pattern,
 				lantern: member.lantern,
+				tagline: member.tagline,
 				team: member.team,
 			})),
 			transport: this.transportFor(lobby),
@@ -439,7 +422,7 @@ export class LobbyManager {
 			tutorial,
 			onFinished: (results) => {
 				if (results && !tutorial) {
-					this.recordResults(results, lobby.visibility, accounts);
+					this.recordResults(results, lobby.visibility, accounts, config);
 				}
 				this.onMatchFinished(lobby, matchId);
 			},
@@ -474,12 +457,14 @@ export class LobbyManager {
 		results: MatchResults,
 		visibility: "public" | "private",
 		accounts: Map<string, string | null>,
+		config: MatchConfig,
 	): void {
 		const records = buildMatchRecords(
 			results,
 			visibility,
 			accounts,
 			new Date(),
+			config,
 		);
 		if (records.length > 0) {
 			this.options.onMatchRecords?.(records);

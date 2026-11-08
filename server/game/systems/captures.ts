@@ -1,4 +1,5 @@
 import {
+  CAPTURE_MAX_RANGE,
   CAPTURE_VOICE_ACTIVITY_LEVEL,
   CAPTURE_VOICE_ACTIVITY_MS,
   CAPTURE_VOICE_WINDOW_MS,
@@ -16,8 +17,6 @@ const MESSAGES: Record<CastFailureReason, string> = {
   'wrong-words': 'Aucune anomalie présente ne répond à cette formule.',
   'out-of-range': 'Trop loin : rapprochez-vous.',
   blocked: "Un obstacle coupe la ligne vers l'anomalie.",
-  'lantern-open-required': 'Il faut ouvrir la lanterne.',
-  'lantern-closed-required': 'Il faut fermer la lanterne.',
   'missing-occult': "Tenez en main l'objet occulte de cette anomalie.",
   'howler-scream': 'Le cri du Hurleur couvre votre voix !',
   interrupted: 'Incantation interrompue : reprenez votre souffle.',
@@ -95,8 +94,7 @@ function checkGeometry(
   entity: AnomalyEntity,
   distance: number,
 ): CastFailureReason | null {
-  const rules = entity.definition.capture;
-  if (distance > rules.maxRange + 0.35) {
+  if (distance > CAPTURE_MAX_RANGE + 0.35) {
     return 'out-of-range';
   }
   const visible = [0.55, 0.9, 0.2].some((height) =>
@@ -106,13 +104,6 @@ function checkGeometry(
 }
 
 function checkSpeciesRules(player: MatchPlayer, entity: AnomalyEntity): CastFailureReason | null {
-  const rules = entity.definition.capture;
-  if (rules.lantern === 'open' && !player.lanternOpen) {
-    return 'lantern-open-required';
-  }
-  if (rules.lantern === 'closed' && player.lanternOpen) {
-    return 'lantern-closed-required';
-  }
   if (entity.occult && (player.held !== entity.occult || player.objects[entity.occult] < 1)) {
     return 'missing-occult';
   }

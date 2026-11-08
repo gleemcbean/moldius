@@ -5,10 +5,17 @@ import {
 	HIGHLIGHT_TAIL_MS,
 } from "../server/game/highlights.js";
 import type { MatchPlayer } from "../server/game/MatchPlayer.js";
+import { applyClientState } from "../server/game/systems/playerMotion.js";
+import { parseClientState } from "../server/net/validation.js";
 import { type MatchMetrics, withMatchMetrics } from "../shared/challenges.js";
 import {
 	ANOMALY_FIRST_SPAWN_DELAY_MS,
+	CAMERA_RETURN_MS,
+	cameraCount,
+	FALL_FRAGMENT_LOSS,
 	HEALTH_MAX,
+	MATERIAL_IDS,
+	OCCULT_IDS,
 	PACT_HEALTH_COST,
 	RELIQUARY_FRAGMENTS,
 	STAKE_KINDS,
@@ -25,7 +32,10 @@ import {
 	layoutChecksum,
 } from "../shared/manor/generateManor.js";
 import {
+	defaultPrivateConfig,
+	matchDurationMs,
 	PUBLIC_MATCH_CONFIG,
+	sanitizeMatchConfig,
 	TUTORIAL_MATCH_CONFIG,
 } from "../shared/matchConfig.js";
 import { type MatchResults, PLAYER_FLAG } from "../shared/protocol/game.js";
@@ -36,6 +46,7 @@ import {
 	type ProgressStats,
 } from "../shared/rewards.js";
 import { VoiceTimeline } from "../shared/voiceTimeline.js";
+import { silenceAnomalies } from "./helpers/scenarios.js";
 import { MatchSimulation } from "./helpers/simulation.js";
 
 function playerOf(sim: MatchSimulation, id = "p1"): MatchPlayer {
@@ -102,6 +113,108 @@ describe("talkies-walkies", () => {
 		expect(player.walkie).toBe(-1);
 		sim.run(WALKIE_RETURN_MS / 1000 + 0.5);
 		expect(sim.transport.eventsOfType("walkie").at(-1)).toMatchObject({
+			id: spot.id,
+			available: true,
+		});
+	});
+});
+
+describe("appareil photo", () => {
+	it("en pose ailleurs que les talkies, sauf dans le tutoriel", () => {
+		expect(cameraCount(1)).toBe(1);
+		expect(cameraCount(8)).toBe(4);
+		for (const seed of [11, 77, 2024]) {
+			const layout = generateManor(seed, PUBLIC_MATCH_CONFIG);
+			expect(layout.cameras.length).toBeGreaterThanOrEqual(4);
+			const walkieRooms = new Set(layout.walkies.map((spot) => spot.roomId));
+			expect(
+				layout.cameras
+					.slice(0, 4)
+					.every((spot) => !walkieRooms.has(spot.roomId)),
+			).toBe(true);
+		}
+		const tutorial = new MatchSimulation({
+			seed: 77,
+			players: 1,
+			tutorial: true,
+		});
+		expect(tutorial.match.initPayload().cameraTotal).toBe(0);
+	});
+
+	it("montre aux autres l'appareil levé, seulement chez qui en tient un", () => {
+		const sim = new MatchSimulation({ seed: 77, players: 1 });
+		const player = playerOf(sim);
+		const raise = (seq: number) => {
+			const message = parseClientState({
+				seq,
+				x: player.position.x,
+				y: player.position.y,
+				z: player.position.z,
+				yaw: 0,
+				pitch: 0,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+				grounded: true,
+				crouch: 0,
+				sprint: false,
+				moveInput: false,
+				grimoire: false,
+				camera: true,
+				voiceLevel: 0,
+				voicePeakMs: 0,
+				held: -1,
+				moveAck: 0,
+				jumps: 0,
+			});
+			if (!message) {
+				throw new Error("message refusé");
+			}
+			applyClientState(sim.match, player, message);
+			return (player.flags(sim.match.now) & PLAYER_FLAG.camera) !== 0;
+		};
+		expect(raise(1_000)).toBe(false);
+		const spot = sim.match.layout.cameras[0];
+		standAt(player, spot);
+		sim.match.handleInteract("p1", { kind: "camera", id: spot.id });
+		expect(raise(1_001)).toBe(true);
+	});
+
+	it("annonce dans chaque image les objets portés, que les meilleurs moments rejouent", () => {
+		const sim = new MatchSimulation({ seed: 77, players: 1 });
+		const player = playerOf(sim);
+		const now = sim.match.now;
+		expect(player.snapshot(now).held).toBeUndefined();
+		player.held = "pendulum";
+		expect(player.snapshot(now).held).toBeUndefined();
+		player.objects.pendulum = 1;
+		expect(player.snapshot(now).held).toBe(OCCULT_IDS.indexOf("pendulum"));
+		player.walkie = 0;
+		player.camera = 0;
+		const flags = player.snapshot(now).flags;
+		expect(flags & PLAYER_FLAG.walkieHeld).not.toBe(0);
+		expect(flags & PLAYER_FLAG.cameraHeld).not.toBe(0);
+		expect(flags & PLAYER_FLAG.camera).toBe(0);
+	});
+
+	it("se ramasse une fois par joueur et revient à sa place après une mort", () => {
+		const sim = new MatchSimulation({ seed: 77, players: 1 });
+		const player = playerOf(sim);
+		const spot = sim.match.layout.cameras[0];
+		standAt(player, spot);
+		sim.match.handleInteract("p1", { kind: "camera", id: spot.id });
+		expect(player.camera).toBe(spot.id);
+		sim.run(0.1);
+		expect(sim.transport.eventsOfType("camera").at(-1)).toMatchObject({
+			id: spot.id,
+			holder: "p1",
+		});
+		player.protectedUntil = 0;
+		player.lastDamageAt = -Infinity;
+		sim.match.applyDamage(player, HEALTH_MAX, "fall", null);
+		expect(player.camera).toBe(-1);
+		sim.run(CAMERA_RETURN_MS / 1000 + 0.5);
+		expect(sim.transport.eventsOfType("camera").at(-1)).toMatchObject({
 			id: spot.id,
 			available: true,
 		});
@@ -367,6 +480,65 @@ describe("poids des meilleurs moments", () => {
 		const size = JSON.stringify(clips).length;
 		console.log(`3 extraits : ${Math.round(size / 1024)} Ko`);
 		expect(size).toBeLessThan(1_000_000);
+	});
+});
+
+describe("chutes", () => {
+	function fallen(materials: number) {
+		const sim = new MatchSimulation({ seed: 21, players: 1 });
+		silenceAnomalies(sim);
+		sim.run(0.2);
+		const player = sim.match.players.get("p1") as MatchPlayer;
+		player.protectedUntil = 0;
+		for (const id of MATERIAL_IDS) {
+			player.materials[id] = 0;
+		}
+		for (let index = 0; index < materials; index += 1) {
+			player.materials[MATERIAL_IDS[index % MATERIAL_IDS.length]] += 1;
+		}
+		player.objects[OCCULT_IDS[0]] = 2;
+		sim.match.applyDamage(player, HEALTH_MAX * 2, "pact", null, true);
+		return { sim, player };
+	}
+	const total = (player: MatchPlayer) =>
+		MATERIAL_IDS.reduce((sum, id) => sum + player.materials[id], 0);
+
+	it("fait perdre quelques fragments, pas les objets", () => {
+		const { sim, player } = fallen(7);
+		expect(player.alive).toBe(false);
+		expect(total(player)).toBe(7 - FALL_FRAGMENT_LOSS);
+		expect(player.objects[OCCULT_IDS[0]]).toBe(2);
+		sim.run(0.1);
+		const death = sim.transport
+			.eventsOfType("death")
+			.find((event) => event.playerId === "p1");
+		expect(death?.fragmentsLost).toBe(FALL_FRAGMENT_LOSS);
+		expect(
+			sim.transport.messages.some(
+				(message) =>
+					message.event === "game:inventory" && message.target === "p1",
+			),
+		).toBe(true);
+	});
+
+	it("ne descend jamais sous zéro", () => {
+		const { player } = fallen(1);
+		expect(total(player)).toBe(0);
+		expect(fallen(0).player.alive).toBe(false);
+	});
+});
+
+describe("durée d'une partie", () => {
+	it("dure 16 minutes par défaut et reste réglable", () => {
+		expect(PUBLIC_MATCH_CONFIG.durationMinutes).toBe(16);
+		expect(defaultPrivateConfig().durationMinutes).toBe(16);
+		expect(matchDurationMs(PUBLIC_MATCH_CONFIG)).toBe(16 * 60_000);
+		const fallback = defaultPrivateConfig();
+		expect(
+			sanitizeMatchConfig({ ...fallback, durationMinutes: 16 }, fallback)
+				.durationMinutes,
+		).toBe(16);
+		expect(TUTORIAL_MATCH_CONFIG.durationMinutes).toBe(15);
 	});
 });
 

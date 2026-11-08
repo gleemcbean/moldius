@@ -115,17 +115,17 @@
 
 .triggers {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   height: 46px;
   min-width: 0;
-  padding: 0 10px;
+  padding: 0 8px;
   border: 2px solid $line-strong;
   background: rgba(10, 12, 10, 0.86);
   cursor: pointer;
@@ -168,11 +168,12 @@
 .options {
   position: absolute;
   top: calc(100% + 6px);
+  right: 0;
   left: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(8, 34px);
-  gap: 8px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
   padding: 12px;
   border: 2px solid $yellow;
   background: $background-raised;
@@ -180,8 +181,8 @@
 }
 
 .option {
-  width: 34px;
-  height: 34px;
+  width: 100%;
+  aspect-ratio: 1;
   padding: 0;
   border: 0;
   background: transparent;
@@ -249,6 +250,53 @@
 }
 
 /* Une lanterne allumée, pour ne pas la confondre avec la couleur du chapeau. */
+.quoteIcon {
+  color: $yellow;
+
+  svg {
+    width: 62%;
+    height: 62%;
+  }
+}
+
+/* Des phrases de longueurs variées : une liste de libellés plutôt qu'une grille de carrés. */
+.textOptions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.textOption {
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 2px solid $line-strong;
+  background: rgba(10, 12, 10, 0.86);
+  cursor: pointer;
+  font-family: $font-text;
+  font-size: 15px;
+  font-weight: 700;
+  color: $text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    border-color: $yellow;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.textOptionActive {
+  border-color: $yellow;
+  color: $yellow;
+}
+
+.textOptionNone {
+  font-style: italic;
+  color: $text-muted;
+}
+
 .lanternIcon svg {
   width: 70%;
   height: 70%;

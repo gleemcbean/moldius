@@ -1,7 +1,7 @@
 import type { HatPattern } from '@shared/hatPatterns';
 import type { MatchConfig } from '@shared/matchConfig';
 import type { LobbyError, LobbyState } from '@shared/protocol/lobby';
-import type { LanternTint } from '@shared/rewards';
+import type { LanternTint, Tagline } from '@shared/rewards';
 import { navigate, showToast } from '../../app/appStore';
 import { currentMessages } from '../../i18n';
 import { getSocket } from '../network/socket';
@@ -46,12 +46,18 @@ function handleJoin(response: LobbyResponse): boolean {
   return true;
 }
 
-function appearance(): { color: number; pattern: HatPattern; lantern: LanternTint } {
+function appearance(): {
+  color: number;
+  pattern: HatPattern;
+  lantern: LanternTint;
+  tagline: Tagline | null;
+} {
   const settings = settingsStore.get();
   return {
     color: settings.playerColor,
     pattern: settings.playerPattern,
     lantern: settings.playerLantern,
+    tagline: settings.playerTagline,
   };
 }
 
@@ -73,7 +79,7 @@ export function createDailyLobby(name: string): void {
 export function startTutorial(name: string): void {
   lobbyStore.set({ pending: true, error: null, lobby: null });
   void micManager.acquire(settingsStore.get().micDeviceId);
-  getSocket().emit('lobby:startTutorial', { name }, (response: LobbyResponse) => {
+  getSocket().emit('lobby:startTutorial', { name, ...appearance() }, (response: LobbyResponse) => {
     lobbyStore.set({ pending: false });
     if (response.ok) {
       lobbyStore.set({ lobby: response.value, error: null });

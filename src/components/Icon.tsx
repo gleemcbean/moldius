@@ -2,9 +2,11 @@ import type { SVGProps } from "react";
 
 export type IconName =
 	| "mic"
+	| "walkie"
 	| "micOff"
 	| "eye"
 	| "crown"
+	| "quote"
 	| "copy"
 	| "check"
 	| "gear"
@@ -22,12 +24,14 @@ export type IconName =
 	| "discord"
 	| "download";
 
-const PATHS: Record<IconName, string> = {
+export const ICON_PATHS: Record<IconName, string> = {
+	walkie: "M10 0h1v4h2v12H3V4h7zM5 6v3h6V6zM5 11v1h6v-1zM5 13v1h6v-1z",
 	mic: "M6 1h4v8H6zM4 7h1v2a3 3 0 0 0 6 0V7h1v2a4 4 0 0 1-3.5 4v2h-1v-2A4 4 0 0 1 4 9z",
 	micOff:
 		"M6 1h4v6L6 3zM2 1l13 13-1 1-4-4a4 4 0 0 1-1.5.9V15h-1v-2A4 4 0 0 1 4 9V7h1v2a3 3 0 0 0 4.2 2.8L1 2z",
 	eye: "M8 3c4 0 7 5 7 5s-3 5-7 5-7-5-7-5 3-5 7-5zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2z",
 	crown: "M1 4l3.5 3L8 2l3.5 5L15 4l-2 9H3z",
+	quote: "M1 3h6v6l-3 4H2l2-4H1zm8 0h6v6l-3 4h-2l2-4H9z",
 	copy: "M5 1h9v10h-2V3H5zM2 4h9v11H2z",
 	check: "M2 8l2-2 3 3 6-6 2 2-8 8z",
 	gear: "M7 0h2l.4 2.2 1.6.7 1.9-1.3 1.4 1.4-1.3 1.9.7 1.6L16 7v2l-2.2.4-.7 1.6 1.3 1.9-1.4 1.4-1.9-1.3-1.6.7L9 16H7l-.4-2.2-1.6-.7-1.9 1.3-1.4-1.4 1.3-1.9-.7-1.6L0 9V7l2.2-.4.7-1.6-1.3-1.9 1.4-1.4 1.9 1.3 1.6-.7zm1 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
@@ -63,7 +67,7 @@ export function Icon({
 			shapeRendering="geometricPrecision"
 			{...rest}
 		>
-			<path d={PATHS[name]} fillRule="evenodd" />
+			<path d={ICON_PATHS[name]} fillRule="evenodd" />
 		</svg>
 	);
 }

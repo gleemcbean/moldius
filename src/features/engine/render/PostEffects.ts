@@ -214,6 +214,35 @@ export class PostEffects {
 		this.renderer.render(this.scene, this.camera);
 	}
 
+	/**
+	 * Les mêmes filtres sur une image carrée, dessinée en bas à gauche de l'écran :
+	 * la photo garde le grain, les lignes et la vignette du jeu.
+	 */
+	renderSquare(source: THREE.Texture, side: number): void {
+		const uniforms = this.material.uniforms;
+		const saved = {
+			scene: uniforms.scene.value,
+			hudOn: uniforms.hudOn.value,
+			desaturate: uniforms.desaturate.value,
+			tension: uniforms.tension.value,
+			lines: uniforms.lines.value,
+			resolution: uniforms.resolution.value.clone(),
+		};
+		uniforms.scene.value = source;
+		uniforms.hudOn.value = 0;
+		uniforms.desaturate.value = 0;
+		uniforms.tension.value = 0;
+		uniforms.resolution.value.set(side, side);
+		uniforms.lines.value = side / 3;
+		this.renderer.render(this.scene, this.camera);
+		uniforms.scene.value = saved.scene;
+		uniforms.hudOn.value = saved.hudOn;
+		uniforms.desaturate.value = saved.desaturate;
+		uniforms.tension.value = saved.tension;
+		uniforms.lines.value = saved.lines;
+		uniforms.resolution.value.copy(saved.resolution);
+	}
+
 	dispose(): void {
 		this.target.dispose();
 		this.material.dispose();

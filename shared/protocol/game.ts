@@ -6,7 +6,7 @@ import type { SpeciesId } from "../config/species.js";
 import type { HatPattern } from "../hatPatterns.js";
 import type { MatchConfig } from "../matchConfig.js";
 import type { Vec3 } from "../math.js";
-import type { LanternTint } from "../rewards.js";
+import type { LanternTint, Tagline } from "../rewards.js";
 import type { TeamStanding } from "../teams.js";
 import type { TimeWindow } from "../voiceTimeline.js";
 
@@ -23,6 +23,7 @@ export interface MatchPlayerInit {
 	color: number;
 	pattern: HatPattern;
 	lantern: LanternTint;
+	tagline: Tagline | null;
 	team: number | null;
 	spawn: SpawnPoint;
 }
@@ -56,6 +57,7 @@ export interface MatchInit {
 	tutorial: boolean;
 	pickupTotal: number;
 	walkieTotal: number;
+	cameraTotal: number;
 }
 
 export interface MatchBegin {
@@ -81,6 +83,9 @@ export const PLAYER_FLAG = {
 	airborne: 4096,
 	petrified: 8192,
 	radio: 16384,
+	camera: 32768,
+	walkieHeld: 65536,
+	cameraHeld: 131072,
 } as const;
 
 export interface PlayerSnapshot {
@@ -98,6 +103,8 @@ export interface PlayerSnapshot {
 	score: number;
 	hideSpot: number;
 	moveId: number;
+	/** L'objet occulte tenu en main (son rang dans OCCULT_IDS), absent sinon. */
+	held?: number;
 }
 
 export type AnomalyState =
@@ -170,6 +177,8 @@ export interface ClientStateMessage {
 	sprint: boolean;
 	moveInput: boolean;
 	grimoire: boolean;
+	/** Appareil photo levé devant soi : les autres le voient viser. */
+	camera?: boolean;
 	voiceLevel: number;
 	voicePeakMs: number;
 	held: number;
@@ -185,6 +194,7 @@ export type InteractionKind =
 	| "valve"
 	| "pickup"
 	| "walkie"
+	| "camera"
 	| "stake";
 
 export interface InteractRequest {
@@ -203,8 +213,6 @@ export type CastFailureReason =
 	| "wrong-words"
 	| "out-of-range"
 	| "blocked"
-	| "lantern-open-required"
-	| "lantern-closed-required"
 	| "missing-occult"
 	| "howler-scream"
 	| "interrupted"
@@ -295,6 +303,7 @@ export type GameEvent =
 			playerId: string;
 			respawnAt: number;
 			cause: SpeciesId | DamageCause;
+			fragmentsLost: number;
 	  }
 	| { type: "respawn"; playerId: string; protectedUntil: number }
 	| {
@@ -373,6 +382,7 @@ export type GameEvent =
 			hits: string[];
 	  }
 	| { type: "walkie"; id: number; holder: string | null; available: boolean }
+	| { type: "camera"; id: number; holder: string | null; available: boolean }
 	| { type: "voiceWindows"; windows: TimeWindow[] }
 	| {
 			type: "stake";
@@ -438,6 +448,7 @@ export interface MatchResultEntry {
 	deaths: number;
 	color: number;
 	pattern?: HatPattern;
+	tagline?: Tagline | null;
 	team: number | null;
 }
 

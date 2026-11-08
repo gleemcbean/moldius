@@ -89,7 +89,14 @@ async function overviewOf(
 		name,
 		color,
 		pattern,
-	}: (typeof links)[number]) => ({ accountId: id, name, color, pattern });
+		tagline,
+	}: (typeof links)[number]) => ({
+		accountId: id,
+		name,
+		color,
+		pattern,
+		tagline,
+	});
 	return {
 		friendCode: identity.friendCode,
 		appearOffline: identity.appearOffline,

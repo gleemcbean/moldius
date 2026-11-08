@@ -1,4 +1,5 @@
 import {
+	CAPTURE_MAX_RANGE,
 	EYE_HEIGHT_STANDING,
 	type MaterialId,
 	OCCULT_RECIPES,
@@ -7,7 +8,6 @@ import {
 	VALVE_HEAL_RADIUS,
 	VALVE_JET_DURATION_MS,
 } from "@shared/config/index";
-import { SPECIES } from "@shared/config/species";
 import { TUTORIAL_WOUNDED_HEALTH } from "@shared/matchConfig";
 import type { Vec3 } from "@shared/math";
 import { wrapAngle } from "@shared/math";
@@ -74,7 +74,6 @@ const GRIMOIRE_READ_MS = 2500;
 const SAME_FLOOR = 2;
 const STAR_SCALE = 0.035;
 const STAR_HEIGHT = 1.5;
-const CAPTURE_LANTERN = "closed";
 const VOICE_HEARD_LEVEL = 0.08;
 const VOICE_MEMORY_MS = 2500;
 
@@ -402,10 +401,7 @@ export class TutorialController {
 			case "shout":
 				return steps.shout(label("shout"));
 			case "capture":
-				return steps.capture(
-					this.init.roster[0]?.formula.join(" · ") ?? "",
-					label("lantern"),
-				);
+				return steps.capture(this.init.roster[0]?.formula.join(" · ") ?? "");
 			case "end":
 				return steps.end();
 		}
@@ -439,7 +435,7 @@ export class TutorialController {
 		}
 		const labels = currentMessages().game.tutorial.checks;
 		const center = this.loaded.anomalies.infos()[0]?.center;
-		const range = SPECIES.murmure.capture.maxRange;
+		const range = CAPTURE_MAX_RANGE;
 		const distance = center
 			? Math.hypot(
 					center.x - context.feet.x,
@@ -452,12 +448,6 @@ export class TutorialController {
 			this.voiceHeardAt = performance.now();
 		}
 		return [
-			{
-				label: labels.lantern,
-				ok:
-					context.lanternOpen ===
-					(SPECIES.murmure.capture.lantern !== CAPTURE_LANTERN),
-			},
 			{ label: labels.range(range), ok: distance <= range },
 			{
 				label: labels.object,

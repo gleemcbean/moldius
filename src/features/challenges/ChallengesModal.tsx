@@ -14,11 +14,13 @@ import {
 	LANTERN_TINT_COLORS,
 	type LanternTint,
 	rewardsForChallenge,
+	type Tagline,
 } from "@shared/rewards";
 import { Meter } from "../../components/Controls";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
+import { TaglineBadge } from "../../components/TaglineBadge";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
 import { hexColor } from "../../utils/format";
@@ -41,6 +43,8 @@ function ChallengeRewards({ id }: { id: ChallengeId }) {
 						color={hatColor}
 						pattern={reward.value as HatPattern}
 					/>
+				) : reward.kind === "tagline" ? (
+					<TaglineBadge tagline={reward.value as Tagline} chip />
 				) : (
 					<span
 						className={styles.rewardLantern}

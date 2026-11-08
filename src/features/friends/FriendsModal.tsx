@@ -10,6 +10,7 @@ import { Button } from "../../components/Button";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
+import { TaglineBadge } from "../../components/TaglineBadge";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
 import { accountStore } from "../account/accountStore";
@@ -47,7 +48,10 @@ function Person({
 				className={styles.hat}
 			/>
 			<span className={styles.identity}>
-				<span className={styles.name}>{person.name}</span>
+				<span className={styles.name}>
+					{person.name}
+					<TaglineBadge tagline={person.tagline} />
+				</span>
 				{detail ? (
 					<span className={styles.detail}>
 						{dot ? <i className={dot} aria-hidden="true" /> : null}

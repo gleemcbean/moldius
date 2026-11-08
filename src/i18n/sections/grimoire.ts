@@ -1,10 +1,5 @@
 import type { MaterialId, OccultId } from "@shared/config/occult";
-import {
-	type CaptureRules,
-	SPECIES,
-	SPECIES_IDS,
-	type SpeciesId,
-} from "@shared/config/species";
+import { SPECIES, SPECIES_IDS, type SpeciesId } from "@shared/config/species";
 
 export interface SpeciesText {
 	name: string;
@@ -18,14 +13,6 @@ const SPECIES_FR = Object.fromEntries(
 		return [id, { name, description, danger }];
 	}),
 ) as Record<SpeciesId, SpeciesText>;
-
-function frenchNumber(value: number): string {
-	return value.toLocaleString("fr-FR");
-}
-
-function englishNumber(value: number): string {
-	return value.toLocaleString("en-GB");
-}
 
 export const grimoireFr = {
 	species: SPECIES_FR,
@@ -49,18 +36,8 @@ export const grimoireFr = {
 		censer: "Encensoir sacré",
 	} as Record<OccultId, string>,
 	craftAtAltar: "À fabriquer sur un autel, puis à garder sur soi.",
-	capture: "Capture",
 	incantation: "Incantation",
 	aimToReveal: "Aucun exemplaire de cette espèce dans cette chasse.",
-	criteria: (rules: CaptureRules): string[] => {
-		const criteria = [`À ${frenchNumber(rules.maxRange)} m maximum`];
-		if (rules.lantern === "open") {
-			criteria.push("Lanterne ouverte");
-		} else if (rules.lantern === "closed") {
-			criteria.push("Lanterne fermée");
-		}
-		return criteria;
-	},
 };
 
 export const grimoireEn: typeof grimoireFr = {
@@ -188,16 +165,6 @@ export const grimoireEn: typeof grimoireFr = {
 		censer: "Sacred Censer",
 	},
 	craftAtAltar: "Craft it on an altar, then keep it on you.",
-	capture: "Capture",
 	incantation: "Incantation",
 	aimToReveal: "No specimen of this species in this hunt.",
-	criteria: (rules: CaptureRules): string[] => {
-		const criteria = [`Within ${englishNumber(rules.maxRange)} m`];
-		if (rules.lantern === "open") {
-			criteria.push("Lantern open");
-		} else if (rules.lantern === "closed") {
-			criteria.push("Lantern closed");
-		}
-		return criteria;
-	},
 };

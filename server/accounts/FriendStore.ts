@@ -5,6 +5,7 @@ import {
 	FRIEND_LIMIT,
 	type FriendPerson,
 } from "../../shared/protocol/friends.js";
+import { isTagline } from "../../shared/rewards.js";
 import { type Database, isUniqueViolation } from "./database.js";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -15,6 +16,7 @@ interface PersonRow {
 	display_name: string;
 	hat_color: number;
 	hat_pattern: string;
+	tagline: string | null;
 	appear_offline: boolean;
 	requester_id: string;
 	status: string;
@@ -99,7 +101,7 @@ export class FriendStore {
 	async links(accountId: string): Promise<FriendLink[]> {
 		const select = (mine: string, other: string) =>
 			this.database.query<PersonRow>(
-				`SELECT a.id, a.display_name, a.hat_color, a.hat_pattern, a.appear_offline,
+				`SELECT a.id, a.display_name, a.hat_color, a.hat_pattern, a.tagline, a.appear_offline,
                 f.requester_id, f.status
          FROM friendships f
          JOIN accounts a ON a.id = f.${other}
@@ -116,6 +118,7 @@ export class FriendStore {
 				name: row.display_name,
 				color: Number(row.hat_color),
 				pattern: isHatPattern(row.hat_pattern) ? row.hat_pattern : "plain",
+				tagline: isTagline(row.tagline) ? row.tagline : null,
 				appearOffline: row.appear_offline,
 				accepted: row.status === "accepted",
 				requestedByMe: row.requester_id === accountId,

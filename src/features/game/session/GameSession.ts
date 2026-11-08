@@ -12,6 +12,7 @@ import {
 	LANTERN_LIGHT_INTENSITY,
 	LANTERN_LIGHT_RANGE,
 	LEVEL_HEIGHT,
+	MAX_PHOTOS_PER_MATCH,
 	type MaterialId,
 	OCCULT_IDS,
 	OCCULT_RECIPES,
@@ -39,6 +40,7 @@ import {
 import { DEFAULT_LANTERN_TINT, LANTERN_TINT_COLORS } from "@shared/rewards";
 import { TEAM_COLORS } from "@shared/teams";
 import * as THREE from "three";
+import { keyLabel } from "../../../config/controls";
 import {
 	CLOCK_WARNING_MS,
 	HAZE_COLOR,
@@ -76,6 +78,7 @@ import { type MapMarker, MapRenderer, roomLabel } from "../../map/MapRenderer";
 import { mapStore, panMap, resetMap, zoomMap } from "../../map/mapStore";
 import { clockSync } from "../../network/clockSync";
 import { type GameSocket, getSocket } from "../../network/socket";
+import { addPhoto, clearPhotos, photoStore } from "../../photos/photoStore";
 import { activeDevModes, devModesStore } from "../../settings/devModesStore";
 import { settingsStore } from "../../settings/settingsStore";
 import { doubleVoices, speakRadioClip } from "../../voice/doubleVoices";
@@ -107,6 +110,8 @@ const VOICE_CLIPS_GRACE_MS = 5_000;
 function wrapIndex(index: number, length: number): number {
 	return ((index % length) + length) % length;
 }
+
+const RADIO_TALKING_LEVEL = 0.12;
 
 export class GameSession {
 	private loadedWorld: LoadedWorld | null = null;
@@ -165,6 +170,8 @@ export class GameSession {
 	private readonly dynamicLights: DynamicLight[] = [];
 	private readonly selfDamageAt = { value: 0 };
 	private radioOn = false;
+	private cameraRaised = false;
+	private photoPending = false;
 	private radioGhostAt = 0;
 	private radioGhostName: string | null = null;
 	private radioGhostUntil = 0;
@@ -218,6 +225,7 @@ export class GameSession {
 			return;
 		}
 		this.loadedWorld = loaded;
+		clearPhotos();
 		const spawn = this.init.players.find((player) => player.id === this.selfId)
 			?.spawn ?? {
 			x: 0,
@@ -233,6 +241,7 @@ export class GameSession {
 			loaded.state,
 			loaded.pickups,
 			loaded.walkies,
+			loaded.cameras,
 			this.init.tutorial,
 		);
 		if (this.init.tutorial) {
@@ -723,6 +732,7 @@ export class GameSession {
 		loaded.pickups.update(dt, loaded.camera.position);
 		loaded.altars.update(dt, loaded.camera.position);
 		loaded.walkies.update(dt, loaded.camera.position, this.dynamicLights);
+		loaded.cameras.update(dt, loaded.camera.position, this.dynamicLights);
 		loaded.stakes.update(
 			dt,
 			loaded.camera.position,
@@ -787,6 +797,7 @@ export class GameSession {
 			loaded.hud.paint(now);
 		}
 		const wounded = alive && (self?.hp ?? 100) < 30 ? 0.5 : 0;
+		this.renderCamera(loaded);
 		loaded.post.render(
 			{
 				dt,
@@ -969,6 +980,7 @@ export class GameSession {
 			socket.emit("game:radio", { on: radioOn });
 			soundBank.play("radio-squelch", { volume: 0.4 });
 		}
+		this.handleCamera(frame, alive && !restrained);
 		let escapeConsumed = false;
 		if (frame.escape && this.mapOpen) {
 			this.closeMap();
@@ -1159,6 +1171,63 @@ export class GameSession {
 		}
 	}
 
+	/** Lever l'appareil, viser, déclencher : la photo elle-même se prend au rendu. */
+	private handleCamera(frame: FrameInput, able: boolean): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const canAim =
+			able &&
+			this.hideSpot < 0 &&
+			loaded.state.selfHasCamera &&
+			!loaded.grimoire.isOpen &&
+			!this.mapOpen &&
+			this.altarId === null;
+		if (!canAim) {
+			this.cameraRaised = false;
+			return;
+		}
+		if (frame.pressed.has("camera")) {
+			this.cameraRaised = !this.cameraRaised;
+		}
+		if (
+			this.cameraRaised &&
+			frame.pressed.has("photo") &&
+			loaded.rig.cameraUp &&
+			!this.photoPending
+		) {
+			if (photoStore.get().photos.length >= MAX_PHOTOS_PER_MATCH) {
+				pushFeedback(
+					currentMessages().game.camera.full(MAX_PHOTOS_PER_MATCH),
+					"info",
+				);
+			} else {
+				this.photoPending = true;
+			}
+		}
+	}
+
+	/** Juste avant l'image normale : le viseur, et la photo si on vient de déclencher. */
+	private renderCamera(loaded: LoadedWorld): void {
+		if (!this.cameraRaised && !this.photoPending) {
+			return;
+		}
+		const { renderer, scene, camera, photoCamera } = loaded;
+		photoCamera.renderPreview(renderer, scene, camera);
+		if (!this.photoPending) {
+			return;
+		}
+		this.photoPending = false;
+		loaded.rig.flashPhoto();
+		soundBank.play("camera-shutter", { volume: 0.7 });
+		hudStore.set({ photoFlashAt: performance.now() });
+		void photoCamera
+			.capture(renderer, scene, camera, loaded.post)
+			.then((blob) => {
+				if (blob) {
+					addPhoto(blob);
+				}
+			});
+	}
+
 	private updateRig(
 		dt: number,
 		frame: FrameInput,
@@ -1174,6 +1243,7 @@ export class GameSession {
 		loaded.rig.update(dt, {
 			grimoireOpen: loaded.grimoire.isOpen,
 			heldObject: this.heldObject(),
+			cameraRaised: this.cameraRaised,
 			lanternOpen: this.lanternIntent && this.hideSpot < 0,
 			speed: player.speed,
 			crouch: player.character.crouch,
@@ -1357,6 +1427,7 @@ export class GameSession {
 			sprint: input.sprint,
 			moveInput: Math.abs(input.forward) > 0 || Math.abs(input.strafe) > 0,
 			grimoire: (this.loadedWorld as LoadedWorld).grimoire.isOpen,
+			camera: this.cameraRaised,
 			voiceLevel: Math.min(1, this.voicePeak),
 			voicePeakMs: Math.min(2000, Math.round(this.voiceActiveMs)),
 			held: this.heldSlot,
@@ -1462,8 +1533,37 @@ export class GameSession {
 		return levelForHeight(player.character.y, Math.max(...layout.levels), 1.8);
 	}
 
+	private isOnRadio(playerId: string, flags: number): boolean {
+		if (playerId === this.selfId) {
+			return this.radioOn && micManager.voiceActive();
+		}
+		return (
+			(flags & PLAYER_FLAG.radio) !== 0 &&
+			voiceChat.levelOf(playerId) > RADIO_TALKING_LEVEL
+		);
+	}
+
+	private walkieSpeakers(): string[] {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const speakers = [...loaded.remotePlayers.radioSpeakers];
+		if (
+			this.radioGhostName &&
+			performance.now() < this.radioGhostUntil &&
+			!speakers.includes(this.radioGhostName)
+		) {
+			speakers.push(this.radioGhostName);
+		}
+		return speakers;
+	}
+
 	private leaderboardRows(): LeaderboardRow[] {
 		const loaded = this.loadedWorld as LoadedWorld;
+		const holders = new Set(
+			[...loaded.state.walkies.values()].map((walkie) => walkie.holder),
+		);
+		const taglines = new Map(
+			this.init.players.map((player) => [player.id, player.tagline]),
+		);
 		return [...loaded.state.players.values()]
 			.map((player) => ({
 				id: player.id,
@@ -1477,6 +1577,9 @@ export class GameSession {
 					: true,
 				self: player.id === this.selfId,
 				team: player.team,
+				walkie: holders.has(player.id),
+				radio: this.isOnRadio(player.id, player.latest?.flags ?? 0),
+				tagline: taglines.get(player.id) ?? null,
 			}))
 			.sort((first, second) => second.score - first.score);
 	}
@@ -1533,9 +1636,10 @@ export class GameSession {
 			fps: this.fps,
 			walkieHeld: loaded.state.selfHasWalkie,
 			walkieTalking: this.radioOn,
-			walkieHearing:
-				loaded.remotePlayers.radioSpeaker ??
-				(performance.now() < this.radioGhostUntil ? this.radioGhostName : null),
+			walkieSpeakers: this.walkieSpeakers(),
+			cameraHeld: loaded.state.selfHasCamera,
+			cameraRaised: this.cameraRaised,
+			photoCount: photoStore.get().photos.length,
 			level: this.currentLevel(),
 			serverNow,
 		});
@@ -1820,6 +1924,7 @@ export class GameSession {
 		loaded.pickups.update(dt, eye);
 		loaded.altars.update(dt, eye);
 		loaded.walkies.update(dt, eye, this.dynamicLights);
+		loaded.cameras.update(dt, eye, this.dynamicLights);
 		loaded.stakes.update(dt, eye, time, this.dynamicLights);
 		loaded.lights.update(eye, this.dynamicLights, dt);
 		this.cullRooms(eye);
@@ -1855,6 +1960,18 @@ export class GameSession {
 				if (event.holder === this.selfId) {
 					soundBank.play("radio-squelch", { volume: 0.6 });
 					pushFeedback(currentMessages().game.walkie.taken, "info");
+				}
+				break;
+			case "camera":
+				loaded.cameras.setAvailable(event.id, event.available);
+				if (event.holder === this.selfId) {
+					soundBank.play("camera-shutter", { volume: 0.35 });
+					pushFeedback(
+						currentMessages().game.camera.taken(
+							keyLabel(settingsStore.get().keys.camera),
+						),
+						"info",
+					);
 				}
 				break;
 			case "stake": {
@@ -1951,6 +2068,12 @@ export class GameSession {
 					this.carriedBy = null;
 					this.hideSpot = -1;
 					soundBank.play("death", { volume: 0.9 });
+					if (event.fragmentsLost > 0) {
+						pushFeedback(
+							currentMessages().game.fragmentsLost(event.fragmentsLost),
+							"warning",
+						);
+					}
 				}
 				break;
 			case "respawn":
@@ -2035,6 +2158,8 @@ export class GameSession {
 		loaded.hud.dispose();
 		loaded.altars.dispose();
 		loaded.walkies.dispose();
+		loaded.cameras.dispose();
+		loaded.photoCamera.dispose();
 		loaded.stakes.dispose();
 		loaded.particles.dispose();
 		loaded.motes.dispose();

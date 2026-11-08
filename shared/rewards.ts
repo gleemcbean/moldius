@@ -40,6 +40,30 @@ export function isLanternTint(value: unknown): value is LanternTint {
 	);
 }
 
+/** Une petite phrase affichée sous le pseudonyme : facultative, gagnée par les défis. */
+export const TAGLINES = [
+	"smile",
+	"cat",
+	"xd",
+	"immortal",
+	"unbeatable",
+	"ghost",
+	"daredevil",
+	"chatterbox",
+	"tireless",
+	"bigGame",
+	"veteran",
+	"faithful",
+] as const;
+
+export type Tagline = (typeof TAGLINES)[number];
+
+export function isTagline(value: unknown): value is Tagline {
+	return (
+		typeof value === "string" && (TAGLINES as readonly string[]).includes(value)
+	);
+}
+
 export interface ProgressStats {
 	gamesPlayed: number;
 	wins: number;
@@ -51,8 +75,8 @@ export interface ProgressStats {
 
 /** Une récompense se gagne toujours par un défi de la liste, jamais à part. */
 export interface Reward {
-	kind: "hat" | "lantern";
-	value: HatPattern | LanternTint;
+	kind: "hat" | "lantern" | "tagline";
+	value: HatPattern | LanternTint | Tagline;
 	challenge: ChallengeId;
 	/** Le palier à atteindre, à partir de 1 ; null pour un défi classique. */
 	tier: number | null;
@@ -74,6 +98,18 @@ export const REWARDS: readonly Reward[] = [
 	{ kind: "lantern", value: "toxic", challenge: "crafter", tier: 1 },
 	{ kind: "lantern", value: "specter", challenge: "ghost", tier: 2 },
 	{ kind: "lantern", value: "gold", challenge: "champion", tier: 3 },
+	{ kind: "tagline", value: "smile", challenge: "firstCapture", tier: null },
+	{ kind: "tagline", value: "cat", challenge: "bunny", tier: null },
+	{ kind: "tagline", value: "xd", challenge: "saboteur", tier: null },
+	{ kind: "tagline", value: "immortal", challenge: "survivor", tier: null },
+	{ kind: "tagline", value: "ghost", challenge: "hermit", tier: null },
+	{ kind: "tagline", value: "daredevil", challenge: "daredevil", tier: null },
+	{ kind: "tagline", value: "chatterbox", challenge: "operator", tier: null },
+	{ kind: "tagline", value: "unbeatable", challenge: "champion", tier: 2 },
+	{ kind: "tagline", value: "tireless", challenge: "runner", tier: 2 },
+	{ kind: "tagline", value: "bigGame", challenge: "hunter", tier: 3 },
+	{ kind: "tagline", value: "veteran", challenge: "veteran", tier: 3 },
+	{ kind: "tagline", value: "faithful", challenge: "regular", tier: 3 },
 ];
 
 export function accountProgress(account: {
@@ -146,6 +182,22 @@ export function lanternUnlocked(
 	stats: ProgressStats | null,
 ): boolean {
 	return cosmeticUnlocked("lantern", tint, stats);
+}
+
+/** Sans titre, rien à débloquer ; un titre inconnu ou verrouillé est refusé. */
+export function taglineUnlocked(
+	tagline: Tagline | null,
+	stats: ProgressStats | null,
+): boolean {
+	return tagline === null || cosmeticUnlocked("tagline", tagline, stats);
+}
+
+/** Ce que le serveur accepte d'un client : un titre débloqué, sinon aucun. */
+export function allowedTagline(
+	value: unknown,
+	stats: ProgressStats | null,
+): Tagline | null {
+	return isTagline(value) && taglineUnlocked(value, stats) ? value : null;
 }
 
 export function rewardFor(

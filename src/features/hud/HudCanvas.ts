@@ -1,4 +1,5 @@
 import {
+	MAX_PHOTOS_PER_MATCH,
 	PUSH_COOLDOWN_MS,
 	SHOUT_COOLDOWN_MS,
 	VOICE_AUDIBLE_LEVEL,
@@ -10,16 +11,18 @@ import {
 	OCCULT_RECIPES,
 } from "@shared/config/occult";
 import type { Level } from "@shared/manor/types";
+import { TEAM_COLORS, teamStandings } from "@shared/teams";
 import * as THREE from "three";
+import { ICON_PATHS } from "../../components/Icon";
 import { keyLabel } from "../../config/controls";
 import { currentMessages } from "../../i18n";
-import { formatClock } from "../../utils/format";
+import { formatClock, hexColor } from "../../utils/format";
 import { HUD_BEND, POST_BULGE } from "../engine/render/PostEffects";
 import type { ObjectArt, ObjectArtId } from "../grimoire/objectArt";
 import { MAP_MAX_ZOOM, mapStore, resetMap, zoomMap } from "../map/mapStore";
 import { settingsStore } from "../settings/settingsStore";
 import { hazeFilter } from "./hazeFilter";
-import { type HudState, hudStore } from "./hudStore";
+import { type HudState, hudStore, type LeaderboardRow } from "./hudStore";
 
 export const MINIMAP_SIZE = 224;
 
@@ -29,6 +32,7 @@ const REFERENCE_HEIGHT = 790;
 const MIN_SCALE = 1.12;
 const MAX_SCALE = 2;
 const PAINT_INTERVAL_MS = 33;
+const WALKIE_ICON = new Path2D(ICON_PATHS.walkie);
 const FEEDBACK_MS = 4200;
 const NOISE_SEGMENTS = 18;
 const HEALTH_TRAIL_HOLD_MS = 420;
@@ -48,6 +52,7 @@ const MAP_WINDOW = "#8fd3e6";
 const MAP_STAIRS = "#aabeff";
 
 const YELLOW = "#dce54d";
+const YELLOW_DEEP = "#b9c22f";
 const BACKGROUND = "#111512";
 const PANEL_BACKGROUND = "#1d231f";
 const LINE_STRONG = "#46543f";
@@ -213,6 +218,8 @@ export class HudCanvas {
 		this.paintTopBar(hud, now);
 		this.paintMaterials(hud);
 		this.paintStatus(hud, now, dt);
+		this.paintWalkie(hud, now);
+		this.paintCamera(hud);
 		this.paintAbilities(hud);
 		this.paintHotbar(hud);
 		this.paintPrompt(hud);
@@ -238,6 +245,7 @@ export class HudCanvas {
 			});
 		}
 		this.paintDeath(hud);
+		this.paintLeaderboard(hud, now);
 		if (hud.showMap) {
 			this.paintBigMap(hud);
 		}
@@ -997,6 +1005,377 @@ export class HudCanvas {
 				barWidth + 4,
 				energyHeight + 4,
 			);
+		}
+	}
+
+	/** L'icône du talkie ; quand quelqu'un parle, des ondes partent de son antenne. */
+	private paintWalkieIcon(
+		x: number,
+		y: number,
+		size: number,
+		color: string,
+		active: boolean,
+		now: number,
+	): void {
+		const context = this.context;
+		context.save();
+		context.translate(x, y);
+		context.scale(size / 16, size / 16);
+		context.fillStyle = color;
+		context.fill(WALKIE_ICON, "evenodd");
+		context.restore();
+		if (!active) {
+			return;
+		}
+		context.save();
+		context.strokeStyle = color;
+		context.lineWidth = Math.max(1.5, size / 12);
+		context.lineCap = "round";
+		for (let wave = 0; wave < 3; wave += 1) {
+			context.globalAlpha =
+				0.2 + 0.8 * Math.max(0, Math.sin(now / 130 - wave * 0.9));
+			context.beginPath();
+			context.arc(
+				x + size * 0.66,
+				y + size * 0.14,
+				(wave + 1) * size * 0.22,
+				-Math.PI * 0.4,
+				Math.PI * 0.15,
+			);
+			context.stroke();
+		}
+		context.restore();
+	}
+
+	private paintWalkie(hud: HudState, now: number): void {
+		if (!hud.walkieHeld || hud.showMap || hud.paused) {
+			return;
+		}
+		const labels = currentMessages().game.walkie;
+		const speakers = hud.walkieSpeakers;
+		const active = hud.walkieTalking || speakers.length > 0;
+		const lines = hud.walkieTalking
+			? [labels.talking]
+			: speakers.length > 0
+				? speakers.map((name) => labels.hearing(name))
+				: [labels.idle(keyLabel(settingsStore.get().keys.radio))];
+		const color = hud.walkieTalking ? DANGER : active ? OK : TEXT_MUTED;
+		const font = `500 18px ${BODY}`;
+		const context = this.context;
+		context.font = font;
+		const textWidth = Math.max(
+			...lines.map((line) => context.measureText(line).width),
+		);
+		const iconSize = 26;
+		const waves = 22;
+		const width = 14 + iconSize + waves + textWidth + 16;
+		const height = Math.max(44, 12 + lines.length * 24);
+		const { x, y } = this.place(
+			20,
+			this.height - 16 - 46 - 12,
+			width,
+			height,
+			"left",
+			"bottom",
+		);
+		this.panel(x, y, width, height, DARK_PANEL, color);
+		this.paintWalkieIcon(
+			x + 12,
+			y + (height - iconSize) / 2,
+			iconSize,
+			color,
+			active,
+			now,
+		);
+		const textX = x + 14 + iconSize + waves;
+		const firstY = y + height / 2 - ((lines.length - 1) * 24) / 2 + 1;
+		lines.forEach((line, index) => {
+			this.text(line, textX, firstY + index * 24, {
+				font,
+				color: active ? TEXT : TEXT_MUTED,
+			});
+		});
+	}
+
+	private walkieHeight(hud: HudState): number {
+		const lines = hud.walkieTalking
+			? 1
+			: Math.max(1, hud.walkieSpeakers.length);
+		return Math.max(44, 12 + lines * 24);
+	}
+
+	/** Au-dessus du talkie : l'appareil photo, sa touche et ce qui reste de pellicule. */
+	private paintCamera(hud: HudState): void {
+		const flash = (performance.now() - hud.photoFlashAt) / 260;
+		if (flash >= 0 && flash < 1 && !hud.paused) {
+			this.context.fillStyle = `rgba(255, 255, 255, ${(0.55 * (1 - flash)).toFixed(3)})`;
+			this.context.fillRect(0, 0, this.width, this.height);
+		}
+		if (!hud.cameraHeld || hud.showMap || hud.paused) {
+			return;
+		}
+		const labels = currentMessages().game.camera;
+		const keys = settingsStore.get().keys;
+		const line = hud.cameraRaised
+			? labels.raised(
+					keyLabel(keys.photo),
+					hud.photoCount,
+					MAX_PHOTOS_PER_MATCH,
+				)
+			: labels.lowered(keyLabel(keys.camera));
+		const color = hud.cameraRaised ? YELLOW : TEXT_MUTED;
+		const font = `500 18px ${BODY}`;
+		const context = this.context;
+		context.font = font;
+		const iconSize = 24;
+		const width = 14 + iconSize + 12 + context.measureText(line).width + 16;
+		const height = 44;
+		const below = hud.walkieHeld ? this.walkieHeight(hud) + 8 : 0;
+		const { x, y } = this.place(
+			20,
+			this.height - 16 - 46 - 12 - below,
+			width,
+			height,
+			"left",
+			"bottom",
+		);
+		this.panel(x, y, width, height, DARK_PANEL, color);
+		const iconX = x + 12;
+		const iconY = y + (height - iconSize * 0.7) / 2;
+		context.fillStyle = color;
+		context.fillRect(iconX, iconY + 3, iconSize, iconSize * 0.7 - 3);
+		context.fillRect(iconX + iconSize * 0.3, iconY, iconSize * 0.3, 4);
+		context.fillStyle = DARK_PANEL;
+		context.beginPath();
+		context.arc(
+			iconX + iconSize / 2,
+			iconY + 3 + (iconSize * 0.7 - 3) / 2,
+			iconSize * 0.2,
+			0,
+			Math.PI * 2,
+		);
+		context.fill();
+		this.text(line, x + 14 + iconSize + 12, y + height / 2 + 1, {
+			font,
+			color: hud.cameraRaised ? TEXT : TEXT_MUTED,
+		});
+	}
+
+	private fitText(value: string, font: string, width: number): string {
+		const context = this.context;
+		context.font = font;
+		if (context.measureText(value).width <= width) {
+			return value;
+		}
+		let end = value.length;
+		while (
+			end > 1 &&
+			context.measureText(`${value.slice(0, end)}…`).width > width
+		) {
+			end -= 1;
+		}
+		return `${value.slice(0, end)}…`;
+	}
+
+	private paintLeaderboard(hud: HudState, now: number): void {
+		if (!hud.showLeaderboard || hud.paused || hud.showMap) {
+			return;
+		}
+		const messages = currentMessages();
+		const labels = messages.game.leaderboard;
+		const rows = hud.leaderboard;
+		const teamMode = rows.some((row) => row.team !== null);
+		const standings = teamMode
+			? teamStandings(
+					rows.map((row) => ({
+						playerId: row.id,
+						team: row.team,
+						score: row.score,
+						captures: 0,
+						deaths: 0,
+					})),
+				)
+			: [];
+		const lineCount = rows.length + standings.length;
+		const padding = 22;
+		const titleHeight = 54;
+		const headHeight = 26;
+		const gap = 5;
+		const available =
+			this.height -
+			56 -
+			padding * 2 -
+			titleHeight -
+			headHeight -
+			standings.length * 6;
+		const rowHeight = Math.max(
+			24,
+			Math.min(46, available / Math.max(1, lineCount) - gap),
+		);
+		const width = Math.min(1060, this.width - 56);
+		const height =
+			padding * 2 +
+			titleHeight +
+			headHeight +
+			lineCount * (rowHeight + gap) +
+			standings.length * 6;
+		const context = this.context;
+		context.fillStyle = "rgba(5, 6, 5, 0.55)";
+		context.fillRect(0, 0, this.width, this.height);
+		const x = (this.width - width) / 2;
+		const top = (this.height - height) / 2;
+		this.panel(x, top, width, height, "rgba(17, 21, 18, 0.95)", YELLOW);
+		const inner = x + padding;
+		const right = x + width - padding;
+		const energyWidth = Math.min(150, width * 0.14);
+		const energyX = right - energyWidth - 10;
+		const healthX = energyX - energyWidth - 16;
+		const pointsRight = healthX - 18;
+		const nameX = inner + 44;
+		const nameLimit = pointsRight - 90 - nameX;
+		this.text(labels.title, inner, top + padding + 20, {
+			font: `400 40px ${TITLE}`,
+			color: YELLOW,
+		});
+		const headY = top + padding + titleHeight + headHeight / 2 - 4;
+		const headFont = `500 15px ${BODY}`;
+		const headStyle = { font: headFont, color: TEXT_MUTED, outline: false };
+		this.text("#", inner + 12, headY, headStyle);
+		this.text(labels.mushroom, nameX, headY, headStyle);
+		this.text(labels.points, pointsRight, headY, {
+			...headStyle,
+			align: "right",
+		});
+		this.text(labels.health, healthX, headY, headStyle);
+		this.text(labels.energy, energyX, headY, headStyle);
+		let y = top + padding + titleHeight + headHeight;
+		const figures = `700 ${Math.round(rowHeight * 0.62)}px ${FIGURES}`;
+		const names = `400 ${Math.round(rowHeight * 0.56)}px ${TITLE}`;
+		const swatch = Math.round(rowHeight * 0.42);
+		const middle = () => y + rowHeight / 2 + 1;
+		const paintPlayer = (row: LeaderboardRow, rank: string) => {
+			context.save();
+			context.globalAlpha = row.alive ? 1 : 0.6;
+			this.panel(
+				inner - 8,
+				y,
+				right - inner + 16,
+				rowHeight,
+				PANEL_BACKGROUND,
+				row.self ? YELLOW : LINE_STRONG,
+			);
+			this.text(rank, inner + 28, middle(), {
+				font: figures,
+				color: YELLOW,
+				align: "right",
+			});
+			context.fillStyle = hexColor(row.color);
+			context.fillRect(nameX, y + (rowHeight - swatch) / 2, swatch, swatch);
+			let cursor = nameX + swatch + 10;
+			const name = this.fitText(row.name, names, nameLimit - swatch - 10);
+			this.text(name, cursor, middle(), { font: names });
+			context.font = names;
+			cursor += context.measureText(name).width + 12;
+			if (row.tagline) {
+				const taglineFont = `italic 600 ${Math.round(rowHeight * 0.4)}px ${BODY}`;
+				const room = nameX + nameLimit - cursor - 60;
+				if (room > 30) {
+					const tagline = this.fitText(
+						messages.appearance.taglines[row.tagline],
+						taglineFont,
+						room,
+					);
+					this.text(tagline, cursor, middle(), {
+						font: taglineFont,
+						color: YELLOW_DEEP,
+					});
+					context.font = taglineFont;
+					cursor += context.measureText(tagline).width + 12;
+				}
+			}
+			if (row.walkie) {
+				const size = Math.round(rowHeight * 0.58);
+				this.paintWalkieIcon(
+					cursor,
+					y + (rowHeight - size) / 2,
+					size,
+					row.radio ? OK : TEXT_MUTED,
+					row.radio,
+					now,
+				);
+				cursor += size + (row.radio ? size * 0.9 : 8);
+			}
+			const tag = !row.alive ? labels.down : row.self ? labels.you : null;
+			if (tag) {
+				const tagFont = `700 14px ${BODY}`;
+				context.font = tagFont;
+				const tagWidth = context.measureText(tag).width + 12;
+				this.panel(
+					cursor,
+					y + (rowHeight - 20) / 2,
+					tagWidth,
+					20,
+					row.alive ? YELLOW : DANGER,
+				);
+				this.text(tag, cursor + 6, middle(), {
+					font: tagFont,
+					color: row.alive ? BACKGROUND : TEXT,
+					outline: false,
+				});
+			}
+			this.text(messages.common.number(row.score), pointsRight, middle(), {
+				font: figures,
+				align: "right",
+			});
+			const barHeight = Math.min(18, rowHeight * 0.45);
+			const barY = y + (rowHeight - barHeight) / 2;
+			const bars = [
+				[healthX, row.health, "#f0534a"],
+				[energyX, row.energy, YELLOW],
+			] as const;
+			for (const [barX, value, color] of bars) {
+				this.paintBar(barX, barY, energyWidth, barHeight, value, color);
+				this.text(String(Math.round(value)), barX + energyWidth - 6, middle(), {
+					font: `700 14px ${FIGURES}`,
+					align: "right",
+				});
+			}
+			context.restore();
+			y += rowHeight + gap;
+		};
+		if (teamMode) {
+			standings.forEach((standing, index) => {
+				y += 6;
+				this.text(String(index + 1), inner + 28, middle(), {
+					font: figures,
+					color: YELLOW,
+					align: "right",
+				});
+				context.fillStyle = hexColor(TEAM_COLORS[standing.team]);
+				context.fillRect(nameX, y + (rowHeight - swatch) / 2, swatch, swatch);
+				this.text(
+					messages.common.teams[standing.team],
+					nameX + swatch + 10,
+					middle(),
+					{ font: names },
+				);
+				this.text(
+					messages.common.number(standing.score),
+					pointsRight,
+					middle(),
+					{ font: figures, align: "right" },
+				);
+				y += rowHeight + gap;
+				for (const row of rows) {
+					if (row.team === standing.team) {
+						paintPlayer(row, "");
+					}
+				}
+			});
+		} else {
+			rows.forEach((row, index) => {
+				paintPlayer(row, String(index + 1));
+			});
 		}
 	}
 

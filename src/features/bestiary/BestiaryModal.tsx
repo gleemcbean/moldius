@@ -168,14 +168,6 @@ export function BestiaryModal({ onClose }: { onClose: () => void }) {
 						<h4>{t.bestiary.danger}</h4>
 						<p>{text.danger}</p>
 					</section>
-					<section className={styles.section}>
-						<h4>{t.bestiary.capture}</h4>
-						<ul className={styles.criteria}>
-							{t.grimoire.criteria(species.capture).map((criterion) => (
-								<li key={criterion}>{criterion}</li>
-							))}
-						</ul>
-					</section>
 					<p className={styles.formula}>{t.bestiary.formula}</p>
 				</article>
 			</div>

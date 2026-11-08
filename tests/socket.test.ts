@@ -303,7 +303,7 @@ describe("lobbies Socket.IO", () => {
 		});
 		const begin = await beginA;
 		expect(begin.matchId).toBe(initA.matchId);
-		expect(begin.endsAt - begin.startedAt).toBe(480_000);
+		expect(begin.endsAt - begin.startedAt).toBe(960_000);
 		const firstSnapshot = await snapshot;
 		expect(firstSnapshot.players).toHaveLength(2);
 		expect(firstSnapshot.anomalies).toHaveLength(0);
@@ -513,11 +513,25 @@ describe("nombre minimal de joueurs", () => {
 		const { socket } = await client();
 		const init = waitFor(socket, "game:init");
 		const response = await request<LobbyState>((ack) =>
-			socket.emit("lobby:startTutorial", { name: "Amanite" }, ack),
+			socket.emit(
+				"lobby:startTutorial",
+				{
+					name: "Amanite",
+					color: 0x3f7fd6,
+					pattern: "stars",
+					lantern: "amber",
+				},
+				ack,
+			),
 		);
 		expect(response.ok).toBe(true);
 		const match = await init;
 		expect(match.tutorial).toBe(true);
+		expect(match.players[0]).toMatchObject({
+			color: 0x3f7fd6,
+			pattern: "stars",
+			lantern: "amber",
+		});
 		expect(match.roster).toHaveLength(1);
 		expect(match.roster[0].species).toBe("murmure");
 		expect(match.roster[0].occult).not.toBeNull();

@@ -18,13 +18,6 @@ export const SPECIES_IDS = [
 
 export type SpeciesId = (typeof SPECIES_IDS)[number];
 
-export type LanternRequirement = "open" | "closed" | "any";
-
-export interface CaptureRules {
-	maxRange: number;
-	lantern: LanternRequirement;
-}
-
 export type AttackKind =
 	| "melee"
 	| "ember"
@@ -61,11 +54,6 @@ export interface SpeciesDefinition {
 	flying: boolean;
 	bodyHeight: number;
 	aimRadius: number;
-	capture: CaptureRules;
-}
-
-function capture(rules: Partial<CaptureRules>): CaptureRules {
-	return { maxRange: 5, lantern: "any", ...rules };
 }
 
 export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
@@ -94,7 +82,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 2.05,
 		aimRadius: 0.5,
-		capture: capture({ lantern: "closed", maxRange: 5 }),
 	},
 	veilleur: {
 		id: "veilleur",
@@ -121,7 +108,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 2.3,
 		aimRadius: 0.55,
-		capture: capture({ lantern: "open", maxRange: 3.8 }),
 	},
 	"crache-cendre": {
 		id: "crache-cendre",
@@ -148,7 +134,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 1.7,
 		aimRadius: 0.6,
-		capture: capture({ maxRange: 5 }),
 	},
 	collecteur: {
 		id: "collecteur",
@@ -174,7 +159,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 2.5,
 		aimRadius: 0.6,
-		capture: capture({ lantern: "closed", maxRange: 5 }),
 	},
 	archiviste: {
 		id: "archiviste",
@@ -201,7 +185,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: true,
 		bodyHeight: 2.6,
 		aimRadius: 0.85,
-		capture: capture({ lantern: "open", maxRange: 6.5 }),
 	},
 	luciole: {
 		id: "luciole",
@@ -227,7 +210,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: true,
 		bodyHeight: 1.6,
 		aimRadius: 0.4,
-		capture: capture({ lantern: "closed", maxRange: 2.8 }),
 	},
 	double: {
 		id: "double",
@@ -254,7 +236,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 1.75,
 		aimRadius: 0.5,
-		capture: capture({ maxRange: 5 }),
 	},
 	hurleur: {
 		id: "hurleur",
@@ -281,7 +262,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: true,
 		bodyHeight: 1.7,
 		aimRadius: 0.55,
-		capture: capture({ maxRange: 5 }),
 	},
 	suinteur: {
 		id: "suinteur",
@@ -308,7 +288,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 1.3,
 		aimRadius: 0.65,
-		capture: capture({ lantern: "open", maxRange: 5 }),
 	},
 	boursoufle: {
 		id: "boursoufle",
@@ -335,7 +314,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 1.4,
 		aimRadius: 0.8,
-		capture: capture({ lantern: "closed", maxRange: 5 }),
 	},
 	colosse: {
 		id: "colosse",
@@ -362,7 +340,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 2.35,
 		aimRadius: 0.7,
-		capture: capture({ maxRange: 5 }),
 	},
 	fulgurant: {
 		id: "fulgurant",
@@ -389,7 +366,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 1.85,
 		aimRadius: 0.5,
-		capture: capture({ maxRange: 6 }),
 	},
 	gorgone: {
 		id: "gorgone",
@@ -416,7 +392,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 2.0,
 		aimRadius: 0.5,
-		capture: capture({ maxRange: 5 }),
 	},
 	brume: {
 		id: "brume",
@@ -443,7 +418,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: true,
 		bodyHeight: 1,
 		aimRadius: 0.4,
-		capture: capture({ lantern: "open", maxRange: 4 }),
 	},
 	"rat-roi": {
 		id: "rat-roi",
@@ -470,7 +444,6 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 0.8,
 		aimRadius: 0.5,
-		capture: capture({ lantern: "closed", maxRange: 4.5 }),
 	},
 };
 

@@ -11,8 +11,10 @@ import type {
 import type {
 	IceServerConfig,
 	LobbyError,
+	LookPreference,
 } from "../../shared/protocol/lobby.js";
 import {
+	allowedTagline,
 	hatUnlocked,
 	isLanternTint,
 	type LanternTint,
@@ -105,6 +107,18 @@ function preferredLantern(
 		: null;
 }
 
+function preferredLook(payload: unknown, session: Session): LookPreference {
+	return {
+		color: preferredColor(payload),
+		pattern: preferredPattern(payload, session),
+		lantern: preferredLantern(payload, session),
+		tagline: allowedTagline(
+			isRecord(payload) ? payload.tagline : null,
+			session.account?.progress ?? null,
+		),
+	};
+}
+
 export function registerSocketHandlers(
 	dependencies: HandlerDependencies,
 ): void {
@@ -186,9 +200,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				current,
 				name,
 				lobbyId,
-				preferredColor(payload),
-				preferredPattern(payload, current),
-				preferredLantern(payload, current),
+				preferredLook(payload, current),
 			);
 		});
 	});
@@ -208,9 +220,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 			return deps.lobbies.quickJoin(
 				current,
 				name,
-				preferredColor(payload),
-				preferredPattern(payload, current),
-				preferredLantern(payload, current),
+				preferredLook(payload, current),
 			);
 		});
 	});
@@ -230,9 +240,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 			return deps.lobbies.createPrivate(
 				current,
 				name,
-				preferredColor(payload),
-				preferredPattern(payload, current),
-				preferredLantern(payload, current),
+				preferredLook(payload, current),
 			);
 		});
 	});
@@ -252,9 +260,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 			return deps.lobbies.createDaily(
 				current,
 				name,
-				preferredColor(payload),
-				preferredPattern(payload, current),
-				preferredLantern(payload, current),
+				preferredLook(payload, current),
 			);
 		});
 	});
@@ -285,9 +291,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				current,
 				name,
 				code,
-				preferredColor(payload),
-				preferredPattern(payload, current),
-				preferredLantern(payload, current),
+				preferredLook(payload, current),
 			);
 		});
 	});
@@ -304,7 +308,11 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					},
 				};
 			}
-			return deps.lobbies.startTutorial(current, name);
+			return deps.lobbies.startTutorial(
+				current,
+				name,
+				preferredLook(payload, current),
+			);
 		});
 	});
 

@@ -19,7 +19,7 @@ import { MatchSimulation } from "./helpers/simulation.js";
 function privateLobby(players: number): Lobby {
 	const lobby = new Lobby("l_test", "private", "CODE", 1);
 	for (let index = 0; index < players; index += 1) {
-		lobby.add(`p${index + 1}`, `Joueur ${index + 1}`, index, null);
+		lobby.add(`p${index + 1}`, `Joueur ${index + 1}`, index);
 	}
 	return lobby;
 }
@@ -53,7 +53,7 @@ describe("mode équipes", () => {
 		expect(teamsOf(lobby)).toEqual([null, null, null]);
 		lobby.updateConfig("p1", { ...lobby.config, teamCount: 2 });
 		expect(teamsOf(lobby)).toEqual([0, 1, 0]);
-		lobby.add("p4", "Joueur 4", 10, null);
+		lobby.add("p4", "Joueur 4", 10);
 		expect(teamsOf(lobby)).toEqual([0, 1, 0, 1]);
 		lobby.updateConfig("p1", { ...lobby.config, teamCount: 3 });
 		expect(teamsOf(lobby)).toEqual([0, 1, 0, 1]);

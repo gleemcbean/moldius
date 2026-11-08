@@ -5,6 +5,7 @@ import { Button } from "../../components/Button";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
+import { TaglineBadge } from "../../components/TaglineBadge";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
 import { accountApi } from "../account/accountApi";
@@ -24,7 +25,10 @@ function ScoreRow({ entry }: { entry: DailyScoreEntry }) {
 			<span className={styles.hat}>
 				<HatPreview color={entry.color} pattern={entry.pattern} />
 			</span>
-			<span className={styles.name}>{entry.name}</span>
+			<span className={styles.name}>
+				{entry.name}
+				<TaglineBadge tagline={entry.tagline} />
+			</span>
 			<span className={styles.stat}>
 				{t.game.results.captures(entry.captures)}
 			</span>

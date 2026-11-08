@@ -347,7 +347,12 @@ export const ANOMALY_SOUNDS: SoundRecipe[] = [
 				"white",
 				0,
 				0.25,
-				kit.filter("highpass", 1500, 0.7, kit.hit(0, 0.001, 0.22, 0.5, kit.out)),
+				kit.filter(
+					"highpass",
+					1500,
+					0.7,
+					kit.hit(0, 0.001, 0.22, 0.5, kit.out),
+				),
 			);
 		},
 	},

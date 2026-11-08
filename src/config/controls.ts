@@ -23,6 +23,8 @@ export const ACTION_GROUPS: { id: ActionGroupId; actions: ActionId[] }[] = [
 			"lantern",
 			"interact",
 			"radio",
+			"camera",
+			"photo",
 			"pagePrevious",
 			"pageNext",
 		],

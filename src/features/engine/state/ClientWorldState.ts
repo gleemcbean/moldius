@@ -81,6 +81,10 @@ export class ClientWorldState {
 		number,
 		{ holder: string | null; available: boolean }
 	>();
+	readonly cameras = new Map<
+		number,
+		{ holder: string | null; available: boolean }
+	>();
 	readonly puddles = new Map<number, PuddleClientState>();
 	readonly projectiles = new Map<number, ProjectileClientState>();
 	readonly listeners = new Set<EventListener>();
@@ -136,6 +140,12 @@ export class ClientWorldState {
 	get selfHasWalkie(): boolean {
 		return [...this.walkies.values()].some(
 			(walkie) => walkie.holder === this.selfId,
+		);
+	}
+
+	get selfHasCamera(): boolean {
+		return [...this.cameras.values()].some(
+			(camera) => camera.holder === this.selfId,
 		);
 	}
 
@@ -233,6 +243,12 @@ export class ClientWorldState {
 				break;
 			case "walkie":
 				this.walkies.set(event.id, {
+					holder: event.holder,
+					available: event.available,
+				});
+				break;
+			case "camera":
+				this.cameras.set(event.id, {
 					holder: event.holder,
 					available: event.available,
 				});

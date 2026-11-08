@@ -27,6 +27,7 @@ import {
 } from "../shared/matchConfig.js";
 import type { MatchResults } from "../shared/protocol/game.js";
 import {
+	allowedTagline,
 	hatUnlocked,
 	lanternUnlocked,
 	newlyUnlocked,
@@ -34,6 +35,7 @@ import {
 	rewardFor,
 	rewardProgress,
 	rewardsForChallenge,
+	TAGLINES,
 } from "../shared/rewards.js";
 import { silenceAnomalies } from "./helpers/scenarios.js";
 import { MatchSimulation } from "./helpers/simulation.js";
@@ -199,7 +201,32 @@ describe("récompenses de défis", () => {
 			expect(target, reward.value).toBeGreaterThan(0);
 			expect(rewardsForChallenge(reward.challenge)).toContain(reward);
 		}
-		expect(rewardsForChallenge("bunny")).toEqual([]);
+		expect(rewardsForChallenge("artisan")).toEqual([]);
+	});
+});
+
+describe("devises", () => {
+	it("se gagnent toutes par un défi et ne passent qu'une fois débloquées", () => {
+		for (const tagline of TAGLINES) {
+			expect(rewardFor("tagline", tagline), tagline).toBeDefined();
+		}
+		const stats = {
+			gamesPlayed: 0,
+			wins: 0,
+			captures: 0,
+			dailies: 0,
+			awards: 0,
+			challenges: {},
+		};
+		expect(allowedTagline("immortal", null)).toBeNull();
+		expect(allowedTagline("immortal", stats)).toBeNull();
+		expect(allowedTagline("n'importe quoi", stats)).toBeNull();
+		expect(
+			allowedTagline("immortal", {
+				...stats,
+				challenges: { flawless: { total: 1, best: 1 } },
+			}),
+		).toBe("immortal");
 	});
 });
 

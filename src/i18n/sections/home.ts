@@ -1,5 +1,5 @@
 import type { HatPattern } from "@shared/hatPatterns";
-import type { LanternTint } from "@shared/rewards";
+import type { LanternTint, Tagline } from "@shared/rewards";
 
 export const homeFr = {
 	yourMushroom: "Votre champignon",
@@ -10,6 +10,9 @@ export const homeFr = {
 	hatPattern: "Motif du chapeau",
 	lantern: "Lanterne",
 	lanternTint: "Couleur de la lanterne",
+	tagline: "Titre",
+	taglineHint: "Titre affiché sous votre pseudonyme",
+	noTagline: "Aucun",
 	daily: (theme: string) => `Mode de jeu du jour : ${theme}`,
 	dailyHint: "Même manoir pour tout le monde, un classement par jour",
 	quickJoin: "Partie publique au hasard",
@@ -46,6 +49,9 @@ export const homeEn: typeof homeFr = {
 	hatPattern: "Hat pattern",
 	lantern: "Lantern",
 	lanternTint: "Lantern colour",
+	tagline: "Title",
+	taglineHint: "A title shown under your name",
+	noTagline: "None",
 	daily: (theme: string) => `Daily game mode: ${theme}`,
 	dailyHint: "Same manor for everyone, a new leaderboard each day",
 	quickJoin: "Random public game",
@@ -111,6 +117,20 @@ export const appearanceFr = {
 		specter: "Spectre",
 		toxic: "Poison",
 	} satisfies Record<LanternTint, string>,
+	taglines: {
+		smile: ":)",
+		cat: ":3",
+		xd: "xD",
+		immortal: "Immortel",
+		unbeatable: "Imbattable",
+		ghost: "Fantôme",
+		daredevil: "Casse-cou",
+		chatterbox: "Bavard",
+		tireless: "Infatigable",
+		bigGame: "Grand chasseur",
+		veteran: "Vétéran",
+		faithful: "Fidèle au poste",
+	} satisfies Record<Tagline, string>,
 	names: [
 		"Morille Hardie",
 		"Cèpe Bougon",
@@ -170,6 +190,20 @@ export const appearanceEn: typeof appearanceFr = {
 		gold: "Gold",
 		specter: "Specter",
 		toxic: "Toxic",
+	},
+	taglines: {
+		smile: ":)",
+		cat: ":3",
+		xd: "xD",
+		immortal: "Immortal",
+		unbeatable: "Unbeatable",
+		ghost: "Ghost",
+		daredevil: "Daredevil",
+		chatterbox: "Chatterbox",
+		tireless: "Tireless",
+		bigGame: "Big game hunter",
+		veteran: "Veteran",
+		faithful: "Always on duty",
 	},
 	names: [
 		"Bold Morel",

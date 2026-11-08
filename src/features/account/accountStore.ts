@@ -3,9 +3,10 @@ import {
 	type AccountProfile,
 	DISCORD_OUTCOMES,
 	type DiscordOutcome,
+	type MatchDetail,
 	type MatchHistoryEntry,
 } from "@shared/protocol/account";
-import type { LanternTint } from "@shared/rewards";
+import type { LanternTint, Tagline } from "@shared/rewards";
 import { openOverlay } from "../../app/appStore";
 import type { AccountNoticeKey } from "../../i18n/sections/account";
 import { createStore } from "../../utils/store";
@@ -60,6 +61,7 @@ function signedIn(account: AccountProfile): void {
 		playerColor: account.color,
 		playerPattern: account.pattern,
 		playerLantern: account.lantern,
+		playerTagline: account.tagline,
 		language: account.language,
 		...(account.termsAcceptedAt ? { termsAccepted: true } : {}),
 	});
@@ -129,6 +131,7 @@ function scheduleProfileSync(): void {
 			settings.playerColor === account.color &&
 			settings.playerPattern === account.pattern &&
 			settings.playerLantern === account.lantern &&
+			settings.playerTagline === account.tagline &&
 			settings.language === account.language
 		) {
 			return;
@@ -139,6 +142,7 @@ function scheduleProfileSync(): void {
 				color: settings.playerColor,
 				pattern: settings.playerPattern,
 				lantern: settings.playerLantern,
+				tagline: settings.playerTagline,
 				language: settings.language,
 			})
 			.then((result) => {
@@ -180,6 +184,7 @@ function readDiscordResult(): boolean {
 					local.playerColor,
 					local.playerPattern,
 					local.playerLantern,
+					local.playerTagline,
 				);
 			}
 		});
@@ -236,6 +241,8 @@ export function initAccount(): void {
 			state.playerName !== previous.playerName ||
 			state.playerColor !== previous.playerColor ||
 			state.playerPattern !== previous.playerPattern ||
+			state.playerLantern !== previous.playerLantern ||
+			state.playerTagline !== previous.playerTagline ||
 			state.language !== previous.language
 		) {
 			scheduleProfileSync();
@@ -306,12 +313,14 @@ export async function saveProfile(
 	color: number,
 	pattern: HatPattern,
 	lantern: LanternTint,
+	tagline: Tagline | null,
 ): Promise<ApiResult<null>> {
 	const result = await accountApi.updateProfile({
 		displayName,
 		color,
 		pattern,
 		lantern,
+		tagline,
 	});
 	if (!result.ok) {
 		if (result.status === 401) {
@@ -383,4 +392,17 @@ export async function loadHistory(): Promise<ApiResult<MatchHistoryEntry[]>> {
 		return result;
 	}
 	return { ok: true, value: result.value.entries };
+}
+
+export async function loadHistoryDetail(
+	matchId: string,
+): Promise<ApiResult<MatchDetail>> {
+	const result = await accountApi.historyDetail(matchId);
+	if (!result.ok) {
+		if (result.status === 401) {
+			signedOut();
+		}
+		return result;
+	}
+	return { ok: true, value: result.value.match };
 }

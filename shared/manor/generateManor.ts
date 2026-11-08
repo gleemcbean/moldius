@@ -167,6 +167,10 @@ export function generateManor(
 			),
 		),
 	].sort((first, second) => first - second) as Level[];
+	const walkies =
+		(options.walkies ?? true)
+			? placeWalkies(rooms, furnished.furniture, rng.fork("walkies"))
+			: [];
 	return withoutCutOffHideSpots({
 		seed,
 		rooms,
@@ -192,10 +196,13 @@ export function generateManor(
 				y: item.y,
 				z: item.z,
 			})),
-		walkies:
-			(options.walkies ?? true)
-				? placeWalkies(rooms, furnished.furniture, rng.fork("walkies"))
-				: [],
+		walkies,
+		cameras: placeWalkies(
+			rooms,
+			furnished.furniture,
+			rng.fork("cameras"),
+			walkies,
+		),
 		stakes: stakeRoomsOf(furnished.furniture),
 		bounds,
 		levels,
@@ -731,6 +738,9 @@ export function layoutChecksum(layout: ManorLayout): number {
 	}
 	for (const walkie of layout.walkies) {
 		parts.push(`walkie:${walkie.x.toFixed(2)}:${walkie.z.toFixed(2)}`);
+	}
+	for (const camera of layout.cameras) {
+		parts.push(`camera:${camera.x.toFixed(2)}:${camera.z.toFixed(2)}`);
 	}
 	return hashString(parts.join("|"));
 }

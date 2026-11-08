@@ -25,6 +25,7 @@ import {
 	emailKey,
 	isDeleteConfirmation,
 	MATCH_HISTORY_LIMIT,
+	type MatchDetail,
 	type MatchHistoryEntry,
 	normalizeEmail,
 	type RegisterResponse,
@@ -35,7 +36,9 @@ import {
 	accountProgress,
 	hatUnlocked,
 	isLanternTint,
+	isTagline,
 	lanternUnlocked,
+	taglineUnlocked,
 } from "../../shared/rewards.js";
 import type { Mailer, MailMessage } from "../mail/mailer.js";
 import {
@@ -486,6 +489,7 @@ export class AccountService {
 			color?: unknown;
 			pattern?: unknown;
 			lantern?: unknown;
+			tagline?: unknown;
 			language?: unknown;
 		},
 	): Promise<ServiceResult<AccountProfile>> {
@@ -497,6 +501,7 @@ export class AccountService {
 		let color = account.profile.color;
 		let pattern = account.profile.pattern;
 		let lantern = account.profile.lantern;
+		let tagline = account.profile.tagline;
 		let language = account.profile.language;
 		if (patch.displayName !== undefined) {
 			const cleaned = sanitizeName(patch.displayName);
@@ -529,6 +534,16 @@ export class AccountService {
 			}
 			lantern = patch.lantern;
 		}
+		if (patch.tagline !== undefined) {
+			if (
+				patch.tagline !== null &&
+				(!isTagline(patch.tagline) ||
+					!taglineUnlocked(patch.tagline, accountProgress(account.profile)))
+			) {
+				return fail(400, "patternInvalid", "pattern");
+			}
+			tagline = patch.tagline;
+		}
 		if (patch.language !== undefined) {
 			if (!isLanguage(patch.language)) {
 				return fail(400, "languageInvalid", "language");
@@ -540,6 +555,7 @@ export class AccountService {
 			color,
 			pattern,
 			lantern,
+			tagline,
 			language,
 		});
 		return updated
@@ -728,6 +744,16 @@ export class AccountService {
 
 	history(accountId: string): Promise<MatchHistoryEntry[]> {
 		return this.store.history(accountId, MATCH_HISTORY_LIMIT);
+	}
+
+	historyDetail(
+		accountId: string,
+		matchId: unknown,
+	): Promise<MatchDetail | null> {
+		if (typeof matchId !== "string" || !/^m_[\w-]{1,32}$/.test(matchId)) {
+			return Promise.resolve(null);
+		}
+		return this.store.historyDetail(accountId, matchId);
 	}
 
 	recordMatch(record: MatchRecord): Promise<boolean> {

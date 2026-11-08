@@ -381,6 +381,33 @@
   }
 }
 
+.taglineChoice {
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 0;
+  background: rgba(10, 12, 10, 0.6);
+  box-shadow: 0 0 0 1px $line-strong;
+  cursor: pointer;
+  font-family: $font-text;
+  font-size: 15px;
+  font-weight: 700;
+  color: $text;
+  transition: transform $transition-fast;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.taglineNone {
+  font-style: italic;
+  color: $text-muted;
+}
+
 .lanternChoice {
   display: grid;
   place-items: center;

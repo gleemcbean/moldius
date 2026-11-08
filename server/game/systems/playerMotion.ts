@@ -43,6 +43,7 @@ export function applyClientState(
     player.pitch = message.pitch;
   }
   player.grimoireOpen = message.grimoire;
+  player.cameraRaised = message.camera === true && player.camera >= 0;
   player.recordVoice({
     t: now,
     level: message.voiceLevel,

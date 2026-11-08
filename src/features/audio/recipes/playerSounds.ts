@@ -432,6 +432,33 @@ export const PLAYER_SOUNDS: SoundRecipe[] = [
 		},
 	},
 	{
+		id: "camera-shutter",
+		duration: 0.22,
+		variants: 2,
+		render: (kit, variant) => {
+			for (const at of [0, 0.075 + variant * 0.01]) {
+				kit.noise(
+					"white",
+					at,
+					0.05,
+					kit.filter(
+						"bandpass",
+						3200 - at * 6000,
+						1.4,
+						kit.hit(at, 0.001, 0.045, 0.5, kit.out),
+					),
+				);
+				kit.osc(
+					"square",
+					900 + variant * 120,
+					at,
+					0.015,
+					kit.hit(at, 0.001, 0.012, 0.08, kit.out),
+				);
+			}
+		},
+	},
+	{
 		id: "radio-squelch",
 		duration: 0.28,
 		variants: 2,
