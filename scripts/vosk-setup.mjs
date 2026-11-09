@@ -1,33 +1,37 @@
 // Prépare la reconnaissance vocale hors ligne (Vosk) dans public/vosk : le worker, tiré de
 // vosk-browser, et les deux petits modèles officiels, téléchargés puis réemballés en .tar.gz
-// (le format que lit vosk-browser). Ne refait rien de ce qui est déjà là.
+// (le format que lit vosk-browser). Ne refait rien de ce qui est déjà là et correct.
 // Lancé par « npm run build:client » ; « npm run vosk:setup » le lance seul.
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { gzipSync, inflateRawSync } from "node:zlib";
+import { gunzipSync, gzipSync, inflateRawSync } from "node:zlib";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const target = resolve(root, "public/vosk");
 const MODELS = [
-	{ file: "model-fr-0.22.tar.gz", source: "vosk-model-small-fr-0.22" },
-	{ file: "model-en-us-0.15.tar.gz", source: "vosk-model-small-en-us-0.15" },
+	{ file: "vosk-model-small-fr-0.22.tar.gz", source: "vosk-model-small-fr-0.22" },
+	{ file: "vosk-model-small-en-us-0.15.tar.gz", source: "vosk-model-small-en-us-0.15" },
 ];
+/** Les archives d'avant, sans entrées de dossier, que vosk-browser ne savait pas décompresser. */
+const OBSOLETE = ["model-fr-0.22.tar.gz", "model-en-us-0.15.tar.gz"];
 const MODEL_BASE = "https://alphacephei.com/vosk/models";
 
 mkdirSync(target, { recursive: true });
 
+/** Le worker tel que livré par vosk-browser, réécrit s'il diffère (une ancienne copie modifiée). */
 function writeWorker() {
 	const output = resolve(target, "worker.js");
-	if (existsSync(output)) {
-		return;
-	}
 	const library = resolve(root, "node_modules/vosk-browser/dist/vosk.js");
 	const match = /createBase64WorkerFactory\('([A-Za-z0-9+/=]+)'/.exec(readFileSync(library, "utf8"));
 	if (!match) {
 		throw new Error(`Worker Vosk introuvable dans ${library}`);
 	}
-	writeFileSync(output, Buffer.from(match[1], "base64"));
+	const code = Buffer.from(match[1], "base64");
+	if (existsSync(output) && readFileSync(output).equals(code)) {
+		return;
+	}
+	writeFileSync(output, code);
 	console.log("Vosk : worker écrit");
 }
 
@@ -69,38 +73,72 @@ function readZip(buffer) {
 	return files;
 }
 
-/** Une archive tar (format ustar) des fichiers donnés. */
+function tarHeader(name, size, type) {
+	if (Buffer.byteLength(name) > 99) {
+		throw new Error(`Nom trop long pour tar : ${name}`);
+	}
+	const header = Buffer.alloc(512);
+	header.write(name, 0, "utf8");
+	header.write(type === "5" ? "0000755\0" : "0000644\0", 100);
+	header.write("0000000\0", 108);
+	header.write("0000000\0", 116);
+	header.write(`${size.toString(8).padStart(11, "0")}\0`, 124);
+	header.write(`${Math.floor(Date.now() / 1000).toString(8).padStart(11, "0")}\0`, 136);
+	header.write("        ", 148);
+	header.write(type, 156);
+	header.write("ustar\0", 257);
+	header.write("00", 263);
+	let sum = 0;
+	for (const byte of header) {
+		sum += byte;
+	}
+	header.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
+	return header;
+}
+
+/**
+ * Une archive tar (format ustar) des fichiers donnés, chaque dossier déclaré avant ses
+ * fichiers : le décompresseur de vosk-browser ne crée pas les dossiers tout seul, et sans
+ * ces entrées il n'écrit aucun fichier (« does not contain model files »).
+ */
 function tar(files) {
 	const blocks = [];
+	const declared = new Set();
 	for (const { name, data } of files) {
-		if (Buffer.byteLength(name) > 99) {
-			throw new Error(`Nom trop long pour tar : ${name}`);
+		const parts = name.split("/");
+		for (let depth = 1; depth < parts.length; depth += 1) {
+			const folder = `${parts.slice(0, depth).join("/")}/`;
+			if (!declared.has(folder)) {
+				declared.add(folder);
+				blocks.push(tarHeader(folder, 0, "5"));
+			}
 		}
-		const header = Buffer.alloc(512);
-		header.write(name, 0, "utf8");
-		header.write("0000644\0", 100);
-		header.write("0000000\0", 108);
-		header.write("0000000\0", 116);
-		header.write(`${data.length.toString(8).padStart(11, "0")}\0`, 124);
-		header.write(`${Math.floor(Date.now() / 1000).toString(8).padStart(11, "0")}\0`, 136);
-		header.write("        ", 148);
-		header.write("0", 156);
-		header.write("ustar\0", 257);
-		header.write("00", 263);
-		let sum = 0;
-		for (const byte of header) {
-			sum += byte;
-		}
-		header.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
-		blocks.push(header, data, Buffer.alloc((512 - (data.length % 512)) % 512));
+		blocks.push(tarHeader(name, data.length, "0"), data, Buffer.alloc((512 - (data.length % 512)) % 512));
 	}
 	blocks.push(Buffer.alloc(1024));
 	return Buffer.concat(blocks);
 }
 
+/** Une archive faite par une version précédente de ce script, sans entrées de dossier. */
+function lacksFolders(path) {
+	const archive = gunzipSync(readFileSync(path));
+	for (let offset = 0; offset + 512 <= archive.length; ) {
+		const header = archive.subarray(offset, offset + 512);
+		if (header.every((byte) => byte === 0)) {
+			break;
+		}
+		if (String.fromCharCode(header[156]) === "5") {
+			return false;
+		}
+		const size = Number.parseInt(header.toString("ascii", 124, 136).replace(/\0.*$/, "").trim() || "0", 8);
+		offset += 512 + Math.ceil(size / 512) * 512;
+	}
+	return true;
+}
+
 async function writeModel({ file, source }) {
 	const output = resolve(target, file);
-	if (existsSync(output)) {
+	if (existsSync(output) && !lacksFolders(output)) {
 		return;
 	}
 	console.log(`Vosk : téléchargement de ${source}…`);
@@ -119,6 +157,9 @@ async function writeModel({ file, source }) {
 }
 
 try {
+	for (const file of OBSOLETE) {
+		rmSync(resolve(target, file), { force: true });
+	}
 	writeWorker();
 	for (const model of MODELS) {
 		await writeModel(model);

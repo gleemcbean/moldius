@@ -4,9 +4,14 @@ import { currentLanguage, currentMessages } from "../../i18n";
 import { micManager } from "./micManager";
 
 const WORKER_URL = "/vosk/worker.js";
+/**
+ * Nommés comme les modèles officiels. L'ancien nom (model-fr-0.22.tar.gz…) désignait des
+ * archives défectueuses encore gardées par les caches (Cloudflare, navigateurs) : changer de
+ * nom les contourne.
+ */
 const MODEL_URLS: Record<Language, string> = {
-	fr: "/vosk/model-fr-0.22.tar.gz",
-	en: "/vosk/model-en-us-0.15.tar.gz",
+	fr: "/vosk/vosk-model-small-fr-0.22.tar.gz",
+	en: "/vosk/vosk-model-small-en-us-0.15.tar.gz",
 };
 const SETTLE_MS = 700;
 const CHUNK_SIZE = 4096;

@@ -148,35 +148,62 @@ function createWindow() {
 		}
 	});
 
+	const workerLogs = [];
+	if (SMOKE_TEST && process.env.MOLDIUS_SMOKE_VOSK && !process.env.MOLDIUS_SMOKE_NODEBUG) {
+		// Diagnostic : la console des workers, via le protocole de débogage de Chromium.
+		try {
+			contents.debugger.attach("1.3");
+			contents.debugger.on("message", (_event, method, params, sessionId) => {
+				if (method === "Target.attachedToTarget") {
+					void contents.debugger.sendCommand("Runtime.enable", {}, params.sessionId).catch(() => undefined);
+					void contents.debugger.sendCommand("Runtime.runIfWaitingForDebugger", {}, params.sessionId).catch(() => undefined);
+				}
+				if (method === "Runtime.consoleAPICalled" && sessionId) {
+					workerLogs.push(`${params.type}: ${params.args.map((arg) => arg.value ?? arg.description ?? "").join(" ")}`.slice(0, 400));
+				}
+				if (method === "Runtime.exceptionThrown" && sessionId) {
+					workerLogs.push(`exception: ${params.exceptionDetails.exception?.description ?? params.exceptionDetails.text}`.slice(0, 400));
+				}
+			});
+			void contents.debugger.sendCommand("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true });
+		} catch (error) {
+			workerLogs.push(`debugger: ${error}`);
+		}
+	}
 	if (SMOKE_TEST) {
 		contents.once("did-finish-load", () => {
 			setTimeout(async () => {
-				// Diagnostic de la reconnaissance hors ligne : le worker charge-t-il le modèle ?
+				// Diagnostic de la reconnaissance hors ligne : tout ce que dit le worker, avec un délai partout.
 				const vosk = process.env.MOLDIUS_SMOKE_VOSK
 					? await contents.executeJavaScript(`new Promise((resolve) => {
 						const started = performance.now();
-						const done = (value) => resolve(JSON.stringify({ ...value, ms: Math.round(performance.now() - started) }));
+						const log = [];
+						const done = (step) => resolve(JSON.stringify({ step, ms: Math.round(performance.now() - started), log }));
 						let worker;
-						try { worker = new Worker("/vosk/worker.js"); } catch (error) { done({ step: "worker", error: String(error) }); return; }
-						worker.onerror = (event) => done({ step: "worker-error", error: event.message || "?" });
-						worker.onmessage = (event) => { if (event.data && event.data.event) done({ step: event.data.event, data: event.data }); };
-						worker.postMessage({ action: "load", modelUrl: new URL("/vosk/model-fr-0.22.tar.gz", location.href).href });
-						setTimeout(() => done({ step: "timeout" }), 90000);
+						try { worker = new Worker("/vosk/worker.js"); } catch (error) { done("worker: " + error); return; }
+						worker.onerror = (event) => { log.push("onerror " + (event.message || "?") + " " + (event.filename || "") + ":" + (event.lineno || "")); done("worker-error"); };
+						worker.onmessageerror = () => log.push("messageerror");
+						worker.onmessage = (event) => { log.push(JSON.stringify(event.data).slice(0, 300)); if (event.data && (event.data.event === "load" || event.data.event === "error")) done(event.data.event); };
+						if (${JSON.stringify(process.env.MOLDIUS_SMOKE_LOGLEVEL || "")}) worker.postMessage({ action: "set", key: "logLevel", value: Number(${JSON.stringify(process.env.MOLDIUS_SMOKE_LOGLEVEL || "")}) });
+						worker.postMessage({ action: "load", modelUrl: new URL(${JSON.stringify(process.env.MOLDIUS_SMOKE_MODEL || "/vosk/vosk-model-small-fr-0.22.tar.gz")}, location.href).href });
+						setTimeout(() => done("timeout"), 120000);
 					})`)
 					: "";
 				// Une phrase enregistrée, transcrite par le modèle anglais comme le ferait une incantation.
 				const heard = process.env.MOLDIUS_SMOKE_WAV
 					? await contents.executeJavaScript(`(async () => {
 						const bytes = Uint8Array.from(atob("${fs.readFileSync(process.env.MOLDIUS_SMOKE_WAV).toString("base64")}"), (c) => c.charCodeAt(0));
-						const context = new AudioContext();
-						const audio = await context.decodeAudioData(bytes.buffer);
+						const audio = await new AudioContext().decodeAudioData(bytes.buffer);
 						const worker = new Worker("/vosk/worker.js");
-						const reply = (wanted) => new Promise((resolve) => {
-							const listener = (event) => { if (wanted.includes(event.data.event)) { worker.removeEventListener("message", listener); resolve(event.data); } };
-							worker.addEventListener("message", listener);
-						});
-						worker.postMessage({ action: "load", modelUrl: new URL("/vosk/model-en-us-0.15.tar.gz", location.href).href });
-						await reply(["load"]);
+						const reply = (wanted) => Promise.race([
+							new Promise((resolve) => worker.addEventListener("message", function listener(event) {
+								if (wanted.includes(event.data.event)) { worker.removeEventListener("message", listener); resolve(event.data); }
+							})),
+							new Promise((resolve) => setTimeout(() => resolve({ event: "timeout" }), 60000)),
+						]);
+						worker.postMessage({ action: "load", modelUrl: new URL("/vosk/vosk-model-small-en-us-0.15.tar.gz", location.href).href });
+						const loaded = await reply(["load", "error"]);
+						if (loaded.event !== "load") return JSON.stringify(loaded);
 						worker.postMessage({ action: "create", recognizerId: "test", sampleRate: audio.sampleRate });
 						const samples = audio.getChannelData(0);
 						for (let start = 0; start < samples.length; start += 4096) {
@@ -184,8 +211,7 @@ function createWindow() {
 							worker.postMessage({ action: "audioChunk", recognizerId: "test", data: chunk, sampleRate: audio.sampleRate }, [chunk.buffer]);
 						}
 						worker.postMessage({ action: "retrieveFinalResult", recognizerId: "test" });
-						const final = await Promise.race([reply(["result", "error"]), new Promise((resolve) => setTimeout(() => resolve({ event: "timeout" }), 30000))]);
-						return JSON.stringify(final);
+						return JSON.stringify(await reply(["result", "error"]));
 					})()`)
 					: "";
 				const mic = process.env.MOLDIUS_SMOKE_VOSK
@@ -198,7 +224,7 @@ function createWindow() {
 				fs.writeFileSync(SMOKE_TEST, image.toPNG());
 				fs.writeFileSync(
 					`${SMOKE_TEST}.txt`,
-					`${contents.getURL()}\n${contents.getTitle()}\n${image.isEmpty() ? "image vide" : "image ok"}\n${JSON.stringify({ bounds: window.getBounds(), visible: window.isVisible(), fullscreen: window.isFullScreen(), crashed: contents.isCrashed(), size: image.getSize() })}\n${page}\n${vosk}\n${mic}\n${heard}\n`,
+					`${contents.getURL()}\n${contents.getTitle()}\n${image.isEmpty() ? "image vide" : "image ok"}\n${JSON.stringify({ bounds: window.getBounds(), visible: window.isVisible(), fullscreen: window.isFullScreen(), crashed: contents.isCrashed(), size: image.getSize() })}\n${page}\n${vosk}\n${mic}\n${heard}\n${workerLogs.join("\n")}\n`,
 				);
 				app.quit();
 			}, 6000);
