@@ -149,6 +149,9 @@ export function createApp(
 						basename(dirname(path)) === "vosk"
 					) {
 						response.setHeader("Content-Security-Policy", SPEECH_WORKER_POLICY);
+						// Même adresse d'une version à l'autre : sans revalidation, l'application de
+						// bureau (qui ne se recharge pas) et Cloudflare gardent l'ancien sept jours.
+						response.setHeader("Cache-Control", "no-cache");
 					}
 				},
 			}),

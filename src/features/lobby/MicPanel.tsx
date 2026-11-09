@@ -59,6 +59,7 @@ export function MicPanel() {
 						{
 							native: t.lobby.mic.speechAvailable,
 							vosk: t.lobby.mic.speechOffline,
+							server: t.lobby.mic.speechServer,
 							none: t.lobby.mic.speechMissing,
 						}[speechEngine() ?? "none"]
 					}

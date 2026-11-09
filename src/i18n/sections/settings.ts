@@ -140,6 +140,8 @@ export const settingsFr = {
 			"disponible dans ce navigateur (API Web Speech, français).",
 		speechOffline:
 			"assurée hors ligne par Vosk dans ce navigateur (modèle d'environ 40 Mo téléchargé une seule fois).",
+		speechServer:
+			"assurée par le serveur du jeu (Vosk) : le micro y est transcrit pendant les incantations, sans être enregistré.",
 		speechMissing:
 			"indisponible dans ce navigateur : les incantations demandent Chrome, Edge ou Safari.",
 		test: "Tester le microphone",
@@ -288,6 +290,8 @@ export const settingsEn: typeof settingsFr = {
 		speechAvailable: "available in this browser (Web Speech API, English).",
 		speechOffline:
 			"handled offline by Vosk in this browser (a model of about 40 MB, downloaded once).",
+		speechServer:
+			"handled by the game server (Vosk): your microphone is transcribed there while casting, never recorded.",
 		speechMissing:
 			"not available in this browser: incantations need Chrome, Edge or Safari.",
 		test: "Test the microphone",

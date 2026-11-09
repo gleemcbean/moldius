@@ -31,6 +31,13 @@ import type {
 	VoiceRelayRequest,
 	VoiceSignalEnvelope,
 } from "./lobby.js";
+import type {
+	SpeechAudioRequest,
+	SpeechPrepareRequest,
+	SpeechPrepareResult,
+	SpeechReply,
+	SpeechStartRequest,
+} from "./speech.js";
 
 export type Ack<T> = (
 	response: { ok: true; value: T } | { ok: false; error: LobbyError },
@@ -80,6 +87,14 @@ export interface ClientToServerEvents {
 	"lobby:start": (ack: Ack<null>) => void;
 	"voice:signal": (payload: VoiceSignalEnvelope) => void;
 	"voice:relay": (payload: VoiceRelayRequest) => void;
+	"speech:prepare": (
+		payload: SpeechPrepareRequest,
+		ack: (result: SpeechPrepareResult) => void,
+	) => void;
+	"speech:start": (payload: SpeechStartRequest) => void;
+	"speech:audio": (payload: SpeechAudioRequest) => void;
+	"speech:end": (payload: { id: string }) => void;
+	"speech:cancel": (payload: { id: string }) => void;
 	"time:ping": (payload: TimeSyncPing) => void;
 	"game:loaded": (payload: { matchId: string; layoutChecksum: number }) => void;
 	"game:layoutRequest": (payload: { matchId: string }) => void;
@@ -107,6 +122,7 @@ export interface ServerToClientEvents {
 	"friends:invited": (invite: FriendInvite) => void;
 	"voice:signal": (payload: VoiceSignalEnvelope) => void;
 	"voice:relay": (payload: VoiceRelayFrame) => void;
+	"speech:reply": (reply: SpeechReply) => void;
 	"time:pong": (payload: TimeSyncPong) => void;
 	"game:init": (payload: MatchInit) => void;
 	"game:layout": (payload: { matchId: string; layoutJson: string }) => void;

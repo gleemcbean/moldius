@@ -1,20 +1,14 @@
 import { CAST_LISTEN_MAX_MS } from "@shared/config/index";
 import type { Language } from "@shared/i18n/languages";
+import { VOSK_MODEL_FILES } from "@shared/protocol/speech";
 import { currentLanguage, currentMessages } from "../../i18n";
 import { micManager } from "./micManager";
 import { voskGrammar } from "./voskGrammar";
 
 const WORKER_URL = "/vosk/worker.js";
-/**
- * Nommés comme les modèles officiels. L'ancien nom (model-fr-0.22.tar.gz…) désignait des
- * archives défectueuses encore gardées par les caches (Cloudflare, navigateurs) : changer de
- * nom les contourne.
- */
-const MODEL_URLS: Record<Language, string> = {
-	fr: "/vosk/vosk-model-small-fr-0.22.tar.gz",
-	en: "/vosk/vosk-model-small-en-us-0.15.tar.gz",
-};
 const SETTLE_MS = 700;
+/** Sans réponse finale (connexion perdue…), l'écoute se conclut quand même. */
+const CONCLUDE_TIMEOUT_MS = 4000;
 const CHUNK_SIZE = 4096;
 const INT16_SCALE = 0x8000;
 
@@ -28,7 +22,22 @@ type VoskReply =
 			result: { partial?: string };
 	  };
 
-type RecognizerReply = Exclude<VoskReply, { event: "load" }>;
+export type RecognizerReply = Exclude<VoskReply, { event: "load" }>;
+
+/** Là où tourne Vosk : un worker du navigateur (VoskModel) ou le serveur (ServerModel). */
+export interface RecognizerBackend {
+	readonly ready: boolean;
+	readonly failed: boolean;
+	open(
+		sampleRate: number,
+		listener: (reply: RecognizerReply) => void,
+		grammar: readonly string[],
+	): string;
+	/** samples : à l'échelle d'un Int16, au rythme de l'AudioContext. */
+	feed(recognizerId: string, samples: Float32Array, sampleRate: number): void;
+	conclude(recognizerId: string): void;
+	close(recognizerId: string): void;
+}
 
 export interface VoskCallbacks {
 	onInterim: (text: string) => void;
@@ -54,7 +63,7 @@ export function voskSupported(): boolean {
 	);
 }
 
-class VoskModel {
+class VoskModel implements RecognizerBackend {
 	readonly loaded: Promise<void>;
 	ready = false;
 	failed = false;
@@ -67,8 +76,12 @@ class VoskModel {
 	constructor(modelUrl: string) {
 		this.worker = new Worker(WORKER_URL);
 		this.loaded = new Promise<void>((resolve, reject) => {
-			this.worker.onmessage = (event: MessageEvent<VoskReply>) => {
+			this.worker.onmessage = (event: MessageEvent<VoskReply | undefined>) => {
 				const reply = event.data;
+				// Le worker répond « undefined » à create et remove : rien à traiter.
+				if (!reply) {
+					return;
+				}
 				if (reply.event === "load") {
 					this.ready = reply.result;
 					this.failed = !reply.result;
@@ -137,7 +150,7 @@ const models = new Map<Language, VoskModel>();
 function modelFor(language: Language): VoskModel {
 	let model = models.get(language);
 	if (!model || model.failed) {
-		model = new VoskModel(MODEL_URLS[language]);
+		model = new VoskModel(`/vosk/${VOSK_MODEL_FILES[language]}`);
 		models.set(language, model);
 	}
 	return model;
@@ -152,7 +165,7 @@ export function preloadVosk(): void {
 export class VoskListener {
 	private context: AudioContext | null = null;
 	private session: {
-		model: VoskModel;
+		model: RecognizerBackend;
 		recognizerId: string;
 		source: MediaStreamAudioSourceNode;
 		processor: ScriptProcessorNode;
@@ -163,7 +176,14 @@ export class VoskListener {
 		concluding: boolean;
 		settle: number | null;
 		timeout: number;
+		giveUp: number | null;
 	} | null = null;
+
+	constructor(
+		private readonly backendFor: (
+			language: Language,
+		) => RecognizerBackend = modelFor,
+	) {}
 
 	get active(): boolean {
 		return this.session !== null;
@@ -177,7 +197,7 @@ export class VoskListener {
 		this.stop();
 		const labels = currentMessages().game.speech;
 		const language = currentLanguage();
-		const model = modelFor(language);
+		const model = this.backendFor(language);
 		if (!model.ready) {
 			callbacks.onError(model.failed ? labels.failedToStart : labels.loading);
 			return false;
@@ -211,6 +231,7 @@ export class VoskListener {
 			concluding: false,
 			settle: null as number | null,
 			timeout: window.setTimeout(() => this.finish(), CAST_LISTEN_MAX_MS),
+			giveUp: null as number | null,
 		};
 		processor.onaudioprocess = (event) => {
 			if (this.session !== session || session.concluding) {
@@ -236,6 +257,10 @@ export class VoskListener {
 		}
 		session.concluding = true;
 		this.disconnect();
+		session.giveUp = window.setTimeout(
+			() => this.deliver(),
+			CONCLUDE_TIMEOUT_MS,
+		);
 		session.model.conclude(session.recognizerId);
 	}
 
@@ -324,6 +349,9 @@ export class VoskListener {
 		}
 		this.cancelSettle();
 		window.clearTimeout(session.timeout);
+		if (session.giveUp !== null) {
+			window.clearTimeout(session.giveUp);
+		}
 		session.model.close(session.recognizerId);
 		this.session = null;
 	}

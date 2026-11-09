@@ -44,10 +44,12 @@ import type {
 	SessionAccount,
 	SessionRegistry,
 } from "../sessions/SessionRegistry.js";
+import type { SpeechService } from "../speech/SpeechService.js";
 import {
 	accountPresenceChanged,
 	registerFriendHandlers,
 } from "./friendHandlers.js";
+import { registerSpeechHandlers } from "./speechHandlers.js";
 
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -63,6 +65,7 @@ export interface HandlerDependencies {
 		cookieHeader: string | undefined,
 	) => Promise<SessionAccount | null>;
 	friends?: () => FriendStore | null;
+	speech?: SpeechService | null;
 }
 
 const INVALID: LobbyError = {
@@ -430,6 +433,9 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 
 	registerGameHandlers(socket, deps, session, allow);
 	registerFriendHandlers(socket, deps, session, allow);
+	if (deps.speech) {
+		registerSpeechHandlers(socket, deps.speech, session, allow);
+	}
 
 	socket.on("disconnect", () => {
 		const current = deps.sessions.detach(socket.id, deps.clock());

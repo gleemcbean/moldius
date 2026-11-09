@@ -104,6 +104,8 @@ export const lobbyFr = {
 		speechAvailable: "Reconnaissance vocale disponible.",
 		speechOffline:
 			"Reconnaissance vocale hors ligne (Vosk) : son modèle se télécharge une fois, pendant l'attente.",
+		speechServer:
+			"Reconnaissance vocale par le serveur du jeu (Vosk) : vos incantations y sont transcrites, sans être enregistrées.",
 		speechMissing:
 			"Reconnaissance vocale absente : incantez avec Chrome, Edge ou Safari.",
 	},
@@ -238,6 +240,8 @@ export const lobbyEn: typeof lobbyFr = {
 		speechAvailable: "Speech recognition available.",
 		speechOffline:
 			"Offline speech recognition (Vosk): its model downloads once, while you wait.",
+		speechServer:
+			"Speech recognition by the game server (Vosk): your incantations are transcribed there, never recorded.",
 		speechMissing: "No speech recognition: cast with Chrome, Edge or Safari.",
 	},
 	errors: {

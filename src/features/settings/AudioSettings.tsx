@@ -165,6 +165,7 @@ export function AudioSettings() {
 					{
 						native: labels.speechAvailable,
 						vosk: labels.speechOffline,
+						server: labels.speechServer,
 						none: labels.speechMissing,
 					}[speechEngine() ?? "none"]
 				}

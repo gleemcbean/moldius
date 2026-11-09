@@ -1,4 +1,5 @@
 import { PLAYER_NAME_MAX_LENGTH } from "../../shared/config/index.js";
+import { isLanguage, type Language } from "../../shared/i18n/languages.js";
 import type {
 	CastRequest,
 	ClientStateMessage,
@@ -8,6 +9,11 @@ import type {
 	VoiceSignal,
 	VoiceSignalEnvelope,
 } from "../../shared/protocol/lobby.js";
+import {
+	SPEECH_MAX_GRAMMAR,
+	SPEECH_MAX_PHRASE,
+	type SpeechStartRequest,
+} from "../../shared/protocol/speech.js";
 import {
 	VOICE_RELAY_MAX_BYTES,
 	VOICE_RELAY_MAX_PEERS,
@@ -222,4 +228,53 @@ export function parseVoiceSignal(payload: unknown): VoiceSignalEnvelope | null {
 		return null;
 	}
 	return { peerId: payload.peerId.slice(0, 64), signal: parsed };
+}
+
+const SPEECH_ID = /^[\w-]{1,64}$/;
+const SPEECH_PHRASE = /^[\p{L}\p{M}' -]+$|^\[unk\]$/u;
+
+export function parseSpeechId(payload: unknown): string | null {
+	return isRecord(payload) &&
+		typeof payload.id === "string" &&
+		SPEECH_ID.test(payload.id)
+		? payload.id
+		: null;
+}
+
+export function parseSpeechLanguage(payload: unknown): Language | null {
+	return isRecord(payload) && isLanguage(payload.language)
+		? payload.language
+		: null;
+}
+
+/** La grammaire vient du client (ses formules) : seulement des mots, en nombre limité. */
+export function parseSpeechStart(payload: unknown): SpeechStartRequest | null {
+	const id = parseSpeechId(payload);
+	const language = parseSpeechLanguage(payload);
+	if (
+		!isRecord(payload) ||
+		!id ||
+		!language ||
+		!Array.isArray(payload.grammar)
+	) {
+		return null;
+	}
+	const grammar = payload.grammar
+		.slice(0, SPEECH_MAX_GRAMMAR)
+		.filter(
+			(phrase): phrase is string =>
+				typeof phrase === "string" &&
+				phrase.length <= SPEECH_MAX_PHRASE &&
+				SPEECH_PHRASE.test(phrase),
+		);
+	return { id, language, grammar };
+}
+
+export function parseSpeechAudio(
+	payload: unknown,
+): { id: string; data: Buffer } | null {
+	const id = parseSpeechId(payload);
+	return id && isRecord(payload) && Buffer.isBuffer(payload.data)
+		? { id, data: payload.data }
+		: null;
 }

@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { resolve } from "node:path";
 import { Server } from "socket.io";
 import type {
 	ClientToServerEvents,
@@ -20,6 +21,7 @@ import {
 } from "./mail/mailer.js";
 import { SessionRegistry } from "./sessions/SessionRegistry.js";
 import { registerSocketHandlers } from "./socket/registerHandlers.js";
+import { findVoskDirectory, SpeechService } from "./speech/SpeechService.js";
 
 export interface ServerOverrides {
 	port?: number;
@@ -122,8 +124,20 @@ export async function startServer(
 		dev,
 		onMatchRecords: (records) => accounts.record(records),
 	});
+	// Reconnaissance des incantations par le serveur (application de bureau, à l'essai).
+	// SPEECH_SERVER=false la coupe ; sans modèles Vosk, elle n'est pas proposée.
+	const speech =
+		process.env.SPEECH_SERVER === "false"
+			? null
+			: new SpeechService(
+					findVoskDirectory([
+						resolve(config.clientDistDir, "vosk"),
+						resolve(config.projectRoot, "public/vosk"),
+					]),
+				);
 	registerSocketHandlers({
 		io,
+		speech,
 		sessions,
 		lobbies,
 		iceServers: config.iceServers,
@@ -135,6 +149,11 @@ export async function startServer(
 	if (dev) {
 		console.log(
 			"MOLDIUS : mode DEV actif, les parties peuvent se lancer en solo",
+		);
+	}
+	if (speech && !speech.available) {
+		console.log(
+			"MOLDIUS : modèles Vosk absents (npm run vosk:setup), pas de reconnaissance vocale serveur",
 		);
 	}
 	if (!accounts.enabled) {
@@ -162,6 +181,7 @@ export async function startServer(
 		port: actualPort,
 		close: async () => {
 			lobbies?.dispose();
+			speech?.dispose();
 			disposeApp();
 			await new Promise<void>((resolve) => {
 				void io.close(() => resolve());

@@ -3,6 +3,7 @@ import { CAST_LISTEN_MAX_MS } from "@shared/config/index";
 import { desktopApp } from "../../app/desktopApp";
 import { currentLanguage, currentMessages } from "../../i18n";
 import { speechLocale } from "../../i18n/language";
+import { serverModelFor, serverSpeechUnavailable } from "./serverRecognizer";
 import { preloadVosk, VoskListener, voskSupported } from "./voskRecognizer";
 
 interface RecognitionAlternative {
@@ -64,10 +65,33 @@ function recognitionConstructor(): RecognitionConstructor | null {
 	return scope.SpeechRecognition ?? scope.webkitSpeechRecognition ?? null;
 }
 
-export type SpeechEngine = "native" | "vosk";
+export type SpeechEngine = "native" | "vosk" | "server";
+
+const ENGINE_OVERRIDE_KEY = "moldius.speechEngine";
+
+/** Pour les essais : localStorage « moldius.speechEngine » = native, vosk ou server. */
+function forcedEngine(): SpeechEngine | null {
+	try {
+		const value = window.localStorage.getItem(ENGINE_OVERRIDE_KEY);
+		return value === "native" || value === "vosk" || value === "server"
+			? value
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+function serverSupported(): boolean {
+	return typeof AudioContext === "function" && !serverSpeechUnavailable();
+}
 
 export function speechEngine(): SpeechEngine | null {
-	if (recognitionConstructor() !== null) {
+	const forced = forcedEngine();
+	// À l'essai : l'application de bureau fait écouter ses incantations par le serveur.
+	if ((forced === "server" || (desktopApp && !forced)) && serverSupported()) {
+		return "server";
+	}
+	if (forced !== "vosk" && recognitionConstructor() !== null) {
 		return "native";
 	}
 	return voskSupported() ? "vosk" : null;
@@ -78,8 +102,11 @@ export function speechRecognitionAvailable(): boolean {
 }
 
 export function prepareSpeechRecognition(): void {
-	if (speechEngine() === "vosk") {
+	const engine = speechEngine();
+	if (engine === "vosk") {
 		preloadVosk();
+	} else if (engine === "server") {
+		serverModelFor(currentLanguage());
 	}
 }
 
@@ -95,12 +122,15 @@ let phrasesAccepted = true;
 export class IncantationListener {
 	private recognition: Recognition | null = null;
 	private readonly fallback = new VoskListener();
+	private readonly remote = new VoskListener(serverModelFor);
 	private timeout: number | null = null;
 	private delivered = false;
 	private interim = "";
 
 	get active(): boolean {
-		return this.recognition !== null || this.fallback.active;
+		return (
+			this.recognition !== null || this.fallback.active || this.remote.active
+		);
 	}
 
 	start(
@@ -108,9 +138,13 @@ export class IncantationListener {
 		hintWords: readonly string[] = [],
 		formulas: readonly (readonly string[])[] = [],
 	): boolean {
-		const Constructor = recognitionConstructor();
+		const engine = speechEngine();
+		if (engine === "server") {
+			return this.remote.start(callbacks, formulas);
+		}
+		const Constructor = engine === "native" ? recognitionConstructor() : null;
 		if (!Constructor) {
-			if (voskSupported()) {
+			if (engine === "vosk") {
 				return this.fallback.start(callbacks, formulas);
 			}
 			callbacks.onError(currentMessages().game.speech.unavailable);
@@ -194,11 +228,13 @@ export class IncantationListener {
 	finish(): void {
 		this.recognition?.stop();
 		this.fallback.finish();
+		this.remote.finish();
 	}
 
 	stop(): void {
 		this.recognition?.abort();
 		this.fallback.stop();
+		this.remote.stop();
 		this.clear();
 	}
 
