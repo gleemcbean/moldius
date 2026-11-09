@@ -24,6 +24,7 @@
 		"format:check": "biome .",
 		"export:source": "tsx scripts/export-source.ts",
 		"vosk:setup": "node scripts/vosk-setup.mjs",
+		"vosk:forms": "tsx scripts/vosk-forms.ts",
 		"lan:open": "node scripts/lan.mjs open",
 		"lan:close": "node scripts/lan.mjs close",
 		"lan:status": "node scripts/lan.mjs status"

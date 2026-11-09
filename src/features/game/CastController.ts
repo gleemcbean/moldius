@@ -80,36 +80,41 @@ export class CastController {
 	}
 
 	private listen(): void {
-		const started = this.listener.start({
-			onInterim: (text) => {
-				if (text.trim().length > 0 && this.phase === "idle") {
-					this.phase = "listening";
-					this.transport.begin();
-				}
-				this.updateDevLive(text);
+		const started = this.listener.start(
+			{
+				onInterim: (text) => {
+					if (text.trim().length > 0 && this.phase === "idle") {
+						this.phase = "listening";
+						this.transport.begin();
+					}
+					this.updateDevLive(text);
+				},
+				onFinal: (alternatives) => this.submit(alternatives),
+				onError: (message) => {
+					this.resumeAt = performance.now() + ERROR_RETRY_MS;
+					if (message !== this.lastError) {
+						this.lastError = message;
+						pushFeedback(message, "error");
+					}
+				},
+				onEnd: () => {
+					this.resumeAt = Math.max(
+						this.resumeAt,
+						performance.now() + RESTART_DELAY_MS,
+					);
+					if (this.phase === "listening") {
+						this.phase = "idle";
+						this.transport.cancel();
+					}
+					if (this.dev) {
+						hudStore.set({ devLive: { text: "", matches: false } });
+					}
+				},
 			},
-			onFinal: (alternatives) => this.submit(alternatives),
-			onError: (message) => {
-				this.resumeAt = performance.now() + ERROR_RETRY_MS;
-				if (message !== this.lastError) {
-					this.lastError = message;
-					pushFeedback(message, "error");
-				}
-			},
-			onEnd: () => {
-				this.resumeAt = Math.max(
-					this.resumeAt,
-					performance.now() + RESTART_DELAY_MS,
-				);
-				if (this.phase === "listening") {
-					this.phase = "idle";
-					this.transport.cancel();
-				}
-				if (this.dev) {
-					hudStore.set({ devLive: { text: "", matches: false } });
-				}
-			},
-		});
+			[],
+			// Vosk s'en sert comme grammaire ; la reconnaissance du navigateur n'en a pas besoin.
+			this.book.entries().map((entry) => entry.words),
+		);
 		if (!started) {
 			this.resumeAt = performance.now() + ERROR_RETRY_MS;
 		}

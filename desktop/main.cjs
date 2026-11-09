@@ -214,6 +214,50 @@ function createWindow() {
 						return JSON.stringify(await reply(["result", "error"]));
 					})()`)
 					: "";
+				// Plusieurs enregistrements d'un dossier, transcrits un à un (même modèle chargé une fois).
+				const many = process.env.MOLDIUS_SMOKE_WAVS
+					? await contents.executeJavaScript(`(async () => {
+						const files = ${JSON.stringify(
+							fs
+								.readdirSync(process.env.MOLDIUS_SMOKE_WAVS)
+								.filter((name) => name.endsWith(".wav"))
+								.sort()
+								.map((name) => fs.readFileSync(path.join(process.env.MOLDIUS_SMOKE_WAVS, name)).toString("base64")),
+						)};
+						const context = new AudioContext();
+						const worker = new Worker("/vosk/worker.js");
+						const reply = (wanted, id) => Promise.race([
+							new Promise((resolve) => worker.addEventListener("message", function listener(event) {
+								if (wanted.includes(event.data.event) && (!id || event.data.recognizerId === id)) { worker.removeEventListener("message", listener); resolve(event.data); }
+							})),
+							new Promise((resolve) => setTimeout(() => resolve({ event: "timeout" }), 60000)),
+						]);
+						worker.postMessage({ action: "load", modelUrl: new URL(${JSON.stringify(process.env.MOLDIUS_SMOKE_HEAR_MODEL || "/vosk/vosk-model-small-en-us-0.15.tar.gz")}, location.href).href });
+						const loaded = await reply(["load", "error"]);
+						if (loaded.event !== "load") return JSON.stringify(loaded);
+						const heard = [];
+						for (const [index, file] of files.entries()) {
+							const bytes = Uint8Array.from(atob(file), (c) => c.charCodeAt(0));
+							const audio = await context.decodeAudioData(bytes.buffer);
+							const id = "test" + index;
+							worker.postMessage({ action: "create", recognizerId: id, sampleRate: audio.sampleRate${process.env.MOLDIUS_SMOKE_GRAMMAR ? ", grammar: " + JSON.stringify(fs.readFileSync(process.env.MOLDIUS_SMOKE_GRAMMAR, "utf8")) : ""} });
+							const samples = audio.getChannelData(0);
+							const texts = [];
+							const collect = (event) => { if (event.data.recognizerId === id && event.data.event === "result" && event.data.result.text) texts.push(event.data.result.text); };
+							worker.addEventListener("message", collect);
+							for (let start = 0; start < samples.length; start += 4096) {
+								const chunk = samples.slice(start, start + 4096).map((value) => value * 32768);
+								worker.postMessage({ action: "audioChunk", recognizerId: id, data: chunk, sampleRate: audio.sampleRate }, [chunk.buffer]);
+							}
+							worker.postMessage({ action: "retrieveFinalResult", recognizerId: id });
+							await new Promise((resolve) => setTimeout(resolve, 1500));
+							worker.removeEventListener("message", collect);
+							heard.push(texts.join(" "));
+							worker.postMessage({ action: "remove", recognizerId: id });
+						}
+						return JSON.stringify(heard);
+					})()`)
+					: "";
 				const mic = process.env.MOLDIUS_SMOKE_VOSK
 					? await contents.executeJavaScript(`navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => { stream.getTracks().forEach((track) => track.stop()); return "micro ok"; }, (error) => "micro: " + error.name)`)
 					: "";
@@ -224,7 +268,7 @@ function createWindow() {
 				fs.writeFileSync(SMOKE_TEST, image.toPNG());
 				fs.writeFileSync(
 					`${SMOKE_TEST}.txt`,
-					`${contents.getURL()}\n${contents.getTitle()}\n${image.isEmpty() ? "image vide" : "image ok"}\n${JSON.stringify({ bounds: window.getBounds(), visible: window.isVisible(), fullscreen: window.isFullScreen(), crashed: contents.isCrashed(), size: image.getSize() })}\n${page}\n${vosk}\n${mic}\n${heard}\n${workerLogs.join("\n")}\n`,
+					`${contents.getURL()}\n${contents.getTitle()}\n${image.isEmpty() ? "image vide" : "image ok"}\n${JSON.stringify({ bounds: window.getBounds(), visible: window.isVisible(), fullscreen: window.isFullScreen(), crashed: contents.isCrashed(), size: image.getSize() })}\n${page}\n${vosk}\n${mic}\n${heard}\n${many}\n${workerLogs.join("\n")}\n`,
 				);
 				app.quit();
 			}, 6000);

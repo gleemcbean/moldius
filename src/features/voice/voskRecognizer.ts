@@ -2,6 +2,7 @@ import { CAST_LISTEN_MAX_MS } from "@shared/config/index";
 import type { Language } from "@shared/i18n/languages";
 import { currentLanguage, currentMessages } from "../../i18n";
 import { micManager } from "./micManager";
+import { voskGrammar } from "./voskGrammar";
 
 const WORKER_URL = "/vosk/worker.js";
 /**
@@ -34,6 +35,14 @@ export interface VoskCallbacks {
 	onFinal: (alternatives: string[]) => void;
 	onError: (message: string) => void;
 	onEnd: () => void;
+}
+
+/** Le bruit reconnu « [unk] » n'est pas une parole : il ne doit ni lancer ni remplir une incantation. */
+function withoutUnknown(text: string): string {
+	return text
+		.replace(/\[unk\]/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
 }
 
 export function voskSupported(): boolean {
@@ -90,10 +99,19 @@ class VoskModel {
 		});
 	}
 
-	open(sampleRate: number, listener: (reply: RecognizerReply) => void): string {
+	open(
+		sampleRate: number,
+		listener: (reply: RecognizerReply) => void,
+		grammar: readonly string[],
+	): string {
 		const recognizerId = crypto.randomUUID();
 		this.listeners.set(recognizerId, listener);
-		this.worker.postMessage({ action: "create", recognizerId, sampleRate });
+		this.worker.postMessage({
+			action: "create",
+			recognizerId,
+			sampleRate,
+			grammar: JSON.stringify(grammar),
+		});
 		return recognizerId;
 	}
 
@@ -151,10 +169,15 @@ export class VoskListener {
 		return this.session !== null;
 	}
 
-	start(callbacks: VoskCallbacks): boolean {
+	/** formulas : celles de la partie, qui deviennent la grammaire du modèle (voir voskGrammar). */
+	start(
+		callbacks: VoskCallbacks,
+		formulas: readonly (readonly string[])[] = [],
+	): boolean {
 		this.stop();
 		const labels = currentMessages().game.speech;
-		const model = modelFor(currentLanguage());
+		const language = currentLanguage();
+		const model = modelFor(language);
 		if (!model.ready) {
 			callbacks.onError(model.failed ? labels.failedToStart : labels.loading);
 			return false;
@@ -171,8 +194,10 @@ export class VoskListener {
 		const processor = context.createScriptProcessor(CHUNK_SIZE, 1, 1);
 		const sink = context.createGain();
 		sink.gain.value = 0;
-		const recognizerId = model.open(context.sampleRate, (reply) =>
-			this.receive(reply),
+		const recognizerId = model.open(
+			context.sampleRate,
+			(reply) => this.receive(reply),
+			voskGrammar(language, formulas),
 		);
 		const session = {
 			model,
@@ -238,14 +263,14 @@ export class VoskListener {
 			session.pending -= 1;
 		}
 		if (reply.event === "partialresult") {
-			const partial = reply.result.partial?.trim() ?? "";
+			const partial = withoutUnknown(reply.result.partial ?? "");
 			if (partial) {
 				this.cancelSettle();
 				session.callbacks.onInterim([...session.heard, partial].join(" "));
 			}
 			return;
 		}
-		const text = reply.result.text?.trim() ?? "";
+		const text = withoutUnknown(reply.result.text ?? "");
 		if (text) {
 			session.heard.push(text);
 			session.callbacks.onInterim(session.heard.join(" "));

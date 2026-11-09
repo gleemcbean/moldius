@@ -106,11 +106,12 @@ export class IncantationListener {
 	start(
 		callbacks: ListenCallbacks,
 		hintWords: readonly string[] = [],
+		formulas: readonly (readonly string[])[] = [],
 	): boolean {
 		const Constructor = recognitionConstructor();
 		if (!Constructor) {
 			if (voskSupported()) {
-				return this.fallback.start(callbacks);
+				return this.fallback.start(callbacks, formulas);
 			}
 			callbacks.onError(currentMessages().game.speech.unavailable);
 			return false;
