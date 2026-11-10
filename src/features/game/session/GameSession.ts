@@ -31,8 +31,6 @@ import {
 } from "@shared/manor/brews";
 import { levelForHeight } from "@shared/manor/levels";
 
-const BREW_MALUS: ReadonlySet<BrewEffect> = new Set(["nausea", "sluggish"]);
-
 import { type LiquidVolume, liquidAt } from "@shared/manor/liquids";
 import type { Level } from "@shared/manor/types";
 import { pullBackToSight } from "@shared/physics/lineOfSight";
@@ -151,11 +149,12 @@ export class GameSession {
 	private pushReadyAt = 0;
 	private shoutReadyAt = 0;
 	private carriedBy: number | null = null;
+	/** De 0 à 1 : l'objet tenu est à portée d'un monstre qu'il capture (voir AnomalyViews.resonate). */
+	private heldResonance = 0;
 	private wasPetrified = false;
 	private hideSpot = -1;
 	private selfLiquid: LiquidVolume | null = null;
 	private nausea = 0;
-	private brewShown: BrewEffect | null = null;
 	private gaze = 0;
 	private readonly gorgonGaze = new Map<number, number>();
 	private jumpSpentAt: number[] = [];
@@ -740,6 +739,11 @@ export class GameSession {
 		this.dynamicLights.length = 0;
 		loaded.remotePlayers.update(dt, renderTime, eye, eye, this.dynamicLights);
 		loaded.anomalies.update(dt, renderTime, eye, this.dynamicLights);
+		this.heldResonance = loaded.anomalies.resonate(
+			alive && this.hideSpot < 0 ? this.heldObject() : null,
+			eye,
+			dt,
+		);
 		loaded.doors.update(dt);
 		this.reconcileDoors(serverNow);
 		loaded.hazards.update(dt, serverNow, this.dynamicLights);
@@ -863,7 +867,7 @@ export class GameSession {
 		);
 	}
 
-	/** Le panneau du HUD, et le message quand l'effet s'arrête. */
+	/** Le panneau du HUD : l'effet s'affiche là, sans message à l'entrée ni à la fin. */
 	private brewHud(alive: boolean): {
 		brew: BrewEffect | null;
 		brewLeftMs: number;
@@ -872,10 +876,6 @@ export class GameSession {
 		const loaded = this.loadedWorld as LoadedWorld;
 		const serverNow = clockSync.serverNow();
 		const brew = alive ? loaded.state.selfBrew(serverNow) : null;
-		if (!brew && this.brewShown && alive) {
-			pushFeedback(currentMessages().game.brew.ended, "info");
-		}
-		this.brewShown = brew?.effect ?? null;
 		return brew
 			? {
 					brew: brew.effect,
@@ -1327,6 +1327,7 @@ export class GameSession {
 		loaded.rig.update(dt, {
 			grimoireOpen: loaded.grimoire.isOpen,
 			heldObject: this.heldObject(),
+			heldResonance: this.heldResonance,
 			cameraRaised: this.cameraUp,
 			cameraAimed: this.cameraAiming,
 			lanternOpen: this.lanternIntent && this.hideSpot < 0,
@@ -2004,6 +2005,7 @@ export class GameSession {
 		this.dynamicLights.length = 0;
 		loaded.remotePlayers.update(dt, time, eye, eye, this.dynamicLights);
 		loaded.anomalies.update(dt, time, eye, this.dynamicLights);
+		loaded.anomalies.resonate(null, eye, dt);
 		loaded.doors.update(dt);
 		loaded.hazards.update(dt, time, this.dynamicLights);
 		loaded.decor.update(dt, eye);
@@ -2053,10 +2055,6 @@ export class GameSession {
 			case "brew":
 				if (event.playerId === this.selfId && event.effect) {
 					soundBank.play("brew-gulp", { volume: 0.8 });
-					pushFeedback(
-						currentMessages().game.brew.start[event.effect],
-						BREW_MALUS.has(event.effect) ? "warning" : "success",
-					);
 				}
 				break;
 			case "camera":

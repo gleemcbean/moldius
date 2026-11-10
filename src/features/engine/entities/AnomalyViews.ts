@@ -1,11 +1,13 @@
 import { swarmClearance } from "@shared/anomalies/swarm";
 import {
 	ARCHIVIST_CIRCLE_RADIUS,
+	CAPTURE_MAX_RANGE,
 	LANTERN_LIGHT_INTENSITY,
 	LANTERN_LIGHT_RANGE,
 	RAT_KING_SWARM_RADIUS,
 	VOICE_PROXIMITY_MAX_RANGE,
 } from "@shared/config/index";
+import type { OccultId } from "@shared/config/occult";
 import { SPECIES, type SpeciesId } from "@shared/config/species";
 import type { DisguiseBody } from "@shared/doubleDisguise";
 import { DEFAULT_HAT_PATTERN, type HatPattern } from "@shared/hatPatterns";
@@ -43,6 +45,12 @@ import { voiceChat } from "../../voice/voiceChat";
 import type { TextureLibrary } from "../../world/textures/TextureLibrary";
 import { footstepSound } from "../audio/AmbientAudio";
 import type { DynamicLight } from "../lighting/LightPool";
+import {
+	CaptureRitual,
+	Pentacle,
+	RITUAL_FALLBACK_COLOR,
+} from "../effects/CaptureRitual";
+import { occultColor } from "../player/OccultAura";
 import type { ClientWorldState } from "../state/ClientWorldState";
 import { nameTag } from "./nameTag";
 
@@ -131,9 +139,16 @@ interface View {
 	stepPhase: number;
 	voice: VoicePlayback | null;
 	nextVoiceAt: number;
+	/** Le pentacle qui s'allume sous le monstre quand on tient son objet occulte à portée. */
+	pentacle: Pentacle | null;
+	resonance: number;
+	sparkClock: number;
 }
 
 const TAG_RANGE = 11;
+/** La résonance monte sur ce dernier mètre et demi avant la limite de capture. */
+const RESONANCE_FADE = 1.5;
+const RESONANCE_REACH = CAPTURE_MAX_RANGE + 0.35;
 const DOUBLE_VOICE_MIN_GAP = 7;
 const DOUBLE_VOICE_EXTRA_GAP = 12;
 
@@ -150,6 +165,7 @@ export class AnomalyViews {
 	readonly group = new THREE.Group();
 	private readonly views = new Map<number, View>();
 	private readonly beams: Beam[] = [];
+	private readonly rituals: CaptureRitual[] = [];
 	private time = 0;
 	private voicesSilenced = false;
 	private readonly standIns = new Map<number, string>();
@@ -334,6 +350,132 @@ export class AnomalyViews {
 			view.lastState = state;
 		}
 		this.updateBeams(dynamicLights);
+		for (const ritual of [...this.rituals]) {
+			ritual.update(dt);
+			dynamicLights.push(ritual.light);
+			if (ritual.done) {
+				ritual.dispose();
+				this.rituals.splice(this.rituals.indexOf(ritual), 1);
+			}
+		}
+	}
+
+	/**
+	 * L'objet occulte tenu face aux monstres qu'il capture : un pentacle s'allume sous chacun
+	 * d'eux à portée de capture. Rend la résonance la plus forte, pour l'aura de l'objet.
+	 */
+	resonate(held: OccultId | null, eye: THREE.Vector3, dt: number): number {
+		let strongest = 0;
+		for (const view of this.views.values()) {
+			const occult = this.state.anomalies.get(view.id)?.roster.occult ?? null;
+			const target =
+				held !== null && occult === held && view.info
+					? Math.min(
+							1,
+							Math.max(
+								0,
+								(RESONANCE_REACH - eye.distanceTo(view.info.center)) /
+									RESONANCE_FADE,
+							),
+						)
+					: 0;
+			view.resonance += (target - view.resonance) * Math.min(1, dt * 5);
+			if (view.resonance < 0.01 && target === 0) {
+				view.resonance = 0;
+			}
+			strongest = Math.max(strongest, view.resonance);
+			this.updatePentacle(view, occult, dt);
+		}
+		return strongest;
+	}
+
+	private updatePentacle(
+		view: View,
+		occult: OccultId | null,
+		dt: number,
+	): void {
+		if (view.resonance <= 0 || !view.info || !occult) {
+			view.pentacle?.set(0, 0, 0);
+			return;
+		}
+		if (!view.pentacle) {
+			view.pentacle = new Pentacle(
+				Math.max(0.8, SPECIES[view.species].aimRadius * 1.7),
+			);
+			this.group.add(view.pentacle.mesh);
+		}
+		const position = view.info.position;
+		const floorY = this.roomAt(position)?.floorY ?? position.y;
+		const color = occultColor(occult);
+		view.pentacle.mesh.position.set(position.x, floorY + 0.03, position.z);
+		view.pentacle.set(
+			color,
+			view.resonance * (0.5 + Math.sin(this.time * 3.2) * 0.12),
+			this.time * 0.35,
+		);
+		view.sparkClock += dt * view.resonance;
+		if (view.sparkClock > 0.12) {
+			view.sparkClock = 0;
+			const angle = Math.random() * Math.PI * 2;
+			const reach = SPECIES[view.species].aimRadius * 1.5;
+			this.particles.emit(
+				new THREE.Vector3(
+					position.x + Math.cos(angle) * reach,
+					floorY + 0.05,
+					position.z + Math.sin(angle) * reach,
+				),
+				1,
+				{
+					color,
+					speed: 0.4,
+					up: 2,
+					life: 1.1,
+					size: 0.04,
+					gravity: -0.5,
+					spread: 0.05,
+				},
+			);
+		}
+	}
+
+	/** Le monstre capturé quitte sa vue : le rituel le garde le temps de l'entraîner sous terre. */
+	private startRitual(view: View): void {
+		const info = view.info;
+		if (!info) {
+			return;
+		}
+		const occult = this.state.anomalies.get(view.id)?.roster.occult ?? null;
+		const definition = SPECIES[view.species];
+		const model = view.model;
+		let stateMs = 0;
+		const ritual = new CaptureRitual(
+			{
+				model,
+				position: info.position.clone(),
+				floorY: this.roomAt(info.position)?.floorY ?? info.position.y,
+				bodyHeight: definition.bodyHeight,
+				radius: definition.aimRadius,
+				color: occult ? occultColor(occult) : RITUAL_FALLBACK_COLOR,
+				animate: (dt) => {
+					stateMs += dt * 1000;
+					model.update({
+						state: "flee",
+						stateMs,
+						extra: 0,
+						speed: 0,
+						dt,
+						time: this.time + view.id,
+					});
+				},
+			},
+			this.particles,
+		);
+		this.group.add(ritual.group);
+		this.rituals.push(ritual);
+		this.views.delete(view.id);
+		this.hide(view);
+		model.root.visible = true;
+		this.releaseExtras(view);
 	}
 
 	private emitParticles(view: View, dt: number): void {
@@ -664,6 +806,9 @@ export class AnomalyViews {
 			stepPhase: 0,
 			voice: null,
 			nextVoiceAt: 4 + Math.random() * 8,
+			pentacle: null,
+			resonance: 0,
+			sparkClock: 0,
 		};
 		this.views.set(id, view);
 		return view;
@@ -682,12 +827,24 @@ export class AnomalyViews {
 		if (view.circle) {
 			view.circle.visible = false;
 		}
+		view.resonance = 0;
+		view.pentacle?.set(0, 0, 0);
 	}
 
 	private destroy(view: View): void {
 		this.hide(view);
 		this.group.remove(view.model.root);
 		view.model.dispose();
+		this.releaseExtras(view);
+	}
+
+	/** Tout ce qui accompagne le modèle : cercle de l'Archiviste, nom d'emprunt, pentacle. */
+	private releaseExtras(view: View): void {
+		if (view.pentacle) {
+			this.group.remove(view.pentacle.mesh);
+			view.pentacle.dispose();
+			view.pentacle = null;
+		}
 		if (view.circle) {
 			this.group.remove(view.circle);
 			view.circle.geometry.dispose();
@@ -875,6 +1032,20 @@ export class AnomalyViews {
 	}
 
 	private onEvent(event: GameEvent): void {
+		if (event.type === "capture") {
+			const view = this.views.get(event.anomalyId);
+			if (view && view.gen === event.gen) {
+				// Celui qui capture entend déjà le son de la réussite (CastController).
+				if (view.info && event.playerId !== this.state.selfId) {
+					soundBank.play("capture", {
+						position: view.info.center,
+						volume: 0.6,
+						occlusion: view.occlusion,
+					});
+				}
+				this.startRitual(view);
+			}
+		}
 		if (event.type === "attack" && event.phase === "strike") {
 			const view = this.views.get(event.anomalyId);
 			if (view?.info) {
@@ -1074,6 +1245,9 @@ export class AnomalyViews {
 	dispose(): void {
 		for (const view of [...this.views.values()]) {
 			this.destroy(view);
+		}
+		for (const ritual of this.rituals.splice(0)) {
+			ritual.dispose();
 		}
 		for (const beam of [...this.beams]) {
 			this.removeBeam(beam);

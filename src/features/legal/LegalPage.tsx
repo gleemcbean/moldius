@@ -104,9 +104,6 @@ export function LegalPage({ document }: { document: LegalDocument }) {
 				</div>
 				<footer className={styles.footer}>
 					<span>© {new Date().getFullYear()} MOLDIUS</span>
-					<span>
-						{lang === "fr" ? "Un univers à explorer." : "A world to explore."}
-					</span>
 				</footer>
 			</div>
 		</main>

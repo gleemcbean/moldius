@@ -33,6 +33,8 @@ type ArmMesh = THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
 export interface RigInput {
 	grimoireOpen: boolean;
 	heldObject: OccultId | null;
+	/** De 0 à 1 : l'objet tenu est à portée d'un monstre qu'il peut capturer. */
+	heldResonance?: number;
 	/** L'appareil photo levé devant soi : il prend la place de l'objet occulte. */
 	cameraRaised: boolean;
 	/** En visée : l'appareil devant les yeux, son écran au centre et en grand. */
@@ -240,14 +242,16 @@ export class FirstPersonRig {
 		position.y += this.sway.y - bobY - input.crouch * 0.01;
 		this.heldRoot.position.copy(position);
 		this.heldRoot.rotation.set(0.12, 0.35, 0);
+		const resonance = input.heldResonance ?? 0;
 		this.aura.update(
 			dt,
 			input.visible ? this.heldBlend : 0,
 			!input.reduceMotion,
+			resonance,
 		);
 		this.heldGlow.intensity =
 			input.visible && this.heldBlend > 0.01
-				? HELD_GLOW_INTENSITY * this.heldBlend
+				? HELD_GLOW_INTENSITY * this.heldBlend * (1 + resonance * 1.5)
 				: 0;
 		this.heldGlow.position.copy(position).add(this.aura.root.position);
 		this.root.localToWorld(this.heldGlow.position);

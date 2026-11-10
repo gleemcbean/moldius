@@ -208,14 +208,6 @@ export const gameFr = {
 			sluggish: "Lourdeur",
 			vigor: "Vigueur",
 		} satisfies Record<BrewEffect, string>,
-		start: {
-			nausea: "Beurk… la potion vous retourne l'estomac",
-			feather: "Vous vous sentez léger comme une spore",
-			haste: "Vos pieds s'emballent : vous filez plus vite",
-			sluggish: "Une mélasse épaisse vous colle aux jambes",
-			vigor: "Une vigueur brûlante : vous courez sans vous fatiguer",
-		} satisfies Record<BrewEffect, string>,
-		ended: "L'effet du chaudron se dissipe",
 	},
 	fragmentsLost: (count: number) =>
 		count > 1
@@ -662,14 +654,6 @@ export const gameEn: typeof gameFr = {
 			sluggish: "Sluggish",
 			vigor: "Vigour",
 		},
-		start: {
-			nausea: "Yuck… the brew turns your stomach",
-			feather: "You feel as light as a spore",
-			haste: "Your feet race ahead: you move faster",
-			sluggish: "Thick sludge clings to your legs",
-			vigor: "A burning vigour: you run without tiring",
-		},
-		ended: "The cauldron's effect wears off",
 	},
 	fragmentsLost: (count: number) =>
 		count > 1

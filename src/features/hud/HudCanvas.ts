@@ -41,6 +41,7 @@ const HEALTH_TRAIL_SPEED = 45;
 const LOW_HEALTH = 30;
 const BAR_GLOW = 9;
 const ENERGY_DENIED_MS = 450;
+const BREW_PANEL_HEIGHT = 46;
 const MAP_MARGIN = 40;
 const MAP_MAX_WIDTH = 1800;
 const MAP_HEADER = 56;
@@ -1017,9 +1018,21 @@ export class HudCanvas {
 		}
 	}
 
-	/** L'effet de chaudron, à droite des barres : son nom, le temps restant et une jauge. */
+	private brewShown(hud: HudState): boolean {
+		return Boolean(hud.brew) && !hud.dead && !hud.showMap && !hud.paused;
+	}
+
+	/**
+	 * Ce que l'effet de chaudron occupe au-dessus des barres. Le talkie et l'appareil photo
+	 * s'empilent au-dessus : à côté des barres, il passait sous la barre d'objets.
+	 */
+	private brewSpace(hud: HudState): number {
+		return this.brewShown(hud) ? BREW_PANEL_HEIGHT + 12 : 0;
+	}
+
+	/** L'effet de chaudron, au-dessus des barres : son nom, le temps restant et une jauge. */
 	private paintBrew(hud: HudState, now: number): void {
-		if (!hud.brew || hud.dead || hud.showMap || hud.paused) {
+		if (!this.brewShown(hud) || !hud.brew) {
 			return;
 		}
 		const labels = currentMessages().game.brew;
@@ -1034,10 +1047,10 @@ export class HudCanvas {
 		context.font = timeFont;
 		const timeWidth = context.measureText(seconds).width;
 		const width = 14 + 14 + 10 + nameWidth + 12 + timeWidth + 14;
-		const height = 46;
+		const height = BREW_PANEL_HEIGHT;
 		const { x, y } = this.place(
-			20 + 72 + 270 + 18,
-			this.height - 16,
+			20,
+			this.height - 16 - 46 - 12,
 			width,
 			height,
 			"left",
@@ -1132,7 +1145,7 @@ export class HudCanvas {
 		const height = Math.max(44, 12 + lines.length * 24);
 		const { x, y } = this.place(
 			20,
-			this.height - 16 - 46 - 12,
+			this.height - 16 - 46 - 12 - this.brewSpace(hud),
 			width,
 			height,
 			"left",
@@ -1200,7 +1213,7 @@ export class HudCanvas {
 		const below = hud.walkieHeld ? this.walkieHeight(hud) + 8 : 0;
 		const { x, y } = this.place(
 			20,
-			this.height - 16 - 46 - 12 - below,
+			this.height - 16 - 46 - 12 - this.brewSpace(hud) - below,
 			width,
 			height,
 			"left",

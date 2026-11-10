@@ -48,6 +48,11 @@ const STYLES: Record<OccultId, AuraStyle> = {
 	},
 };
 
+/** La couleur propre à chaque objet occulte (aura, pentacle de capture). */
+export function occultColor(id: OccultId): number {
+	return STYLES[id].color;
+}
+
 const PARTICLES = 26;
 const PARTICLE_SIZE = 0.015;
 const HALO_SIZE = 0.36;
@@ -79,6 +84,7 @@ export class OccultAura {
 	readonly root = new THREE.Group();
 	private readonly texture = softDot();
 	private readonly haloMaterial: THREE.SpriteMaterial;
+	private readonly halo: THREE.Sprite;
 	private readonly particleMaterial: THREE.PointsMaterial;
 	private readonly geometry = new THREE.BufferGeometry();
 	private readonly positions = new Float32Array(PARTICLES * 3);
@@ -98,9 +104,9 @@ export class OccultAura {
 			fog: false,
 			opacity: 0,
 		});
-		const halo = new THREE.Sprite(this.haloMaterial);
-		halo.scale.setScalar(HALO_SIZE);
-		this.root.add(halo);
+		this.halo = new THREE.Sprite(this.haloMaterial);
+		this.halo.scale.setScalar(HALO_SIZE);
+		this.root.add(this.halo);
 		this.particleMaterial = new THREE.PointsMaterial({
 			map: this.texture,
 			size: PARTICLE_SIZE,
@@ -148,7 +154,11 @@ export class OccultAura {
 		this.root.position.y = objectHeight * this.style.anchor;
 	}
 
-	update(dt: number, strength: number, animated: boolean): void {
+	/**
+	 * resonance : de 0 à 1, l'objet est à portée d'un monstre qu'il peut capturer. L'aura
+	 * grossit, tourne plus vite et pulse.
+	 */
+	update(dt: number, strength: number, animated: boolean, resonance = 0): void {
 		this.root.visible = strength > 0.01;
 		if (!this.root.visible) {
 			this.haloMaterial.opacity = 0;
@@ -156,11 +166,17 @@ export class OccultAura {
 		}
 		const step = animated ? dt : 0;
 		this.time += step;
-		const pulse = 1 + Math.sin(this.time * 2.6) * 0.2;
-		this.haloMaterial.opacity = HALO_OPACITY * strength * pulse;
-		const { rise, swirl, spread } = this.style;
+		const beat = resonance * (0.5 + 0.5 * Math.sin(this.time * 9)) ** 3;
+		const pulse = 1 + Math.sin(this.time * 2.6) * 0.2 + beat * 1.4;
+		this.haloMaterial.opacity =
+			HALO_OPACITY * strength * pulse * (1 + resonance * 1.3);
+		this.halo.scale.setScalar(HALO_SIZE * (1 + resonance * 0.7 + beat * 0.25));
+		const rise = this.style.rise * (1 + resonance * 1.5);
+		const swirl = this.style.swirl * (1 + resonance * 2.5);
+		const spread = this.style.spread * (1 + resonance * 1.2);
+		const boost = 1 + resonance * 1.6;
 		this.particles.forEach((particle, index) => {
-			particle.age += step * particle.speed;
+			particle.age += step * particle.speed * (1 + resonance * 1.4);
 			if (particle.age >= 1) {
 				this.respawn(particle);
 			}
@@ -172,7 +188,7 @@ export class OccultAura {
 			this.positions[offset + 1] = (age - 0.35) * rise;
 			this.positions[offset + 2] = Math.sin(angle) * distance;
 			const flicker = 0.75 + Math.sin(this.time * particle.twinkle) * 0.25;
-			const light = Math.sin(age * Math.PI) * flicker * strength;
+			const light = Math.sin(age * Math.PI) * flicker * strength * boost;
 			this.colors[offset] = this.tint.r * light;
 			this.colors[offset + 1] = this.tint.g * light;
 			this.colors[offset + 2] = this.tint.b * light;
