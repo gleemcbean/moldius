@@ -15,8 +15,6 @@ export const bestiaryFr = {
 	peaceful: "Pacifique",
 	flying: "Volante",
 	doors: "Ouvre les portes d'un geste",
-	formula:
-		"La formule latine change à chaque chasse : lisez-la dans le grimoire en jeu, puis prononcez-la près d'un exemplaire.",
 	drawing: "Croquis en cours…",
 };
 
@@ -37,7 +35,5 @@ export const bestiaryEn: typeof bestiaryFr = {
 	peaceful: "Peaceful",
 	flying: "Flying",
 	doors: "Opens doors in a flash",
-	formula:
-		"The Latin formula changes every hunt: read it in the grimoire in game, then say it near a specimen.",
 	drawing: "Sketching…",
 };

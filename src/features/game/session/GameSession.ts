@@ -11,6 +11,7 @@ import {
 	JUMP_MIN_ENERGY,
 	LANTERN_LIGHT_INTENSITY,
 	LANTERN_LIGHT_RANGE,
+	LANTERN_MIN_ENERGY_TO_OPEN,
 	LEVEL_HEIGHT,
 	MAX_PHOTOS_PER_MATCH,
 	type MaterialId,
@@ -1100,7 +1101,18 @@ export class GameSession {
 			}
 			return;
 		}
-		if (frame.pressed.has("lantern") && this.hideSpot < 0) {
+		const lanternEnergy =
+			this.loadedWorld?.state.self?.latest?.en ?? ENERGY_MAX;
+		if (
+			frame.pressed.has("lantern") &&
+			this.hideSpot < 0 &&
+			!this.lanternIntent &&
+			lanternEnergy < LANTERN_MIN_ENERGY_TO_OPEN
+		) {
+			// Le serveur refuserait aussi : la jauge clignote, la lanterne reste fermée.
+			hudStore.set({ energyDeniedAt: performance.now() });
+			soundBank.play("jump", { volume: 0.12, rate: 0.6 });
+		} else if (frame.pressed.has("lantern") && this.hideSpot < 0) {
 			this.lanternIntent = !this.lanternIntent;
 			this.lanternChangedAt = serverNow;
 			soundBank.play(this.lanternIntent ? "lantern-open" : "lantern-close", {

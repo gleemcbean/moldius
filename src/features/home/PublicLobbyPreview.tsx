@@ -9,7 +9,8 @@ import styles from "./HomeScreen.module.scss";
 
 const REFRESH_MS = 4000;
 
-export function PublicLobbyPreview() {
+/** Qui attend dans le lobby public, sur la carte « Partie classique » du choix de mode. */
+export function PublicLobbyPreview({ className }: { className: string }) {
 	const t = useT();
 	const connected = useStore(
 		sessionStore,
@@ -45,11 +46,7 @@ export function PublicLobbyPreview() {
 		return null;
 	}
 	return (
-		<div
-			id="public-lobby-hint"
-			role="tooltip"
-			className={`${styles.sideHint} ${styles.publicPreview}`}
-		>
+		<div className={className}>
 			<span className={styles.publicCount}>
 				{t.home.publicCount(preview.players.length, preview.capacity)}
 			</span>

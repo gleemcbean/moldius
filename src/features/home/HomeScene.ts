@@ -1,5 +1,10 @@
 import { DEFAULT_HAT_PATTERN, type HatPattern } from "@shared/hatPatterns";
 import {
+	DEFAULT_LANTERN_TINT,
+	LANTERN_TINT_COLORS,
+	type LanternTint,
+} from "@shared/rewards";
+import {
 	ChaseDirector,
 	randomChaseCourse,
 } from "@shared/showcase/chaseDirector";
@@ -18,6 +23,12 @@ import { MaterialLibrary } from "../world/MaterialLibrary";
 import { TextureLibrary } from "../world/textures/TextureLibrary";
 
 const STRIDE_SPEED = 4.6;
+const DEFAULT_LANTERN_LIGHT = 0xffb060;
+
+/** La flamme teintée de la lanterne choisie (null : la flamme d'origine). */
+function lanternTint(tint: LanternTint): number | null {
+	return tint === DEFAULT_LANTERN_TINT ? null : LANTERN_TINT_COLORS[tint];
+}
 
 export class HomeScene {
 	private readonly renderer: THREE.WebGLRenderer;
@@ -33,7 +44,12 @@ export class HomeScene {
 	private readonly motes = new AmbientMotes();
 	private mushroom: MushroomModel;
 	private readonly hunter: ReverbereModel;
-	private readonly lantern = new THREE.PointLight(0xffb060, 9, 11, 2);
+	private readonly lantern = new THREE.PointLight(
+		DEFAULT_LANTERN_LIGHT,
+		9,
+		11,
+		2,
+	);
 	private readonly hunterEye = new THREE.PointLight(0xff5a3a, 0.8, 2.2, 2);
 	private frame = 0;
 	private time = 0;
@@ -46,6 +62,7 @@ export class HomeScene {
 		private readonly host: HTMLElement,
 		private color: number,
 		private pattern: HatPattern = DEFAULT_HAT_PATTERN,
+		private tint: LanternTint = DEFAULT_LANTERN_TINT,
 	) {
 		this.renderer = new THREE.WebGLRenderer({
 			antialias: false,
@@ -87,7 +104,13 @@ export class HomeScene {
 			layout.lights.filter((light) => visible.has(light.roomId)),
 		);
 
-		this.mushroom = new MushroomModel(this.kit, color, pattern);
+		this.mushroom = new MushroomModel(
+			this.kit,
+			color,
+			pattern,
+			lanternTint(tint),
+		);
+		this.lantern.color.setHex(lanternTint(tint) ?? DEFAULT_LANTERN_LIGHT);
 		this.hunter = new ReverbereModel(this.kit);
 		this.scene.add(
 			this.mushroom.root,
@@ -101,17 +124,28 @@ export class HomeScene {
 		this.frame = requestAnimationFrame(this.loop);
 	}
 
-	setAppearance(color: number, pattern: HatPattern): void {
-		if (color === this.color && pattern === this.pattern) {
+	setAppearance(color: number, pattern: HatPattern, tint: LanternTint): void {
+		if (
+			color === this.color &&
+			pattern === this.pattern &&
+			tint === this.tint
+		) {
 			return;
 		}
 		this.color = color;
 		this.pattern = pattern;
+		this.tint = tint;
+		this.lantern.color.setHex(lanternTint(tint) ?? DEFAULT_LANTERN_LIGHT);
 		const position = this.mushroom.root.position.clone();
 		const rotation = this.mushroom.root.rotation.clone();
 		this.scene.remove(this.mushroom.root);
 		this.mushroom.dispose();
-		this.mushroom = new MushroomModel(this.kit, color, pattern);
+		this.mushroom = new MushroomModel(
+			this.kit,
+			color,
+			pattern,
+			lanternTint(tint),
+		);
 		this.mushroom.root.position.copy(position);
 		this.mushroom.root.rotation.copy(rotation);
 		this.scene.add(this.mushroom.root);

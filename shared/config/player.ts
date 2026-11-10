@@ -31,7 +31,11 @@ export const SPRINT_START_ENERGY_COST = 2;
 export const LANTERN_OPEN_ENERGY_COST = 1.5;
 export const SPRINT_STOP_THRESHOLD = 1;
 export const SPRINT_RESUME_THRESHOLD = 20;
-export const LANTERN_MIN_ENERGY_TO_OPEN = 2;
+/**
+ * Assez pour quelques secondes de lumière : en dessous, la lanterne refuse de s'ouvrir, sinon
+ * on l'allumait et l'éteignait en boucle avec presque plus d'énergie.
+ */
+export const LANTERN_MIN_ENERGY_TO_OPEN = 12;
 export const JUMP_ENERGY_COST = 8;
 export const JUMP_MIN_ENERGY = 2;
 /** Plus long qu'un saut (0,87 s en l'air) : enchaîner les sauts ne régénère rien. */

@@ -6,7 +6,8 @@ export interface ReliefNode {
 	depth: number;
 }
 
-const COVE_STEPS = 5;
+/** La hauteur du devant d'une marche : presque une arête vive, sans face de biais visible. */
+const STEP_RISE = 0.02;
 const CLEAR_HEIGHT = 2.4;
 const MAX_TOP = 0.6;
 /** Le joueur reste à cette distance des murs : un relief plus bas ne le gêne pas. */
@@ -16,37 +17,28 @@ function pick(seed: number, shift: number, count: number): number {
 	return ((seed >>> shift) & 0xff) % count;
 }
 
+/**
+ * La corniche en haut du mur : des marches à angles droits, jamais d'arrondi ni de biseau.
+ * Une petite corniche (moins de 30 cm) n'a que deux marches.
+ */
 function topProfile(room: Room, base: number, size: number): ReliefNode[] {
 	const h = room.height;
-	switch (size < 0.3 ? 1 : pick(room.seed, 11, 3)) {
-		case 0:
-			return Array.from({ length: COVE_STEPS }, (_, step) => {
-				const angle = (step / (COVE_STEPS - 1)) * (Math.PI / 2);
-				return {
-					y: h - size + size * Math.sin(angle),
-					depth: base + size * (1 - Math.cos(angle)),
-				};
-			});
-		case 1:
-			return [
-				{ y: h - size, depth: base },
-				{ y: h, depth: base + size },
-			];
-		default:
-			return [
-				{ y: h - size, depth: base },
-				{ y: h - size + 0.04, depth: base + size * 0.33 },
-				{ y: h - size * 0.6, depth: base + size * 0.33 },
-				{ y: h - size * 0.6 + 0.04, depth: base + size * 0.66 },
-				{ y: h - size * 0.25, depth: base + size * 0.66 },
-				{ y: h - size * 0.25 + 0.04, depth: base + size },
-				{ y: h, depth: base + size },
-			];
+	const steps = size < 0.3 ? 2 : 3;
+	const nodes: ReliefNode[] = [{ y: h - size, depth: base }];
+	for (let step = 1; step <= steps; step += 1) {
+		const y = h - size + (size * (step - 1)) / steps;
+		const depth = base + (size * step) / steps;
+		nodes.push({ y: y + STEP_RISE, depth });
+		nodes.push({
+			y: step === steps ? h : h - size + (size * step) / steps,
+			depth,
+		});
 	}
+	return nodes;
 }
 
 /**
- * Profil d'un mur de bas en haut : bandeau, encorbellement et voussure. Le bas du
+ * Profil d'un mur de bas en haut : bandeau, encorbellement et corniche. Le bas du
  * mur reste droit pour que les meubles adossés ne passent jamais à travers.
  */
 export function wallProfile(room: Room): ReliefNode[] {
@@ -75,7 +67,10 @@ export function wallProfile(room: Room): ReliefNode[] {
 		const start = deck !== null ? deck + 2.75 : 3.3;
 		if (h - size - start > 0.5 && pick(room.seed, 19, 2) === 0) {
 			overhang = 0.2;
-			nodes.push({ y: start, depth: 0 }, { y: start + 0.2, depth: overhang });
+			nodes.push(
+				{ y: start, depth: 0 },
+				{ y: start + STEP_RISE, depth: overhang },
+			);
 		}
 		nodes.push(...topProfile(room, overhang, size));
 	}

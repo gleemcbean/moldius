@@ -12,7 +12,13 @@ import {
 	type Tagline,
 	taglineUnlocked,
 } from "@shared/rewards";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+	type CSSProperties,
+	type ReactNode,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
 import { useStore } from "../../hooks/useStore";
@@ -27,12 +33,15 @@ function Trigger({
 	label,
 	title,
 	preview,
+	previewKey,
 	open,
 	onClick,
 }: {
 	label: string;
 	title: string;
 	preview: ReactNode;
+	/** Change avec le choix : l'aperçu rebondit quand on en prend un autre. */
+	previewKey: string;
 	open: boolean;
 	onClick: () => void;
 }) {
@@ -46,13 +55,20 @@ function Trigger({
 			onClick={onClick}
 			data-selectable=""
 		>
-			<span className={styles.triggerPreview}>{preview}</span>
+			<span key={previewKey} className={styles.triggerPreview}>
+				{preview}
+			</span>
 			<span className={styles.triggerLabel}>{label}</span>
 			<span className={styles.triggerArrow} aria-hidden="true">
 				{open ? "▴" : "▾"}
 			</span>
 		</button>
 	);
+}
+
+/** Le rang d'un choix : chacun apparaît un peu après le précédent (voir .options). */
+function stagger(index: number): CSSProperties {
+	return { "--i": index } as CSSProperties;
 }
 
 /** Une ligne, un bouton par catégorie : les autres choix ne s'affichent qu'à la demande. */
@@ -122,6 +138,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 				<Trigger
 					label={t.home.hat}
 					title={`${t.home.hatColor} : ${colorName}`}
+					previewKey={String(color)}
 					open={open === "color"}
 					onClick={() => toggle("color")}
 					preview={
@@ -134,6 +151,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 				<Trigger
 					label={t.home.pattern}
 					title={`${t.home.hatPattern} : ${t.appearance.patterns[pattern]}`}
+					previewKey={`${color}-${pattern}`}
 					open={open === "pattern"}
 					onClick={() => toggle("pattern")}
 					preview={
@@ -145,6 +163,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 				<Trigger
 					label={t.home.lantern}
 					title={`${t.home.lanternTint} : ${t.appearance.lanterns[lantern]}`}
+					previewKey={lantern}
 					open={open === "lantern"}
 					onClick={() => toggle("lantern")}
 					preview={lanternIcon(lantern)}
@@ -154,6 +173,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 					title={`${t.home.tagline} : ${
 						tagline ? t.appearance.taglines[tagline] : t.home.noTagline
 					}`}
+					previewKey={tagline ?? "none"}
 					open={open === "tagline"}
 					onClick={() => toggle("tagline")}
 					preview={
@@ -169,13 +189,14 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 					role="radiogroup"
 					aria-label={t.home.hatColor}
 				>
-					{PLAYER_COLOR_CHOICES.map((choice) => {
+					{PLAYER_COLOR_CHOICES.map((choice, index) => {
 						const name = t.appearance.colors[colorHex(choice)];
 						return (
 							<button
 								key={choice}
 								type="button"
 								role="radio"
+								style={stagger(index)}
 								aria-checked={choice === color}
 								aria-label={name}
 								title={name}
@@ -201,7 +222,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 					role="radiogroup"
 					aria-label={t.home.hatPattern}
 				>
-					{HAT_PATTERNS.map((choice) => {
+					{HAT_PATTERNS.map((choice, index) => {
 						const unlocked = hatUnlocked(choice, stats);
 						const name = t.appearance.patterns[choice];
 						return (
@@ -209,6 +230,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 								key={choice}
 								type="button"
 								role="radio"
+								style={stagger(index)}
 								aria-checked={choice === pattern}
 								aria-label={name}
 								title={optionTitle(name, unlocked, rewardFor("hat", choice))}
@@ -235,7 +257,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 					role="radiogroup"
 					aria-label={t.home.lanternTint}
 				>
-					{LANTERN_TINTS.map((choice) => {
+					{LANTERN_TINTS.map((choice, index) => {
 						const unlocked = lanternUnlocked(choice, stats);
 						const name = t.appearance.lanterns[choice];
 						return (
@@ -243,6 +265,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 								key={choice}
 								type="button"
 								role="radio"
+								style={stagger(index)}
 								aria-checked={choice === lantern}
 								aria-label={name}
 								title={optionTitle(
@@ -271,7 +294,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 					role="radiogroup"
 					aria-label={t.home.taglineHint}
 				>
-					{[null, ...TAGLINES].map((choice: Tagline | null) => {
+					{[null, ...TAGLINES].map((choice: Tagline | null, index) => {
 						const unlocked = taglineUnlocked(choice, stats);
 						const name = choice
 							? t.appearance.taglines[choice]
@@ -281,6 +304,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 								key={choice ?? "none"}
 								type="button"
 								role="radio"
+								style={stagger(index)}
 								aria-checked={choice === tagline}
 								title={
 									choice

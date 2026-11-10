@@ -106,13 +106,15 @@ export function LobbyScreen() {
 					>
 						{t.lobby.settings}
 					</Button>
-					<Button
-						variant="ghost"
-						icon={<Icon name="check" />}
-						onClick={() => openOverlay("challenges")}
-					>
-						{t.challenges.button}
-					</Button>
+					{isPrivate ? (
+						<Button
+							variant="ghost"
+							icon={<Icon name="book" />}
+							onClick={() => openOverlay("bestiary")}
+						>
+							{t.bestiary.open}
+						</Button>
+					) : null}
 					{accountStatus === "loading" ||
 					accountStatus === "disabled" ? null : (
 						<Button

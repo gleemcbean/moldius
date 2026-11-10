@@ -1,0 +1,144 @@
+@use '../../styles/tokens' as *;
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.choose {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 16px;
+  border: 0;
+  background: $background-raised;
+  box-shadow: inset 0 0 0 2px $line-strong;
+  color: $text;
+  text-align: left;
+  cursor: pointer;
+  font-family: $font-text;
+  transition:
+    box-shadow $transition-fast,
+    transform $transition-fast;
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    box-shadow: inset 0 0 0 3px $yellow;
+    outline: none;
+
+    .title {
+      color: $yellow;
+    }
+
+    .art img {
+      transform: scale(1.04);
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 168 / 196;
+  overflow: hidden;
+  background: #0b0d0b;
+  border-bottom: 2px solid $line-strong;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: pixelated;
+    transition: transform $transition;
+  }
+}
+
+.sketching {
+  @include label;
+  font-style: italic;
+}
+
+.title {
+  padding: 12px 16px 0;
+  @include title(30px);
+  color: $text;
+  transition: color $transition-fast;
+}
+
+.text {
+  padding: 0 16px;
+  font-size: 17px;
+  line-height: 1.3;
+  color: $text-muted;
+}
+
+.lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 16px 0;
+  padding: 8px 10px;
+  border: 1px solid $line;
+  background: rgba(10, 12, 10, 0.5);
+  font-size: 15px;
+
+  ul {
+    flex-wrap: wrap;
+  }
+}
+
+.meta {
+  margin-top: auto;
+  padding: 4px 16px 0;
+  @include label;
+  color: $text-dim;
+}
+
+.extra {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 0;
+  border-top: 1px solid $line;
+  background: $background-panel;
+  color: $yellow;
+  cursor: pointer;
+  font-family: $font-text;
+  font-weight: 700;
+  font-size: 16px;
+
+  svg {
+    width: 1em;
+    height: 1em;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(220, 229, 77, 0.12);
+    outline: none;
+  }
+}

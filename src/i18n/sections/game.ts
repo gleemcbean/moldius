@@ -329,8 +329,6 @@ export const gameFr = {
 		title: "La chasse continue",
 		text: "Le pointeur est libéré : votre champignon reste dans le manoir et peut être attaqué.",
 		resume: "Reprendre",
-		exitFullscreen: "Quitter le plein écran",
-		fullscreen: "Plein écran",
 		settings: "Paramètres",
 		leave: "Quitter la partie",
 		keyboardLock:
@@ -764,8 +762,6 @@ export const gameEn: typeof gameFr = {
 		title: "The hunt goes on",
 		text: "The pointer is released: your mushroom stays in the manor and can be attacked.",
 		resume: "Resume",
-		exitFullscreen: "Exit fullscreen",
-		fullscreen: "Fullscreen",
 		settings: "Settings",
 		leave: "Leave the game",
 		keyboardLock:

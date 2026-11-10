@@ -3,7 +3,6 @@ import type { LanternTint, Tagline } from "@shared/rewards";
 
 export const homeFr = {
 	yourMushroom: "Votre champignon",
-	otherNames: "Autres pseudonymes",
 	hatColor: "Couleur du chapeau",
 	hat: "Chapeau",
 	pattern: "Motif",
@@ -15,14 +14,30 @@ export const homeFr = {
 	noTagline: "Aucun",
 	daily: (theme: string) => `Mode de jeu du jour : ${theme}`,
 	dailyHint: "Même manoir pour tout le monde, un classement par jour",
+	play: "Jouer",
 	quickJoin: "Partie publique au hasard",
-	createPrivate: "Créer un lobby privé",
+	createPrivate: "Créer une partie privée",
 	createPrivateHint: (capacity: number) => `Jusqu'à ${capacity} joueurs`,
 	codePlaceholder: "CODE",
 	codeLabel: "Code du lobby privé",
 	joinFriends: "Rejoindre",
 	tutorial: "Tutoriel",
 	tutorialHint: "Dure environ 3 minutes",
+	modes: {
+		title: "Choisir un mode de jeu",
+		dailyText: (theme: string, facts: string) =>
+			`Variante du jour : « ${theme} ». ${facts}. Tous les joueurs parcourent le même manoir et leurs scores figurent dans un classement quotidien.`,
+		dailyFacts: (size: string, anomalies: string, minutes: string) =>
+			`Taille du manoir : ${size.toLowerCase()}, ${anomalies}, durée de ${minutes}`,
+		classic: "Partie classique",
+		classicText:
+			"Partie publique de deux à quatre joueurs dans un manoir généré pour l'occasion. Les anomalies se capturent en prononçant leur formule, objet occulte en main.",
+		daily: "Mode de jeu du jour",
+		tutorial: "Tutoriel",
+		tutorialText:
+			"Partie d'entraînement en solitaire. Elle présente les commandes, la lanterne, le grimoire et les objets occultes, puis guide une première capture.",
+		leaderboard: "Classement du jour",
+	},
 	friends: "Amis",
 	publicCount: (count: number, capacity: number) =>
 		`Lobby public : ${count}/${capacity}`,
@@ -43,7 +58,6 @@ export const homeFr = {
 
 export const homeEn: typeof homeFr = {
 	yourMushroom: "Your mushroom",
-	otherNames: "Other names",
 	hatColor: "Hat colour",
 	hat: "Hat",
 	pattern: "Pattern",
@@ -55,14 +69,30 @@ export const homeEn: typeof homeFr = {
 	noTagline: "None",
 	daily: (theme: string) => `Daily game mode: ${theme}`,
 	dailyHint: "Same manor for everyone, a new leaderboard each day",
+	play: "Play",
 	quickJoin: "Random public game",
-	createPrivate: "Create a private lobby",
+	createPrivate: "Create a private game",
 	createPrivateHint: (capacity: number) => `Up to ${capacity} players`,
 	codePlaceholder: "CODE",
 	codeLabel: "Private lobby code",
 	joinFriends: "Join",
 	tutorial: "Tutorial",
 	tutorialHint: "Takes about 3 minutes",
+	modes: {
+		title: "Choose a game mode",
+		dailyText: (theme: string, facts: string) =>
+			`Today's variant: "${theme}". ${facts}. Every player explores the same manor and scores are listed on a daily leaderboard.`,
+		dailyFacts: (size: string, anomalies: string, minutes: string) =>
+			`Manor size: ${size.toLowerCase()}, ${anomalies}, ${minutes} long`,
+		classic: "Classic game",
+		classicText:
+			"A public game for two to four players in a manor generated for the occasion. Anomalies are captured by saying their formula with their occult object in hand.",
+		daily: "Daily game mode",
+		tutorial: "Tutorial",
+		tutorialText:
+			"A solo practice game. It introduces the controls, the lantern, the grimoire and occult objects, then guides a first capture.",
+		leaderboard: "Today's leaderboard",
+	},
 	friends: "Friends",
 	publicCount: (count: number, capacity: number) =>
 		`Public lobby: ${count}/${capacity}`,

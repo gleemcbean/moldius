@@ -10,6 +10,7 @@ export function HomeBackdrop() {
 	const scene = useRef<HomeScene | null>(null);
 	const color = useStore(settingsStore, (state) => state.playerColor);
 	const pattern = useStore(settingsStore, (state) => state.playerPattern);
+	const lantern = useStore(settingsStore, (state) => state.playerLantern);
 	useEffect(() => {
 		const element = host.current;
 		if (!element) {
@@ -23,6 +24,7 @@ export function HomeBackdrop() {
 				element,
 				settings.playerColor,
 				settings.playerPattern,
+				settings.playerLantern,
 			);
 			scene.current.onFirstFrame = release;
 		} catch {
@@ -36,7 +38,7 @@ export function HomeBackdrop() {
 		};
 	}, []);
 	useEffect(() => {
-		scene.current?.setAppearance(color, pattern);
-	}, [color, pattern]);
+		scene.current?.setAppearance(color, pattern, lantern);
+	}, [color, pattern, lantern]);
 	return <div ref={host} className={styles.backdrop} aria-hidden="true" />;
 }

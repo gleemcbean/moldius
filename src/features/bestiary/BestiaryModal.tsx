@@ -4,9 +4,9 @@ import {
 	type SpeciesDefinition,
 	type SpeciesId,
 } from "@shared/config/species";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "../../components/Modal";
-import { type Messages, useT } from "../../i18n";
+import { type Messages, useLanguage, useT } from "../../i18n";
 import styles from "./BestiaryModal.module.scss";
 import { type BestiaryArt, loadBestiaryArt } from "./bestiaryArt";
 
@@ -56,7 +56,20 @@ function Gauge({ label, filled }: { label: string; filled: number }) {
 
 export function BestiaryModal({ onClose }: { onClose: () => void }) {
 	const t = useT();
-	const [selected, setSelected] = useState<SpeciesId>(ENABLED_SPECIES_IDS[0]);
+	const language = useLanguage();
+	// Par ordre alphabétique des noms, dans la langue du joueur.
+	const ordered = useMemo(
+		() =>
+			[...ENABLED_SPECIES_IDS].sort((a, b) =>
+				t.grimoire.species[a].name.localeCompare(
+					t.grimoire.species[b].name,
+					language,
+					{ sensitivity: "base" },
+				),
+			),
+		[t, language],
+	);
+	const [selected, setSelected] = useState<SpeciesId>(() => ordered[0]);
 	const [art, setArt] = useState<BestiaryArt | null>(null);
 	const page = useRef<HTMLElement>(null);
 
@@ -87,7 +100,7 @@ export function BestiaryModal({ onClose }: { onClose: () => void }) {
 		<Modal title={t.bestiary.title} onClose={onClose} wide>
 			<div className={styles.layout}>
 				<nav className={styles.index} aria-label={t.bestiary.index}>
-					{ENABLED_SPECIES_IDS.map((id) => {
+					{ordered.map((id) => {
 						const thumbnail = art?.get(id);
 						return (
 							<button
@@ -168,7 +181,6 @@ export function BestiaryModal({ onClose }: { onClose: () => void }) {
 						<h4>{t.bestiary.danger}</h4>
 						<p>{text.danger}</p>
 					</section>
-					<p className={styles.formula}>{t.bestiary.formula}</p>
 				</article>
 			</div>
 		</Modal>

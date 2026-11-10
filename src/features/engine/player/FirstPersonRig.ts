@@ -184,7 +184,7 @@ export class FirstPersonRig {
 		this.root.add(this.photoCamera.root);
 		this.rightArm = this.createArm();
 		this.leftArm = this.createArm();
-		this.fpLight = new THREE.PointLight(0xffb468, 0, 1.6, 2);
+		this.fpLight = new THREE.PointLight(lanternTint ?? 0xffb468, 0, 1.6, 2);
 		this.root.add(this.fpLight);
 		this.fpAmbient = new THREE.HemisphereLight(0xaaaaae, 0x4c4c4e, 1.25);
 		this.root.add(this.fpAmbient);
