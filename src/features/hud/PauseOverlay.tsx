@@ -28,16 +28,13 @@ export function PauseOverlay({ session }: { session: GameSession }) {
 				<Button variant="danger" wide onClick={leaveMatch}>
 					{t.game.pause.leave}
 				</Button>
-				{desktopApp ? (
-					<Button variant="ghost" wide onClick={() => desktopApp?.quit()}>
-						{t.home.quitGame}
-					</Button>
+				{!desktopApp ? (
+					<p className={styles.pauseHint}>
+						{keyboardLockSupported()
+							? t.game.pause.keyboardLock
+							: t.game.pause.noKeyboardLock}
+					</p>
 				) : null}
-				<p className={styles.pauseHint}>
-					{keyboardLockSupported()
-						? t.game.pause.keyboardLock
-						: t.game.pause.noKeyboardLock}
-				</p>
 			</SelectorGroup>
 		</div>
 	);
