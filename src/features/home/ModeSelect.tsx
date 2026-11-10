@@ -13,7 +13,7 @@ import {
 	startTutorial,
 } from "../lobby/lobbyClient";
 import { settingsStore } from "../settings/settingsStore";
-import { type GameMode, loadModeArt } from "./modeArt";
+import { type GameMode, loadModeArt } from "./modeArtLoader";
 import { PublicLobbyPreview } from "./PublicLobbyPreview";
 import styles from "./ModeSelect.module.scss";
 

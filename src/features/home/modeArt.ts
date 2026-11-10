@@ -533,36 +533,34 @@ function perform(stage: Stage, mode: GameMode, look: ModeArtLook): void {
 	}
 }
 
-function lookKey(look: ModeArtLook): string {
-	return `${look.color}-${look.pattern}-${look.lantern}`;
-}
-
-let cached: { key: string; art: Promise<Record<GameMode, string>> } | null =
-	null;
-
-/** Les trois images, une fois par apparence du joueur (il y figure). */
-export function loadModeArt(
-	look: ModeArtLook,
-): Promise<Record<GameMode, string>> {
-	const key = lookKey(look);
-	if (cached?.key !== key) {
-		const art = drawAll(look);
-		art.catch(() => {
-			if (cached?.art === art) {
-				cached = null;
-			}
-		});
-		cached = { key, art };
+/** La toile du rendu : hors écran dans le worker, un élément canvas sinon. */
+function createSurface(): {
+	canvas: HTMLCanvasElement | OffscreenCanvas;
+	snapshot: () => Promise<string>;
+} {
+	if (typeof document === "undefined") {
+		const canvas = new OffscreenCanvas(WIDTH, HEIGHT);
+		return {
+			canvas,
+			snapshot: async () =>
+				new FileReaderSync().readAsDataURL(
+					await canvas.convertToBlob({ type: "image/png" }),
+				),
+		};
 	}
-	return cached.art;
-}
-
-async function drawAll(look: ModeArtLook): Promise<Record<GameMode, string>> {
 	const canvas = document.createElement("canvas");
 	canvas.width = WIDTH;
 	canvas.height = HEIGHT;
+	return { canvas, snapshot: async () => canvas.toDataURL("image/png") };
+}
+
+/** Les trois images : à appeler dans modeArt.worker.ts, le thread principal n'est qu'un repli. */
+export async function drawModeArt(
+	look: ModeArtLook,
+): Promise<Record<GameMode, string>> {
+	const surface = createSurface();
 	const renderer = new THREE.WebGLRenderer({
-		canvas,
+		canvas: surface.canvas,
 		antialias: false,
 		powerPreference: "low-power",
 		preserveDrawingBuffer: true,
@@ -601,8 +599,10 @@ async function drawAll(look: ModeArtLook): Promise<Record<GameMode, string>> {
 			taken.add(shot.room.id);
 			const stage = new Stage(manor, kit, shot);
 			perform(stage, mode, look);
+			// Compilés en parallèle par le pilote (KHR_parallel_shader_compile) : le GPU ne se fige pas.
+			await renderer.compileAsync(stage.scene, stage.camera);
 			renderer.render(stage.scene, stage.camera);
-			result[mode] = canvas.toDataURL("image/png");
+			result[mode] = await surface.snapshot();
 			stage.dispose();
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		}

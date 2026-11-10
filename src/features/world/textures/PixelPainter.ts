@@ -26,8 +26,35 @@ function clampByte(value: number): number {
 	return value < 0 ? 0 : value > 255 ? 255 : Math.round(value);
 }
 
+export type PaintCanvas = HTMLCanvasElement | OffscreenCanvas;
+type PaintContext =
+	| CanvasRenderingContext2D
+	| OffscreenCanvasRenderingContext2D;
+
+/** Hors du DOM (dans un worker), une toile hors écran. */
+function createCanvas(
+	width: number,
+	height: number,
+): { canvas: PaintCanvas; context: PaintContext } {
+	if (typeof document === "undefined") {
+		const canvas = new OffscreenCanvas(width, height);
+		const context = canvas.getContext("2d", {
+			willReadFrequently: true,
+		}) as OffscreenCanvasRenderingContext2D;
+		return { canvas, context };
+	}
+	const canvas = document.createElement("canvas");
+	canvas.width = width;
+	canvas.height = height;
+	const context = canvas.getContext("2d", {
+		willReadFrequently: true,
+	}) as CanvasRenderingContext2D;
+	return { canvas, context };
+}
+
 export class PixelPainter {
-	readonly canvas: HTMLCanvasElement;
+	readonly canvas: PaintCanvas;
+	readonly context: PaintContext;
 	readonly data: ImageData;
 	readonly rng: SeededRandom;
 
@@ -36,18 +63,11 @@ export class PixelPainter {
 		readonly height: number,
 		seed: number,
 	) {
-		this.canvas = document.createElement("canvas");
-		this.canvas.width = width;
-		this.canvas.height = height;
-		const context = this.canvas.getContext("2d", {
-			willReadFrequently: true,
-		}) as CanvasRenderingContext2D;
+		const { canvas, context } = createCanvas(width, height);
+		this.canvas = canvas;
+		this.context = context;
 		this.data = context.createImageData(width, height);
 		this.rng = new SeededRandom(seed);
-	}
-
-	get context(): CanvasRenderingContext2D {
-		return this.canvas.getContext("2d") as CanvasRenderingContext2D;
 	}
 
 	set(x: number, y: number, color: RGB, alpha = 255): void {
@@ -221,7 +241,7 @@ export class PixelPainter {
 		}
 	}
 
-	commit(): HTMLCanvasElement {
+	commit(): PaintCanvas {
 		this.context.putImageData(this.data, 0, 0);
 		return this.canvas;
 	}
