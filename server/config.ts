@@ -15,7 +15,6 @@ export interface ServerConfig {
 	projectRoot: string;
 	clientDistDir: string;
 	sourceArchivePath: string;
-	/** Où l'installateur Windows de l'application de bureau est déposé (desktop/release). */
 	desktopReleaseDir: string;
 	trustProxy: boolean;
 	dev: boolean;

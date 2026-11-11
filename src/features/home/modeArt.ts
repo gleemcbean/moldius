@@ -1,11 +1,14 @@
-import type { HatPattern } from "@shared/hatPatterns";
+import { DEFAULT_HAT_PATTERN, type HatPattern } from "@shared/hatPatterns";
 import { generateManor } from "@shared/manor/generateManor";
 import type { ManorLayout, Room, RoomType } from "@shared/manor/types";
 import { PUBLIC_MATCH_CONFIG } from "@shared/matchConfig";
 import { NavGrid } from "@shared/navigation/navGrid";
 import { CollisionWorld } from "@shared/physics/collisionWorld";
 import { lineOfSight } from "@shared/physics/lineOfSight";
-import { PLAYER_COLOR_CHOICES } from "@shared/playerColors";
+import {
+	DEFAULT_PLAYER_COLOR,
+	PLAYER_COLOR_CHOICES,
+} from "@shared/playerColors";
 import * as THREE from "three";
 import { DoorViews } from "../engine/world/DoorViews";
 import type { AnomalyModel } from "../models/anomalies/AnomalyModel";
@@ -16,14 +19,11 @@ import { ManorMeshBuilder } from "../world/ManorMeshBuilder";
 import { MaterialLibrary } from "../world/MaterialLibrary";
 import { TextureLibrary } from "../world/textures/TextureLibrary";
 
-export type GameMode = "classic" | "daily" | "tutorial";
+// Les illustrations des modes de jeu, prégénérées : le jeu n'affiche que les PNG de ./art.
+// Pour les refaire (manoir, modèles ou textures changés) : `npm run dev:client`,
+// ouvrir /scripts/mode-art.html et remplacer les trois images par celles téléchargées.
 
-export interface ModeArtLook {
-	color: number;
-	pattern: HatPattern;
-	/** La couleur de la flamme (null : celle d'origine). */
-	lantern: number | null;
-}
+export type GameMode = "classic" | "daily" | "tutorial";
 
 /** Petites images, agrandies sans lissage : le même grain que le jeu. */
 const WIDTH = 168;
@@ -34,6 +34,13 @@ const LIGHT_SCALE = 4.2;
 const ART_SEED = 0x5eed42;
 
 type Look = { color: number; pattern: HatPattern; lantern?: number | null };
+
+/** Le champignon de base, celui d'un nouveau joueur. */
+const BASE_LOOK: Look = {
+	color: DEFAULT_PLAYER_COLOR,
+	pattern: DEFAULT_HAT_PATTERN,
+	lantern: null,
+};
 
 /** Les autres chasseurs des illustrations, chacun son chapeau. */
 const COMPANIONS: Look[] = [
@@ -501,7 +508,7 @@ function stageFor(
 	return null;
 }
 
-function perform(stage: Stage, mode: GameMode, look: ModeArtLook): void {
+function perform(stage: Stage, mode: GameMode): void {
 	for (const member of CASTS[mode]) {
 		if (member.kind === "monster") {
 			stage.addMonster(member.species, member, member.state);
@@ -518,7 +525,7 @@ function perform(stage: Stage, mode: GameMode, look: ModeArtLook): void {
 			}
 		} else {
 			const model = stage.addMushroom(
-				member.kind === "self" ? look : member.look,
+				member.kind === "self" ? BASE_LOOK : member.look,
 				member,
 				member.kind === "self"
 					? { grimoire: member.grimoire, run: member.run }
@@ -533,34 +540,13 @@ function perform(stage: Stage, mode: GameMode, look: ModeArtLook): void {
 	}
 }
 
-/** La toile du rendu : hors écran dans le worker, un élément canvas sinon. */
-function createSurface(): {
-	canvas: HTMLCanvasElement | OffscreenCanvas;
-	snapshot: () => Promise<string>;
-} {
-	if (typeof document === "undefined") {
-		const canvas = new OffscreenCanvas(WIDTH, HEIGHT);
-		return {
-			canvas,
-			snapshot: async () =>
-				new FileReaderSync().readAsDataURL(
-					await canvas.convertToBlob({ type: "image/png" }),
-				),
-		};
-	}
+/** Les trois images en PNG (data URL), pour scripts/mode-art.html : jamais dans le jeu. */
+export async function drawModeArt(): Promise<Record<GameMode, string>> {
 	const canvas = document.createElement("canvas");
 	canvas.width = WIDTH;
 	canvas.height = HEIGHT;
-	return { canvas, snapshot: async () => canvas.toDataURL("image/png") };
-}
-
-/** Les trois images : à appeler dans modeArt.worker.ts, le thread principal n'est qu'un repli. */
-export async function drawModeArt(
-	look: ModeArtLook,
-): Promise<Record<GameMode, string>> {
-	const surface = createSurface();
 	const renderer = new THREE.WebGLRenderer({
-		canvas: surface.canvas,
+		canvas,
 		antialias: false,
 		powerPreference: "low-power",
 		preserveDrawingBuffer: true,
@@ -598,11 +584,9 @@ export async function drawModeArt(
 			}
 			taken.add(shot.room.id);
 			const stage = new Stage(manor, kit, shot);
-			perform(stage, mode, look);
-			// Compilés en parallèle par le pilote (KHR_parallel_shader_compile) : le GPU ne se fige pas.
-			await renderer.compileAsync(stage.scene, stage.camera);
+			perform(stage, mode);
 			renderer.render(stage.scene, stage.camera);
-			result[mode] = await surface.snapshot();
+			result[mode] = canvas.toDataURL("image/png");
 			stage.dispose();
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		}

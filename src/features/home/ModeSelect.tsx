@@ -1,10 +1,7 @@
 import { dailyChallenge, formatDailyCountdown } from "@shared/dailyChallenge";
-import { DEFAULT_LANTERN_TINT, LANTERN_TINT_COLORS } from "@shared/rewards";
-import { useEffect, useState } from "react";
 import { openOverlay } from "../../app/appStore";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
-import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
 import { useDailyClock } from "../daily/useDailyClock";
 import {
@@ -12,10 +9,19 @@ import {
 	quickJoin,
 	startTutorial,
 } from "../lobby/lobbyClient";
-import { settingsStore } from "../settings/settingsStore";
-import { type GameMode, loadModeArt } from "./modeArtLoader";
+import classicArt from "./art/classic.png";
+import dailyArt from "./art/daily.png";
+import tutorialArt from "./art/tutorial.png";
+import type { GameMode } from "./modeArt";
 import { PublicLobbyPreview } from "./PublicLobbyPreview";
 import styles from "./ModeSelect.module.scss";
+
+/** Prégénérées par modeArt.ts (voir scripts/mode-art.html) : rien n'est rendu en jeu. */
+const ART: Record<GameMode, string> = {
+	classic: classicArt,
+	daily: dailyArt,
+	tutorial: tutorialArt,
+};
 
 /** Le choix du mode de jeu, après « Jouer » : partie classique, mode du jour ou tutoriel. */
 export function ModeSelect({
@@ -29,28 +35,9 @@ export function ModeSelect({
 }) {
 	const t = useT();
 	const labels = t.home.modes;
-	const color = useStore(settingsStore, (state) => state.playerColor);
-	const pattern = useStore(settingsStore, (state) => state.playerPattern);
-	const lantern = useStore(settingsStore, (state) => state.playerLantern);
 	const { date, remainingMs } = useDailyClock();
 	const challenge = dailyChallenge(date);
 	const theme = t.daily.themes[challenge.theme];
-	const [art, setArt] = useState<Record<GameMode, string> | null>(null);
-
-	useEffect(() => {
-		let alive = true;
-		loadModeArt({
-			color,
-			pattern,
-			lantern:
-				lantern === DEFAULT_LANTERN_TINT ? null : LANTERN_TINT_COLORS[lantern],
-		})
-			.then((drawn) => alive && setArt(drawn))
-			.catch(() => {});
-		return () => {
-			alive = false;
-		};
-	}, [color, pattern, lantern]);
 
 	const start = (mode: GameMode) => {
 		onClose();
@@ -109,11 +96,8 @@ export function ModeSelect({
 							data-selectable=""
 						>
 							<span className={styles.art}>
-								{art ? (
-									<img src={art[card.mode]} alt="" />
-								) : (
-									<span className={styles.sketching}>{t.bestiary.drawing}</span>
-								)}
+								<img src={ART[card.mode]} alt="" />
+
 							</span>
 							<span className={styles.title}>{card.title}</span>
 							<span className={styles.text}>{card.text}</span>

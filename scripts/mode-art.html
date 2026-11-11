@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Illustrations des modes</title>
+		<style>
+			body {
+				margin: 24px;
+				background: #140c07;
+				color: #e8dccb;
+				font-family: system-ui, sans-serif;
+			}
+			main {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 24px;
+			}
+			figure {
+				margin: 0;
+				text-align: center;
+			}
+			img {
+				display: block;
+				width: 336px;
+				image-rendering: pixelated;
+			}
+			a {
+				color: #ffb060;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- Outil de développement : servi par Vite en dev, absent du build. -->
+		<p id="status">Rendu en cours…</p>
+		<main id="art"></main>
+		<script type="module">
+			import { drawModeArt } from "/src/features/home/modeArt.ts";
+
+			const status = document.getElementById("status");
+			try {
+				const art = await drawModeArt();
+				for (const [mode, url] of Object.entries(art)) {
+					const figure = document.createElement("figure");
+					const image = document.createElement("img");
+					image.src = url;
+					image.alt = mode;
+					const link = document.createElement("a");
+					link.href = url;
+					link.download = `${mode}.png`;
+					link.textContent = `${mode}.png`;
+					const caption = document.createElement("figcaption");
+					caption.append(link);
+					figure.append(image, caption);
+					document.getElementById("art").append(figure);
+				}
+				status.textContent =
+					"Téléchargez les trois images et remplacez celles de src/features/home/art/.";
+			} catch (error) {
+				status.textContent = `Échec : ${error}`;
+				throw error;
+			}
+		</script>
+	</body>
+</html>

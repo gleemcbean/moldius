@@ -19,7 +19,14 @@ const DOME_SAMPLES = 3;
 /** Ces motifs rayonnent depuis le sommet : à plat, ils ne ressembleraient à rien. */
 const DOME_PATTERNS: ReadonlySet<HatPattern> = new Set(["web", "mycelium"]);
 
-function drawOnDome(context: CanvasRenderingContext2D, from: ImageData): void {
+function drawOnDome(
+	context: CanvasRenderingContext2D,
+	source: HTMLCanvasElement,
+): void {
+	const from = source.getContext("2d")?.getImageData(0, 0, 64, 32);
+	if (!from) {
+		return;
+	}
 	const image = context.createImageData(WIDTH, HEIGHT);
 	const cos = Math.cos(DOME_TILT);
 	const sin = Math.sin(DOME_TILT);
@@ -89,7 +96,7 @@ export function HatPreview({
 		const source = painter.commit();
 		context.clearRect(0, 0, WIDTH, HEIGHT);
 		if (DOME_PATTERNS.has(pattern)) {
-			drawOnDome(context, painter.data);
+			drawOnDome(context, source);
 			return;
 		}
 		context.save();

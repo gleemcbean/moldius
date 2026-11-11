@@ -85,7 +85,7 @@ export function createApp(
 	});
 
 	// L'installateur Windows le plus récent de l'application de bureau.
-	app.get("/download/MOLDIUS-Setup.exe", (_request, response) => {
+	app.get("/download/Moldius-Setup.exe", (_request, response) => {
 		const installer = latestInstaller(config.desktopReleaseDir);
 		if (!installer) {
 			response.status(404).json({ error: "Installateur indisponible." });
@@ -101,34 +101,6 @@ export function createApp(
 		);
 		response.setHeader("Cache-Control", "no-cache");
 		response.sendFile(installer);
-	});
-
-	app.get("/download/mycelium-source.zip", (_request, response) => {
-		const sendArchive = (send: () => void) => {
-			response.setHeader("Content-Type", "application/zip");
-			response.setHeader(
-				"Content-Disposition",
-				'attachment; filename="mycelium-source.zip"',
-			);
-			send();
-		};
-		if (existsSync(config.sourceArchivePath)) {
-			sendArchive(() => response.sendFile(config.sourceArchivePath));
-			return;
-		}
-		if (
-			existsSync(resolve(config.projectRoot, "src")) &&
-			existsSync(resolve(config.projectRoot, "server"))
-		) {
-			sendArchive(() =>
-				response.send(createZip(sourceEntries(config.projectRoot))),
-			);
-			return;
-		}
-		response.status(404).json({
-			error:
-				"Archive des sources indisponible : exécutez npm run export:source.",
-		});
 	});
 
 	if (existsSync(config.clientDistDir)) {
@@ -149,8 +121,6 @@ export function createApp(
 						basename(dirname(path)) === "vosk"
 					) {
 						response.setHeader("Content-Security-Policy", SPEECH_WORKER_POLICY);
-						// Même adresse d'une version à l'autre : sans revalidation, l'application de
-						// bureau (qui ne se recharge pas) et Cloudflare gardent l'ancien sept jours.
 						response.setHeader("Cache-Control", "no-cache");
 					}
 				},
@@ -172,13 +142,12 @@ export function createApp(
 	return { app, dispose: accountRouter.dispose };
 }
 
-/** Le plus récent des MOLDIUS-Setup-<version>.exe du dossier, s'il y en a un. */
 export function latestInstaller(directory: string): string | null {
 	if (!existsSync(directory)) {
 		return null;
 	}
 	const candidates = readdirSync(directory)
-		.filter((name) => /^MOLDIUS-Setup-[\w.-]+\.exe$/.test(name))
+		.filter((name) => /^Moldius-Setup-[\w.-]+\.exe$/.test(name))
 		.map((name) => resolve(directory, name))
 		.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
 	return candidates[0] ?? null;

@@ -1,11 +1,7 @@
 import { desktopApp } from "../../app/desktopApp";
 import { createStore } from "../../utils/store";
 
-/**
- * L'application de bureau (desktop/) remplace l'ancienne application web installable :
- * le bouton d'installation télécharge l'installateur Windows, quand le serveur en a un.
- */
-export const DESKTOP_DOWNLOAD_URL = "/download/MOLDIUS-Setup.exe";
+export const DESKTOP_DOWNLOAD_URL = "/download/Moldius-Setup.exe";
 
 export const installStore = createStore({ available: false });
 
@@ -14,7 +10,6 @@ function onWindows(): boolean {
 }
 
 export function initInstall(): void {
-	// L'ancien service worker de l'application web est retiré chez ceux qui l'avaient.
 	if ("serviceWorker" in navigator) {
 		void navigator.serviceWorker
 			.getRegistrations()
@@ -25,10 +20,11 @@ export function initInstall(): void {
 			})
 			.catch(() => undefined);
 	}
-	// Déjà dans l'application, ou pas sous Windows : rien à proposer.
+
 	if (desktopApp || !onWindows()) {
 		return;
 	}
+
 	void fetch(DESKTOP_DOWNLOAD_URL, { method: "HEAD", cache: "no-store" })
 		.then((response) => {
 			if (response.ok) {
