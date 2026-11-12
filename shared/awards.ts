@@ -19,7 +19,6 @@ export const AWARD_IDS = [
 
 export type AwardId = (typeof AWARD_IDS)[number];
 
-/** Le titre de consolation : il ne compte pas pour débloquer des récompenses. */
 export const AWARD_FALLBACK: AwardId = "tourist";
 
 export interface MatchAward {

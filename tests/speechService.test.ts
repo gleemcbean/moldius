@@ -10,7 +10,6 @@ import {
 	SpeechService,
 } from "../server/speech/SpeechService.js";
 
-// Les modèles ne sont pas dans le dépôt (npm run vosk:setup) : sans eux, rien à tester.
 const directory = findVoskDirectory([
 	resolve(import.meta.dirname, "../public/vosk"),
 ]);
@@ -64,7 +63,6 @@ describe("reconnaissance vocale serveur", () => {
 			for (let index = 0; index < 5; index += 1) {
 				service.audio(listener, "s1", block);
 			}
-			// Bloc invalide (taille impaire) : réponse vide, mais réponse quand même.
 			service.audio(listener, "s1", Buffer.alloc(3));
 			service.end(listener, "s1");
 			await until(() => listener.replies.length >= 7);
@@ -72,7 +70,6 @@ describe("reconnaissance vocale serveur", () => {
 			expect(listener.replies).toHaveLength(7);
 			expect(listener.replies.every((reply) => reply.id === "s1")).toBe(true);
 			expect(listener.replies.at(-1)?.event).toBe("result");
-			// L'écoute est close : un nouvel « end » ne l'attend plus.
 			service.end(listener, "s1");
 			await until(() => listener.replies.length === 8);
 			expect(listener.replies.at(-1)).toMatchObject({ event: "error" });

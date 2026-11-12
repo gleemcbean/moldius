@@ -6,6 +6,7 @@ import { bestiaryEn, bestiaryFr } from "./sections/bestiary";
 import { challengesEn, challengesFr } from "./sections/challenges";
 import { commonEn, commonFr } from "./sections/common";
 import { dailyEn, dailyFr } from "./sections/daily";
+import { discordEn, discordFr } from "./sections/discord";
 import { friendsEn, friendsFr } from "./sections/friends";
 import { gameEn, gameFr } from "./sections/game";
 import { grimoireEn, grimoireFr } from "./sections/grimoire";
@@ -25,6 +26,7 @@ const fr = {
 	settings: settingsFr,
 	account: accountFr,
 	friends: friendsFr,
+	discord: discordFr,
 	game: gameFr,
 	grimoire: grimoireFr,
 	bestiary: bestiaryFr,
@@ -44,6 +46,7 @@ const en: Messages = {
 	settings: settingsEn,
 	account: accountEn,
 	friends: friendsEn,
+	discord: discordEn,
 	game: gameEn,
 	grimoire: grimoireEn,
 	bestiary: bestiaryEn,

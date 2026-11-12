@@ -134,7 +134,6 @@ export function HomeScreen() {
 							if (!ready) {
 								return;
 							}
-							// Sans code, le bouton crée une partie privée ; avec, il la rejoint.
 							if (code.length === 0) {
 								createPrivateLobby(trimmed);
 							} else if (codeValid) {

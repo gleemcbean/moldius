@@ -16,7 +16,6 @@ export function HomeBackdrop() {
 		if (!element) {
 			return;
 		}
-		// L'écran de chargement attend la première image du décor, shaders compilés.
 		const release = holdBoot();
 		try {
 			const settings = settingsStore.get();

@@ -13,10 +13,8 @@ const HEIGHT = 36;
 const DOME_RADIUS = 31;
 const DOME_BASE = HEIGHT - 4;
 const DOME_TILT = 0.6;
-/** Le chapeau enroule la texture deux fois : voir latheGeometry dans MushroomModel. */
 const DOME_WRAPS = 2;
 const DOME_SAMPLES = 3;
-/** Ces motifs rayonnent depuis le sommet : à plat, ils ne ressembleraient à rien. */
 const DOME_PATTERNS: ReadonlySet<HatPattern> = new Set(["web", "mycelium"]);
 
 function drawOnDome(
@@ -32,7 +30,6 @@ function drawOnDome(
 	const sin = Math.sin(DOME_TILT);
 	for (let y = 0; y < HEIGHT; y += 1) {
 		for (let x = 0; x < WIDTH; x += 1) {
-			// Plusieurs points par pixel : un fil fin reste continu une fois réduit.
 			const sum = [0, 0, 0, 0];
 			for (let sub = 0; sub < DOME_SAMPLES * DOME_SAMPLES; sub += 1) {
 				const offsetX = ((sub % DOME_SAMPLES) + 0.5) / DOME_SAMPLES;

@@ -23,6 +23,8 @@ export const friendsFr = {
 	empty: "Aucun ami pour l'instant : partagez votre code ami.",
 	invite: "Inviter",
 	invited: "Invité",
+	join: "Rejoindre",
+	discordBadge: "Ami Discord",
 	remove: "Retirer",
 	removeConfirm: "Confirmer",
 	status: {
@@ -62,6 +64,8 @@ export const friendsEn: typeof friendsFr = {
 	empty: "No friends yet: share your friend code.",
 	invite: "Invite",
 	invited: "Invited",
+	join: "Join",
+	discordBadge: "Discord friend",
 	remove: "Remove",
 	removeConfirm: "Confirm",
 	status: {

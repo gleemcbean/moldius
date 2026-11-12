@@ -2,7 +2,6 @@ import { INCANTATION_VOCABULARY } from "@shared/anomalies/vocabulary";
 import type { Language } from "@shared/i18n/languages";
 import { VOSK_SPOKEN_FORMS } from "./voskForms";
 
-/** Le bruit et les phrases ordinaires tombent dans « [unk] » plutôt que dans une formule. */
 const UNKNOWN = "[unk]";
 const MAX_PHRASES = 3000;
 
@@ -11,12 +10,6 @@ function formsOf(language: Language, word: string): readonly string[] {
 	return forms && forms.length > 0 ? forms : [word];
 }
 
-/**
- * La grammaire Vosk d'une partie : chaque formule, dite avec les mots que le modèle connaît
- * (voir voskForms.ts), plus « [unk] ». Contraint ainsi, Vosk choisit la formule la plus proche
- * de ce qu'il entend au lieu d'inventer des mots anglais ou français. Sans formule connue,
- * tout le vocabulaire des incantations.
- */
 export function voskGrammar(
 	language: Language,
 	formulas: readonly (readonly string[])[],

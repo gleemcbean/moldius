@@ -6,8 +6,6 @@ import {
 import { INCANTATION_VOCABULARY } from "../shared/anomalies/vocabulary.js";
 import { SeededRandom } from "../shared/random.js";
 
-// Le code client se charge à l'exécution, comme dans les autres tests : il n'entre pas
-// dans le typage NodeNext des tests.
 type Forms = Record<"fr" | "en", Readonly<Record<string, readonly string[]>>>;
 const clientRoot = "../src/features/voice";
 const { VOSK_SPOKEN_FORMS } = (await import(`${clientRoot}/voskForms.ts`)) as {

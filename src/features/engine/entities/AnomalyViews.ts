@@ -139,14 +139,12 @@ interface View {
 	stepPhase: number;
 	voice: VoicePlayback | null;
 	nextVoiceAt: number;
-	/** Le pentacle qui s'allume sous le monstre quand on tient son objet occulte à portée. */
 	pentacle: Pentacle | null;
 	resonance: number;
 	sparkClock: number;
 }
 
 const TAG_RANGE = 11;
-/** La résonance monte sur ce dernier mètre et demi avant la limite de capture. */
 const RESONANCE_FADE = 1.5;
 const RESONANCE_REACH = CAPTURE_MAX_RANGE + 0.35;
 const DOUBLE_VOICE_MIN_GAP = 7;
@@ -360,10 +358,6 @@ export class AnomalyViews {
 		}
 	}
 
-	/**
-	 * L'objet occulte tenu face aux monstres qu'il capture : un pentacle s'allume sous chacun
-	 * d'eux à portée de capture. Rend la résonance la plus forte, pour l'aura de l'objet.
-	 */
 	resonate(held: OccultId | null, eye: THREE.Vector3, dt: number): number {
 		let strongest = 0;
 		for (const view of this.views.values()) {
@@ -438,7 +432,6 @@ export class AnomalyViews {
 		}
 	}
 
-	/** Le monstre capturé quitte sa vue : le rituel le garde le temps de l'entraîner sous terre. */
 	private startRitual(view: View): void {
 		const info = view.info;
 		if (!info) {
@@ -583,7 +576,6 @@ export class AnomalyViews {
 		}
 	}
 
-	/** Ce que la carte doit montrer : les Doubles encore déguisés et qui ils imitent. */
 	disguises(): DisguiseBody[] {
 		const bodies: DisguiseBody[] = [];
 		for (const view of this.views.values()) {
@@ -606,10 +598,6 @@ export class AnomalyViews {
 		return bodies;
 	}
 
-	/**
-	 * On ne peut pas se croiser soi-même : si le Double imite celui qui regarde,
-	 * il prend pour lui les traits d'un autre joueur vivant, le plus loin possible.
-	 */
 	private impersonate(
 		anomalyId: number,
 		mimic: string | null,
@@ -644,7 +632,6 @@ export class AnomalyViews {
 		return standIn;
 	}
 
-	/** En fin de partie, la voix prêtée au Double n'est plus ni gardée ni rejouée. */
 	silenceVoices(): void {
 		if (this.voicesSilenced) {
 			return;
@@ -667,7 +654,6 @@ export class AnomalyViews {
 		);
 	}
 
-	/** Reprend ce qui se voit et s'entend chez le joueur imité : lanterne, pas et voix. */
 	private updateDisguise(
 		view: View,
 		impersonated: string | null,
@@ -838,7 +824,6 @@ export class AnomalyViews {
 		this.releaseExtras(view);
 	}
 
-	/** Tout ce qui accompagne le modèle : cercle de l'Archiviste, nom d'emprunt, pentacle. */
 	private releaseExtras(view: View): void {
 		if (view.pentacle) {
 			this.group.remove(view.pentacle.mesh);
@@ -1035,7 +1020,6 @@ export class AnomalyViews {
 		if (event.type === "capture") {
 			const view = this.views.get(event.anomalyId);
 			if (view && view.gen === event.gen) {
-				// Celui qui capture entend déjà le son de la réussite (CastController).
 				if (view.info && event.playerId !== this.state.selfId) {
 					soundBank.play("capture", {
 						position: view.info.center,

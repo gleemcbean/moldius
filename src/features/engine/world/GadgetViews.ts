@@ -6,7 +6,6 @@ import type { DynamicLight } from "../lighting/LightPool";
 const VISIBLE_RANGE = 26;
 const BLINK_SECONDS = 1.1;
 
-/** Talkies et appareils photo posés dans le manoir, qui clignotent pour qu'on les trouve. */
 export class GadgetViews {
 	readonly group = new THREE.Group();
 	private readonly template: THREE.Group;

@@ -69,7 +69,6 @@ const THEME_RULES: Record<
 
 const DAY_MS = 86_400_000;
 
-/** Le mode change à minuit UTC : tout le monde joue le même, où qu'il soit. */
 export function dailyDateKey(now: number): string {
 	return new Date(now).toISOString().slice(0, 10);
 }
@@ -102,7 +101,6 @@ export interface DailyChallenge {
 
 export function dailyChallenge(date: string): DailyChallenge {
 	const day = Math.floor(Date.parse(`${date}T00:00:00Z`) / DAY_MS);
-	// 3 et 7 sont premiers entre eux : tous les thèmes passent, jamais deux fois de suite.
 	const theme = DAILY_THEMES[(day * 3) % DAILY_THEMES.length];
 	const { species, ...rules } = THEME_RULES[theme];
 	const config: MatchConfig = {

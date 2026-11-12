@@ -84,7 +84,6 @@ export function createApp(
 		});
 	});
 
-	// L'installateur Windows le plus récent de l'application de bureau.
 	app.get("/download/Moldius-Setup.exe", (_request, response) => {
 		const installer = latestInstaller(config.desktopReleaseDir);
 		if (!installer) {

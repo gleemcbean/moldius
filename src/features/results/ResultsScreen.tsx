@@ -30,12 +30,10 @@ import styles from "./ResultsScreen.module.scss";
 
 type LobbyLookup = (playerId: string) => LobbyPlayerInfo | undefined;
 
-/** Le rang d'entrée en scène : chaque bloc apparaît un peu après le précédent. */
 function reveal(order: number): CSSProperties {
 	return { "--reveal": order } as CSSProperties;
 }
 
-/** La place d'un joueur, ou celle de son équipe : les ex æquo partagent la même. */
 function placeOf(results: MatchResults, entry: MatchResultEntry): number {
 	if (results.teams.length > 0) {
 		const team = results.teams.find((standing) => standing.team === entry.team);
@@ -72,7 +70,6 @@ function PlayerName({
 	);
 }
 
-/** Les trois premiers sur leurs marches, le vainqueur au milieu. */
 function Podium({
 	results,
 	lookup,
@@ -119,7 +116,6 @@ function Podium({
 	);
 }
 
-/** En équipes : une carte par équipe, la gagnante couronnée. */
 function TeamBanner({ results }: { results: MatchResults }) {
 	const t = useT();
 	const labels = t.game.results;
@@ -279,7 +275,6 @@ export function ResultsScreen() {
 			? matchXp({ score: selfEntry.score, won: selfWon })
 			: 0;
 	const xpBefore = progressBefore.current?.xp ?? 0;
-	// Le compte rechargé après la partie compte déjà l'expérience : on ne l'ajoute qu'une fois.
 	const afterXp = Math.max(progress?.xp ?? 0, xpBefore + gained);
 	const unlocked = newlyUnlocked(
 		progressBefore.current,

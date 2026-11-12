@@ -105,10 +105,6 @@ function plannedRooms(
 	return rooms;
 }
 
-/**
- * Le réglage par joueur vaut pour le manoir des parties publiques : la quantité
- * suit ensuite le nombre de salles prévues, pour garder la même densité.
- */
 export function pickupTotal(config: MatchConfig, players: number): number {
 	const scale = plannedRooms(config) / plannedRooms(PUBLIC_MATCH_CONFIG);
 	return Math.max(

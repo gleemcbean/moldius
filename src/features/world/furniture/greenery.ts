@@ -37,7 +37,6 @@ function leafCard(
 	return { geometry, material };
 }
 
-/** Lianes qui descendent en zigzag, garnies de feuilles. */
 function strand(
 	material: MaterialOptions,
 	rng: { next(): number; range(a: number, b: number): number },
@@ -80,7 +79,6 @@ function strand(
 	return parts;
 }
 
-/** Lierre accroché à un mur. */
 export const ivyWall: FurnitureBuilder = ({ item, rng }) => {
 	const material = leafMaterial(rng, "leafSprig");
 	const parts: Part[] = [];
@@ -102,7 +100,6 @@ export const ivyWall: FurnitureBuilder = ({ item, rng }) => {
 	return parts;
 };
 
-/** Plante qui retombe d'un garde-corps dans le vide, côté +z. */
 export const railVine: FurnitureBuilder = ({ item, rng }) => {
 	const material = leafMaterial(rng, "leafSprig");
 	const parts: Part[] = [];
@@ -126,7 +123,6 @@ export const railVine: FurnitureBuilder = ({ item, rng }) => {
 	return parts;
 };
 
-/** Liane enroulée autour d'un pilier, de bas en haut. */
 export const climbingVine: FurnitureBuilder = ({ item, rng }) => {
 	const material = leafMaterial(rng, "leafSprig");
 	const parts: Part[] = [];
@@ -160,7 +156,6 @@ export const climbingVine: FurnitureBuilder = ({ item, rng }) => {
 	return parts;
 };
 
-/** Fougère dans un panier suspendu au plafond. */
 export const hangingFern: FurnitureBuilder = ({ item, rng }) => {
 	const material = leafMaterial(rng, "leafBlade");
 	const basket = 0.22;
@@ -214,7 +209,6 @@ export const hangingFern: FurnitureBuilder = ({ item, rng }) => {
 	return parts;
 };
 
-/** Grand palmier dans un pot de terre cuite. */
 export const palmTree: FurnitureBuilder = ({ item, rng }) => {
 	const material = leafMaterial(rng, "palmFrond");
 	const potRadius = item.width * 0.36;

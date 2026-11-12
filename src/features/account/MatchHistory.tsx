@@ -21,7 +21,6 @@ import detail from "./MatchHistory.module.scss";
 
 type HistoryLabels = Messages["account"]["history"];
 
-/** Les mesures montrées dans « Vos chiffres », dans cet ordre. */
 const SHOWN_METRICS = CHALLENGE_METRICS.filter(
 	(
 		metric,
@@ -48,7 +47,6 @@ function modeLabel(t: Messages, entry: MatchHistoryEntry): string {
 	return entry.visibility === "private" ? labels.private : labels.public;
 }
 
-/** En équipes, la place est celle de l'équipe : « 1er sur 4 » serait faux à deux équipes. */
 function placeLabel(labels: HistoryLabels, entry: MatchHistoryEntry): string {
 	const rank = labels.rankLabel(entry.rank);
 	return entry.teamCount > 0

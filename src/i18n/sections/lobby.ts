@@ -23,6 +23,10 @@ export const lobbyFr = {
 		`${count} / ${capacity} joueurs`,
 	copyCode: "Copier le lien d'invitation",
 	codeLabel: "Code à partager",
+	openToFriends: "Ouvert aux amis",
+	openToFriendsHint:
+		"Vos amis rejoignent sans code, depuis leur liste d'amis ou votre statut Discord.",
+	openToFriendsGuest: "Les amis de l'hôte peuvent rejoindre sans code.",
 	publicNote: (minPlayers: number) =>
 		`Les joueurs sont répartis au hasard. La partie démarre quand tout le monde est prêt${minPlayers > 1 ? `, à partir de ${minPlayers} joueurs` : ""}.`,
 	you: "vous",
@@ -133,6 +137,11 @@ export const lobbyFr = {
 		"friend-offline": "Cet ami n'est pas en ligne.",
 		"friend-busy": "Cet ami est déjà en partie ou dans ce lobby.",
 		"lobby-not-invitable": "Rejoignez un lobby en attente pour inviter un ami.",
+		"lobby-friends-only": "Ce lobby est réservé aux amis de son hôte.",
+		"discord-not-linked":
+			"Liez votre compte Discord à votre compte de jeu pour synchroniser vos amis.",
+		"discord-mismatch":
+			"Ce compte Discord n'est pas celui lié à votre compte de jeu.",
 	} satisfies Record<LobbyErrorCode, string>,
 };
 
@@ -159,6 +168,10 @@ export const lobbyEn: typeof lobbyFr = {
 		`${count} / ${capacity} players`,
 	copyCode: "Copy the invite link",
 	codeLabel: "Code to share",
+	openToFriends: "Open to friends",
+	openToFriendsHint:
+		"Your friends join without a code, from their friend list or your Discord status.",
+	openToFriendsGuest: "The host's friends can join without a code.",
 	publicNote: (minPlayers: number) =>
 		`Players are matched at random. The game starts once everyone is ready${minPlayers > 1 ? `, with at least ${minPlayers} players` : ""}.`,
 	you: "you",
@@ -266,5 +279,10 @@ export const lobbyEn: typeof lobbyFr = {
 		"friend-offline": "This friend is not online.",
 		"friend-busy": "This friend is already in a match or in this lobby.",
 		"lobby-not-invitable": "Join a waiting lobby to invite a friend.",
+		"lobby-friends-only": "This lobby is reserved for the host's friends.",
+		"discord-not-linked":
+			"Link your Discord account to your game account to sync your friends.",
+		"discord-mismatch":
+			"This Discord account isn't the one linked to your game account.",
 	},
 };

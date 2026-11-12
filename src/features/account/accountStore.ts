@@ -89,10 +89,6 @@ export async function refreshAccount(): Promise<void> {
 	}
 }
 
-/**
- * Sur un compte, seul l'accord enregistré compte : celui d'un visiteur sur le même
- * appareil n'est pas forcément venu de cette personne, on le redemande donc.
- */
 export function termsAccepted(
 	account: { status: string; account: AccountProfile | null },
 	localChoice: boolean,
@@ -332,7 +328,6 @@ export async function saveProfile(
 	return { ok: true, value: null };
 }
 
-/** S'enregistre aussitôt, sans attendre le reste du formulaire de profil. */
 export async function setPrivateProfile(
 	privateProfile: boolean,
 ): Promise<ApiResult<null>> {

@@ -1886,7 +1886,6 @@ const BIDULE_SURFACE: readonly (readonly [string, number])[] = [
 
 const SPACED_ITEM_GAP = 1.1;
 
-/** Pose un objet en laissant un vrai passage autour, pour ne fermer aucun coin. */
 function placeSpaced(
 	furnisher: RoomFurnisher,
 	kind: string,
@@ -1924,7 +1923,6 @@ function placeSpaced(
 	return null;
 }
 
-/** Petits objets disséminés le long des murs et autour du vide. */
 function dressGrandBidules(furnisher: RoomFurnisher): void {
 	const { rng } = furnisher;
 	for (let index = rng.int(9, 13); index > 0; index -= 1) {
@@ -1936,7 +1934,6 @@ function dressGrandBidules(furnisher: RoomFurnisher): void {
 	}
 }
 
-/** Verdure : lierre, plantes retombantes, lianes, fougères, palmiers et pots. */
 function dressGrandGreenery(
 	furnisher: RoomFurnisher,
 	spec: MezzanineSpec,
@@ -2008,7 +2005,6 @@ function maxTiers(width: number, depth: number): number {
 	return Math.floor((Math.min(width, depth) - 0.5) / (DAIS_STEP_RUN * 2));
 }
 
-/** Grande estrade à gradins au milieu de l'espace libre. */
 function centralDais(furnisher: RoomFurnisher, spec: MezzanineSpec): boolean {
 	const { rng } = furnisher;
 	for (const scale of [1, 0.82, 0.66]) {
@@ -2043,7 +2039,6 @@ function centralDais(furnisher: RoomFurnisher, spec: MezzanineSpec): boolean {
 	return false;
 }
 
-/** Terrasse haute adossée à un mur que la mezzanine ne surplombe pas. */
 function wallTerrace(furnisher: RoomFurnisher, spec: MezzanineSpec): boolean {
 	const { room, rng } = furnisher;
 	const walls = rng.shuffle(
@@ -2117,7 +2112,6 @@ function lowPodium(furnisher: RoomFurnisher): boolean {
 	return low !== null;
 }
 
-/** Un seul relief marquant par salle, parfois accompagné d'un petit plot. */
 function grandRoomReliefs(furnisher: RoomFurnisher): void {
 	const spec = furnisher.room.mezzanine;
 	if (!spec) {
@@ -2132,7 +2126,6 @@ function grandRoomReliefs(furnisher: RoomFurnisher): void {
 	}
 }
 
-/** Petite estrade sur la mezzanine elle-même, avec un objet posé dessus. */
 function deckPodium(furnisher: RoomFurnisher, spec: MezzanineSpec): void {
 	const { podium } = spec;
 	if (!podium || !furnisher.rng.chance(0.35)) {

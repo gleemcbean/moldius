@@ -25,7 +25,6 @@ import { TextureLibrary } from "../world/textures/TextureLibrary";
 const STRIDE_SPEED = 4.6;
 const DEFAULT_LANTERN_LIGHT = 0xffb060;
 
-/** La flamme teintée de la lanterne choisie (null : la flamme d'origine). */
 function lanternTint(tint: LanternTint): number | null {
 	return tint === DEFAULT_LANTERN_TINT ? null : LANTERN_TINT_COLORS[tint];
 }
@@ -53,7 +52,6 @@ export class HomeScene {
 	private readonly hunterEye = new THREE.PointLight(0xff5a3a, 0.8, 2.2, 2);
 	private frame = 0;
 	private time = 0;
-	/** Appelé une fois, après la première image : l'écran de chargement peut partir. */
 	onFirstFrame: (() => void) | null = null;
 	private last = performance.now();
 	private readonly observer: ResizeObserver;

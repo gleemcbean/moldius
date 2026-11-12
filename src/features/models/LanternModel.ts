@@ -31,7 +31,6 @@ const FLAME: MaterialOptions = {
 	fixedRepeat: true,
 };
 
-/** Vers le blanc : le verre et le cœur restent lumineux, mais de la couleur choisie. */
 function towardWhite(color: number, amount: number): number {
 	return new THREE.Color(color)
 		.lerp(new THREE.Color(0xffffff), amount)

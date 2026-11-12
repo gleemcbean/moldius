@@ -80,7 +80,6 @@ function canBeMimicked(player: MatchPlayer): boolean {
 	return player.alive && player.connected;
 }
 
-/** Imiter un mort ou un absent le trahirait aussitôt sur la carte et au classement. */
 function needsNewMimic(match: Match, entity: AnomalyEntity): boolean {
 	const mimic = entity.mimicPlayerId
 		? match.players.get(entity.mimicPlayerId)
@@ -93,7 +92,6 @@ function needsNewMimic(match: Match, entity: AnomalyEntity): boolean {
 	);
 }
 
-/** Entre deux joueurs tirés au sort, prend le plus loin : le vrai a moins de chances d'être à côté. */
 function chooseMimic(match: Match, entity: AnomalyEntity): void {
 	const players = [...match.players.values()];
 	const active = players.filter(canBeMimicked);

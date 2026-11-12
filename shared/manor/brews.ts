@@ -1,4 +1,3 @@
-/** Ce que fait un bain dans un chaudron : un bonus ou un malus, pour quelques secondes. */
 export const BREW_EFFECTS = [
 	"nausea",
 	"feather",
@@ -24,7 +23,6 @@ export const BREW_DURATION_MS: Record<BrewEffect, number> = {
 	vigor: 20_000,
 };
 
-/** Multiplie la vitesse de marche et de course. */
 export const BREW_SPEED_FACTOR: Record<BrewEffect, number> = {
 	nausea: 1,
 	feather: 1,
@@ -33,7 +31,6 @@ export const BREW_SPEED_FACTOR: Record<BrewEffect, number> = {
 	vigor: 1,
 };
 
-/** Multiplie la pesanteur : on saute plus haut et on retombe en douceur. */
 export const BREW_GRAVITY_FACTOR: Record<BrewEffect, number> = {
 	nausea: 1,
 	feather: 0.5,
@@ -42,7 +39,6 @@ export const BREW_GRAVITY_FACTOR: Record<BrewEffect, number> = {
 	vigor: 1,
 };
 
-/** Ce qui mijote dans un chaudron : la couleur du liquide, de sa lueur et son effet. */
 export interface CauldronBrew {
 	liquid: number;
 	glow: number;
@@ -103,7 +99,6 @@ export const CAULDRON_BREWS: readonly CauldronBrew[] = [
 	},
 ];
 
-/** Tiré de la graine du meuble : le serveur, la lumière et le modèle tombent d'accord. */
 export function cauldronBrew(seed: number): CauldronBrew {
 	return CAULDRON_BREWS[Math.abs(Math.floor(seed)) % CAULDRON_BREWS.length];
 }

@@ -43,7 +43,6 @@ export function meterBox(
 	return geometry;
 }
 
-/** Disque dont la texture garde son échelle en mètres, sans étirer les planches. */
 export function meterCircle(
 	radius: number,
 	segments = 20,

@@ -3,14 +3,9 @@ import * as THREE from "three";
 import type { PostEffects } from "../render/PostEffects";
 
 const PREVIEW_SIZE = 256;
-/** En visée, l'écran de l'appareil est grand : son image gagne en définition. */
 const AIMED_PREVIEW_SIZE = 512;
 const PHOTO_QUALITY = 0.9;
 
-/**
- * Ce que voit l'appareil : le centre carré de la vue du joueur.
- * L'écran de l'appareil montre ce rendu, la photo le refait en grand.
- */
 export class PhotoCamera {
 	readonly camera = new THREE.PerspectiveCamera(60, 1, 0.05, 120);
 	readonly preview: THREE.WebGLRenderTarget;
@@ -52,7 +47,6 @@ export class PhotoCamera {
 		this.camera.updateMatrixWorld(true);
 	}
 
-	/** Le viseur : un petit rendu à chaque image, tant que l'appareil est levé. */
 	renderPreview(
 		renderer: THREE.WebGLRenderer,
 		scene: THREE.Scene,
@@ -66,10 +60,6 @@ export class PhotoCamera {
 		renderer.setRenderTarget(previous);
 	}
 
-	/**
-	 * La scène en grand dans une image à part, puis les filtres du jeu dessinés dans
-	 * un coin de l'écran et copiés aussitôt : l'image normale le recouvre avant l'affichage.
-	 */
 	capture(
 		renderer: THREE.WebGLRenderer,
 		scene: THREE.Scene,

@@ -18,11 +18,6 @@ interface VoiceCapture {
 	silent: GainNode;
 }
 
-/**
- * La voix de chaque joueur pour les meilleurs moments de la fin de partie. Elle
- * reste en mémoire sur cette machine, n'est jamais envoyée et disparaît avec la
- * partie. Sans AudioWorklet, la rediffusion se passe simplement du son.
- */
 class MomentVoiceBank {
 	private readonly timelines = new Map<string, VoiceTimeline>();
 	private readonly captures = new Map<string, VoiceCapture>();
@@ -42,7 +37,6 @@ class MomentVoiceBank {
 		this.windows = windows;
 	}
 
-	/** À appeler à chaque image : les flux des joueurs arrivent quand ils arrivent. */
 	update(playerIds: Iterable<string>, selfId: string): void {
 		if (!this.capturing) {
 			return;
@@ -115,7 +109,6 @@ class MomentVoiceBank {
 		this.captures.delete(id);
 	}
 
-	/** Fin de partie : plus rien n'est capté, seul ce qui doit être rejoué reste. */
 	stopCapture(): void {
 		this.capturing = false;
 		for (const id of [...this.captures.keys()]) {

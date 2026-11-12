@@ -41,10 +41,6 @@ function callOut(match: Match, stake: StakeRoom, player: string): void {
 	});
 }
 
-/**
- * Chaque salle propose un marché : un gros avantage contre un risque immédiat.
- * Rien n'est automatique, c'est toujours le joueur qui décide d'y toucher.
- */
 export class StakeSystem {
 	private readonly states: StakeState[];
 	private rng: SeededRandom | null = null;
@@ -130,7 +126,6 @@ export class StakeSystem {
 		return true;
 	}
 
-	/** Un objet utile tout de suite si possible : celui d'une anomalie en jeu. */
 	private pactObject(match: Match): OccultId {
 		this.rng ??= match.rng.fork("stakes");
 		const wanted = match.anomalies

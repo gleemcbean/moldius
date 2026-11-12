@@ -17,8 +17,6 @@
   }
 }
 
-// Dans une ligne de joueur (classement, carte du lobby, ami), le lien couvre
-// toute la ligne : on clique n'importe où dessus pour ouvrir le profil.
 :global([data-selector-row]) {
   position: relative;
 }

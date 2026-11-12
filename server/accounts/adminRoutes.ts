@@ -2,10 +2,6 @@ import { type Request, type Response, Router } from "express";
 import type { AdminLiveStats } from "../../shared/protocol/admin.js";
 import type { AccountModule } from "./AccountModule.js";
 
-/**
- * Tout refus répond 404 : un visiteur ne doit même pas apprendre que cette
- * route existe. Les adresses autorisées viennent de ADMIN_EMAILS.
- */
 export function createAdminRouter(
 	accounts: AccountModule,
 	emails: string[],

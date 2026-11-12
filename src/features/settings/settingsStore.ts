@@ -76,11 +76,6 @@ function clampNumber(
 		: fallback;
 }
 
-/**
- * Les réglages d'avant la visée n'ont pas de touche « aim » : le clic gauche y prenait
- * la photo. Il vise désormais, et la photo passe au clic droit s'il est libre.
- * Jamais deux actions sur la même touche.
- */
 export function migrateAimKey(
 	keys: Record<ActionId, string>,
 	saved: Partial<Record<ActionId, string>> | undefined,

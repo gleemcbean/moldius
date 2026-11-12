@@ -28,9 +28,7 @@ export function canCraft(player: MatchPlayer, object: OccultId): boolean {
 
 export class LootSystem {
 	readonly returnsAt = new Map<number, number>();
-	/** Matériau tiré à la réapparition : le plan du manoir, lui, ne change jamais. */
 	readonly respawned = new Map<number, MaterialId>();
-	/** Le tutoriel se limite aux matériaux de sa recette. */
 	respawnPool: readonly MaterialId[] = MATERIAL_IDS;
 	private rng: SeededRandom | null = null;
 
@@ -67,7 +65,6 @@ export class LootSystem {
 		return true;
 	}
 
-	/** Une chute coûte quelques fragments au hasard : les objets, eux, restent. */
 	loseFragments(match: Match, player: MatchPlayer): number {
 		this.rng ??= match.rng.fork("loot");
 		let lost = 0;

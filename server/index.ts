@@ -124,8 +124,6 @@ export async function startServer(
 		dev,
 		onMatchRecords: (records) => accounts.record(records),
 	});
-	// Reconnaissance des incantations par le serveur (application de bureau, à l'essai).
-	// SPEECH_SERVER=false la coupe ; sans modèles Vosk, elle n'est pas proposée.
 	const speech =
 		process.env.SPEECH_SERVER === "false"
 			? null

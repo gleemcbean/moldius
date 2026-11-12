@@ -47,6 +47,7 @@ import type {
 import type { SpeechService } from "../speech/SpeechService.js";
 import {
 	accountPresenceChanged,
+	notifyFriendsOf,
 	registerFriendHandlers,
 } from "./friendHandlers.js";
 import { registerSpeechHandlers } from "./speechHandlers.js";
@@ -87,7 +88,6 @@ function preferredColor(payload: unknown): number | null {
 		: null;
 }
 
-/** Un motif verrouillé est ignoré : la récompense se gagne, elle ne se réclame pas. */
 function preferredPattern(
 	payload: unknown,
 	session: Session,
@@ -206,6 +206,56 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				preferredLook(payload, current),
 			);
 		});
+	});
+
+	socket.on("lobby:joinFriend", (payload, ack) => {
+		if (typeof ack !== "function") {
+			return;
+		}
+		if (!allow("lobby:join")) {
+			ack({ ok: false, error: RATE_LIMITED });
+			return;
+		}
+		const current = session();
+		if (!current) {
+			ack({ ok: false, error: NO_SESSION });
+			return;
+		}
+		const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+		if (!name) {
+			ack({
+				ok: false,
+				error: {
+					code: "invalid-name",
+					message: "Choisissez un pseudonyme de 2 à 18 caractères.",
+				},
+			});
+			return;
+		}
+		const lobbyId =
+			isRecord(payload) &&
+			typeof payload.lobbyId === "string" &&
+			payload.lobbyId.length <= 64
+				? payload.lobbyId
+				: "";
+		void friendsOf(deps, current)
+			.then((friends) => {
+				if (socket.connected) {
+					ack(
+						deps.lobbies.joinFriend(
+							current,
+							name,
+							lobbyId,
+							friends,
+							preferredLook(payload, current),
+						),
+					);
+				}
+			})
+			.catch((error: unknown) => {
+				console.error("Lobby : amis illisibles", error);
+				ack({ ok: false, error: INVALID });
+			});
 	});
 
 	socket.on("lobby:quickJoin", (payload, ack) => {
@@ -356,6 +406,20 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				return { ok: false, error: INVALID };
 			}
 			return deps.lobbies.updateConfig(current, payload.config);
+		});
+	});
+
+	socket.on("lobby:openToFriends", (payload, ack) => {
+		respond(ack, allow("lobby:config"), session(), (current) => {
+			if (!isRecord(payload) || typeof payload.open !== "boolean") {
+				return { ok: false, error: INVALID };
+			}
+			const result = deps.lobbies.setOpenToFriends(current, payload.open);
+			const host = current.account?.accountId;
+			if (result.ok && host) {
+				notifyFriendsOf(deps, host);
+			}
+			return result;
 		});
 	});
 
@@ -596,6 +660,17 @@ function registerGameHandlers(
 			deps.lobbies.leave(current);
 		}
 	});
+}
+
+async function friendsOf(
+	deps: HandlerDependencies,
+	current: Session,
+): Promise<ReadonlySet<string>> {
+	const accountId = current.account?.accountId;
+	const store = deps.friends?.();
+	return accountId && store
+		? new Set(await store.friendIds(accountId))
+		: new Set();
 }
 
 type AckResult<T> = { ok: true; value: T } | { ok: false; error: LobbyError };

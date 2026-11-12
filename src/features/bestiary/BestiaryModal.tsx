@@ -57,7 +57,6 @@ function Gauge({ label, filled }: { label: string; filled: number }) {
 export function BestiaryModal({ onClose }: { onClose: () => void }) {
 	const t = useT();
 	const language = useLanguage();
-	// Par ordre alphabétique des noms, dans la langue du joueur.
 	const ordered = useMemo(
 		() =>
 			[...ENABLED_SPECIES_IDS].sort((a, b) =>

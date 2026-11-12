@@ -63,7 +63,6 @@ function ProfileBody({ profile }: { profile: PublicProfile }) {
 	);
 }
 
-/** Statistiques et dernières parties : tout le monde, ou les amis pour un profil privé. */
 function PublicDetails({
 	profile,
 	stats,

@@ -1,6 +1,5 @@
 import { createStore } from "../../utils/store";
 
-/** Le profil ouvert par-dessus le reste : depuis un classement, un lobby ou la fin de partie. */
 export const profileViewStore = createStore<{ profileId: string | null }>({
 	profileId: null,
 });

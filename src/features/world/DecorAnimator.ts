@@ -14,10 +14,6 @@ const MAX_DISTANCE = 26;
 const SPARK_DISTANCE = 12;
 const SPARK_INTERVAL = 0.22;
 
-/**
- * Fait vivre le décor : le temps partagé anime flammes, feuillage et tissus dans
- * le shader, et les objets rigides proches pivotent ici.
- */
 export class DecorAnimator {
 	private time = 0;
 	private sparkClock = 0;

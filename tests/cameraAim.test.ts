@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-// Le code client se charge à l'exécution, comme dans les autres tests : il n'entre pas
-// dans le typage NodeNext des tests.
 type ActionId = string;
 type Keys = Record<ActionId, string>;
 const clientRoot = "../src";
@@ -16,7 +14,6 @@ const { migrateAimKey } = (await import(
 	migrateAimKey: (keys: Keys, saved: Partial<Keys> | undefined) => void;
 };
 
-/** Les réglages tels qu'ils étaient enregistrés avant l'arrivée de la visée. */
 function savedBeforeAim(overrides: Keys = {}): Keys {
 	const saved: Keys = { ...DEFAULT_KEYS, photo: "MouseLeft", ...overrides };
 	delete saved.aim;

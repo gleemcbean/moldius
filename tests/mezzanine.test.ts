@@ -154,8 +154,6 @@ describe("grandes salles à mezzanine", () => {
 					(node) => Math.abs(grid.heights[node] - spec.floorY) < 0.05,
 				);
 				expect(deckCells.length).toBeGreaterThan(20);
-				// Une case isolée peut subsister contre un meuble : le joueur y passe,
-				// seule la grille de navigation est trop grossière pour la relier.
 				expect(
 					deckCells.filter((n) => !grid.isInMainComponent(n)).length,
 				).toBeLessThanOrEqual(4);
@@ -557,7 +555,6 @@ describe("dans une vraie partie", () => {
 						),
 				),
 			);
-			// L'atterrissage doit se faire au sol, pas sur une estrade.
 			const lands = [2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6].every((run) =>
 				sim.match.world.boxes.every(
 					(box) =>

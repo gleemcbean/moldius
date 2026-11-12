@@ -178,8 +178,75 @@ i.offline {
   background: $text-dim;
 }
 
+.discord {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 2px solid $line;
+  background: rgba(88, 101, 242, 0.08);
+
+  > svg {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    color: #8c96f5;
+  }
+}
+
+.discordText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+
+  strong {
+    font-weight: 600;
+    color: $text;
+  }
+
+  small {
+    font-size: 13px;
+    line-height: 1.25;
+    color: $text-muted;
+  }
+
+  .warning {
+    color: $yellow;
+  }
+}
+
+.discordBadge {
+  display: inline-flex;
+  margin-left: 6px;
+  vertical-align: -2px;
+  color: #8c96f5;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: 0 5px;
+  border-radius: 50%;
+  background: rgba(88, 101, 242, 0.2);
+  color: #8c96f5;
+  image-rendering: pixelated;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 .actions {
-  // Au-dessus du lien qui couvre la ligne, pour rester cliquables.
   position: relative;
   z-index: 1;
   flex: none;

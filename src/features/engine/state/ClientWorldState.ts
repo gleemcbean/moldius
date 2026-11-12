@@ -145,7 +145,6 @@ export class ClientWorldState {
 		);
 	}
 
-	/** L'effet de chaudron du joueur local, s'il dure encore. */
 	selfBrew(serverNow: number): { effect: BrewEffect; until: number } | null {
 		const brew = this.brews.get(this.selfId);
 		return brew && brew.until > serverNow ? brew : null;
@@ -157,7 +156,6 @@ export class ClientWorldState {
 		);
 	}
 
-	/** Repart de zéro pour rejouer un extrait, avec les portes telles qu'elles étaient. */
 	resetForReplay(doorsOpen: readonly number[]): void {
 		this.lastTick = -1;
 		this.latestSnapshotTime = -Infinity;

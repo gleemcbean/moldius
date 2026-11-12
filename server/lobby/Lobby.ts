@@ -66,6 +66,7 @@ export class Lobby {
 	config: MatchConfig;
 	previousFormulaWords = new Set<string>();
 	daily: string | null = null;
+	openToFriends = false;
 
 	constructor(
 		readonly id: string,
@@ -245,6 +246,32 @@ export class Lobby {
 		return { ok: true };
 	}
 
+	setOpenToFriends(playerId: string, open: boolean): LobbyActionResult {
+		if (this.visibility !== "private") {
+			return {
+				ok: false,
+				code: "not-private",
+				message: "Un lobby public est déjà ouvert à tous.",
+			};
+		}
+		if (playerId !== this.hostId) {
+			return {
+				ok: false,
+				code: "not-host",
+				message: "Seul l'hôte peut ouvrir le lobby à ses amis.",
+			};
+		}
+		this.openToFriends = open;
+		return { ok: true };
+	}
+
+	opensWithoutCode(isHostFriend: boolean): boolean {
+		return (
+			this.acceptsPlayers &&
+			(this.visibility === "public" || (this.openToFriends && isHostFriend))
+		);
+	}
+
 	setTeam(playerId: string, team: number): LobbyActionResult {
 		const member = this.member(playerId);
 		if (
@@ -361,6 +388,7 @@ export class Lobby {
 			id: this.id,
 			code: this.code,
 			visibility: this.visibility,
+			openToFriends: this.openToFriends,
 			hostId: this.hostId,
 			capacity: this.capacity,
 			minPlayers: this.minPlayers,

@@ -91,7 +91,6 @@ export function furnishManor(
 	return collect(furnishers);
 }
 
-/** Avant les meubles : la salle s'arrange ensuite autour de ce qui fait son enjeu. */
 function placeStakes(furnishers: RoomFurnisher[]): void {
 	for (const furnisher of furnishers) {
 		const kind = STAKE_KINDS.find((entry) => entry === furnisher.room.type);

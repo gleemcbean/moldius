@@ -1,7 +1,6 @@
 const OUTPUT_RATE = 16000;
 const DEFAULT_BLOCK_SAMPLES = 1600;
 
-/** Réduit la voix à 16 kHz et l'envoie au jeu par petits blocs, sans rien garder. */
 class VoiceCaptureProcessor extends AudioWorkletProcessor {
 	constructor(options) {
 		super();

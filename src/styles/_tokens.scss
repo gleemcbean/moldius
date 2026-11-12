@@ -64,12 +64,6 @@ $transition: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
   font-variant-numeric: tabular-nums;
 }
 
-/*
- * Apparition des éléments d'une page. « translate » et « scale » sont des propriétés
- * à part : elles s'ajoutent au transform de l'élément (un panneau centré par
- * translateY(-50%) reste centré). « backwards » : rien ne reste après l'animation.
- * Chaque module qui s'en sert inclut une fois enter-keyframes à sa racine.
- */
 $enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
 @mixin enter-keyframes {
@@ -136,7 +130,6 @@ $enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 }
 
-/* Les enfants d'une liste arrivent l'un après l'autre (les suivants tous ensemble). */
 @mixin enter-stagger($kind: up, $start: 0ms, $step: 60ms, $count: 10) {
   @for $index from 1 through $count {
     &:nth-child(#{$index}) {

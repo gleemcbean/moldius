@@ -7,7 +7,6 @@ import { acceptTerms } from "../account/accountStore";
 import { settingsStore } from "../settings/settingsStore";
 import styles from "./LobbyScreen.module.scss";
 
-/** Demandé une fois, au premier lobby : on accepte les conditions ou on repart. */
 export function TermsNotice({ onLeave }: { onLeave: () => void }) {
 	const t = useT();
 	const labels = t.lobby.termsNotice;

@@ -49,7 +49,6 @@ export class WalkieSystem {
 		return true;
 	}
 
-	/** Mort ou déconnecté : le talkie retourne à sa place d'origine, après un temps. */
 	release(match: Match, player: MatchPlayer): void {
 		const state = this.states.get(player.walkie);
 		if (!state) {

@@ -24,14 +24,9 @@ export interface AccountStats {
 	captures: number;
 	dailies: number;
 	awards: number;
-	/** L'expérience gagnée depuis la création du compte ; le niveau s'en déduit. */
 	xp: number;
 }
 
-/**
- * Ce que tout le monde peut voir d'un joueur : jamais son adresse ni ses réglages.
- * Un profil privé ne montre que l'apparence et le niveau, sauf au joueur et à ses amis.
- */
 export interface PublicProfile {
 	profileId: string;
 	displayName: string;
@@ -40,9 +35,7 @@ export interface PublicProfile {
 	lantern: LanternTint;
 	tagline: Tagline | null;
 	level: number;
-	/** Le joueur a rendu son profil privé (vrai aussi quand un ami le voit en entier). */
 	private: boolean;
-	/** Null quand le profil est masqué à ce visiteur. */
 	createdAt: string | null;
 	stats: AccountStats | null;
 	recent: PublicMatchSummary[];
@@ -62,7 +55,6 @@ export const PUBLIC_RECENT_LIMIT = 5;
 
 export interface DailyScoreEntry {
 	rank: number;
-	/** Pour ouvrir le profil du joueur ; null s'il a supprimé son compte. */
 	profileId: string | null;
 	name: string;
 	color: number;
@@ -94,9 +86,7 @@ export interface AccountProfile {
 	tagline: Tagline | null;
 	language: Language;
 	createdAt: string;
-	/** Date à laquelle le joueur a accepté les conditions d'utilisation. */
 	termsAcceptedAt: string | null;
-	/** Statistiques et dernières parties visibles par les seuls amis. */
 	privateProfile: boolean;
 	hasPassword: boolean;
 	discord: DiscordLink | null;
@@ -141,17 +131,13 @@ export interface MatchHistoryEntry {
 	captures: number;
 	deaths: number;
 	won: boolean;
-	/** Date du mode de jeu du jour, sinon null. */
 	daily: string | null;
-	/** 0 sans équipes : la place est alors celle du joueur, sinon celle de son équipe. */
 	teamCount: number;
 	hasDetails: boolean;
-	/** L'expérience rapportée par la partie, 0 pour les parties d'avant les niveaux. */
 	xp: number;
 }
 
 export interface MatchDetailPlayer {
-	/** Seulement pour les joueurs connectés à un compte. */
 	profileId?: string | null;
 	name: string;
 	color: number;
@@ -181,13 +167,11 @@ export interface MatchDetailRules {
 	walkies: boolean;
 }
 
-/** Ce qu'une ligne d'historique garde de la partie, au-delà du résumé. */
 export interface MatchDetailData {
 	players: MatchDetailPlayer[];
 	teams: MatchDetailTeam[];
 	winnerTeam: number | null;
 	rules: MatchDetailRules | null;
-	/** Les mesures du joueur lui-même, celles qui nourrissent ses défis. */
 	metrics: MatchMetrics;
 }
 

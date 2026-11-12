@@ -11,7 +11,6 @@ interface CameraState {
 	returnsAt: number | null;
 }
 
-/** L'appareil ne fait que des photos : le serveur sait seulement qui le tient. */
 export class CameraSystem {
 	private readonly states = new Map<number, CameraState>();
 
@@ -47,7 +46,6 @@ export class CameraSystem {
 		return true;
 	}
 
-	/** Mort ou déconnecté : l'appareil retourne à sa place, après un temps. */
 	release(match: Match, player: MatchPlayer): void {
 		const state = this.states.get(player.camera);
 		if (!state) {

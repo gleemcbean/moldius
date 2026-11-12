@@ -1048,10 +1048,6 @@ export function createRoomShape(
 	}
 }
 
-/**
- * Contour d'une grande salle à mezzanine : mêmes familles que les autres salles
- * (pans coupés, arrondis, abside, équerre), à l'échelle d'une grande salle.
- */
 export function createGrandRoomShape(
 	rng: SeededRandom,
 	width: number,

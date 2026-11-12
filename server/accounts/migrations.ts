@@ -189,7 +189,6 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
 		statements: [
 			`ALTER TABLE accounts ADD COLUMN xp integer NOT NULL DEFAULT 0`,
 			`ALTER TABLE match_history ADD COLUMN xp integer NOT NULL DEFAULT 0`,
-			// Les parties déjà jouées comptent : la même règle que matchXp, sans le plafond par partie.
 			`UPDATE accounts SET xp = 40 * games_played + 60 * wins + total_score / 10`,
 		],
 	},
@@ -197,6 +196,18 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
 		version: 12,
 		statements: [
 			`ALTER TABLE accounts ADD COLUMN private_profile boolean NOT NULL DEFAULT false`,
+		],
+	},
+	{
+		version: 13,
+		statements: [
+			`CREATE TABLE discord_friends (
+        account_id uuid NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
+        discord_id text NOT NULL,
+        PRIMARY KEY (account_id, discord_id)
+      )`,
+			`CREATE INDEX discord_friends_discord_idx ON discord_friends (discord_id)`,
+			`ALTER TABLE accounts ADD COLUMN discord_synced_at timestamptz`,
 		],
 	},
 ];

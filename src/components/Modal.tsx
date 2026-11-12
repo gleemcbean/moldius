@@ -4,7 +4,6 @@ import { Icon } from "./Icon";
 import styles from "./Modal.module.scss";
 import { SelectorGroup } from "./SelectorGroup";
 
-/** Échap ne ferme que la fenêtre du dessus, quand un profil s'ouvre par-dessus un classement. */
 const openModals: symbol[] = [];
 
 export function Modal({

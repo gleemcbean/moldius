@@ -65,7 +65,6 @@ const ROOF_MIN_DROP = 0.35;
 const ROOF_RAFTER_SPACING = 1.5;
 const ROOF_RAFTER_SIZE = 0.15;
 const ROOFLESS_ROOMS = new Set(["corridor", "stairwell", "closet", "toilets"]);
-/** Les pilastres restent au-dessus des meubles adossés aux murs. */
 const PILASTER_BOTTOM = 2.6;
 const PILASTER_MIN_AREA = 45;
 const PILASTER_MIN_WALL = 4;
@@ -141,7 +140,6 @@ const ROCKING: Record<string, { amplitude: number; speed: number }> = {
 	rockingHorse: { amplitude: 0.045, speed: 1.3 },
 };
 
-/** Animation d'un meuble entier : suspensions qui balancent, fauteuils qui bercent. */
 function wholeItemAnimation(item: FurnitureItem): PartAnimation | null {
 	const phase = (item.seed % 628) / 100;
 	const swing = CEILING_SWING[item.kind];
@@ -746,7 +744,6 @@ export class ManorMeshBuilder {
 		}
 	}
 
-	/** Mur droit extrudé selon son profil vertical, fermé à ses deux bouts. */
 	private addProfiledWall(
 		bucket: GeometryBucket,
 		material: MaterialOptions,
@@ -851,7 +848,6 @@ export class ManorMeshBuilder {
 		bucket.add(material, geometry);
 	}
 
-	/** Pilastres verticaux sur les longs murs des grandes pièces. */
 	private addPilasters(bucket: GeometryBucket, room: Room): void {
 		if (room.area < PILASTER_MIN_AREA || room.type === "corridor") {
 			return;

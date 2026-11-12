@@ -19,7 +19,6 @@
   color: $yellow;
 }
 
-/* L'écran ne défile jamais : seules les colonnes le font, le bas reste à sa place. */
 .layout {
   width: min(1240px, calc(100% - 32px));
   max-height: 100%;
@@ -73,6 +72,63 @@
 
 .codeLabel {
   @include label;
+}
+
+.share {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  max-width: 340px;
+}
+
+.friendsToggle {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 2px solid $line;
+  background: rgba(10, 12, 10, 0.6);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-within {
+    border-color: $line-strong;
+  }
+
+  input {
+    margin-top: 3px;
+    accent-color: $yellow;
+  }
+
+  strong {
+    display: block;
+    font-weight: 600;
+    color: $text;
+  }
+
+  small {
+    display: block;
+    font-size: 13px;
+    line-height: 1.25;
+    color: $text-muted;
+  }
+}
+
+.friendsNote {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 14px;
+  color: $text-muted;
+
+  svg {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    color: $yellow;
+  }
 }
 
 .codeValue {
@@ -138,7 +194,6 @@
   gap: 10px;
 }
 
-/* Huit joueurs : deux colonnes de quatre, aussi hautes que pour quatre joueurs. */
 .slotsCompact {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 
@@ -249,8 +304,6 @@
   text-overflow: ellipsis;
 }
 
-/* Un petit repère à côté du nom, à la taille des étiquettes du dessous plutôt qu'à celle du nom.
-   Deux classes : passe devant le style du badge quel que soit l'ordre des feuilles. */
 .slotName .slotLevel {
   flex-shrink: 0;
   margin-left: 0;
@@ -412,7 +465,6 @@
   color: $danger;
 }
 
-/* Résumé des règles : la liste se resserre avant le bouton, qui reste visible. */
 .rules {
   flex: 1 1 auto;
   min-height: 150px;
@@ -480,7 +532,6 @@
   gap: 8px 32px;
   margin-top: 8px;
 
-  /* Quatre choix d'équipes sur une seule ligne. */
   label {
     grid-template-columns: minmax(130px, 1fr) minmax(0, 1.9fr);
   }
@@ -589,7 +640,6 @@
   color: $text;
 }
 
-/* Fenêtre basse : on garde la taille des éléments en reprenant les marges. */
 @media (max-height: 760px) {
   .layout {
     padding: 14px 0;
@@ -680,7 +730,6 @@
   margin-top: 6px;
 }
 
-/* ——— Apparition : l'en-tête descend, les joueurs arrivent un à un, les règles par la droite ——— */
 @include enter-keyframes;
 
 .header {

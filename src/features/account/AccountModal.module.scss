@@ -349,7 +349,6 @@
   text-align: right;
 }
 
-// L'en-tête d'une colonne de chiffres s'aligne sur ses chiffres, à droite.
 .history th.number {
   text-align: right;
 }
@@ -494,7 +493,6 @@
   cursor: not-allowed;
 }
 
-/* Une grille qui s'allonge dans le panneau : on peut ajouter autant de récompenses qu'on veut. */
 .rewards {
   display: flex;
   flex-direction: column;
@@ -583,7 +581,6 @@
 
 @include enter-keyframes;
 
-/* Les lignes de l'historique et les récompenses arrivent l'une après l'autre. */
 .history tbody tr {
   @include enter-stagger(up, 120ms, 35ms, 12);
 }

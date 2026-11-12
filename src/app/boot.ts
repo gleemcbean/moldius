@@ -1,9 +1,3 @@
-/**
- * L'écran de chargement d'index.html reste affiché jusqu'à ce que l'application
- * soit montée, ses polices chargées, et que chaque attente déclarée (la première
- * image du décor 3D de l'accueil) soit levée. Un délai de secours le retire quoi qu'il arrive.
- */
-
 const FONTS_TIMEOUT_MS = 3000;
 const SAFETY_TIMEOUT_MS = 8000;
 const FADE_MS = 520;
@@ -17,7 +11,6 @@ function bootElement(): HTMLElement | null {
 	return document.getElementById("boot");
 }
 
-/** Retient l'écran de chargement ; la fonction rendue le libère (plusieurs appels sans effet). */
 export function holdBoot(): () => void {
 	const token = Symbol("boot");
 	if (!finished) {
@@ -30,7 +23,6 @@ export function holdBoot(): () => void {
 	};
 }
 
-/** À appeler une fois l'application montée : les attentes de ses enfants sont déjà déclarées. */
 export function appMounted(): void {
 	if (mounted) {
 		return;
@@ -53,7 +45,6 @@ function scheduleFinish(): void {
 		return;
 	}
 	pending = true;
-	// Une image d'attente : une attente reprise aussitôt (StrictMode) garde l'écran.
 	void fontsReady().then(() =>
 		requestAnimationFrame(() => {
 			pending = false;
@@ -70,7 +61,6 @@ function finishBoot(): void {
 	}
 	finished = true;
 	holds.clear();
-	// Les animations d'entrée de la page, figées jusqu'ici, partent pendant le fondu.
 	document.documentElement.removeAttribute("data-booting");
 	const boot = bootElement();
 	if (!boot) {

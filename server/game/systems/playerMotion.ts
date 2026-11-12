@@ -79,7 +79,6 @@ export function applyClientState(
   const sprintAllowed =
     !player.sprintLocked || now - match.sprintLockedAt(player) < SPRINT_GRACE_MS;
   const free = movesFreely(player.devModes);
-  // Le chaudron de vitesse fait courir plus vite : le budget suit, sans jamais rétrécir.
   const brewBoost =
     player.brew !== null && now < player.brewUntil ? Math.max(1, BREW_SPEED_FACTOR[player.brew]) : 1;
   const maxSpeed =
@@ -113,7 +112,6 @@ export function applyClientState(
   player.position = next;
   player.velocity = { x: message.vx, y: message.vy, z: message.vz };
   player.grounded = message.grounded;
-  // Avec la potion de légèreté, on retombe en douceur : pas de dégâts de chute.
   trackFall(match, player, previous.y, free || player.brewActive('feather', now));
   player.crouch = message.crouch;
   const wasSprinting = player.sprintIntent;
@@ -127,7 +125,6 @@ export function applyClientState(
   return 'accepted';
 }
 
-/** Le compteur repart de zéro après une reconnexion : rien à débiter dans ce cas. */
 function chargeJumps(player: MatchPlayer, jumps: number): void {
   const count = jumps - player.jumpsSeen;
   player.jumpsSeen = jumps;

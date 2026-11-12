@@ -19,7 +19,6 @@ export interface SpawnContext {
 }
 
 const EXCLUDED_PLAYER_ROOMS: RoomType[] = ['stairwell', 'toilets', 'closet'];
-/** Au-delà, les monstres se rapprochent : un petit manoir doit pouvoir tous les accueillir. */
 const SPACIOUS_ANOMALY_COUNT = 3;
 const ARCHIVIST_ROOMS: RoomType[] = [
   'hall',

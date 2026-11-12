@@ -25,20 +25,14 @@ export const HEALTH_MAX = 100;
 export const SPRINT_ENERGY_COST_PER_SECOND = 15;
 export const LANTERN_ENERGY_COST_PER_SECOND = 3.8;
 export const ENERGY_REGEN_PER_SECOND = 8;
-/** Délai après le sprint ou la lanterne : les couper une seconde ne recharge rien. */
 export const ENERGY_USE_REGEN_PAUSE_SECONDS = 1;
 export const SPRINT_START_ENERGY_COST = 2;
 export const LANTERN_OPEN_ENERGY_COST = 1.5;
 export const SPRINT_STOP_THRESHOLD = 1;
 export const SPRINT_RESUME_THRESHOLD = 20;
-/**
- * Assez pour quelques secondes de lumière : en dessous, la lanterne refuse de s'ouvrir, sinon
- * on l'allumait et l'éteignait en boucle avec presque plus d'énergie.
- */
 export const LANTERN_MIN_ENERGY_TO_OPEN = 12;
 export const JUMP_ENERGY_COST = 8;
 export const JUMP_MIN_ENERGY = 2;
-/** Plus long qu'un saut (0,87 s en l'air) : enchaîner les sauts ne régénère rien. */
 export const JUMP_REGEN_PAUSE_SECONDS = 1.5;
 
 export const LANTERN_LIGHT_INTENSITY = 12;

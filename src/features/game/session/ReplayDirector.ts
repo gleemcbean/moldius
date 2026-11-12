@@ -18,15 +18,10 @@ const AUDIO_LEAD_SECONDS = 0.06;
 const VOICE_HEIGHT = 1.5;
 const FILL_LIGHT = { color: 0xfff0d8, intensity: 7, range: 13 };
 const VOICE_PUBLISH_MS = 70;
-/** Trop près du joueur, on ne voit plus que son chapeau : on cherche un meilleur angle. */
 const ROOMY_DISTANCE = 3;
 const ORBIT_TRIES = 8;
 const LOOK_AROUND_SECONDS = 0.8;
 
-/**
- * Rejoue un extrait comme une partie en direct : les images du serveur passent par
- * les mêmes tampons et les mêmes événements, seule l'horloge est celle de l'extrait.
- */
 export class ReplayDirector {
 	private index = -1;
 	private clip: Highlight | null = null;
@@ -51,7 +46,6 @@ export class ReplayDirector {
 		private readonly highlights: Highlight[],
 	) {}
 
-	/** Faux tant qu'il reste un extrait à montrer. */
 	next(): boolean {
 		this.voices.stop();
 		this.index += 1;
@@ -99,7 +93,6 @@ export class ReplayDirector {
 		this.voices.stop();
 	}
 
-	/** L'horloge du son mène : l'image suit la voix même si le rendu rame. */
 	private tickClock(dt: number): void {
 		const context = audioEngine.ctx;
 		this.time =
@@ -172,7 +165,6 @@ export class ReplayDirector {
 		}
 	}
 
-	/** Avance l'extrait et rend l'heure à afficher, ou null quand tout est montré. */
 	advance(dt: number): number | null {
 		let clip = this.clip;
 		if (!clip) {
@@ -204,7 +196,6 @@ export class ReplayDirector {
 		return this.time;
 	}
 
-	/** Le mur le plus proche ramène la caméra vers le joueur. */
 	private cameraSpot(angle: number): Vec3 {
 		return pullBackToSight(
 			this.loaded.world,

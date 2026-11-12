@@ -1,5 +1,3 @@
-// L'application web installable est remplacée par l'application de bureau.
-// Ce service worker ne sert plus qu'à se retirer chez ceux qui l'avaient installé.
 self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (event) => {

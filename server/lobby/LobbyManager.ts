@@ -98,7 +98,6 @@ export class LobbyManager {
 		return this.join(session, lobby, name, look);
 	}
 
-	/** Se joue aussi seul : le classement n'attend personne. */
 	createDaily(
 		session: Session,
 		name: string,
@@ -173,6 +172,95 @@ export class LobbyManager {
 			this.leave(session);
 		}
 		return this.join(session, lobby, name, look);
+	}
+
+	joinFriend(
+		session: Session,
+		name: string,
+		lobbyId: string,
+		friends: ReadonlySet<string>,
+		look: LookPreference = {},
+	): LobbyResult {
+		if (this.accountBusy(session)) {
+			return { ok: false, error: ALREADY_PLAYING };
+		}
+		const lobby = this.lobbies.get(lobbyId);
+		if (!lobby) {
+			return {
+				ok: false,
+				error: { code: "not-found", message: "Ce lobby n'existe plus." },
+			};
+		}
+		if (session.lobbyId === lobby.id) {
+			return this.join(session, lobby, name, look);
+		}
+		const allowed =
+			lobby.visibility === "public" ||
+			(lobby.openToFriends &&
+				this.isHostFriend(lobby, session.account?.accountId ?? null, friends));
+		if (!allowed) {
+			if (!session.account) {
+				return {
+					ok: false,
+					error: {
+						code: "sign-in-required",
+						message: "Connectez-vous pour rejoindre le lobby d'un ami.",
+					},
+				};
+			}
+			return {
+				ok: false,
+				error: {
+					code: "lobby-friends-only",
+					message: "Ce lobby est réservé aux amis de son hôte.",
+				},
+			};
+		}
+		this.leave(session);
+		return this.join(session, lobby, name, look);
+	}
+
+	friendJoinTarget(
+		friendAccountId: string,
+		viewerAccountId: string,
+		viewerFriends: ReadonlySet<string>,
+	): string | null {
+		const viewerLobbies = new Set(
+			this.sessions
+				.withAccount(viewerAccountId)
+				.map((session) => session.lobbyId),
+		);
+		for (const session of this.sessions.withAccount(friendAccountId)) {
+			const lobby = session.socketId ? this.lobbyOf(session) : null;
+			if (
+				lobby &&
+				!viewerLobbies.has(lobby.id) &&
+				lobby.opensWithoutCode(
+					this.isHostFriend(lobby, viewerAccountId, viewerFriends),
+				)
+			) {
+				return lobby.id;
+			}
+		}
+		return null;
+	}
+
+	private isHostFriend(
+		lobby: Lobby,
+		accountId: string | null,
+		friends: ReadonlySet<string>,
+	): boolean {
+		const host = this.sessions.fromPlayer(lobby.hostId)?.account?.accountId;
+		return Boolean(
+			accountId && host && (host === accountId || friends.has(host)),
+		);
+	}
+
+	hostAccountOf(session: Session): string | null {
+		const lobby = this.lobbyOf(session);
+		return lobby
+			? (this.sessions.fromPlayer(lobby.hostId)?.account?.accountId ?? null)
+			: null;
 	}
 
 	publicPreview(): PublicLobbyPreview {
@@ -331,6 +419,25 @@ export class LobbyManager {
 		return { ok: true, value: this.stateOf(lobby) };
 	}
 
+	setOpenToFriends(session: Session, open: boolean): LobbyResult {
+		const lobby = this.lobbyOf(session);
+		if (!lobby) {
+			return {
+				ok: false,
+				error: { code: "not-found", message: "Vous n'êtes dans aucun lobby." },
+			};
+		}
+		const result = lobby.setOpenToFriends(session.playerId, open);
+		if (!result.ok) {
+			return {
+				ok: false,
+				error: { code: result.code, message: result.message },
+			};
+		}
+		this.broadcastState(lobby);
+		return { ok: true, value: this.stateOf(lobby) };
+	}
+
 	setTeam(session: Session, team: number): void {
 		const lobby = this.lobbyOf(session);
 		if (lobby?.setTeam(session.playerId, team).ok) {
@@ -379,7 +486,6 @@ export class LobbyManager {
 		}
 	}
 
-	/** Le lobby tel que les joueurs le voient : avec le compte et le niveau de chacun. */
 	private stateOf(lobby: Lobby): LobbyState {
 		const state = lobby.toState();
 		for (const player of state.players) {

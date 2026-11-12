@@ -20,7 +20,6 @@ const WEEKDAYS = [
 	"Samedi",
 	"Dimanche",
 ];
-/** Échelle séquentielle d'une seule teinte : du sombre (faible) au clair (fort). */
 const HEAT_STEPS = [
 	"#104281",
 	"#184f95",
@@ -282,7 +281,6 @@ function DataTable({
 						{rows.map((row) => (
 							<tr key={String(row[0])}>
 								{row.map((cell, index) => (
-									// biome-ignore lint/suspicious/noArrayIndexKey: colonnes fixes
 									<td key={index}>{cell}</td>
 								))}
 							</tr>

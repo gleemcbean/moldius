@@ -60,7 +60,6 @@ function emptyStats(): PlayerStats {
 const SCREAM_LEVEL = 0.55;
 const ABANDON_RANGE = 12;
 
-/** Par ordre d'intérêt : un joueur repart avec le titre le plus drôle qu'il mérite. */
 const AWARD_RULES: readonly {
 	id: AwardId;
 	metric: (stats: PlayerStats) => number;
@@ -83,7 +82,6 @@ const AWARD_RULES: readonly {
 	{ id: "lighthouse", metric: (s) => s.lanternMs, minimum: 120_000 },
 ];
 
-/** Ce qui se mesure pendant la partie ; le reste s'ajoute à la fin. */
 export function liveChallengeMetrics(stats: PlayerStats): MatchMetrics {
 	return {
 		captures: stats.captures,

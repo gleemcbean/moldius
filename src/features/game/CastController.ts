@@ -112,7 +112,6 @@ export class CastController {
 				},
 			},
 			[],
-			// Vosk s'en sert comme grammaire ; la reconnaissance du navigateur n'en a pas besoin.
 			this.book.entries().map((entry) => entry.words),
 		);
 		if (!started) {

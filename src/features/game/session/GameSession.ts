@@ -113,7 +113,6 @@ const HIDDEN_GLOW = { color: 0x7d8aa0, intensity: 0.55, range: 1.4 };
 const RADIO_GHOST_MIN_MS = 25_000;
 const RADIO_GHOST_EXTRA_MS = 30_000;
 const REPLAY_FOV = 62;
-/** Filet de sécurité : si la fin de partie n'arrive pas, les extraits partent quand même. */
 const VOICE_CLIPS_GRACE_MS = 5_000;
 
 function wrapIndex(index: number, length: number): number {
@@ -150,7 +149,6 @@ export class GameSession {
 	private pushReadyAt = 0;
 	private shoutReadyAt = 0;
 	private carriedBy: number | null = null;
-	/** De 0 à 1 : l'objet tenu est à portée d'un monstre qu'il capture (voir AnomalyViews.resonate). */
 	private heldResonance = 0;
 	private wasPetrified = false;
 	private hideSpot = -1;
@@ -184,7 +182,6 @@ export class GameSession {
 	private readonly selfDamageAt = { value: 0 };
 	private radioOn = false;
 	private cameraRaised = false;
-	/** La visée (clic gauche maintenu) : l'appareil devant les yeux, l'écran en grand. */
 	private cameraAiming = false;
 	private photoPending = false;
 	private radioGhostAt = 0;
@@ -855,7 +852,6 @@ export class GameSession {
 		});
 	}
 
-	/** La nausée monte vite et retombe sur les deux dernières secondes de l'effet. */
 	private nauseaLevel(alive: boolean, reduceMotion: boolean): number {
 		const loaded = this.loadedWorld as LoadedWorld;
 		const serverNow = clockSync.serverNow();
@@ -868,7 +864,6 @@ export class GameSession {
 		);
 	}
 
-	/** Le panneau du HUD : l'effet s'affiche là, sans message à l'entrée ni à la fin. */
 	private brewHud(alive: boolean): {
 		brew: BrewEffect | null;
 		brewLeftMs: number;
@@ -886,7 +881,6 @@ export class GameSession {
 			: { brew: null, brewLeftMs: 0, brewTotalMs: 1 };
 	}
 
-	/** Le bruit d'eau quand on entre dans un liquide ou qu'on en sort. */
 	private trackLiquid(player: LocalPlayer): void {
 		const loaded = this.loadedWorld as LoadedWorld;
 		const liquid =
@@ -1109,7 +1103,6 @@ export class GameSession {
 			!this.lanternIntent &&
 			lanternEnergy < LANTERN_MIN_ENERGY_TO_OPEN
 		) {
-			// Le serveur refuserait aussi : la jauge clignote, la lanterne reste fermée.
 			hudStore.set({ energyDeniedAt: performance.now() });
 			soundBank.play("jump", { volume: 0.12, rate: 0.6 });
 		} else if (frame.pressed.has("lantern") && this.hideSpot < 0) {
@@ -1250,7 +1243,6 @@ export class GameSession {
 		}
 	}
 
-	/** Lever l'appareil, viser, déclencher : la photo elle-même se prend au rendu. */
 	private handleCamera(frame: FrameInput, able: boolean): void {
 		const loaded = this.loadedWorld as LoadedWorld;
 		const canAim =
@@ -1268,7 +1260,6 @@ export class GameSession {
 		if (frame.pressed.has("camera")) {
 			this.cameraRaised = !this.cameraRaised;
 		}
-		// Viser lève l'appareil le temps du clic, même s'il était baissé.
 		this.setCameraAiming(loaded, frame.held.has("aim"));
 		if (
 			this.cameraUp &&
@@ -1287,12 +1278,10 @@ export class GameSession {
 		}
 	}
 
-	/** Levé à la main (touche de l'appareil) ou le temps d'une visée. */
 	private get cameraUp(): boolean {
 		return this.cameraRaised || this.cameraAiming;
 	}
 
-	/** En visée, l'écran est grand : son image passe en meilleure définition. */
 	private setCameraAiming(loaded: LoadedWorld, aiming: boolean): void {
 		if (aiming === this.cameraAiming) {
 			return;
@@ -1301,7 +1290,6 @@ export class GameSession {
 		loaded.photoCamera.setPreviewDetail(aiming);
 	}
 
-	/** Juste avant l'image normale : le viseur, et la photo si on vient de déclencher. */
 	private renderCamera(loaded: LoadedWorld): void {
 		if (!this.cameraUp && !this.photoPending) {
 			return;
@@ -1918,7 +1906,6 @@ export class GameSession {
 		scene.fog = fog;
 	}
 
-	/** Le Double se glisse parfois sur la fréquence, avec la voix de celui qu'il imite. */
 	private updateRadioGhost(): void {
 		const loaded = this.loadedWorld as LoadedWorld;
 		const now = performance.now();
@@ -1944,7 +1931,6 @@ export class GameSession {
 		}
 	}
 
-	/** Faux s'il n'y a rien à montrer ou si le monde n'est pas à l'écran. */
 	playHighlights(highlights: Highlight[], onDone: () => void): boolean {
 		const loaded = this.loadedWorld;
 		if (!loaded || !this.container || highlights.length === 0) {

@@ -7,6 +7,7 @@ import { music } from "../features/audio/music";
 import { BestiaryModal } from "../features/bestiary/BestiaryModal";
 import { ChallengesModal } from "../features/challenges/ChallengesModal";
 import { DailyModal } from "../features/daily/DailyModal";
+import { initDiscord } from "../features/discord/discordStore";
 import { FriendInvites } from "../features/friends/FriendInvites";
 import { FriendsModal } from "../features/friends/FriendsModal";
 import { initFriends } from "../features/friends/friendsStore";
@@ -51,12 +52,12 @@ function useGlobalSetup(): void {
 		initAccount();
 		initFriends();
 		listenLobbyUpdates();
+		initDiscord();
 		initMatchController();
 		initVoiceController();
 		void loadKeyboardLayout();
 		const applySettings = () => {
 			const settings = settingsStore.get();
-			// Les animations d'interface suivent aussi « Réduire les effets gênants ».
 			document.documentElement.toggleAttribute(
 				"data-reduce-motion",
 				settings.reduceMotion,
@@ -86,7 +87,6 @@ function useGlobalSetup(): void {
 }
 
 export function App() {
-	// Les effets des enfants passent avant : le décor de l'accueil a déjà retenu l'écran.
 	useEffect(() => appMounted(), []);
 	const pathname = window.location.pathname.replace(/\/$/, "");
 	if (pathname === "/terms" || pathname === "/privacy") {
@@ -102,7 +102,6 @@ function PublicApp() {
 	return hasDesktopInput() ? <GameApp /> : <DesktopOnly />;
 }
 
-/** Rien n'est affiché ni chargé tant que le serveur n'a pas reconnu un admin. */
 function AdminGate() {
 	const [allowed, setAllowed] = useState<boolean | null>(null);
 	useEffect(() => {
@@ -138,10 +137,6 @@ function AdminGate() {
 	);
 }
 
-/**
- * L'écran et la fenêtre affichés suivent ceux de appStore à travers une transition :
- * la logique du jeu voit le nouvel écran tout de suite, l'affichage glisse vers lui.
- */
 function useShownView(): AppView {
 	const [view, setView] = useState<AppView>(() => {
 		const { screen, overlay } = appStore.get();

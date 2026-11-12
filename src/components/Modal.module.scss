@@ -22,7 +22,6 @@
     0 0 0 2px $yellow,
     0 0 0 6px $background,
     0 24px 80px rgba(0, 0, 0, 0.6);
-  // « backwards » : aucun transform ne reste une fois ouverte.
   animation: modal-in 360ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
@@ -98,7 +97,6 @@
 
 @include enter-keyframes;
 
-/* Le contenu suit la fenêtre, un souffle après elle. */
 .body {
   @include enter(up, 110ms, 460ms);
 }

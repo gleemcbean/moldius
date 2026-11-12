@@ -23,11 +23,6 @@ export interface VoicePlayback {
 	stop(): void;
 }
 
-/**
- * Bouts de phrases des autres joueurs, comme l'annoncent les conditions
- * d'utilisation. Ils restent en mémoire, sur cette machine et pour cette partie :
- * rien n'est envoyé ni sauvegardé.
- */
 class DoubleVoiceBank {
 	private readonly peers = new Map<string, PeerClips>();
 
@@ -154,7 +149,6 @@ class DoubleVoiceBank {
 
 export const doubleVoices = new DoubleVoiceBank();
 
-/** Le Double se glisse sur la fréquence : même voix, même grésillement qu'un vrai appel. */
 export function speakRadioClip(clip: AudioBuffer): void {
 	const context = audioEngine.ctx;
 	const source = context.createBufferSource();
@@ -173,7 +167,6 @@ export function speakRadioClip(clip: AudioBuffer): void {
 	source.start();
 }
 
-/** Joue un extrait comme une voix de partie : spatialisée et étouffée par les murs. */
 export function speakClip(clip: AudioBuffer): VoicePlayback {
 	const context = audioEngine.ctx;
 	const source = context.createBufferSource();

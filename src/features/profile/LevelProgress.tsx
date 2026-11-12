@@ -5,10 +5,6 @@ import { useT } from "../../i18n";
 import { rewardName } from "../challenges/rewardLabels";
 import styles from "./LevelProgress.module.scss";
 
-/**
- * Le niveau, la barre d'expérience et la prochaine récompense.
- * Avec `gained`, la barre part d'avant la partie et se remplit jusqu'au total.
- */
 export function LevelProgress({
 	xp,
 	gained = 0,
@@ -56,7 +52,6 @@ export function LevelProgress({
 					)}
 				</span>
 			</div>
-			{/* biome-ignore lint/a11y/useSemanticElements: une <meter> ne se laisse pas animer ni styler pareil partout. */}
 			<span
 				className={styles.bar}
 				role="meter"
@@ -84,7 +79,6 @@ export function LevelProgress({
 	);
 }
 
-/** Le détail de ce que la partie a rapporté. */
 export function XpBreakdown({ score, won }: { score: number; won: boolean }) {
 	const t = useT();
 	const parts = matchXpParts({ score, won });

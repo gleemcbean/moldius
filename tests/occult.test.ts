@@ -442,8 +442,6 @@ describe("monstre attiré par un cri", () => {
 		] as const) {
 			const { sim, player, entity } = lured("murmure", seed, config);
 			let closest = Infinity;
-			// Après l'arrivée, il reprend sa patrouille : un Murmure n'a alors
-			// aucune raison d'éviter un joueur silencieux, qu'il ne perçoit pas.
 			for (let tick = 0; tick < 280 && entity.state === "investigate"; tick++) {
 				sim.run(0.05);
 				closest = Math.min(

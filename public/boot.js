@@ -1,5 +1,3 @@
-// Écran de chargement du site : la langue du joueur dès la première image,
-// et un lien pour recharger si le jeu tarde vraiment (script externe : la CSP refuse l'inline).
 (() => {
 	const boot = document.getElementById("boot");
 	if (!boot) {

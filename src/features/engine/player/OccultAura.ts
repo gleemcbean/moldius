@@ -48,7 +48,6 @@ const STYLES: Record<OccultId, AuraStyle> = {
 	},
 };
 
-/** La couleur propre à chaque objet occulte (aura, pentacle de capture). */
 export function occultColor(id: OccultId): number {
 	return STYLES[id].color;
 }
@@ -154,10 +153,6 @@ export class OccultAura {
 		this.root.position.y = objectHeight * this.style.anchor;
 	}
 
-	/**
-	 * resonance : de 0 à 1, l'objet est à portée d'un monstre qu'il peut capturer. L'aura
-	 * grossit, tourne plus vite et pulse.
-	 */
 	update(dt: number, strength: number, animated: boolean, resonance = 0): void {
 		this.root.visible = strength > 0.01;
 		if (!this.root.visible) {

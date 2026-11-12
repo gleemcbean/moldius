@@ -101,7 +101,6 @@ function parseMetrics(raw: unknown): MatchMetrics {
 	return metrics;
 }
 
-/** Relit le détail enregistré ; une ligne ancienne ou abîmée n'a simplement pas de détail. */
 export function parseMatchDetails(raw: unknown): MatchDetailData | null {
 	let value = raw;
 	if (typeof value === "string") {

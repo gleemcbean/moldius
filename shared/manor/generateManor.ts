@@ -375,7 +375,6 @@ function isMissingStakeRoom(
 	);
 }
 
-/** Chaque enjeu autorisé une fois, puis davantage dans les grands manoirs. */
 function planStakeRooms(options: ManorOptions, rooms: number): RoomType[] {
 	const enabled = enabledStakeRooms(options);
 	const count = Math.min(enabled.length * 2, stakeRoomCount(rooms));

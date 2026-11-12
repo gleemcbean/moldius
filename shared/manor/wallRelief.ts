@@ -1,26 +1,19 @@
 import type { Room } from "./types.js";
 
-/** Un point du profil vertical d'un mur : hauteur et avancée dans la salle. */
 export interface ReliefNode {
 	y: number;
 	depth: number;
 }
 
-/** La hauteur du devant d'une marche : presque une arête vive, sans face de biais visible. */
 const STEP_RISE = 0.02;
 const CLEAR_HEIGHT = 2.4;
 const MAX_TOP = 0.6;
-/** Le joueur reste à cette distance des murs : un relief plus bas ne le gêne pas. */
 export const WALL_RELIEF_MAX_LOW_DEPTH = 0.2;
 
 function pick(seed: number, shift: number, count: number): number {
 	return ((seed >>> shift) & 0xff) % count;
 }
 
-/**
- * La corniche en haut du mur : des marches à angles droits, jamais d'arrondi ni de biseau.
- * Une petite corniche (moins de 30 cm) n'a que deux marches.
- */
 function topProfile(room: Room, base: number, size: number): ReliefNode[] {
 	const h = room.height;
 	const steps = size < 0.3 ? 2 : 3;
@@ -37,10 +30,6 @@ function topProfile(room: Room, base: number, size: number): ReliefNode[] {
 	return nodes;
 }
 
-/**
- * Profil d'un mur de bas en haut : bandeau, encorbellement et corniche. Le bas du
- * mur reste droit pour que les meubles adossés ne passent jamais à travers.
- */
 export function wallProfile(room: Room): ReliefNode[] {
 	const h = room.height;
 	const flat: ReliefNode[] = [
@@ -87,7 +76,6 @@ export function wallProfile(room: Room): ReliefNode[] {
 	return nodes;
 }
 
-/** Garde la partie du profil comprise entre deux hauteurs. */
 export function clipProfile(
 	nodes: ReliefNode[],
 	bottom: number,

@@ -7,7 +7,6 @@ export interface MatchPhoto {
 	takenAt: number;
 }
 
-/** Les photos ne quittent jamais le navigateur : rien n'est envoyé au serveur. */
 export const photoStore = createStore<{ photos: MatchPhoto[] }>({
 	photos: [],
 });

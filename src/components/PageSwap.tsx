@@ -3,10 +3,6 @@ import styles from "./PageSwap.module.scss";
 
 type Direction = "next" | "previous" | null;
 
-/**
- * Le contenu d'un onglet : quand on en change, la nouvelle page glisse depuis le côté
- * de l'onglet choisi (la droite s'il est plus loin dans la liste). Rien au premier affichage.
- */
 export function PageSwap<T extends string>({
 	page,
 	order,

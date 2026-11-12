@@ -161,12 +161,10 @@ export function placePickups(
 
 const WALKIE_MIN_SPACING = 10;
 
-/** Toujours en évidence, jamais au fond d'un coffre : on doit pouvoir les repérer. */
 export function placeWalkies(
 	rooms: Room[],
 	furniture: FurnitureItem[],
 	rng: SeededRandom,
-	/** D'autres objets déjà posés : une pièce chacun, tant que c'est possible. */
 	avoid: readonly WalkieSpot[] = [],
 ): WalkieSpot[] {
 	const spots: WalkieSpot[] = [];

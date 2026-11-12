@@ -1,4 +1,3 @@
-/** Les gestes offerts par l'application de bureau (desktop/preload.cjs), absents du navigateur. */
 export interface DesktopApp {
 	isDesktop: true;
 	quit(): void;
@@ -6,6 +5,56 @@ export interface DesktopApp {
 	toggleFullscreen(): void;
 	isFullscreen(): boolean;
 	onFullscreenChange(listener: (fullscreen: boolean) => void): () => void;
+	discord?: DesktopDiscord;
+}
+
+export type DiscordStatus =
+	| "unavailable"
+	| "signed-out"
+	| "authorizing"
+	| "connecting"
+	| "ready"
+	| "error";
+
+export interface DiscordUser {
+	id: string;
+	username: string;
+	displayName: string;
+	avatarUrl: string | null;
+	status: "online" | "idle" | "dnd" | "offline";
+	playing: boolean;
+	provisional: boolean;
+}
+
+export interface DiscordBridgeState {
+	available: boolean;
+	status: DiscordStatus;
+	error: string | null;
+	user: DiscordUser | null;
+	friends: DiscordUser[];
+}
+
+export interface DiscordActivity {
+	state?: string;
+	details?: string;
+	startedAt?: number;
+	largeImage?: string;
+	largeText?: string;
+	party?: { id: string; size: number; max: number; public: boolean };
+	joinSecret?: string;
+}
+
+export interface DesktopDiscord {
+	getState(): Promise<DiscordBridgeState | null>;
+	onState(listener: (state: DiscordBridgeState) => void): () => void;
+	connect(): void;
+	disconnect(): void;
+	setPresence(activity: DiscordActivity | null): void;
+	invite(
+		userId: string,
+		message: string,
+	): Promise<{ ok: boolean; error: string | null }>;
+	onJoin(listener: (secret: string) => void): () => void;
 }
 
 export const desktopApp: DesktopApp | null =

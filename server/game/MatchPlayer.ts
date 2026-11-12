@@ -62,10 +62,8 @@ export class MatchPlayer {
 	hiddenSpot = -1;
 	carriedBy = -1;
 	slimed = false;
-	/** L'effet du dernier chaudron, actif jusqu'à brewUntil. */
 	brew: BrewEffect | null = null;
 	brewUntil = 0;
-	/** Le chaudron où trempe le joueur : y rester ne relance pas l'effet. */
 	brewCauldron: number | null = null;
 
 	slimeDamageAt = -Infinity;

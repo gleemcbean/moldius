@@ -3,11 +3,6 @@ interface ProfilePoint {
 	y: number;
 }
 
-/**
- * Met un profil de révolution dans le sens qui oriente ses faces vers l'extérieur.
- * Le contour se referme par l'axe : une corde directe entre les deux bouts
- * passerait à côté d'un pied fin et retournerait ses faces.
- */
 export function orientLatheProfile<Point extends ProfilePoint>(
 	input: Point[],
 ): Point[] {

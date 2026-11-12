@@ -7,10 +7,6 @@ import type { ClientWorldState } from "../state/ClientWorldState";
 const VISIBLE_RANGE = 30;
 const ORB_RADIUS = 0.09;
 
-/**
- * Un feu flotte au-dessus de chaque salle à enjeu : allumé, l'offre tient ;
- * éteint, il faut attendre. On n'a pas besoin de s'approcher pour le savoir.
- */
 export class StakeViews {
 	readonly group = new THREE.Group();
 	private readonly geometry = new THREE.SphereGeometry(ORB_RADIUS, 12, 10);

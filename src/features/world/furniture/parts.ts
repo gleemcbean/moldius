@@ -13,7 +13,6 @@ import {
 } from "../geometryUtils";
 import type { MaterialOptions } from "../MaterialLibrary";
 
-/** Pivot et axe sont exprimés dans le repère du meuble. */
 export interface PartAnimation {
 	kind: "swing" | "spin";
 	pivot: [number, number, number];

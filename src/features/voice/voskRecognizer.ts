@@ -7,7 +7,6 @@ import { voskGrammar } from "./voskGrammar";
 
 const WORKER_URL = "/vosk/worker.js";
 const SETTLE_MS = 700;
-/** Sans réponse finale (connexion perdue…), l'écoute se conclut quand même. */
 const CONCLUDE_TIMEOUT_MS = 4000;
 const CHUNK_SIZE = 4096;
 const INT16_SCALE = 0x8000;
@@ -24,7 +23,6 @@ type VoskReply =
 
 export type RecognizerReply = Exclude<VoskReply, { event: "load" }>;
 
-/** Là où tourne Vosk : un worker du navigateur (VoskModel) ou le serveur (ServerModel). */
 export interface RecognizerBackend {
 	readonly ready: boolean;
 	readonly failed: boolean;
@@ -33,7 +31,6 @@ export interface RecognizerBackend {
 		listener: (reply: RecognizerReply) => void,
 		grammar: readonly string[],
 	): string;
-	/** samples : à l'échelle d'un Int16, au rythme de l'AudioContext. */
 	feed(recognizerId: string, samples: Float32Array, sampleRate: number): void;
 	conclude(recognizerId: string): void;
 	close(recognizerId: string): void;
@@ -46,7 +43,6 @@ export interface VoskCallbacks {
 	onEnd: () => void;
 }
 
-/** Le bruit reconnu « [unk] » n'est pas une parole : il ne doit ni lancer ni remplir une incantation. */
 function withoutUnknown(text: string): string {
 	return text
 		.replace(/\[unk\]/g, " ")
@@ -78,7 +74,6 @@ class VoskModel implements RecognizerBackend {
 		this.loaded = new Promise<void>((resolve, reject) => {
 			this.worker.onmessage = (event: MessageEvent<VoskReply | undefined>) => {
 				const reply = event.data;
-				// Le worker répond « undefined » à create et remove : rien à traiter.
 				if (!reply) {
 					return;
 				}
@@ -189,7 +184,6 @@ export class VoskListener {
 		return this.session !== null;
 	}
 
-	/** formulas : celles de la partie, qui deviennent la grammaire du modèle (voir voskGrammar). */
 	start(
 		callbacks: VoskCallbacks,
 		formulas: readonly (readonly string[])[] = [],

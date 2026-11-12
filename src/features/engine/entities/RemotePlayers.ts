@@ -48,7 +48,6 @@ export class RemotePlayers {
 	private readonly replayVoices = new Map<string, number>();
 	private spectating = false;
 	private time = 0;
-	/** Les joueurs entendus au talkie en ce moment, pour les afficher. */
 	radioSpeakers: string[] = [];
 
 	constructor(
@@ -98,7 +97,6 @@ export class RemotePlayers {
 		}
 	}
 
-	/** Dans les meilleurs moments, on se voit aussi soi-même, sans le son du tchat. */
 	spectate(): void {
 		this.spectating = true;
 		this.radioSpeakers = [];
@@ -269,7 +267,6 @@ export class RemotePlayers {
 		}
 	}
 
-	/** On entend les autres tomber dans un chaudron ou entrer dans un bassin. */
 	private splash(
 		view: RemoteView,
 		liquid: LiquidVolume | null,

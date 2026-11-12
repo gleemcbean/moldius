@@ -69,11 +69,6 @@ a {
   }
 }
 
-/*
- * Barres de défilement aux couleurs du manoir, partout : une gouttière sombre,
- * une poignée vert mousse qui jaunit sous la souris, des angles droits comme le reste.
- * Chrome et Safari prennent les pseudo-éléments ; Firefox, les propriétés standard.
- */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -112,17 +107,10 @@ a {
   }
 }
 
-/* Tant que l'écran de chargement couvre la page, ses animations d'entrée attendent. */
 html[data-booting] #root * {
   animation-play-state: paused !important;
 }
 
-/*
- * Transitions entre écrans (API View Transitions, voir src/app/screenTransitions.ts).
- * forward : l'écran suivant glisse par la droite et recouvre le précédent, qui recule dans l'ombre.
- * back    : l'écran précédent revient par la gauche. dive : plongée dans le manoir. rise : les résultats montent.
- * close   : une fenêtre qui se ferme fond rapidement.
- */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 560ms;
@@ -150,8 +138,6 @@ html[data-transition='forward']::view-transition-new(root) {
   box-shadow: -32px 0 64px rgba(0, 0, 0, 0.6), -2px 0 0 $yellow;
 }
 
-// Pas de z-index sur l'ancienne image : Chrome interrompt alors la transition.
-// Au retour, l'écran précédent revient donc par la gauche, par-dessus, en miroir de l'avance.
 html[data-transition='back']::view-transition-old(root) {
   animation-name: screen-recede-right;
 }
@@ -172,7 +158,6 @@ html[data-transition='rise']::view-transition-new(root) {
   box-shadow: 0 -32px 64px rgba(0, 0, 0, 0.6), 0 -2px 0 $yellow;
 }
 
-// Plongée : le manoir s'ouvre en iris depuis le centre pendant que l'écran de chargement s'enfonce.
 html[data-transition='dive']::view-transition-old(root) {
   animation-name: screen-dive-out;
   animation-duration: 760ms;

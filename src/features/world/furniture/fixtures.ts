@@ -62,7 +62,6 @@ function flameSheet(
 	};
 }
 
-/** Plusieurs nappes de feu croisées : chacune ondule à son propre rythme. */
 function flames(
 	x: number,
 	y: number,

@@ -19,36 +19,27 @@ import { ManorMeshBuilder } from "../world/ManorMeshBuilder";
 import { MaterialLibrary } from "../world/MaterialLibrary";
 import { TextureLibrary } from "../world/textures/TextureLibrary";
 
-// Les illustrations des modes de jeu, prégénérées : le jeu n'affiche que les PNG de ./art.
-// Pour les refaire (manoir, modèles ou textures changés) : `npm run dev:client`,
-// ouvrir /scripts/mode-art.html et remplacer les trois images par celles téléchargées.
-
 export type GameMode = "classic" | "daily" | "tutorial";
 
-/** Petites images, agrandies sans lissage : le même grain que le jeu. */
 const WIDTH = 168;
 const HEIGHT = 196;
 const DEFAULT_FLAME = 0xffb060;
-/** Comme le pool de lumières du jeu (LightPool). */
 const LIGHT_SCALE = 4.2;
 const ART_SEED = 0x5eed42;
 
 type Look = { color: number; pattern: HatPattern; lantern?: number | null };
 
-/** Le champignon de base, celui d'un nouveau joueur. */
 const BASE_LOOK: Look = {
 	color: DEFAULT_PLAYER_COLOR,
 	pattern: DEFAULT_HAT_PATTERN,
 	lantern: null,
 };
 
-/** Les autres chasseurs des illustrations, chacun son chapeau. */
 const COMPANIONS: Look[] = [
 	{ color: PLAYER_COLOR_CHOICES[4], pattern: "rings" },
 	{ color: PLAYER_COLOR_CHOICES[3], pattern: "swirl" },
 ];
 
-/** Le genre de salle de chaque mode, par ordre de préférence. */
 const ROOMS: Record<GameMode, readonly RoomType[]> = {
 	classic: ["salon", "dining", "library", "hall", "music"],
 	daily: ["gallery", "hall", "chapel", "ritual", "salon"],
@@ -64,11 +55,8 @@ interface Manor {
 }
 
 interface Actor {
-	/** Distance à la caméra, en mètres. */
 	depth: number;
-	/** Décalage vers la droite de l'image, en mètres. */
 	side: number;
-	/** 0 : face à la caméra ; Math.PI : de dos. */
 	facing: number;
 }
 
@@ -90,7 +78,6 @@ interface Shot {
 	place: (actor: Actor) => { position: THREE.Vector3; yaw: number };
 }
 
-/** Assez haut pour voir par-dessus les chapeaux ; plus bas pour une fuite, face au champignon. */
 const EYE_HEIGHTS: Record<GameMode, number> = {
 	classic: 1.35,
 	daily: 2.45,
@@ -98,7 +85,6 @@ const EYE_HEIGHTS: Record<GameMode, number> = {
 };
 const CANDIDATE_STEP = 0.6;
 
-/** Le point marchable le plus proche, à moins d'un demi-mètre : sinon, pas de place. */
 function walkable(
 	grid: NavGrid,
 	room: Room,
@@ -119,7 +105,6 @@ function walkable(
 	return null;
 }
 
-/** Où chacun se tient vu de cette caméra, ou null si un meuble ou un mur le cache. */
 function placements(
 	manor: Manor,
 	room: Room,
@@ -160,7 +145,6 @@ function placements(
 	return placed;
 }
 
-/** Un meuble assez haut au premier plan (une table, un lit) : il boucherait l'image. */
 function furnitureAhead(
 	manor: Manor,
 	room: Room,
@@ -184,10 +168,6 @@ function furnitureAhead(
 	});
 }
 
-/**
- * La caméra : un point de la salle d'où toute la scène se voit, sans meuble ni mur devant.
- * On essaie chaque point marchable, tourné vers le centre de la salle.
- */
 function frame(
 	manor: Manor,
 	room: Room,
@@ -222,7 +202,6 @@ function frame(
 				room.floorY + Math.min(eyeHeight, room.height - 0.4),
 				ground.z,
 			);
-			// Rien juste devant l'objectif : un meuble de près mangerait l'image.
 			const right = new THREE.Vector2(-forward.y, forward.x);
 			const clear = [1, 1.8, 2.4].every((ahead) =>
 				[-0.75, -0.35, 0, 0.35, 0.75].every((spread) =>
@@ -247,7 +226,6 @@ function frame(
 			if (!placed) {
 				continue;
 			}
-			// Le plus de profondeur derrière la scène : le fond de la salle se voit.
 			const score = center.distanceTo(new THREE.Vector2(eye.x, eye.z));
 			if (!best || score > best.score) {
 				best = { eye, forward, placed, score };
@@ -272,7 +250,6 @@ function frame(
 			const index = cast.indexOf(actor);
 			const position = (placed[index] ?? placed[0]).clone();
 			const toCamera = Math.atan2(eye.x - position.x, eye.z - position.z);
-			// Les modèles regardent à l'opposé de leur angle : on retourne pour que 0 fasse face.
 			return { position, yaw: toCamera + actor.facing + Math.PI };
 		},
 	};
@@ -305,7 +282,6 @@ class Stage {
 		this.scene.fog = new THREE.FogExp2(0x140c07, 0.06);
 		this.scene.add(new THREE.HemisphereLight(0xa4907c, 0x44301e, 1.5));
 		const { layout, builder } = manor;
-		// La salle et ses voisines, qu'on aperçoit par les portes.
 		const shown = new Set([shot.room.id]);
 		for (const openingId of shot.room.openingIds) {
 			const opening = layout.openings[openingId];
@@ -413,7 +389,6 @@ class Stage {
 	}
 
 	dispose(): void {
-		// Les portes servent aux trois images : on les retire avant de tout libérer.
 		this.scene.remove(this.manor.doors.group);
 		for (const dispose of this.disposers) {
 			dispose();
@@ -426,7 +401,6 @@ class Stage {
 	}
 }
 
-/** Partie classique : un champignon fuit vers nous, lanterne au poing, un Réverbère sur ses talons. */
 const CLASSIC: CastMember[] = [
 	{ kind: "self", run: true, depth: 2.9, side: 0.3, facing: 0.1 },
 	{
@@ -439,7 +413,6 @@ const CLASSIC: CastMember[] = [
 	},
 ];
 
-/** Mode du jour : le même manoir pour tous, plusieurs chasseurs devant une Pleureuse. */
 const DAILY: CastMember[] = [
 	{
 		kind: "monster",
@@ -466,7 +439,6 @@ const DAILY: CastMember[] = [
 	},
 ];
 
-/** Tutoriel : seul dans un cabinet, grimoire ouvert à la lumière de la lanterne. */
 const TUTORIAL: CastMember[] = [
 	{ kind: "self", grimoire: true, depth: 2.9, side: 0, facing: 0.5 },
 ];
@@ -477,7 +449,6 @@ const CASTS: Record<GameMode, CastMember[]> = {
 	tutorial: TUTORIAL,
 };
 
-/** Une salle du bon genre où la scène tient, sinon la plus grande où elle tient. */
 function stageFor(
 	manor: Manor,
 	mode: GameMode,
@@ -513,7 +484,6 @@ function perform(stage: Stage, mode: GameMode): void {
 		if (member.kind === "monster") {
 			stage.addMonster(member.species, member, member.state);
 			if (member.species === "veilleur") {
-				// Une lueur froide sur lui : sa silhouette se découpe au fond de la salle.
 				const above = stage.shot.place(member).position;
 				above.y += 2.2;
 				stage.addLight(0x8fa6c8, 6, above);
@@ -540,7 +510,6 @@ function perform(stage: Stage, mode: GameMode): void {
 	}
 }
 
-/** Les trois images en PNG (data URL), pour scripts/mode-art.html : jamais dans le jeu. */
 export async function drawModeArt(): Promise<Record<GameMode, string>> {
 	const canvas = document.createElement("canvas");
 	canvas.width = WIDTH;

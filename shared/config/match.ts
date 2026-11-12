@@ -3,7 +3,6 @@ export const MIN_MATCH_MINUTES = 3;
 export const MAX_MATCH_MINUTES = 30;
 export const ANOMALY_FIRST_SPAWN_DELAY_MS = 30_000;
 export const ANOMALY_RETURN_DELAY_MS = 60_000;
-/** Anomalies en attente au-delà de celles en jeu : elles prennent le relais après une capture. */
 export const ANOMALY_ROSTER_RESERVE = 4;
 export const ANOMALY_NEXT_DELAY_MS = 4_000;
 export const ANOMALY_SPAWN_RETRY_MS = 1_000;
@@ -30,7 +29,6 @@ export function anomalyRosterSize(simultaneous: number): number {
 	return simultaneous + ANOMALY_ROSTER_RESERVE;
 }
 
-/** Laisse de la place à chaque palier : trois à la fois, c'est au plus un monstre du palier 1. */
 export function anomalyTierCaps(
 	simultaneous: number,
 ): Record<1 | 2 | 3, number> {

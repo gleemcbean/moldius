@@ -1,11 +1,5 @@
 import { Worker } from "node:worker_threads";
 
-/**
- * Le moteur de vosk-browser (public/vosk/worker.js, le même que dans le navigateur) dans un
- * thread de Node. Ce code est fait pour un Web Worker : on lui donne ce qu'il attend d'un
- * navigateur (self, postMessage, fetch du modèle sur le disque) et on retire IndexedDB, que
- * Node n'a pas — le modèle est décompressé en mémoire à chaque chargement.
- */
 const THREAD_SOURCE = `
 const { parentPort, workerData } = require("node:worker_threads");
 const fs = require("node:fs");
@@ -65,7 +59,6 @@ export class VoskEngine {
 	readonly loaded: Promise<boolean>;
 	ready = false;
 	failed = false;
-	/** Dernière activité : un modèle inutilisé est déchargé (voir SpeechService). */
 	usedAt = Date.now();
 	private readonly worker: Worker;
 	private readonly listeners = new Map<string, (reply: EngineReply) => void>();
@@ -153,7 +146,6 @@ export class VoskEngine {
 		});
 	}
 
-	/** samples : PCM 16 bits, que vosk-browser attend en flottants à l'échelle d'un Int16. */
 	feed(recognizerId: string, samples: Int16Array): void {
 		this.usedAt = Date.now();
 		const data = Float32Array.from(samples);

@@ -40,7 +40,6 @@ function Trigger({
 	label: string;
 	title: string;
 	preview: ReactNode;
-	/** Change avec le choix : l'aperçu rebondit quand on en prend un autre. */
 	previewKey: string;
 	open: boolean;
 	onClick: () => void;
@@ -66,12 +65,10 @@ function Trigger({
 	);
 }
 
-/** Le rang d'un choix : chacun apparaît un peu après le précédent (voir .options). */
 function stagger(index: number): CSSProperties {
 	return { "--i": index } as CSSProperties;
 }
 
-/** Une ligne, un bouton par catégorie : les autres choix ne s'affichent qu'à la demande. */
 export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 	const t = useT();
 	const color = useStore(settingsStore, (state) => state.playerColor);

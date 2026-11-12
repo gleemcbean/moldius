@@ -5,8 +5,10 @@ import type {
 	ServerToClientEvents,
 } from "../../shared/protocol/events.js";
 import {
+	DISCORD_FRIEND_LIMIT,
 	type FriendStatus,
 	type FriendsOverview,
+	isDiscordId,
 	normalizeFriendCode,
 } from "../../shared/protocol/friends.js";
 import type {
@@ -30,6 +32,10 @@ const MESSAGES: Partial<Record<LobbyErrorCode, string>> = {
 	"friend-offline": "Cet ami n'est pas en ligne.",
 	"friend-busy": "Cet ami est déjà en partie ou dans ce lobby.",
 	"lobby-not-invitable": "Rejoignez un lobby en attente pour inviter un ami.",
+	"discord-not-linked":
+		"Liez votre compte Discord à votre compte de jeu pour synchroniser vos amis.",
+	"discord-mismatch":
+		"Ce compte Discord n'est pas celui lié à votre compte de jeu.",
 	"invalid-request": "Requête invalide : rechargez la page.",
 	"rate-limited": "Trop de requêtes, patientez un instant.",
 };
@@ -84,6 +90,9 @@ async function overviewOf(
 		return null;
 	}
 	const links = await store.links(accountId);
+	const accepted = new Set(
+		links.filter((link) => link.accepted).map((link) => link.accountId),
+	);
 	const person = ({
 		accountId: id,
 		name,
@@ -100,6 +109,8 @@ async function overviewOf(
 	return {
 		friendCode: identity.friendCode,
 		appearOffline: identity.appearOffline,
+		discordId: identity.discordId,
+		discordSynced: identity.discordSynced,
 		friends: links
 			.filter((link) => link.accepted)
 			.map((link) => ({
@@ -107,6 +118,12 @@ async function overviewOf(
 				status: link.appearOffline
 					? ("offline" as const)
 					: friendStatus(deps, link.accountId),
+				codeFriend: link.codeFriend,
+				discord: link.discord,
+				discordId: link.discordId,
+				lobbyId: link.appearOffline
+					? null
+					: deps.lobbies.friendJoinTarget(link.accountId, accountId, accepted),
 			})),
 		incoming: links
 			.filter((link) => !link.accepted && !link.requestedByMe)
@@ -117,7 +134,19 @@ async function overviewOf(
 	};
 }
 
-/** Prévient les amis quand un compte arrive ou repart, et note sa dernière visite. */
+export function notifyFriendsOf(
+	deps: HandlerDependencies,
+	accountId: string,
+): void {
+	const store = deps.friends?.();
+	if (!store) {
+		return;
+	}
+	void notifyFriends(deps, store, accountId).catch((error: unknown) =>
+		console.error("Amis : notification impossible", error),
+	);
+}
+
 export function accountPresenceChanged(
 	deps: HandlerDependencies,
 	accountId: string,
@@ -250,6 +279,36 @@ export function registerFriendHandlers(
 			}
 			await store.setAppearOffline(accountId, payload.offline);
 			await notifyFriends(deps, store, accountId);
+			return overview(store, accountId);
+		});
+	});
+
+	socket.on("friends:discordSync", (payload, ack) => {
+		void run(ack, "friends:sync", async (store, accountId) => {
+			if (
+				!isRecord(payload) ||
+				!isDiscordId(payload.discordId) ||
+				!Array.isArray(payload.friendIds) ||
+				payload.friendIds.length > DISCORD_FRIEND_LIMIT * 2
+			) {
+				return failure("invalid-request");
+			}
+			const friendIds = payload.friendIds.filter(isDiscordId);
+			const synced = await store.syncDiscord(
+				accountId,
+				payload.discordId,
+				friendIds,
+			);
+			if (!synced.ok) {
+				return failure(
+					synced.reason === "mismatch"
+						? "discord-mismatch"
+						: "discord-not-linked",
+				);
+			}
+			for (const other of synced.touched) {
+				emitChanged(deps, other);
+			}
 			return overview(store, accountId);
 		});
 	});

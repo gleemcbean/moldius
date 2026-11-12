@@ -14,7 +14,6 @@ function crackleCurve(): Float32Array<ArrayBuffer> {
 	return curve;
 }
 
-/** Voix serrée et saturée, comme dans un vrai talkie : on sait que ça vient de la radio. */
 export function createRadioFilter(context: BaseAudioContext): RadioFilter {
 	const high = context.createBiquadFilter();
 	high.type = "highpass";

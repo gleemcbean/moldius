@@ -83,7 +83,6 @@ export function buildFurnitureColliders(
 	});
 }
 
-/** Un récipient creux : un fond sous le liquide et quatre bords tout autour. */
 function basinBoxes(
 	item: FurnitureItem,
 	rimWalkable: boolean,
@@ -183,7 +182,6 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 			];
 		case "pond":
 			return [];
-		// Le liquide ne porte pas : on y entre jusqu'au fond, et le bord se franchit en sautant.
 		case "cauldron":
 		case "washtub":
 		case "bathtub":

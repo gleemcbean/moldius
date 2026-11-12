@@ -496,7 +496,6 @@ export class AccountStore {
 		return { date, entries, me };
 	}
 
-	/** Garde la date du premier accord : c'est elle qui fait foi. */
 	async acceptTerms(id: string): Promise<StoredAccount | null> {
 		const { rows } = await this.database.query<AccountRow>(
 			`UPDATE accounts
@@ -749,7 +748,6 @@ export class AccountStore {
 		return rows.map(toHistory);
 	}
 
-	/** Seulement une partie de son propre historique : l'identifiant seul ne suffit pas. */
 	async historyDetail(
 		accountId: string,
 		matchId: string,
@@ -768,10 +766,6 @@ export class AccountStore {
 		return { ...toHistory({ ...row, has_details: true }), ...details };
 	}
 
-	/**
-	 * Le profil vu par les autres : apparence, niveau, statistiques et dernières parties.
-	 * Privé, il ne garde que l'apparence et le niveau, sauf pour le joueur et ses amis.
-	 */
 	async publicProfile(
 		accountId: string,
 		recentLimit: number,
@@ -825,7 +819,6 @@ export class AccountStore {
 		};
 	}
 
-	/** Le joueur lui-même, ou un ami accepté. */
 	private async canSeePrivate(
 		accountId: string,
 		viewerId: string,
@@ -840,6 +833,17 @@ export class AccountStore {
        WHERE account_low = $1 AND account_high = $2 AND status = 'accepted'`,
 			[low, high],
 		);
-		return rows.length > 0;
+		if (rows.length > 0) {
+			return true;
+		}
+		const discord = await this.database.query(
+			`SELECT 1 FROM accounts me
+       JOIN discord_friends mine ON mine.account_id = me.id
+       JOIN accounts a ON a.discord_id = mine.discord_id
+       JOIN discord_friends theirs ON theirs.account_id = a.id AND theirs.discord_id = me.discord_id
+       WHERE me.id = $1 AND a.id = $2`,
+			[viewerId, accountId],
+		);
+		return discord.rows.length > 0;
 	}
 }

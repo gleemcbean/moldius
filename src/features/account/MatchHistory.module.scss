@@ -149,8 +149,6 @@
   color: $yellow;
 }
 
-// Un bloc flex, pas inline : sinon la ligne de texte autour décale le chapeau
-// et le pseudo vers le haut par rapport au rang et aux chiffres.
 .who {
   display: flex;
   align-items: center;

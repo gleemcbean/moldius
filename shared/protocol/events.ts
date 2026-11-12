@@ -76,6 +76,18 @@ export interface ClientToServerEvents {
 		ack: Ack<FriendsOverview>,
 	) => void;
 	"friends:invite": (payload: { accountId: string }, ack: Ack<null>) => void;
+	"friends:discordSync": (
+		payload: { discordId: string; friendIds: string[] },
+		ack: Ack<FriendsOverview>,
+	) => void;
+	"lobby:joinFriend": (
+		payload: JoinRequest & { lobbyId: string },
+		ack: Ack<LobbyState>,
+	) => void;
+	"lobby:openToFriends": (
+		payload: { open: boolean },
+		ack: Ack<LobbyState>,
+	) => void;
 	"lobby:leave": () => void;
 	"lobby:ready": (payload: { ready: boolean }) => void;
 	"lobby:microphone": (payload: { ready: boolean }) => void;

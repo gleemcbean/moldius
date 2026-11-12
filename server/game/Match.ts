@@ -668,7 +668,6 @@ export class Match {
 		}
 	}
 
-	/** Tremper dans un chaudron donne son effet ; y rester ne le relance pas. */
 	private updateBrew(player: MatchPlayer): void {
 		if (player.brew !== null && this.now >= player.brewUntil) {
 			player.brew = null;
@@ -948,10 +947,6 @@ export class Match {
 		}
 	}
 
-	/**
-	 * Le réglage du lobby prime : si les espèces choisies ne permettent pas
-	 * d'atteindre le nombre demandé en respectant les paliers, ces derniers sautent.
-	 */
 	private get tierCaps(): Record<1 | 2 | 3, number> {
 		const wanted = this.config.simultaneousAnomalies;
 		const caps = anomalyTierCaps(wanted);
@@ -1555,7 +1550,6 @@ export class Match {
 		}
 	}
 
-	/** Le vacarme du reliquaire : les portes claquent, il faut les rouvrir pour fuir. */
 	slamRoomDoors(roomId: number): void {
 		for (const openingId of this.layout.rooms[roomId]?.openingIds ?? []) {
 			const opening = this.layout.openings[openingId];

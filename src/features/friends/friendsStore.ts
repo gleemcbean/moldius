@@ -1,10 +1,14 @@
 import type { FriendInvite, FriendsOverview } from "@shared/protocol/friends";
-import type { LobbyError } from "@shared/protocol/lobby";
+import type { LobbyError, LobbyErrorCode } from "@shared/protocol/lobby";
 import { appStore, closeOverlay, showToast } from "../../app/appStore";
 import { currentMessages } from "../../i18n";
 import { createStore } from "../../utils/store";
 import { accountStore } from "../account/accountStore";
-import { joinPrivateLobby, joinPublicLobby } from "../lobby/lobbyClient";
+import {
+	joinFriendLobby,
+	joinPrivateLobby,
+	joinPublicLobby,
+} from "../lobby/lobbyClient";
 import { sessionStore } from "../network/sessionStore";
 import { getSocket } from "../network/socket";
 import { settingsStore } from "../settings/settingsStore";
@@ -87,6 +91,24 @@ export function inviteFriend(
 		refreshFriends();
 		done(reply.ok);
 	});
+}
+
+export function syncDiscordFriends(
+	discordId: string,
+	friendIds: string[],
+	done: (error: LobbyErrorCode | null) => void,
+): void {
+	getSocket().emit("friends:discordSync", { discordId, friendIds }, (reply) => {
+		applyOverview(reply, true);
+		done(reply.ok ? null : reply.error.code);
+	});
+}
+
+export function joinFriend(lobbyId: string): void {
+	if (appStore.get().overlay === "friends") {
+		closeOverlay();
+	}
+	joinFriendLobby(settingsStore.get().playerName.trim(), lobbyId);
 }
 
 export function dismissInvite(invite: FriendInvite): void {

@@ -52,7 +52,6 @@ const PATTERN_PAINTERS: Record<HatPattern, PatternPainter> = {
 			p.set(x - 2, y - 1, shine);
 		}
 	},
-	// Des filaments qui se ramifient depuis le sommet, comme le réseau sous la terre.
 	mycelium: (p, light) => {
 		const thread: RGB = shade(light, 1.05);
 		for (let root = 0; root < 6; root += 1) {
@@ -110,7 +109,6 @@ const PATTERN_PAINTERS: Record<HatPattern, PatternPainter> = {
 			}
 		}
 	},
-	// Le haut de la texture devient le sommet du chapeau : les rayons y convergent.
 	web: (p, light) => {
 		const spacing = CAP_WIDTH / WEB_SPOKES;
 		for (let spoke = 0; spoke < WEB_SPOKES; spoke += 1) {

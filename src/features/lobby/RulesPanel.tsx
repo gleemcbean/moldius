@@ -36,7 +36,6 @@ function useRulesConfig(lobby: LobbyState, editable: boolean): MatchConfig {
 	return editable && draft ? draft : lobby.config;
 }
 
-/** L'essentiel des règles dans le lobby : tout se règle dans le modal. */
 export function RulesSummary({
 	lobby,
 	editable,
@@ -328,7 +327,6 @@ function ChipSection({
 			</p>
 			<div className={styles.roomChips}>
 				{chips.map((chip) => (
-					// biome-ignore lint/a11y/noStaticElementInteractions: un bouton désactivé doit aussi afficher son infobulle
 					<span
 						key={chip.key}
 						className={styles.roomChipAnchor}

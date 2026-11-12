@@ -1,13 +1,3 @@
-/**
- * Les petits modèles Vosk ne connaissent pas les mots latins des incantations : en écoute libre,
- * ils entendent « hostage » pour hostis. On leur donne donc une grammaire faite de mots qu'ils
- * connaissent et qui, pour le comparateur phonétique du jeu, sonnent comme chaque mot latin
- * (« fathom » pour fatum, « ser wus » pour cervus).
- *
- * Ce script lit le vocabulaire de chaque modèle (la table de symboles de graph/Gr.fst, dans les
- * archives de public/vosk) et écrit src/features/voice/voskForms.ts. À relancer quand
- * INCANTATION_VOCABULARY ou les modèles changent : npm run vosk:setup && npm run vosk:forms.
- */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,7 +16,6 @@ const MODELS = {
 } as const;
 const MAX_FORMS = 3;
 
-/** Un fichier d'une archive .tar.gz. */
 function fileFromArchive(archivePath: string, wanted: string): Buffer {
 	const archive = gunzipSync(readFileSync(archivePath));
 	for (let offset = 0; offset + 512 <= archive.length; ) {
@@ -48,7 +37,6 @@ function fileFromArchive(archivePath: string, wanted: string): Buffer {
 	throw new Error(`${wanted} introuvable dans ${archivePath}`);
 }
 
-/** Les mots d'un graphe Gr.fst : sa table de symboles OpenFst (nom, clé libre, taille, entrées). */
 function modelWords(grammarFst: Buffer): string[] {
 	const marker = Buffer.from("words.txt");
 	for (
@@ -84,7 +72,6 @@ function modelWords(grammarFst: Buffer): string[] {
 	throw new Error("Table de symboles introuvable dans Gr.fst");
 }
 
-/** Jusqu'à trois façons, dans le vocabulaire du modèle, de prononcer chaque mot latin. */
 function spokenForms(vocabulary: string[]): Record<string, string[]> {
 	const words = vocabulary.filter(
 		(word) =>
@@ -102,7 +89,6 @@ function spokenForms(vocabulary: string[]): Record<string, string[]> {
 	const table: Record<string, string[]> = {};
 	for (const latin of INCANTATION_VOCABULARY) {
 		const key = phoneticKey(latin);
-		// Une consonne de tête différente s'entend bien plus qu'une voyelle au milieu.
 		const score = (phrase: string, pair: boolean) => {
 			const spokenKey = phoneticKey(phrase.replace(/ /g, ""));
 			return (
@@ -135,7 +121,6 @@ function spokenForms(vocabulary: string[]): Record<string, string[]> {
 				(byKey.get(key.slice(split)) ?? []).slice(0, 8),
 			);
 		}
-		// Aucun découpage exact : une lettre d'écart tolérée à gauche…
 		if (!candidates.some((candidate) => candidate.score < 12)) {
 			for (let split = 2; split < key.length - 1; split += 1) {
 				const prefix = key.slice(0, split);
@@ -154,7 +139,6 @@ function spokenForms(vocabulary: string[]): Record<string, string[]> {
 				}
 			}
 		}
-		// …puis de chaque côté.
 		if (!candidates.some((candidate) => candidate.score < 12)) {
 			const near = (target: string, sameStart: boolean) =>
 				[...byKey.entries()]

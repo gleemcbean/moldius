@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import type { ModelKit } from "./modelKit";
 
-/** Origine au bas du talkie, antenne vers le haut, grille vers +z. */
 export function createWalkieModel(kit: ModelKit): THREE.Group {
 	const root = new THREE.Group();
 	const dark = { color: 0x24262a, roughness: 0.55, metalness: 0.2 };

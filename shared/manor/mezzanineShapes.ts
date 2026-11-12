@@ -60,7 +60,6 @@ export function postBoxes(posts: Vec2[]): OrientedBox[] {
 	}));
 }
 
-/** Vrai si tout le plancher reste accessible à pied depuis le haut de l'escalier. */
 export function deckIsConnected(
 	deck: Vec2[],
 	stairTop: MezzanineSegment,
@@ -148,7 +147,6 @@ function convexHull(points: Vec2[]): Vec2[] {
 	return [...half(sorted), ...half([...sorted].reverse())];
 }
 
-/** Sutherland-Hodgman : `clip` est convexe et tourne dans le sens positif. */
 function clipToConvex(subject: Vec2[], clip: Vec2[]): Vec2[] {
 	let output = subject;
 	for (let index = 0; index < clip.length && output.length > 0; index += 1) {
@@ -202,11 +200,6 @@ interface Design {
 	podium: Podium | null;
 }
 
-/**
- * Trace une mezzanine dans le repère du mur du fond : x suit ce mur, z entre
- * dans la salle. La forme est dessinée sans tenir compte du contour, puis
- * découpée par lui : pans coupés et arrondis sont donc suivis exactement.
- */
 export function buildMezzanine(
 	room: Room,
 	back: number,
@@ -595,7 +588,6 @@ export function buildMezzanine(
 		return null;
 	}
 
-	// Un garde-corps court sur chaque bord libre, sauf au débouché de l'escalier.
 	const rails: MezzanineSegment[] = [];
 	for (const [a, b] of deckEdgesLocal) {
 		const free = samples(a, b).some(

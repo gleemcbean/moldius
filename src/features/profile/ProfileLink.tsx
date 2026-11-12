@@ -3,11 +3,6 @@ import { useT } from "../../i18n";
 import styles from "./ProfileLink.module.scss";
 import { openProfile } from "./profileViewStore";
 
-/**
- * Un nom de joueur qui ouvre son profil ; un simple texte pour un invité.
- * Posé dans une ligne `data-selector-row`, toute la ligne devient cliquable
- * et c'est elle que le cadre de sélection entoure.
- */
 export function ProfileLink({
 	profileId,
 	name,

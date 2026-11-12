@@ -91,7 +91,6 @@ export interface HudState {
 	cameraAiming: boolean;
 	photoCount: number;
 	photoFlashAt: number;
-	/** L'effet de chaudron en cours et ce qu'il en reste. */
 	brew: BrewEffect | null;
 	brewLeftMs: number;
 	brewTotalMs: number;

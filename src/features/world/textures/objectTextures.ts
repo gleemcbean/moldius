@@ -557,7 +557,6 @@ export const OBJECT_TEXTURES: Record<string, TextureRecipe> = {
 			}
 		},
 	},
-	/** La même flamme en niveaux de gris : la couleur de la lanterne la teinte sans la salir. */
 	flameNeutral: {
 		size: [16, 32],
 		tile: 1,

@@ -7,7 +7,6 @@ export interface PostEffectsFrame {
 	animated: boolean;
 	levels: number;
 	desaturate?: number;
-	/** De 0 à 1 : la distorsion après un chaudron de nausée. */
 	nausea?: number;
 }
 
@@ -238,10 +237,6 @@ export class PostEffects {
 		this.renderer.render(this.scene, this.camera);
 	}
 
-	/**
-	 * Les mêmes filtres sur une image carrée, dessinée en bas à gauche de l'écran :
-	 * la photo garde le grain, les lignes et la vignette du jeu.
-	 */
 	renderSquare(source: THREE.Texture, side: number): void {
 		const uniforms = this.material.uniforms;
 		const saved = {

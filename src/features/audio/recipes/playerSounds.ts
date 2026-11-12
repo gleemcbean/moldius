@@ -109,7 +109,6 @@ export const PLAYER_SOUNDS: SoundRecipe[] = [
 			kit.noise("brown", 0, 0.3, band);
 		},
 	},
-	// Un pas dans l'eau : le clapotis qui monte, puis quelques gouttes.
 	{
 		id: "step-water",
 		duration: 0.42,
@@ -154,7 +153,6 @@ export const PLAYER_SOUNDS: SoundRecipe[] = [
 			}
 		},
 	},
-	// Le plongeon dans un récipient : une gerbe, puis l'eau qui retombe.
 	{
 		id: "splash",
 		duration: 1,
@@ -193,7 +191,6 @@ export const PLAYER_SOUNDS: SoundRecipe[] = [
 			}
 		},
 	},
-	// Le chaudron fait effet : un gros glouglou qui remonte.
 	{
 		id: "brew-gulp",
 		duration: 1.2,

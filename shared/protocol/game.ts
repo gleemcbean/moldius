@@ -104,7 +104,6 @@ export interface PlayerSnapshot {
 	score: number;
 	hideSpot: number;
 	moveId: number;
-	/** L'objet occulte tenu en main (son rang dans OCCULT_IDS), absent sinon. */
 	held?: number;
 }
 
@@ -178,13 +177,11 @@ export interface ClientStateMessage {
 	sprint: boolean;
 	moveInput: boolean;
 	grimoire: boolean;
-	/** Appareil photo levé devant soi : les autres le voient viser. */
 	camera?: boolean;
 	voiceLevel: number;
 	voicePeakMs: number;
 	held: number;
 	moveAck: number;
-	/** Compteur cumulé : aucun saut n'est perdu si plusieurs tiennent dans un message. */
 	jumps: number;
 }
 
@@ -384,7 +381,6 @@ export type GameEvent =
 	  }
 	| { type: "walkie"; id: number; holder: string | null; available: boolean }
 	| { type: "camera"; id: number; holder: string | null; available: boolean }
-	/** Un bain de chaudron : son effet jusqu'à `until` (heure du serveur), ou sa fin avec null. */
 	| {
 			type: "brew";
 			playerId: string;
@@ -470,7 +466,6 @@ export interface MatchResults {
 	awards: MatchAward[];
 	highlights: Highlight[];
 	daily: string | null;
-	/** Par joueur : ce que la partie ajoute à ses défis. */
 	metrics: Record<string, MatchMetrics>;
 }
 

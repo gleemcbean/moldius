@@ -68,7 +68,6 @@ export interface AdminOverview {
 		days: number;
 		samples: number;
 		byHour: AdminHourStat[];
-		/** Moyenne de connectés : [jour 0 = lundi][heure], null sans relevé. */
 		heatmap: (number | null)[][];
 		peak: { at: string; connected: number } | null;
 		bestSlot: { weekday: number; hour: number; average: number } | null;

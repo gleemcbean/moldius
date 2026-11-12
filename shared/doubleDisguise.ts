@@ -28,12 +28,6 @@ interface MarkerTrack {
 	slideStart: number;
 }
 
-/**
- * Chaque joueur garde un seul point sur la carte : celui de son corps ou d'un
- * Doppelgänger qui l'imite, selon lequel est le plus proche de celui qui regarde.
- * On voit donc toujours le bon nombre de points, et celui du faux est bien là
- * quand on le croise. Le point glisse au changement au lieu de sauter.
- */
 export class PlayerMarkerBlender {
 	private readonly tracks = new Map<string, MarkerTrack>();
 
@@ -97,7 +91,6 @@ const CLIP_MAX_MS = 3000;
 
 export type ClipGateAction = "start" | "keep" | "discard" | null;
 
-/** Repère un bout de phrase dans le niveau d'une voix. */
 export class VoiceClipGate {
 	private startedAt: number | null = null;
 	private lastLoudAt = 0;

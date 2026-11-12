@@ -52,7 +52,6 @@ export interface MovementModifiers {
 	sprintAllowed: boolean;
 	fly?: boolean;
 	passThrough?: boolean;
-	/** Multiplie la pesanteur : moins de 1 pour flotter. */
 	gravityFactor?: number;
 }
 

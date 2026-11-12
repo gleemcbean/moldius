@@ -131,7 +131,6 @@ export class DoorViews {
 		door.predictedUntil = predictedUntil;
 	}
 
-	/** Sans animation : pour remettre une porte en place d'un coup. */
 	snap(doorId: number): void {
 		const door = this.doors.get(doorId);
 		if (door) {

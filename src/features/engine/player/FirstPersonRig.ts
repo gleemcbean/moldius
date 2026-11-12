@@ -33,11 +33,8 @@ type ArmMesh = THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
 export interface RigInput {
 	grimoireOpen: boolean;
 	heldObject: OccultId | null;
-	/** De 0 à 1 : l'objet tenu est à portée d'un monstre qu'il peut capturer. */
 	heldResonance?: number;
-	/** L'appareil photo levé devant soi : il prend la place de l'objet occulte. */
 	cameraRaised: boolean;
-	/** En visée : l'appareil devant les yeux, son écran au centre et en grand. */
 	cameraAimed: boolean;
 	lanternOpen: boolean;
 	speed: number;
@@ -93,9 +90,7 @@ const CAMERA_LOWERED = new THREE.Vector3(-0.08, -0.62, -0.32);
 const CAMERA_ELBOW = new THREE.Vector3(-0.4, -0.55, -0.08);
 const CAMERA_FLASH_MS = 160;
 const CAMERA_BODY_HALF = CAMERA_BODY.height / 2;
-/** En visée, l'écran de l'appareil occupe cette part de la hauteur de vue, quel que soit le FOV. */
 const CAMERA_AIM_SCREEN_SHARE = 0.4;
-/** Le centre de l'écran, vu depuis le centre de l'appareil (voir createCameraModel). */
 const CAMERA_SCREEN_OFFSET_X = -0.012;
 const CAMERA_AIM_SECONDS = 0.18;
 const BOOK_WIDTH = (BOOK_PAGE_WIDTH + 0.015) * 2;
@@ -262,7 +257,6 @@ export class FirstPersonRig {
 		}
 	}
 
-	/** Le petit éclair de l'appareil, au moment de la photo. */
 	flashPhoto(): void {
 		this.flashUntil = performance.now() + CAMERA_FLASH_MS;
 	}
@@ -298,7 +292,6 @@ export class FirstPersonRig {
 		const position = new THREE.Vector3()
 			.lerpVectors(CAMERA_LOWERED, CAMERA_RAISED, easeInOut(this.cameraBlend))
 			.lerp(this.aimedCameraPosition(input.fov), aim);
-		// En visée, les mains se calment : l'écran doit rester lisible.
 		const steady = 0.5 - aim * 0.38;
 		position.x += (this.sway.x + bobX) * steady;
 		position.y += (this.sway.y - bobY) * steady - input.crouch * 0.01;
@@ -314,13 +307,11 @@ export class FirstPersonRig {
 			flashing ? 0xffffff : 0xd8dde4,
 		);
 		const contact = position.clone();
-		// En visée, la main tient l'appareil par en dessous, hors de l'écran.
 		contact.x -= 0.075 + aim * 0.012;
 		contact.y -= aim * 0.04;
 		this.placeArm(this.leftArm, contact, CAMERA_ELBOW);
 	}
 
-	/** Devant les yeux, l'écran centré, assez près pour en occuper une bonne part. */
 	private aimedCameraPosition(fov: number): THREE.Vector3 {
 		const viewHeight = 2 * Math.tan(THREE.MathUtils.degToRad(fov) / 2);
 		const distance =

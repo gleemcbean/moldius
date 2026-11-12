@@ -12,7 +12,6 @@ import {
 } from "../../shared/protocol/speech.js";
 import { VoskEngine } from "./voskEngine.js";
 
-/** Au-delà, une écoute n'entend plus rien : le client conclut bien avant (CAST_LISTEN_MAX_MS). */
 const MAX_STREAM_SAMPLES =
 	((CAST_LISTEN_MAX_MS + 3000) / 1000) * SPEECH_SAMPLE_RATE;
 const IDLE_UNLOAD_MS = 10 * 60_000;
@@ -32,7 +31,6 @@ interface Stream {
 	concluding: boolean;
 }
 
-/** Le dossier qui contient le worker et les modèles de Vosk (préparés par scripts/vosk-setup.mjs). */
 export function findVoskDirectory(
 	candidates: readonly string[],
 ): string | null {
@@ -47,11 +45,6 @@ export function findVoskDirectory(
 	);
 }
 
-/**
- * Écoute les incantations à la place du navigateur : chaque client ouvre au plus une écoute,
- * envoie son micro par blocs et reçoit ce que Vosk entend. Un modèle (≈ 300 Mo de mémoire)
- * se charge à la première demande dans sa langue et se décharge après dix minutes sans écoute.
- */
 export class SpeechService {
 	private readonly engines = new Map<Language, VoskEngine>();
 	private readonly streams = new Map<string, Stream>();
@@ -74,7 +67,6 @@ export class SpeechService {
 		return engine && (await engine.loaded) ? "ready" : "unavailable";
 	}
 
-	/** null si l'écoute est ouverte, sinon la raison du refus. */
 	start(client: SpeechClient, request: SpeechStartRequest): string | null {
 		this.cancel(client);
 		const engine = this.engineFor(request.language);
@@ -118,7 +110,6 @@ export class SpeechService {
 		return null;
 	}
 
-	/** Toujours une réponse par bloc reçu : le client les compte (voir SpeechReply). */
 	audio(client: SpeechClient, id: string, data: Buffer): void {
 		const stream = this.streams.get(client.id);
 		if (!stream || stream.id !== id || stream.concluding) {
@@ -145,7 +136,6 @@ export class SpeechService {
 	end(client: SpeechClient, id: string): void {
 		const stream = this.streams.get(client.id);
 		if (!stream || stream.id !== id) {
-			// Écoute perdue (reconnexion, panne) : le client ne doit pas l'attendre.
 			client.reply({ id, event: "error", error: "unknown" });
 			return;
 		}

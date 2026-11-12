@@ -9,7 +9,6 @@ import styles from "./HomeScreen.module.scss";
 
 const REFRESH_MS = 4000;
 
-/** Qui attend dans le lobby public, sur la carte « Partie classique » du choix de mode. */
 export function PublicLobbyPreview({ className }: { className: string }) {
 	const t = useT();
 	const connected = useStore(

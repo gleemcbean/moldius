@@ -34,7 +34,6 @@ const BLOOD: MaterialOptions = {
 	roughness: 0.25,
 };
 
-/** Socle à gradins, commun aux trois salles : on les reconnaît de loin. */
 function plinth(width: number, depth: number, material: MaterialOptions) {
 	return [
 		boxAt(material, width, 0.1, depth, 0, 0.05, 0),

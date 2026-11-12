@@ -1513,7 +1513,6 @@ describe("historique et sessions", () => {
 				privateProfile: true,
 			});
 			expect(updated.ok && updated.value.privateProfile).toBe(true);
-			// Le reste du profil ne bouge pas quand seule la confidentialité change.
 			expect(updated.ok && updated.value.displayName).toBe("Girolle");
 
 			const hidden = {
@@ -1545,7 +1544,6 @@ describe("historique et sessions", () => {
          VALUES ($1, $2, $1, 'pending', now())`,
 				[low, high],
 			);
-			// Une demande pas encore acceptée ne suffit pas.
 			expect(
 				await service.publicProfile(owner.accountId, friend.accountId),
 			).toMatchObject(hidden);
@@ -1651,7 +1649,6 @@ describe("historique et sessions", () => {
 			]);
 			expect(detail?.metrics).toEqual({ fragments: 12, sprintMeters: 340 });
 			expect(detail?.rules).toMatchObject({ manorSize: "medium", floors: 1 });
-			// L'identifiant du compte ouvre le profil public, rien de plus : jamais d'email ni de jeton.
 			expect(JSON.stringify(detail)).not.toContain("@");
 			expect(JSON.stringify(detail)).not.toContain(token);
 			expect(

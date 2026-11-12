@@ -31,11 +31,8 @@ export interface MushroomPose {
 	grimoireOpen: boolean;
 	dead: boolean;
 	talking: number;
-	/** 0 sans appareil photo, 1 porté à la ceinture, 2 levé pour viser. */
 	camera?: 0 | 1 | 2;
-	/** Un talkie accroché à la poitrine. */
 	walkie?: boolean;
-	/** L'objet occulte tenu dans la main libre. */
 	heldObject?: OccultId | null;
 }
 
@@ -249,7 +246,6 @@ export class MushroomModel {
 
 	private readonly kit: ModelKit;
 
-	/** Créé à la première prise en main : la plupart des champignons n'en tiennent jamais. */
 	private heldModel(id: OccultId): THREE.Group {
 		let model = this.heldModels.get(id);
 		if (!model) {

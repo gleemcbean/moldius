@@ -27,7 +27,6 @@ export function isSprintDraining(player: MatchPlayer): boolean {
 }
 
 export function energyDrainPerSecond(player: MatchPlayer): number {
-  // La potion de vigueur fait courir sans se fatiguer ; la partie l'efface quand elle expire.
   const tireless = player.brew === 'vigor';
   return (
     (isSprintDraining(player) && !tireless ? SPRINT_ENERGY_COST_PER_SECOND : 0) +

@@ -1022,15 +1022,10 @@ export class HudCanvas {
 		return Boolean(hud.brew) && !hud.dead && !hud.showMap && !hud.paused;
 	}
 
-	/**
-	 * Ce que l'effet de chaudron occupe au-dessus des barres. Le talkie et l'appareil photo
-	 * s'empilent au-dessus : à côté des barres, il passait sous la barre d'objets.
-	 */
 	private brewSpace(hud: HudState): number {
 		return this.brewShown(hud) ? BREW_PANEL_HEIGHT + 12 : 0;
 	}
 
-	/** L'effet de chaudron, au-dessus des barres : son nom, le temps restant et une jauge. */
 	private paintBrew(hud: HudState, now: number): void {
 		if (!this.brewShown(hud) || !hud.brew) {
 			return;
@@ -1081,7 +1076,6 @@ export class HudCanvas {
 		context.fillRect(x + 8, y + height - 9, (width - 16) * fraction, 3);
 	}
 
-	/** L'icône du talkie ; quand quelqu'un parle, des ondes partent de son antenne. */
 	private paintWalkieIcon(
 		x: number,
 		y: number,
@@ -1177,7 +1171,6 @@ export class HudCanvas {
 		return Math.max(44, 12 + lines * 24);
 	}
 
-	/** Au-dessus du talkie : l'appareil photo, sa touche et ce qui reste de pellicule. */
 	private paintCamera(hud: HudState): void {
 		const flash = (performance.now() - hud.photoFlashAt) / 260;
 		if (flash >= 0 && flash < 1 && !hud.paused) {

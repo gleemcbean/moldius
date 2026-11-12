@@ -16,11 +16,13 @@ import { useT } from "../../i18n";
 import { accountStore } from "../account/accountStore";
 import { lobbyStore } from "../lobby/lobbyStore";
 import { ProfileLink } from "../profile/ProfileLink";
+import { DiscordFriendsSection, DiscordPanel } from "./DiscordSection";
 import styles from "./FriendsModal.module.scss";
 import {
 	addFriend,
 	friendsStore,
 	inviteFriend,
+	joinFriend,
 	refreshFriends,
 	removeFriend,
 	respondToFriend,
@@ -34,13 +36,16 @@ function Person({
 	person,
 	detail,
 	dot,
+	discord = false,
 	children,
 }: {
 	person: FriendPerson;
 	detail?: string;
 	dot?: string;
+	discord?: boolean;
 	children?: React.ReactNode;
 }) {
+	const t = useT();
 	return (
 		<li className={styles.person} data-selector-row="">
 			<HatPreview
@@ -54,6 +59,14 @@ function Person({
 						{person.name}
 					</ProfileLink>
 					<TaglineBadge tagline={person.tagline} />
+					{discord ? (
+						<span
+							className={styles.discordBadge}
+							title={t.friends.discordBadge}
+						>
+							<Icon name="discord" />
+						</span>
+					) : null}
 				</span>
 				{detail ? (
 					<span className={styles.detail}>
@@ -70,9 +83,11 @@ function Person({
 function Friend({
 	friend,
 	canInvite,
+	canJoin,
 }: {
 	friend: FriendEntry;
 	canInvite: boolean;
+	canJoin: boolean;
 }) {
 	const t = useT();
 	const [invited, setInvited] = useState(false);
@@ -89,7 +104,13 @@ function Friend({
 			person={friend}
 			detail={t.friends.status[friend.status]}
 			dot={styles[friend.status]}
+			discord={friend.discord}
 		>
+			{canJoin && friend.lobbyId ? (
+				<Button onClick={() => friend.lobbyId && joinFriend(friend.lobbyId)}>
+					{t.friends.join}
+				</Button>
+			) : null}
 			{canInvite ? (
 				<Button
 					variant="secondary"
@@ -101,18 +122,20 @@ function Friend({
 					{invited ? t.friends.invited : t.friends.invite}
 				</Button>
 			) : null}
-			<Button
-				variant="ghost"
-				onClick={() => {
-					if (confirming) {
-						removeFriend(friend.accountId);
-					}
-					setConfirming(!confirming);
-				}}
-				onBlur={() => setConfirming(false)}
-			>
-				{confirming ? t.friends.removeConfirm : t.friends.remove}
-			</Button>
+			{friend.codeFriend ? (
+				<Button
+					variant="ghost"
+					onClick={() => {
+						if (confirming) {
+							removeFriend(friend.accountId);
+						}
+						setConfirming(!confirming);
+					}}
+					onBlur={() => setConfirming(false)}
+				>
+					{confirming ? t.friends.removeConfirm : t.friends.remove}
+				</Button>
+			) : null}
 		</Person>
 	);
 }
@@ -144,6 +167,17 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 	const canInvite =
 		lobby !== null &&
 		(lobby.phase === "waiting" || lobby.phase === "countdown");
+	const canInviteOnDiscord =
+		canInvite &&
+		lobby.players.length < lobby.capacity &&
+		(lobby.visibility === "public" || lobby.openToFriends);
+	const canJoin =
+		lobby === null || (lobby.phase !== "loading" && lobby.phase !== "playing");
+	const knownOnDiscord = new Set(
+		(overview?.friends ?? []).flatMap((friend) =>
+			friend.discordId ? [friend.discordId] : [],
+		),
+	);
 	const submit = (event: FormEvent) => {
 		event.preventDefault();
 		const normalized = normalizeFriendCode(code);
@@ -164,9 +198,7 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 		try {
 			await navigator.clipboard.writeText(overview.friendCode);
 			showToast(t.friends.copied, "info");
-		} catch {
-			// Le code reste affiché et sélectionnable.
-		}
+		} catch {}
 	};
 
 	return (
@@ -200,6 +232,8 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 						</span>
 					</label>
 				</div>
+
+				<DiscordPanel synced={knownOnDiscord.size} />
 
 				<form className={styles.add} onSubmit={submit}>
 					<input
@@ -260,6 +294,7 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 									key={friend.accountId}
 									friend={friend}
 									canInvite={canInvite}
+									canJoin={canJoin}
 								/>
 							))}
 						</ul>
@@ -267,6 +302,11 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 						<p className={styles.empty}>{t.friends.empty}</p>
 					)}
 				</section>
+
+				<DiscordFriendsSection
+					known={knownOnDiscord}
+					canInvite={canInviteOnDiscord}
+				/>
 
 				{overview && overview.outgoing.length > 0 ? (
 					<section>

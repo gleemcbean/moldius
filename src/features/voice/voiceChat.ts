@@ -35,7 +35,6 @@ interface PeerLink {
 	queue: Promise<void>;
 	pendingCandidates: RTCIceCandidateInit[];
 	directStream: MediaStream | null;
-	/** Depuis quand le lien direct n'est pas établi ; null s'il l'est. */
 	downSince: number | null;
 	relayed: boolean;
 	relayPlayback: VoiceRelayPlayback | null;
@@ -54,7 +53,6 @@ const ICE_RESTART_INTERVAL_MS = 30_000;
 export interface VoicePeerInfo {
 	level: number;
 	state: RTCPeerConnectionState;
-	/** La voix passe par le serveur, faute de lien direct. */
 	relayed: boolean;
 }
 
@@ -155,7 +153,6 @@ class VoiceChat {
 		}
 	}
 
-	/** Le talkie double la voix sans la spatialiser : on l'entend d'où qu'on soit. */
 	setRadio(peerId: string, on: boolean): void {
 		const link = this.peers.get(peerId);
 		if (!link || link.radioOn === on) {
@@ -439,7 +436,6 @@ class VoiceChat {
 		}
 	}
 
-	/** Le relais prend le relais d'un lien direct qui n'aboutit pas, sans cesser d'y revenir. */
 	private superviseLink(link: PeerLink): void {
 		const now = performance.now();
 		const connection = link.connection;

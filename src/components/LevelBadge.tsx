@@ -1,7 +1,6 @@
 import { useT } from "../i18n";
 import styles from "./LevelBadge.module.scss";
 
-/** Le niveau d'un joueur, à côté de son nom ; rien pour un invité. */
 export function LevelBadge({
 	level,
 	className,

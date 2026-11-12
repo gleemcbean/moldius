@@ -137,7 +137,6 @@
   gap: 6px;
 }
 
-/* Largeur fixe : les barres et les paliers restent alignés d'une ligne à l'autre. */
 .progress {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 124px;

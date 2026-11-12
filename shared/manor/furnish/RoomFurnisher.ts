@@ -144,11 +144,6 @@ export class RoomFurnisher {
 		}
 	}
 
-	/**
-	 * Poteaux et escalier peuvent déjà couper la grille, trop grossière pour voir
-	 * qu'on passe entre eux : on ne garde que les ancrages de la plus grande zone,
-	 * sinon plus aucun meuble ne pourrait jamais être posé au sol.
-	 */
 	private relaxAnchors(): void {
 		if (this.isNavigable()) {
 			return;
@@ -357,7 +352,6 @@ export class RoomFurnisher {
 		return item;
 	}
 
-	/** Plante qui retombe d'un garde-corps, sans collision, côté vide. */
 	hangOnRail(kind: string, rail: { a: Vec2; b: Vec2 }, t: number): void {
 		const spec = this.room.mezzanine;
 		if (!spec) {
@@ -394,7 +388,6 @@ export class RoomFurnisher {
 		this.finalizeItem(item, definition);
 	}
 
-	/** Liane enroulée autour d'un poteau de la mezzanine. */
 	wrapPost(kind: string, post: Vec2, height: number): void {
 		const definition = furnitureDefinition(kind);
 		const item = this.createItem(definition, 0, {

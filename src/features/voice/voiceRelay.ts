@@ -11,7 +11,6 @@ import { loadVoiceWorklet } from "./voiceWorklet";
 const PLAYBACK_DELAY_S = 0.08;
 const PLAYBACK_MAX_LAG_S = 0.4;
 
-/** Découpe le micro en petits blocs compressés, seulement quand quelqu'un en a besoin. */
 export class VoiceRelayCapture {
 	private source: MediaStreamAudioSourceNode | null = null;
 	private node: AudioWorkletNode | null = null;
@@ -65,13 +64,8 @@ export class VoiceRelayCapture {
 	}
 }
 
-/**
- * Rejoue les blocs d'un joueur dans un flux audio : le reste du jeu (position de
- * la voix, talkie, meilleurs moments) le traite comme un flux direct.
- */
 export class VoiceRelayPlayback {
 	readonly output = audioEngine.ctx.createMediaStreamDestination();
-	/** Le son à brancher directement sur le joueur, sans repasser par un flux. */
 	readonly bus = audioEngine.ctx.createGain();
 	private nextStart = 0;
 

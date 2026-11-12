@@ -56,8 +56,6 @@ function speechScope(): Window & SpeechScope {
 }
 
 function recognitionConstructor(): RecognitionConstructor | null {
-	// Dans l'application de bureau, la reconnaissance native existe mais ne marche pas
-	// (service de Google réservé à Chrome) : on passe directement à Vosk.
 	if (desktopApp) {
 		return null;
 	}
@@ -69,7 +67,6 @@ export type SpeechEngine = "native" | "vosk" | "server";
 
 const ENGINE_OVERRIDE_KEY = "moldius.speechEngine";
 
-/** Pour les essais : localStorage « moldius.speechEngine » = native, vosk ou server. */
 function forcedEngine(): SpeechEngine | null {
 	try {
 		const value = window.localStorage.getItem(ENGINE_OVERRIDE_KEY);
@@ -87,7 +84,6 @@ function serverSupported(): boolean {
 
 export function speechEngine(): SpeechEngine | null {
 	const forced = forcedEngine();
-	// À l'essai : l'application de bureau fait écouter ses incantations par le serveur.
 	if ((forced === "server" || (desktopApp && !forced)) && serverSupported()) {
 		return "server";
 	}

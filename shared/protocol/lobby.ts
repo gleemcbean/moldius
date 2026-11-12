@@ -22,12 +22,10 @@ export interface LobbyPlayerInfo {
 	lantern: LanternTint;
 	tagline: Tagline | null;
 	team: number | null;
-	/** Le compte du joueur, pour ouvrir son profil ; null pour un invité. */
 	profileId: string | null;
 	level: number | null;
 }
 
-/** Ce que le joueur a choisi sur l'accueil ; le serveur écarte ce qui est verrouillé. */
 export interface LookPreference {
 	color?: number | null;
 	pattern?: HatPattern | null;
@@ -39,6 +37,7 @@ export interface LobbyState {
 	id: string;
 	code: string | null;
 	visibility: LobbyVisibility;
+	openToFriends: boolean;
 	hostId: string;
 	capacity: number;
 	minPlayers: number;
@@ -83,7 +82,10 @@ export type LobbyErrorCode =
 	| "friend-limit"
 	| "friend-offline"
 	| "friend-busy"
-	| "lobby-not-invitable";
+	| "lobby-not-invitable"
+	| "lobby-friends-only"
+	| "discord-not-linked"
+	| "discord-mismatch";
 
 export interface LobbyError {
 	code: LobbyErrorCode;
@@ -113,7 +115,6 @@ export type VoiceSignal =
 			sdpMLineIndex: number | null;
 	  };
 
-/** Dans un sens, la liste des destinataires ; dans l'autre, le joueur qui parle. */
 export interface VoiceRelayRequest {
 	peerIds: string[];
 	data: ArrayBuffer;

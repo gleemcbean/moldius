@@ -9,22 +9,18 @@ export type LiquidKind =
 	| "bathtub"
 	| "pond";
 
-/** L'intérieur d'un récipient : son ouverture, son fond et la surface du liquide. */
 export interface BasinShape {
 	width: number;
 	depth: number;
-	/** Hauteurs mesurées depuis le pied du meuble. */
 	floorY: number;
 	surfaceY: number;
 }
 
-/** Le carré qui tient dans l'ouverture ronde d'un récipient. */
 function roundOpening(radius: number): { width: number; depth: number } {
 	const side = radius * Math.SQRT2;
 	return { width: side, depth: side };
 }
 
-/** La même forme sert aux collisions, aux bruits d'eau et aux effets des chaudrons. */
 export function basinShape(
 	item: Pick<FurnitureItem, "kind" | "width" | "depth" | "height">,
 ): BasinShape | null {
@@ -68,7 +64,6 @@ export interface LiquidVolume {
 	rotation: number;
 	halfWidth: number;
 	halfDepth: number;
-	/** Les bassins sont des ellipses, les récipients des carrés. */
 	elliptic: boolean;
 	floorY: number;
 	surfaceY: number;
@@ -120,7 +115,6 @@ export function liquidVolumes(
 	return volumes;
 }
 
-/** Le liquide où trempent les pieds, s'il y en a un. */
 export function liquidAt(
 	volumes: readonly LiquidVolume[],
 	position: { x: number; y: number; z: number },

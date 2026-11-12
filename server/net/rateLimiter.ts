@@ -56,6 +56,7 @@ export const SOCKET_RATE_RULES: Record<string, RateRule> = {
 	"friends:list": { perSecond: 1, burst: 5 },
 	"friends:write": { perSecond: 1, burst: 6 },
 	"friends:invite": { perSecond: 1, burst: 4 },
+	"friends:sync": { perSecond: 0.2, burst: 3 },
 	"lobby:peek": { perSecond: 1, burst: 4 },
 };
 

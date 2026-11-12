@@ -19,6 +19,7 @@ import type {
 	FriendsOverview,
 	PublicLobbyPreview,
 } from "../shared/protocol/friends.js";
+import type { LobbyState } from "../shared/protocol/lobby.js";
 import { createTestDatabase } from "./helpers/testDatabase.js";
 
 type Client = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -152,7 +153,6 @@ describe("amis, invitations et admin", () => {
 
 		const received = value(await list(bobSocket));
 		expect(received.incoming.map((person) => person.name)).toEqual(["Alice"]);
-		// L'expéditeur ne peut pas accepter sa propre demande.
 		value(await accept(aliceSocket, bob.id));
 		expect(value(await list(aliceSocket)).friends).toEqual([]);
 
@@ -234,6 +234,142 @@ describe("amis, invitations et admin", () => {
 		expect(code(await invite(aliceSocket, carol.id))).toBe("friend-not-found");
 	});
 
+	const linkDiscord = (accountId: string, discordId: string) =>
+		database.query("UPDATE accounts SET discord_id = $2 WHERE id = $1", [
+			accountId,
+			discordId,
+		]);
+	const discordSync = (
+		client: Client,
+		discordId: string,
+		friendIds: string[],
+	) =>
+		new Promise<Reply<FriendsOverview>>((resolve) =>
+			client.emit("friends:discordSync", { discordId, friendIds }, resolve),
+		);
+	const createPrivate = (client: Client, name: string) =>
+		new Promise<Reply<LobbyState>>((resolve) =>
+			client.emit("lobby:createPrivate", { name }, resolve),
+		);
+	const openToFriends = (client: Client, open: boolean) =>
+		new Promise<Reply<LobbyState>>((resolve) =>
+			client.emit("lobby:openToFriends", { open }, resolve),
+		);
+	const joinFriend = (client: Client, name: string, lobbyId: string) =>
+		new Promise<Reply<LobbyState>>((resolve) =>
+			client.emit("lobby:joinFriend", { name, lobbyId }, resolve),
+		);
+
+	it("ne lie les amis Discord que si chacun a déclaré l'autre", async () => {
+		const alice = await createAccount("Alice");
+		const bob = await createAccount("Bob");
+		const carol = await createAccount("Carol");
+		await linkDiscord(alice.id, "100000000000000001");
+		await linkDiscord(bob.id, "100000000000000002");
+		const aliceSocket = await connect(alice.cookie);
+		const bobSocket = await connect(bob.cookie);
+		const carolSocket = await connect(carol.cookie);
+
+		expect(code(await discordSync(carolSocket, "100000000000000003", []))).toBe(
+			"discord-not-linked",
+		);
+		expect(code(await discordSync(aliceSocket, "100000000000000009", []))).toBe(
+			"discord-mismatch",
+		);
+
+		const first = value(
+			await discordSync(aliceSocket, "100000000000000001", [
+				"100000000000000002",
+				"100000000000000002",
+				"pas-un-id",
+			]),
+		);
+		expect(first.discordSynced).toBe(true);
+		expect(first.friends).toEqual([]);
+
+		const changed = new Promise<void>((resolve) =>
+			aliceSocket.once("friends:changed", () => resolve()),
+		);
+		const second = value(
+			await discordSync(bobSocket, "100000000000000002", [
+				"100000000000000001",
+			]),
+		);
+		await changed;
+		expect(second.friends).toHaveLength(1);
+		expect(second.friends[0]).toMatchObject({
+			accountId: alice.id,
+			discord: true,
+			codeFriend: false,
+			discordId: "100000000000000001",
+			status: "online",
+		});
+		expect(value(await list(aliceSocket)).friends[0].accountId).toBe(bob.id);
+
+		value(
+			await new Promise<Reply<FriendsOverview>>((resolve) =>
+				aliceSocket.emit("friends:remove", { accountId: bob.id }, resolve),
+			),
+		);
+		expect(value(await list(aliceSocket)).friends).toHaveLength(1);
+		value(await discordSync(bobSocket, "100000000000000002", []));
+		expect(value(await list(aliceSocket)).friends).toEqual([]);
+	});
+
+	it("ouvre un lobby privé aux seuls amis de l'hôte", async () => {
+		const { alice, aliceSocket, bobSocket } = await befriend();
+		const carol = await createAccount("Carol");
+		const carolSocket = await connect(carol.cookie);
+		const guest = await connect();
+
+		const lobby = value(await createPrivate(aliceSocket, "Alice"));
+		expect(lobby.openToFriends).toBe(false);
+		const bobView = value(await list(bobSocket));
+		expect(bobView.friends[0]).toMatchObject({
+			accountId: alice.id,
+			status: "lobby",
+			lobbyId: null,
+		});
+		expect(code(await joinFriend(bobSocket, "Bob", lobby.id))).toBe(
+			"lobby-friends-only",
+		);
+
+		expect(value(await openToFriends(aliceSocket, true)).openToFriends).toBe(
+			true,
+		);
+		expect(value(await list(bobSocket)).friends[0].lobbyId).toBe(lobby.id);
+		expect(code(await joinFriend(carolSocket, "Carol", lobby.id))).toBe(
+			"lobby-friends-only",
+		);
+		expect(code(await joinFriend(guest, "Invité", lobby.id))).toBe(
+			"sign-in-required",
+		);
+		const joined = value(await joinFriend(bobSocket, "Bob", lobby.id));
+		expect(joined.players.map((player) => player.name)).toEqual([
+			"Alice",
+			"Bob",
+		]);
+		expect(code(await openToFriends(bobSocket, false))).toBe("not-host");
+		expect(value(await list(bobSocket)).friends[0].lobbyId).toBeNull();
+	});
+
+	it("laisse rejoindre le lobby public d'un ami sans condition", async () => {
+		const { bobSocket } = await befriend();
+		const stranger = await connect();
+		const lobby = value(
+			await new Promise<Reply<LobbyState>>((resolve) =>
+				bobSocket.emit("lobby:quickJoin", { name: "Bob" }, resolve),
+			),
+		);
+		expect(code(await openToFriends(bobSocket, true))).toBe("not-private");
+		expect(value(await joinFriend(stranger, "Zoé", lobby.id)).id).toBe(
+			lobby.id,
+		);
+		expect(code(await joinFriend(stranger, "Zoé", "l_inconnu"))).toBe(
+			"not-found",
+		);
+	});
+
 	it("montre le lobby public à tout le monde", async () => {
 		const peek = (client: Client) =>
 			new Promise<Reply<PublicLobbyPreview>>((resolve) =>
@@ -312,7 +448,6 @@ describe("amis, invitations et admin", () => {
 	});
 
 	it("regroupe la présence à l'heure de Paris", () => {
-		// Lundi 6 janvier 2025, 20:30 UTC : 21 h à Paris.
 		const summary = summarizePresence([
 			{ at: new Date("2025-01-06T20:30:00Z"), connected: 4 },
 			{ at: new Date("2025-01-06T20:35:00Z"), connected: 8 },
@@ -322,7 +457,6 @@ describe("amis, invitations et admin", () => {
 		expect(summary.heatmap[0][21]).toBe(6);
 		expect(summary.bestSlot).toEqual({ weekday: 0, hour: 21, average: 6 });
 		expect(summary.peak?.connected).toBe(8);
-		// En été, Paris est à UTC+2.
 		const summer = summarizePresence([
 			{ at: new Date("2025-07-07T20:00:00Z"), connected: 2 },
 		]);

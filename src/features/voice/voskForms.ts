@@ -1,10 +1,5 @@
-// Généré par scripts/vosk-forms.ts (npm run vosk:forms) : ne pas modifier à la main.
 import type { Language } from "@shared/i18n/languages";
 
-/**
- * Pour chaque mot des incantations, des façons de le dire avec les mots que connaît le modèle
- * Vosk de la langue. Toutes sonnent comme le mot latin pour le comparateur phonétique du jeu.
- */
 export const VOSK_SPOKEN_FORMS: Record<
 	Language,
 	Readonly<Record<string, readonly string[]>>

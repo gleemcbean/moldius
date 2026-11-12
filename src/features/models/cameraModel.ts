@@ -2,17 +2,14 @@ import * as THREE from "three";
 import type { ModelKit } from "./modelKit";
 
 export const CAMERA_BODY = { width: 0.15, height: 0.105, depth: 0.06 };
-/** L'écran est carré, comme la photo : ce qu'il montre est exactement ce qui sera pris. */
 export const CAMERA_SCREEN_SIZE = 0.074;
 
 export interface CameraModel {
 	root: THREE.Group;
-	/** Le dos de l'appareil, tourné vers celui qui le tient (+z). */
 	screen: THREE.Mesh;
 	flash: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
 }
 
-/** Origine au bas de l'appareil, objectif vers -z, écran vers +z. */
 export function createCameraModel(
 	kit: ModelKit,
 	screenTexture: THREE.Texture | null = null,

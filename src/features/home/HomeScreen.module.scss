@@ -133,7 +133,6 @@
   color: $text-muted;
 }
 
-/* Par-dessus les boutons du dessous : ouvrir la sélection ne décale rien. */
 .options {
   position: absolute;
   top: calc(100% + 6px);
@@ -179,7 +178,6 @@
   cursor: not-allowed;
 }
 
-/* Le même cadre partout : couleur, motif et lanterne. */
 .swatch {
   position: relative;
   display: grid;
@@ -196,7 +194,6 @@
   }
 }
 
-/* Deux taches bien séparées, à la même place quelle que soit la taille du cadre. */
 .swatchColor::before,
 .swatchColor::after {
   content: '';
@@ -218,7 +215,6 @@
   height: 14%;
 }
 
-/* Une lanterne allumée, pour ne pas la confondre avec la couleur du chapeau. */
 .quoteIcon {
   color: $yellow;
 
@@ -228,7 +224,6 @@
   }
 }
 
-/* Des phrases de longueurs variées : une liste de libellés plutôt qu'une grille de carrés. */
 .textOptions {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -499,7 +494,6 @@
   }
 }
 
-/* ——— Apparition : le titre tombe, le panneau glisse depuis la gauche, les tuiles éclosent ——— */
 @include enter-keyframes;
 
 .brand {
@@ -522,7 +516,6 @@
   @include enter(fade, 900ms, 700ms);
 }
 
-/* ——— Animations des catégories de personnalisation ——— */
 @keyframes appearanceOpen {
   from {
     opacity: 0;
@@ -534,7 +527,6 @@
   }
 }
 
-/* Sans opacité finale : un choix verrouillé garde son air grisé (.locked) une fois apparu. */
 @keyframes appearanceOption {
   from {
     opacity: 0;

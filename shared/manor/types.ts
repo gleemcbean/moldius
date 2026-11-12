@@ -158,10 +158,8 @@ export interface MezzanineSpec {
 	stair: StairSpec;
 	stairPolygon: Vec2[];
 	stairSide: MezzanineSegment;
-	/** Second flanc d'un escalier central, null pour un escalier contre un mur. */
 	stairSideOuter: MezzanineSegment | null;
 	stairEnd: MezzanineSegment;
-	/** Mur longé par l'escalier, -1 pour un escalier central. */
 	stairEdge: number;
 	stairEdgeFrom: number;
 	stairEdgeTo: number;
@@ -333,7 +331,6 @@ export interface WalkieSpot {
 	z: number;
 }
 
-/** Même emplacement qu'un talkie : un meuble ou le sol d'une pièce. */
 export type CameraSpot = WalkieSpot;
 
 export interface StakeRoom {

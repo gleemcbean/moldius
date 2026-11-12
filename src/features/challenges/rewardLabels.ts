@@ -18,7 +18,6 @@ export function rewardName(t: Messages, reward: Reward): string {
 	}
 }
 
-/** Le même texte partout : l'accueil, le profil et ses récompenses. */
 export function rewardRequirement(t: Messages, reward: Reward): string {
 	if (reward.challenge === null) {
 		return t.challenges.requireLevel(reward.level ?? 1);

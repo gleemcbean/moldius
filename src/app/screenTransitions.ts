@@ -2,12 +2,6 @@ import { flushSync } from "react-dom";
 import { settingsStore } from "../features/settings/settingsStore";
 import type { Overlay, Screen } from "./appStore";
 
-/**
- * Les transitions entre écrans passent par l'API View Transitions : le navigateur
- * fige une image de l'ancien écran et anime le nouveau, sans garder deux écrans
- * montés en même temps (le jeu 3D ne démarre qu'une fois). Le type de transition est
- * posé sur <html data-transition>, et global.scss décrit chaque mouvement.
- */
 export type TransitionKind = "forward" | "back" | "dive" | "rise" | "close";
 
 export interface AppView {
@@ -15,7 +9,6 @@ export interface AppView {
 	overlay: Overlay;
 }
 
-/** L'ordre d'une partie : on avance vers la droite, on revient vers la gauche. */
 const SCREEN_ORDER: Record<Screen, number> = {
 	home: 0,
 	lobby: 1,
@@ -39,7 +32,6 @@ export function transitionKind(
 			? "forward"
 			: "back";
 	}
-	// Une fenêtre s'ouvre avec sa propre animation ; on ne fond que sa fermeture.
 	if (from.overlay !== null && to.overlay === null) {
 		return "close";
 	}
@@ -55,7 +47,6 @@ export function motionReduced(): boolean {
 
 let current = 0;
 
-/** Applique la mise à jour dans une transition animée, ou tout de suite si c'est impossible. */
 export function runTransition(
 	kind: TransitionKind | null,
 	update: () => void,

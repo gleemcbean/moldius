@@ -247,7 +247,6 @@ export function parseSpeechLanguage(payload: unknown): Language | null {
 		: null;
 }
 
-/** La grammaire vient du client (ses formules) : seulement des mots, en nombre limité. */
 export function parseSpeechStart(payload: unknown): SpeechStartRequest | null {
 	const id = parseSpeechId(payload);
 	const language = parseSpeechLanguage(payload);

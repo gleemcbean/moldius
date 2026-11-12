@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { orientLatheProfile } from "../shared/latheProfile.js";
 
-/** Volume signé : positif quand les faces regardent vers l'extérieur. */
 function signedVolume(geometry: THREE.BufferGeometry): number {
 	const position = geometry.getAttribute("position");
 	const index = geometry.getIndex() as THREE.BufferAttribute;

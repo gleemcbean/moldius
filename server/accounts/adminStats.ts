@@ -95,7 +95,6 @@ export function summarizeDays(
 		string,
 		{ matches: Set<string>; registrations: number }
 	>();
-	// Compter en jours du calendrier : avec un changement d'heure, 24 h ne font pas un jour.
 	const today = Date.parse(`${localParts(now).date}T12:00:00Z`);
 	for (let offset = days - 1; offset >= 0; offset -= 1) {
 		const date = new Date(today - offset * 86_400_000)

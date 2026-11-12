@@ -8,10 +8,6 @@ export interface PlankHole {
 
 const EDGE_STEPS = 5;
 
-/**
- * Découpe un disque centré sur l'origine en planches verticales dont les bouts
- * suivent le cercle. Un trou éventuel retire la portion des planches qu'il croise.
- */
 export function plankDisc(
 	radius: number,
 	count: number,

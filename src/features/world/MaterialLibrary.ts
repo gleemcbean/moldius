@@ -3,7 +3,6 @@ import type { TextureLibrary } from "./textures/TextureLibrary";
 
 export type MaterialWave = "flame" | "fire" | "foliage" | "cloth";
 
-/** Temps partagé par tous les matériaux animés, avancé par DecorAnimator. */
 export const decorTime = { value: 0 };
 
 const WAVE_SHADERS: Record<MaterialWave, string> = {
@@ -32,7 +31,6 @@ const WAVE_SHADERS: Record<MaterialWave, string> = {
 	transformed += normal * waveCloth * 0.016;`,
 };
 
-/** Déplace les sommets dans le shader : aucun coût de géométrie ni d'appel de rendu. */
 function applyWave(material: THREE.Material, wave: MaterialWave): void {
 	const previous = material.onBeforeCompile.bind(material);
 	const previousKey = material.customProgramCacheKey.bind(material);

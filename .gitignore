@@ -7,5 +7,4 @@ release
 .DS_Store
 .dev-postgres/
 .dev-mail/
-# Reconnaissance vocale hors ligne : préparée par scripts/vosk-setup.mjs (npm run build).
 public/vosk/

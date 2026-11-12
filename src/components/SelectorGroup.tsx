@@ -17,10 +17,6 @@ interface SelectorRect {
 
 const PADDING = 6;
 
-/**
- * Un élément marqué `data-selectable="row"` (le pseudo d'un joueur) fait
- * encadrer toute sa ligne `data-selector-row` : la carte du joueur, pas son nom.
- */
 function frameOf(element: HTMLElement, root: HTMLElement): HTMLElement {
 	if (element.dataset.selectable !== "row") {
 		return element;

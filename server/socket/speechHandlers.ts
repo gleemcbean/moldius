@@ -14,7 +14,6 @@ import type { SpeechClient, SpeechService } from "../speech/SpeechService.js";
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
-/** La reconnaissance des incantations par le serveur (voir SpeechService). */
 export function registerSpeechHandlers(
 	socket: GameSocket,
 	speech: SpeechService,
@@ -56,7 +55,6 @@ export function registerSpeechHandlers(
 	socket.on("speech:audio", (payload) => {
 		const audio = parseSpeechAudio(payload);
 		if (audio) {
-			// Un bloc refusé reçoit quand même sa réponse (vide) : le client les compte.
 			speech.audio(
 				client,
 				audio.id,

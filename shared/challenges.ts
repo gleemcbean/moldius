@@ -24,7 +24,6 @@ export type ChallengeMetric = (typeof CHALLENGE_METRICS)[number];
 
 export type MatchMetrics = Partial<Record<ChallengeMetric, number>>;
 
-/** Par mesure : le cumul de toutes les parties et le record sur une seule. */
 export type ChallengeProgress = Partial<
 	Record<ChallengeMetric, { total: number; best: number }>
 >;
@@ -39,7 +38,6 @@ export const METRIC_UNITS: Partial<
 	radioSeconds: "seconds",
 };
 
-/** Un classique se réussit une fois, en une seule partie. */
 export const CLASSIC_CHALLENGES = [
 	{ id: "firstCapture", metric: "captures", target: 1 },
 	{ id: "hatTrick", metric: "captures", target: 3 },
@@ -62,7 +60,6 @@ export const CLASSIC_CHALLENGES = [
 	target: number;
 }[];
 
-/** Un incrémental s'accumule de partie en partie, palier après palier. */
 export const INCREMENTAL_CHALLENGES = [
 	{ id: "veteran", metric: "games", tiers: [5, 25, 100] },
 	{ id: "champion", metric: "wins", tiers: [3, 15, 50] },
@@ -174,7 +171,6 @@ export function completedStepCount(progress: ChallengeProgress): number {
 
 export interface CompletedChallenge {
 	id: ChallengeId;
-	/** Le palier atteint, à partir de 1 ; null pour un défi classique. */
 	tier: number | null;
 }
 

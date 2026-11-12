@@ -767,7 +767,6 @@ export class AccountService {
 		return this.store.historyDetail(accountId, matchId);
 	}
 
-	/** Le visiteur compte : un profil privé reste entier pour le joueur et ses amis. */
 	publicProfile(
 		profileId: unknown,
 		viewerId: string | null = null,

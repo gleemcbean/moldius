@@ -99,6 +99,21 @@ export function joinPublicLobby(name: string, lobbyId: string): void {
   getSocket().emit('lobby:joinPublic', { name, lobbyId, ...appearance() }, handleJoin);
 }
 
+export function joinFriendLobby(name: string, lobbyId: string): void {
+  lobbyStore.set({ pending: true, error: null, lobby: null });
+  getSocket().emit('lobby:joinFriend', { name, lobbyId, ...appearance() }, handleJoin);
+}
+
+export function setOpenToFriends(open: boolean): void {
+  getSocket().emit('lobby:openToFriends', { open }, (response) => {
+    if (response.ok) {
+      lobbyStore.set({ lobby: response.value });
+    } else {
+      showToast(lobbyErrorText(response.error), 'error');
+    }
+  });
+}
+
 export function leaveLobby(): void {
   getSocket().emit('lobby:leave');
   lobbyStore.set({ lobby: null });

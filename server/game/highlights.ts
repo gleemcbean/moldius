@@ -27,7 +27,6 @@ const DOUBLE_CHAT_MIN_MS = 1_500;
 const BETRAYAL_MS = 6_000;
 const RADIO_BETRAYAL_MS = 12_000;
 const LOW_HEALTH = 30;
-/** Le même joueur ou le même type de moment trois fois de suite, c'est moins drôle. */
 const REPEAT_PENALTY = 25;
 const WINDOWS_INTERVAL_MS = 1_000;
 
@@ -113,11 +112,6 @@ function newTrack(): PlayerTrack {
 	};
 }
 
-/**
- * Garde en mémoire les dernières secondes de la partie et les recopie quand un
- * moment mérite d'être revu. Le son ne passe jamais par ici : le serveur indique
- * seulement quelles périodes garder, et chaque joueur garde la voix de son côté.
- */
 export class HighlightRecorder {
 	private readonly frames: HighlightFrame[] = [];
 	private readonly log: TimedEvent[] = [];
@@ -162,7 +156,6 @@ export class HighlightRecorder {
 		this.announceWindows(snapshot.t);
 	}
 
-	/** Un hurlement déplace son moment à chaque image : une annonce par seconde suffit. */
 	private announceWindows(now: number): void {
 		if (
 			!this.windowsChanged ||
@@ -455,7 +448,6 @@ export class HighlightRecorder {
 		}
 	}
 
-	/** Remonte le journal pour retrouver les portes telles qu'elles étaient au début. */
 	private openDoorsAt(t: number, match: RecorderMatch): number[] {
 		const open = new Set(match.openDoors());
 		for (let index = this.log.length - 1; index >= 0; index -= 1) {

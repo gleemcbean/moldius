@@ -1,6 +1,5 @@
 export const VOICE_SAMPLE_RATE = 16_000;
 
-/** Les dernières secondes restent en mémoire : un moment se repère après coup. */
 export const VOICE_ROLLING_MS = 12_000;
 
 const RESYNC_MS = 200;
@@ -18,10 +17,6 @@ interface VoiceChunk {
 	samples: Int16Array;
 }
 
-/**
- * La voix d'un joueur, en petits morceaux datés à l'heure du serveur. Les blancs ne
- * sont pas gardés et seul le passage récent ou un moment marquant reste en mémoire.
- */
 export class VoiceTimeline {
 	private chunks: VoiceChunk[] = [];
 	private nextStart: number | null = null;
@@ -30,7 +25,6 @@ export class VoiceTimeline {
 		return this.chunks.length;
 	}
 
-	/** Les morceaux arrivent avec du jeu : on les enchaîne pour éviter les clics. */
 	push(samples: Int16Array, now: number): void {
 		const duration = (samples.length / VOICE_SAMPLE_RATE) * 1000;
 		const expected = now - duration;
@@ -59,7 +53,6 @@ export class VoiceTimeline {
 		);
 	}
 
-	/** Null s'il n'y a que du silence sur cette période. */
 	extract(from: number, to: number): Float32Array<ArrayBuffer> | null {
 		const length = Math.max(
 			0,

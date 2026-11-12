@@ -23,7 +23,6 @@ export function challengeLabel(
 	return completed.tier === null ? name : `${name} ${completed.tier}`;
 }
 
-/** Le premier envoi d'une partie sert de référence : rien n'est annoncé deux fois. */
 export function applyLiveMetrics(metrics: MatchMetrics): void {
 	const previous = matchStore.get().challengeMetrics;
 	matchStore.set({ challengeMetrics: metrics });
@@ -43,7 +42,6 @@ export function applyLiveMetrics(metrics: MatchMetrics): void {
 	}
 }
 
-/** Ce que le compte a enregistré, plus la partie en cours. */
 export function useChallengeProgress(): ChallengeProgress {
 	const saved = useStore(
 		accountStore,

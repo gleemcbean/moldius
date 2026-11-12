@@ -16,14 +16,12 @@ import type { GameMode } from "./modeArt";
 import { PublicLobbyPreview } from "./PublicLobbyPreview";
 import styles from "./ModeSelect.module.scss";
 
-/** Prégénérées par modeArt.ts (voir scripts/mode-art.html) : rien n'est rendu en jeu. */
 const ART: Record<GameMode, string> = {
 	classic: classicArt,
 	daily: dailyArt,
 	tutorial: tutorialArt,
 };
 
-/** Le choix du mode de jeu, après « Jouer » : partie classique, mode du jour ou tutoriel. */
 export function ModeSelect({
 	name,
 	ready,

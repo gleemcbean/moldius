@@ -10,7 +10,6 @@ interface ReplayVoice {
 	panner: PannerNode;
 }
 
-/** Les voix d'un extrait, placées là où se trouvent les joueurs à l'écran. */
 export class ReplayVoices {
 	private readonly voices = new Map<string, ReplayVoice>();
 
@@ -52,9 +51,7 @@ export class ReplayVoices {
 		for (const voice of this.voices.values()) {
 			try {
 				voice.source.stop();
-			} catch {
-				// Déjà terminée : rien à arrêter.
-			}
+			} catch {}
 			voice.source.disconnect();
 			voice.panner.disconnect();
 		}

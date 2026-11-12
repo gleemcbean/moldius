@@ -643,7 +643,6 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 	);
 }
 
-/** Un réglage à part du formulaire : il s'applique dès qu'on coche la case. */
 function PrivacySection({ account }: { account: AccountProfile }) {
 	const t = useT();
 	const labels = t.account.profile;

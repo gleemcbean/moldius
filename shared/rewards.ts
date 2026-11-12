@@ -47,7 +47,6 @@ export function isLanternTint(value: unknown): value is LanternTint {
 	);
 }
 
-/** Une petite phrase affichée sous le pseudonyme : facultative, gagnée par les défis. */
 export const TAGLINES = [
 	"smile",
 	"cat",
@@ -85,15 +84,11 @@ export interface ProgressStats {
 	challenges?: ChallengeProgress;
 }
 
-/** Une récompense se gagne par un défi de la liste ou en atteignant un niveau. */
 export interface Reward {
 	kind: "hat" | "lantern" | "tagline";
 	value: HatPattern | LanternTint | Tagline;
-	/** null pour une récompense de niveau. */
 	challenge: ChallengeId | null;
-	/** Le palier à atteindre, à partir de 1 ; null pour un défi classique. */
 	tier: number | null;
-	/** Le niveau qui la débloque, pour les récompenses de niveau. */
 	level?: number;
 }
 
@@ -105,7 +100,6 @@ function levelReward(
 	return { kind, value, challenge: null, tier: null, level };
 }
 
-/** Purement visuel : débloquer une récompense ne donne aucun avantage en jeu. */
 export const REWARDS: readonly Reward[] = [
 	{ kind: "hat", value: "web", challenge: "veteran", tier: 2 },
 	{ kind: "hat", value: "flames", challenge: "champion", tier: 1 },
@@ -144,7 +138,6 @@ export const REWARDS: readonly Reward[] = [
 	levelReward(100, "lantern", "aurora"),
 ];
 
-/** Les récompenses de niveau, de la plus proche à la plus lointaine. */
 export function levelRewards(): Reward[] {
 	return REWARDS.filter((reward) => reward.level !== undefined).sort(
 		(a, b) => (a.level ?? 0) - (b.level ?? 0),
@@ -229,7 +222,6 @@ export function lanternUnlocked(
 	return cosmeticUnlocked("lantern", tint, stats);
 }
 
-/** Sans titre, rien à débloquer ; un titre inconnu ou verrouillé est refusé. */
 export function taglineUnlocked(
 	tagline: Tagline | null,
 	stats: ProgressStats | null,
@@ -237,7 +229,6 @@ export function taglineUnlocked(
 	return tagline === null || cosmeticUnlocked("tagline", tagline, stats);
 }
 
-/** Ce que le serveur accepte d'un client : un titre débloqué, sinon aucun. */
 export function allowedTagline(
 	value: unknown,
 	stats: ProgressStats | null,

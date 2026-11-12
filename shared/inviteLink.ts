@@ -4,7 +4,6 @@ export const INVITE_PARAM = "lobby";
 
 const RESERVED_PATHS = new Set(["terms", "privacy", "admin"]);
 
-/** Toute autre adresse sans code de partie repart vers l'accueil. */
 export function isAppPath(pathname: string): boolean {
 	const path = pathname.replace(/\/+$/, "");
 	return path === "" || RESERVED_PATHS.has(path.slice(1));

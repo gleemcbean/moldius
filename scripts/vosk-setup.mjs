@@ -1,7 +1,3 @@
-// Prépare la reconnaissance vocale hors ligne (Vosk) dans public/vosk : le worker, tiré de
-// vosk-browser, et les deux petits modèles officiels, téléchargés puis réemballés en .tar.gz
-// (le format que lit vosk-browser). Ne refait rien de ce qui est déjà là et correct.
-// Lancé par « npm run build:client » ; « npm run vosk:setup » le lance seul.
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,13 +9,11 @@ const MODELS = [
 	{ file: "vosk-model-small-fr-0.22.tar.gz", source: "vosk-model-small-fr-0.22" },
 	{ file: "vosk-model-small-en-us-0.15.tar.gz", source: "vosk-model-small-en-us-0.15" },
 ];
-/** Les archives d'avant, sans entrées de dossier, que vosk-browser ne savait pas décompresser. */
 const OBSOLETE = ["model-fr-0.22.tar.gz", "model-en-us-0.15.tar.gz"];
 const MODEL_BASE = "https://alphacephei.com/vosk/models";
 
 mkdirSync(target, { recursive: true });
 
-/** Le worker tel que livré par vosk-browser, réécrit s'il diffère (une ancienne copie modifiée). */
 function writeWorker() {
 	const output = resolve(target, "worker.js");
 	const library = resolve(root, "node_modules/vosk-browser/dist/vosk.js");
@@ -35,7 +29,6 @@ function writeWorker() {
 	console.log("Vosk : worker écrit");
 }
 
-/** Les fichiers d'une archive zip (méthodes « stocké » et « deflate »), sans dépendance. */
 function readZip(buffer) {
 	const end = buffer.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
 	if (end < 0) {
@@ -96,11 +89,6 @@ function tarHeader(name, size, type) {
 	return header;
 }
 
-/**
- * Une archive tar (format ustar) des fichiers donnés, chaque dossier déclaré avant ses
- * fichiers : le décompresseur de vosk-browser ne crée pas les dossiers tout seul, et sans
- * ces entrées il n'écrit aucun fichier (« does not contain model files »).
- */
 function tar(files) {
 	const blocks = [];
 	const declared = new Set();
@@ -119,7 +107,6 @@ function tar(files) {
 	return Buffer.concat(blocks);
 }
 
-/** Une archive faite par une version précédente de ce script, sans entrées de dossier. */
 function lacksFolders(path) {
 	const archive = gunzipSync(readFileSync(path));
 	for (let offset = 0; offset + 512 <= archive.length; ) {
@@ -165,7 +152,5 @@ try {
 		await writeModel(model);
 	}
 } catch (error) {
-	// Sans Vosk, le jeu reste jouable avec la reconnaissance du navigateur (Chrome) :
-	// on prévient sans bloquer la construction.
 	console.warn(`Vosk non préparé : ${error instanceof Error ? error.message : error}`);
 }

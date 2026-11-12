@@ -5,7 +5,6 @@ import type { RecognizerBackend, RecognizerReply } from "./voskRecognizer";
 
 const PREPARE_TIMEOUT_MS = 90_000;
 
-/** Réduit le micro à 16 kHz (moyenne par pas) en gardant la position d'un bloc à l'autre. */
 class Downsampler {
 	private progress = 0;
 	private sum = 0;
@@ -59,17 +58,12 @@ function dispatch(reply: SpeechReply): void {
 	}
 }
 
-/** Le serveur n'a pas de modèle (ou l'a coupé) : on revient à Vosk dans le navigateur. */
 let unavailable = false;
 
 export function serverSpeechUnavailable(): boolean {
 	return unavailable;
 }
 
-/**
- * Vosk sur le serveur : le micro part en PCM 16 kHz par la connexion du jeu, la transcription
- * revient sous la même forme que celle du worker local (VoskListener ne voit pas la différence).
- */
 export class ServerModel implements RecognizerBackend {
 	ready = false;
 	failed = false;

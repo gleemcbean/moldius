@@ -68,7 +68,6 @@ function detailRules(config: MatchConfig): MatchDetailRules {
 	};
 }
 
-/** Le classement complet vu par un joueur : sans identifiant de compte ni de session. */
 function matchDetails(
 	results: MatchResults,
 	selfId: string,

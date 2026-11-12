@@ -3,12 +3,10 @@ import type { AnomalyModel } from "../../models/anomalies/AnomalyModel";
 import type { DynamicLight } from "../lighting/LightPool";
 import type { ParticleSystem } from "./Particles";
 
-/** La couleur d'un rituel sans objet occulte : celle des spores. */
 export const RITUAL_FALLBACK_COLOR = 0xb8ff6a;
 
 let pentacleTexture: THREE.CanvasTexture | null = null;
 
-/** Un pentacle tracé à la craie lumineuse : deux cercles, une étoile, des signes entre les cercles. */
 function texture(): THREE.CanvasTexture {
 	if (pentacleTexture) {
 		return pentacleTexture;
@@ -44,7 +42,6 @@ function texture(): THREE.CanvasTexture {
 		}
 	}
 	context.stroke();
-	// Des signes anguleux entre les deux cercles extérieurs, jamais deux fois les mêmes.
 	context.lineWidth = 3;
 	for (let index = 0; index < 15; index += 1) {
 		const angle = (index / 15) * Math.PI * 2 + 0.2;
@@ -78,7 +75,6 @@ function texture(): THREE.CanvasTexture {
 	return pentacleTexture;
 }
 
-/** Le pentacle posé au sol, teinté de la couleur de l'objet occulte. */
 export class Pentacle {
 	readonly mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
 
@@ -122,7 +118,6 @@ const PULL_START = 1.05;
 const PULL_END = 2.25;
 const FADE_END = 2.9;
 
-/** Un champignon long comme une liane : une tige qui s'effile, des chapeaux le long. */
 interface Vine {
 	mesh: THREE.Mesh;
 	indexCount: number;
@@ -137,7 +132,6 @@ function progress(time: number, start: number, end: number): number {
 	return Math.min(1, Math.max(0, (time - start) / (end - start)));
 }
 
-/** Une tige le long d'une courbe, anneau après anneau : on la fait pousser par son index. */
 function stalkGeometry(
 	curve: THREE.Curve<THREE.Vector3>,
 	radius: number,
@@ -188,20 +182,14 @@ function stalkGeometry(
 
 export interface RitualTarget {
 	model: AnomalyModel;
-	/** Les pieds du monstre au moment de la capture. */
 	position: THREE.Vector3;
 	floorY: number;
 	bodyHeight: number;
 	radius: number;
 	color: number;
-	/** Fait encore bouger le monstre pendant qu'il se débat. */
 	animate: (dt: number) => void;
 }
 
-/**
- * La capture : un pentacle s'allume sous le monstre, de longs champignons en sortent comme des
- * lianes, s'enroulent autour de lui et le tirent sous le sol.
- */
 export class CaptureRitual {
 	readonly group = new THREE.Group();
 	readonly light: DynamicLight;
@@ -230,8 +218,6 @@ export class CaptureRitual {
 	) {
 		const { position, floorY, color } = target;
 		this.startY = target.model.root.position.y;
-		// La taille du modèle tel qu'il est dessiné : celle du catalogue sert à viser, elle
-		// peut dépasser la silhouette, et les lianes s'enrouleraient dans le vide.
 		const box = new THREE.Box3().setFromObject(target.model.root);
 		const measured = box.isEmpty()
 			? null
@@ -294,7 +280,6 @@ export class CaptureRitual {
 					Math.sin(base) * ringRadius * 0.78,
 				),
 			];
-			// Puis la liane s'enroule autour du corps en montant.
 			const top = 0.5 + Math.random() * 0.4;
 			for (let step = 1; step <= 4; step += 1) {
 				const angle = base + turn * step * 1.15;
@@ -308,7 +293,6 @@ export class CaptureRitual {
 				);
 			}
 			const curve = new THREE.CatmullRomCurve3(points);
-			// Des tiges épaisses, à la mesure du monstre : on doit les lire de loin.
 			const thickness =
 				(0.075 + Math.random() * 0.035) *
 				Math.min(1.8, Math.max(1, radius * 1.4));
@@ -323,7 +307,6 @@ export class CaptureRitual {
 				const where = curve.getPointAt(Math.min(0.99, at));
 				const tangent = curve.getTangentAt(Math.min(0.99, at));
 				cap.position.copy(where);
-				// Un chapeau de champignon, bombé vers le haut, à peine penché vers l'extérieur.
 				const outward = new THREE.Vector3(where.x, 0, where.z)
 					.normalize()
 					.multiplyScalar(0.35)
@@ -393,7 +376,6 @@ export class CaptureRitual {
 		const pull = easeInOut(progress(time, PULL_START, PULL_END));
 		const drop = pull * this.depth;
 		this.vineGroup.position.y = floorY - drop;
-		// Le monstre se débat, puis s'enfonce avec les lianes.
 		const struggle = (1 - pull) * Math.min(1, time * 3);
 		model.root.position.set(
 			position.x + Math.sin(time * 31) * 0.035 * struggle,

@@ -25,10 +25,6 @@ export const inviteStore = createStore<{ code: string | null }>({
 	code: takeInviteCode(),
 });
 
-/**
- * Pour qui n'y a pas droit, une page réservée se comporte exactement comme une
- * adresse de cinq lettres quelconque : un code d'invitation qui n'existe pas.
- */
 export function treatPathAsInvite(): void {
 	const code = window.location.pathname.replace(/\//g, "").toUpperCase();
 	window.history.replaceState(

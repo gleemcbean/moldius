@@ -10,7 +10,6 @@ function download(url: string, name: string): void {
 	link.click();
 }
 
-/** Les photos de la partie, à télécharger avant d'en relancer une : elles ne sont gardées nulle part. */
 export function PhotoGallery() {
 	const t = useT();
 	const labels = t.game.results.photos;
