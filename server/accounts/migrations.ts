@@ -210,6 +210,14 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
 			`ALTER TABLE accounts ADD COLUMN discord_synced_at timestamptz`,
 		],
 	},
+	{
+		version: 14,
+		statements: [
+			`ALTER TABLE pending_registrations ADD COLUMN discord_id text`,
+			`ALTER TABLE pending_registrations ADD COLUMN discord_username text`,
+			`ALTER TABLE pending_registrations ADD COLUMN discord_avatar text`,
+		],
+	},
 ];
 
 export async function migrate(database: Database): Promise<number> {

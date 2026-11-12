@@ -59,7 +59,8 @@ contextBridge.exposeInMainWorld("moldiusDesktop", {
 			ipcRenderer.on("moldius:discord-state", handler);
 			return () => ipcRenderer.removeListener("moldius:discord-state", handler);
 		},
-		connect: () => ipcRenderer.send("moldius:discord-connect"),
+		account: (intent, language) =>
+			ipcRenderer.invoke("moldius:discord-account", intent, language),
 		disconnect: () => ipcRenderer.send("moldius:discord-disconnect"),
 		setPresence: (activity) =>
 			ipcRenderer.send("moldius:discord-presence", activity),

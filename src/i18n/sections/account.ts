@@ -18,6 +18,9 @@ export const accountFr = {
 	tabs: { login: "Connexion", register: "Créer un compte" },
 	discordRegister: "Créer un compte avec Discord",
 	discordLogin: "Se connecter avec Discord",
+	discordWaiting: "Autorisez Moldius dans Discord…",
+	registerDiscord: (name: string) =>
+		`Votre compte Discord ${name} sera lié à ce compte dès sa confirmation.`,
 	orEmail: "ou avec une adresse e-mail",
 	forgotHint:
 		"Indiquez l'adresse de votre compte : vous recevrez un lien pour choisir un nouveau mot de passe.",
@@ -147,6 +150,9 @@ export const accountFr = {
 		linkHint:
 			"Liez votre compte Discord pour pouvoir vous connecter en un clic.",
 		link: "Lier mon compte Discord",
+		appHint:
+			"L'application n'est pas encore connectée à Discord : amis Discord et bouton « Rejoindre » sont en pause.",
+		appConnect: "Connecter Discord à l'application",
 	},
 	summary: {
 		discord: (username: string | null) =>
@@ -200,6 +206,9 @@ export const accountEn: typeof accountFr = {
 	tabs: { login: "Sign in", register: "Create an account" },
 	discordRegister: "Create an account with Discord",
 	discordLogin: "Sign in with Discord",
+	discordWaiting: "Authorise Moldius in Discord…",
+	registerDiscord: (name: string) =>
+		`Your Discord account ${name} will be linked to this account once it's confirmed.`,
 	orEmail: "or with an email address",
 	forgotHint:
 		"Enter your account's address: you will receive a link to choose a new password.",
@@ -331,6 +340,9 @@ export const accountEn: typeof accountFr = {
 		unlinked: "Discord account unlinked.",
 		linkHint: "Link your Discord account to sign in with one click.",
 		link: "Link my Discord account",
+		appHint:
+			"The app isn't connected to Discord yet: Discord friends and the “Join” button are paused.",
+		appConnect: "Connect Discord to the app",
 	},
 	summary: {
 		discord: (username: string | null) =>

@@ -156,6 +156,14 @@ class FakeDiscord implements DiscordClient {
 		}
 		return profile;
 	}
+
+	async profileFromToken(accessToken: string): Promise<DiscordProfile> {
+		const profile = this.profiles.get(accessToken);
+		if (!profile) {
+			throw new Error("jeton inconnu");
+		}
+		return profile;
+	}
 }
 
 function discordProfile(
@@ -447,7 +455,11 @@ describe("API des comptes", () => {
 			pattern: "stars",
 		});
 		expect(registered.status).toBe(202);
-		expect(registered.body).toEqual({ pending: true, email: EMAIL });
+		expect(registered.body).toEqual({
+			pending: true,
+			email: EMAIL,
+			discord: null,
+		});
 		expect(registered.cookies).toHaveLength(0);
 		expect(mailer.sent).toHaveLength(1);
 		const verification = mailer.last();
@@ -533,7 +545,11 @@ describe("API des comptes", () => {
 			color: GREEN,
 		});
 		expect(again.status).toBe(202);
-		expect(again.body).toEqual({ pending: true, email: EMAIL.toUpperCase() });
+		expect(again.body).toEqual({
+			pending: true,
+			email: EMAIL.toUpperCase(),
+			discord: null,
+		});
 		expect(mailer.last().subject).toContain("existe déjà");
 		expect(mailer.last().text).not.toMatch(/#verifier=/);
 		const stillPending = await database.query<{ total: number }>(
@@ -1121,6 +1137,134 @@ describe("connexion avec Discord", () => {
 		const unlinked = await alice.send("POST", "/discord/unlink", {});
 		expect(unlinked.status).toBe(200);
 		expect(unlinked.body?.account).toMatchObject({ discord: null });
+	});
+
+	it("connecte et lie Discord depuis l'application avec son jeton", async () => {
+		const launched = await launch();
+		const { discord, agent } = launched;
+		discord.profiles.set(
+			"jeton-solo-0001",
+			discordProfile("333333333333333333", "solo_app", null),
+		);
+		discord.profiles.set(
+			"jeton-alice-001",
+			discordProfile("444444444444444444", "alice_app", null),
+		);
+		const app = agent();
+		const refused = await app.send("POST", "/discord/app", {
+			intent: "login",
+			accessToken: "jeton-inconnu-1",
+		});
+		expect(refused.status).toBe(401);
+		expect(
+			(await app.send("POST", "/discord/app", { intent: "oups" })).status,
+		).toBe(400);
+
+		const created = await app.send("POST", "/discord/app", {
+			intent: "login",
+			accessToken: "jeton-solo-0001",
+		});
+		expect(created.body).toEqual({ outcome: "cree" });
+		expect((await app.send("GET", "/me")).body?.account).toMatchObject({
+			discord: { username: "solo_app" },
+		});
+
+		const alice = agent();
+		expect(
+			(
+				await alice.send("POST", "/discord/app", {
+					intent: "link",
+					accessToken: "jeton-alice-001",
+				})
+			).body,
+		).toEqual({ outcome: "erreur-session" });
+		await createAccount(launched, alice);
+		expect(
+			(
+				await alice.send("POST", "/discord/app", {
+					intent: "link",
+					accessToken: "jeton-alice-001",
+				})
+			).body,
+		).toEqual({ outcome: "lie" });
+		expect(
+			(
+				await alice.send("POST", "/discord/app", {
+					intent: "link",
+					accessToken: "jeton-solo-0001",
+				})
+			).body,
+		).toEqual({ outcome: "deja-lie" });
+	});
+
+	it("lie le compte Discord de l'application à un compte créé par e-mail", async () => {
+		const launched = await launch();
+		const { discord, agent, mailer } = launched;
+		discord.profiles.set(
+			"jeton-bruno-001",
+			discordProfile("555555555555555555", "bruno_app", null),
+		);
+		discord.profiles.set(
+			"jeton-deja-0001",
+			discordProfile("666666666666666666", "deja_app", null),
+		);
+		const app = agent();
+		const proof = await app.send("POST", "/discord/app", {
+			intent: "proof",
+			accessToken: "jeton-bruno-001",
+		});
+		expect(proof.status).toBe(200);
+		expect(proof.body?.discord).toBe("bruno_app");
+		const registered = await app.send("POST", "/register", {
+			email: "bruno@moldius.test",
+			password: PASSWORD,
+			displayName: "Bruno",
+			color: BLUE,
+			discordProof: proof.body?.proof,
+		});
+		expect(registered.status).toBe(202);
+		expect(registered.body).toMatchObject({ discord: "bruno_app" });
+
+		const browser = agent();
+		const verified = await browser.send("POST", "/verify-email", {
+			token: mailer.token("verifier", "bruno@moldius.test"),
+		});
+		expect(verified.status).toBe(201);
+		expect(verified.body?.account).toMatchObject({
+			email: "bruno@moldius.test",
+			hasPassword: true,
+			discord: { username: "bruno_app" },
+		});
+
+		const reused = await agent().send("POST", "/register", {
+			email: "autre@moldius.test",
+			password: PASSWORD,
+			displayName: "Autre",
+			color: BLUE,
+			discordProof: proof.body?.proof,
+		});
+		expect(reused.body).toMatchObject({ discord: null });
+
+		await agent().send("POST", "/discord/app", {
+			intent: "login",
+			accessToken: "jeton-deja-0001",
+		});
+		const taken = await app.send("POST", "/discord/app", {
+			intent: "proof",
+			accessToken: "jeton-deja-0001",
+		});
+		const blocked = await app.send("POST", "/register", {
+			email: "chloe@moldius.test",
+			password: PASSWORD,
+			displayName: "Chloé",
+			color: BLUE,
+			discordProof: taken.body?.proof,
+		});
+		expect(blocked.body).toMatchObject({ discord: null });
+		const chloe = await agent().send("POST", "/verify-email", {
+			token: mailer.token("verifier", "chloe@moldius.test"),
+		});
+		expect(chloe.body?.account).toMatchObject({ discord: null });
 	});
 
 	it("signale Discord indisponible sans configuration", async () => {

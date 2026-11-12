@@ -1,4 +1,4 @@
-const { app, ipcMain, safeStorage } = require("electron");
+const { app, ipcMain, net, safeStorage, session } = require("electron");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -8,6 +8,9 @@ const BRIDGE_NAME =
 	process.platform === "win32" ? "moldius-discord.exe" : "moldius-discord";
 const MAX_RESTARTS = 3;
 const INVITE_TIMEOUT_MS = 10_000;
+const AUTHORIZE_TIMEOUT_MS = 180_000;
+const ACCOUNT_TIMEOUT_MS = 15_000;
+const ACCOUNT_INTENTS = new Set(["login", "link", "proof"]);
 const MAX_FRIENDS = 1000;
 const STATUSES = new Set([
 	"unavailable",
@@ -104,7 +107,7 @@ function cleanActivity(input) {
 	return activity;
 }
 
-function createDiscord({ applicationId, isGame, getWindow }) {
+function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 	const tokenFile = path.join(app.getPath("userData"), "discord-token.bin");
 	const state = {
 		available: false,
@@ -119,6 +122,8 @@ function createDiscord({ applicationId, isGame, getWindow }) {
 	let restarts = 0;
 	let stopping = false;
 	let lastPresence = null;
+	let accessToken = null;
+	let pendingAuthorize = null;
 
 	const fromGame = (event) => isGame(event.senderFrame?.url ?? "");
 
@@ -185,6 +190,14 @@ function createDiscord({ applicationId, isGame, getWindow }) {
 						? message.refreshToken
 						: null,
 				);
+				accessToken =
+					typeof message.accessToken === "string" ? message.accessToken : null;
+				break;
+			case "authorized":
+				settleAuthorize({
+					ok: message.ok === true,
+					error: shortText(message.error, 300),
+				});
 				break;
 			case "user":
 				state.user = cleanUser(message.user);
@@ -248,6 +261,8 @@ function createDiscord({ applicationId, isGame, getWindow }) {
 		child.on("error", () => {});
 		child.on("exit", () => {
 			child = null;
+			accessToken = null;
+			settleAuthorize({ ok: false, error: "bridge" });
 			for (const waiting of pendingInvites.values()) {
 				clearTimeout(waiting.timer);
 				waiting.resolve({ ok: false, error: "bridge" });
@@ -282,10 +297,110 @@ function createDiscord({ applicationId, isGame, getWindow }) {
 	ipcMain.handle("moldius:discord-take-joins", (event) =>
 		fromGame(event) ? pendingJoins.splice(0) : [],
 	);
-	ipcMain.on("moldius:discord-connect", (event) => {
-		if (fromGame(event)) {
-			send({ type: "authorize" });
+	function settleAuthorize(result) {
+		if (pendingAuthorize) {
+			clearTimeout(pendingAuthorize.timer);
+			pendingAuthorize.resolve(result);
+			pendingAuthorize = null;
 		}
+	}
+
+	function authorizeBridge() {
+		if (pendingAuthorize) {
+			return pendingAuthorize.promise;
+		}
+		let resolve;
+		const promise = new Promise((done) => {
+			resolve = done;
+		});
+		pendingAuthorize = {
+			promise,
+			resolve,
+			timer: setTimeout(
+				() => settleAuthorize({ ok: false, error: "timeout" }),
+				AUTHORIZE_TIMEOUT_MS,
+			),
+		};
+		send({ type: "authorize" });
+		return promise;
+	}
+
+	function postAccount(body) {
+		return new Promise((resolve) => {
+			let request;
+			try {
+				request = net.request({
+					method: "POST",
+					url: `${gameOrigin}/api/account/discord/app`,
+					session: session.defaultSession,
+					useSessionCookies: true,
+				});
+			} catch {
+				resolve({ status: 0, json: null });
+				return;
+			}
+			const timer = setTimeout(() => {
+				request.abort();
+				resolve({ status: 0, json: null });
+			}, ACCOUNT_TIMEOUT_MS);
+			request.setHeader("Content-Type", "application/json");
+			request.on("response", (response) => {
+				const chunks = [];
+				response.on("data", (chunk) => chunks.push(chunk));
+				response.on("end", () => {
+					clearTimeout(timer);
+					let json = null;
+					try {
+						json = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+					} catch {}
+					resolve({ status: response.statusCode, json });
+				});
+			});
+			request.on("error", () => {
+				clearTimeout(timer);
+				resolve({ status: 0, json: null });
+			});
+			request.end(JSON.stringify(body));
+		});
+	}
+
+	function accountResult(reply) {
+		const json = reply.json && typeof reply.json === "object" ? reply.json : {};
+		return {
+			ok: reply.status === 200,
+			outcome: shortText(json.outcome, 40),
+			proof: shortText(json.proof, 64),
+			discord: shortText(json.discord, 64),
+			error: reply.status === 200 ? null : String(reply.status),
+		};
+	}
+
+	ipcMain.handle("moldius:discord-account", async (event, intent, language) => {
+		if (!fromGame(event) || !ACCOUNT_INTENTS.has(intent) || !child) {
+			return { ok: false, error: "unavailable" };
+		}
+		const body = (token) => ({
+			intent,
+			accessToken: token,
+			language: shortText(language, 8),
+		});
+		if (accessToken) {
+			const reply = await postAccount(body(accessToken));
+			if (reply.status !== 401) {
+				return accountResult(reply);
+			}
+		}
+		const authorized = await authorizeBridge();
+		if (!authorized.ok || !accessToken) {
+			return {
+				ok: false,
+				error:
+					authorized.error === "timeout" || authorized.error === "bridge"
+						? authorized.error
+						: "cancelled",
+			};
+		}
+		return accountResult(await postAccount(body(accessToken)));
 	});
 	ipcMain.on("moldius:discord-disconnect", (event) => {
 		if (fromGame(event)) {

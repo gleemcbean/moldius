@@ -78,6 +78,13 @@ export interface PendingRegistration {
 	color: number;
 	pattern: HatPattern;
 	language: Language;
+	discord?: PendingDiscord | null;
+}
+
+export interface PendingDiscord {
+	id: string;
+	username: string;
+	avatar: string | null;
 }
 
 export type ProfileFields = Pick<
@@ -99,6 +106,9 @@ interface PendingRow {
 	hat_color: number;
 	hat_pattern: string;
 	language: string;
+	discord_id: string | null;
+	discord_username: string | null;
+	discord_avatar: string | null;
 }
 
 interface AccountRow {
@@ -334,8 +344,8 @@ export class AccountStore {
 		await this.database.query(
 			`INSERT INTO pending_registrations
          (token_hash, email, email_key, password_hash, display_name, hat_color, hat_pattern,
-          language, created_at, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          language, created_at, expires_at, discord_id, discord_username, discord_avatar)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
 			[
 				tokenHash,
 				pending.email,
@@ -347,6 +357,9 @@ export class AccountStore {
 				pending.language,
 				createdAt,
 				expiresAt,
+				pending.discord?.id ?? null,
+				pending.discord?.username ?? null,
+				pending.discord?.avatar ?? null,
 			],
 		);
 	}
@@ -357,7 +370,8 @@ export class AccountStore {
 	): Promise<PendingRegistration | null> {
 		const { rows } = await this.database.query<PendingRow>(
 			`DELETE FROM pending_registrations WHERE token_hash = $1 AND expires_at > $2
-       RETURNING email, email_key, password_hash, display_name, hat_color, hat_pattern, language`,
+       RETURNING email, email_key, password_hash, display_name, hat_color, hat_pattern, language,
+         discord_id, discord_username, discord_avatar`,
 			[tokenHash, now],
 		);
 		const row = rows[0];
@@ -372,6 +386,14 @@ export class AccountStore {
 						? row.hat_pattern
 						: DEFAULT_HAT_PATTERN,
 					language: isLanguage(row.language) ? row.language : DEFAULT_LANGUAGE,
+					discord:
+						row.discord_id && row.discord_username
+							? {
+									id: row.discord_id,
+									username: row.discord_username,
+									avatar: row.discord_avatar,
+								}
+							: null,
 				}
 			: null;
 	}

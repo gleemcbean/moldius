@@ -41,7 +41,7 @@ function hourLabel(hour: number): string {
 
 function formatDuration(ms: number | null): string {
 	if (ms === null) {
-		return "—";
+		return ":";
 	}
 	const minutes = Math.round(ms / 60_000);
 	if (minutes < 60) {
@@ -52,7 +52,7 @@ function formatDuration(ms: number | null): string {
 
 function formatAgo(value: string | null, now: number): string {
 	if (!value) {
-		return "—";
+		return ":";
 	}
 	const seconds = (new Date(value).getTime() - now) / 1000;
 	const units: [Intl.RelativeTimeFormatUnit, number][] = [
@@ -531,7 +531,7 @@ function Dashboard({
 						label="Joueurs par partie"
 						value={
 							totals.averagePlayers === null
-								? "—"
+								? ":"
 								: number.format(totals.averagePlayers)
 						}
 						note="sur 30 jours"
@@ -607,7 +607,7 @@ function Dashboard({
 							entry.peak,
 							...presence.heatmap.map((row) =>
 								row[entry.hour] === null
-									? "—"
+									? ":"
 									: number.format(row[entry.hour] as number),
 							),
 						])}

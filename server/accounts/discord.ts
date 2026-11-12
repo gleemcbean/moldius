@@ -15,6 +15,7 @@ export interface DiscordProfile {
 export interface DiscordClient {
 	authorizeUrl(state: string, redirectUri: string): string;
 	fetchProfile(code: string, redirectUri: string): Promise<DiscordProfile>;
+	profileFromToken(accessToken: string): Promise<DiscordProfile>;
 }
 
 export function discordAvatarUrl(
@@ -58,6 +59,17 @@ export function parseDiscordUser(payload: unknown): DiscordProfile {
 	};
 }
 
+async function currentUser(accessToken: string): Promise<DiscordProfile> {
+	const userResponse = await fetch(`${API_URL}/users/@me`, {
+		headers: { Authorization: `Bearer ${accessToken}` },
+		signal: AbortSignal.timeout(TIMEOUT_MS),
+	});
+	if (!userResponse.ok) {
+		throw new Error(`Profil Discord indisponible (${userResponse.status})`);
+	}
+	return parseDiscordUser(await userResponse.json());
+}
+
 export function createDiscordClient(
 	clientId: string,
 	clientSecret: string,
@@ -96,16 +108,7 @@ export function createDiscordClient(
 				throw new Error("Jeton Discord absent");
 			}
 			try {
-				const userResponse = await fetch(`${API_URL}/users/@me`, {
-					headers: { Authorization: `Bearer ${token.access_token}` },
-					signal: AbortSignal.timeout(TIMEOUT_MS),
-				});
-				if (!userResponse.ok) {
-					throw new Error(
-						`Profil Discord indisponible (${userResponse.status})`,
-					);
-				}
-				return parseDiscordUser(await userResponse.json());
+				return await currentUser(token.access_token);
 			} finally {
 				void fetch(`${API_URL}/oauth2/token/revoke`, {
 					method: "POST",
@@ -118,6 +121,9 @@ export function createDiscordClient(
 					signal: AbortSignal.timeout(TIMEOUT_MS),
 				}).catch(() => undefined);
 			}
+		},
+		profileFromToken(accessToken) {
+			return currentUser(accessToken);
 		},
 	};
 }

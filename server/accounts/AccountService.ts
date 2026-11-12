@@ -217,6 +217,7 @@ export class AccountService {
 		},
 		base: string,
 		fallbackLanguage: Language = DEFAULT_LANGUAGE,
+		discord: DiscordProfile | null = null,
 	): Promise<ServiceResult<RegisterResponse>> {
 		if (!this.mailer) {
 			return fail(503, "mailUnavailable");
@@ -256,9 +257,11 @@ export class AccountService {
 		const email = normalizeEmail(input.email);
 		const key = emailKey(email);
 		const passwordHash = await hashPassword(input.password, this.scrypt);
+		const linkable =
+			discord && !(await this.store.findByDiscord(discord.id)) ? discord : null;
 		const accepted: ServiceResult<RegisterResponse> = {
 			ok: true,
-			value: { pending: true, email },
+			value: { pending: true, email, discord: linkable?.username ?? null },
 		};
 		if (!this.allowMail(key)) {
 			return accepted;
@@ -286,6 +289,13 @@ export class AccountService {
 					color: input.color,
 					pattern,
 					language,
+					discord: linkable
+						? {
+								id: linkable.id,
+								username: linkable.username,
+								avatar: linkable.avatar,
+							}
+						: null,
 				},
 				new Date(now),
 				new Date(now + REGISTRATION_TTL_MS),
@@ -315,9 +325,13 @@ export class AccountService {
 			return fail(400, "registrationLinkInvalid", "token");
 		}
 		try {
-			const account = await this.store.create(pending, new Date(now));
+			let account = await this.store.create(pending, new Date(now));
 			await this.store.deletePendingFor(pending.emailKey);
 			await this.store.touchLogin(account.id);
+			if (pending.discord) {
+				account =
+					(await this.attachDiscord(account.id, pending.discord)) ?? account;
+			}
 			return { ok: true, value: await this.issue(account) };
 		} catch (error) {
 			if (isUniqueViolation(error)) {
@@ -709,6 +723,31 @@ export class AccountService {
 		} catch (error) {
 			if (isUniqueViolation(error)) {
 				return { outcome: "deja-lie", issued: null };
+			}
+			throw error;
+		}
+	}
+
+	private async attachDiscord(
+		accountId: string,
+		discord: { id: string; username: string; avatar: string | null },
+	) {
+		if (await this.store.findByDiscord(discord.id)) {
+			return null;
+		}
+		try {
+			return await this.store.setDiscord(accountId, {
+				id: discord.id,
+				username: discord.username,
+				displayName: discord.username,
+				avatar: discord.avatar,
+				email: null,
+				emailVerified: false,
+				locale: null,
+			});
+		} catch (error) {
+			if (isUniqueViolation(error)) {
+				return null;
 			}
 			throw error;
 		}

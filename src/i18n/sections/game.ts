@@ -181,7 +181,7 @@ export const gameFr = {
 		ignored: "Rien n'est envoyé au serveur",
 		pending: "Réponse du serveur…",
 		captured: "Serveur : capture réussie",
-		refused: (reason: string) => `Serveur : refus — ${reason}`,
+		refused: (reason: string) => `Serveur : refus : ${reason}`,
 	},
 	walkie: {
 		idle: (key: string) => `Talkie : maintenez ${key} pour parler`,
@@ -625,7 +625,7 @@ export const gameEn: typeof gameFr = {
 		ignored: "Nothing is sent to the server",
 		pending: "Waiting for the server…",
 		captured: "Server: capture succeeded",
-		refused: (reason: string) => `Server: refused — ${reason}`,
+		refused: (reason: string) => `Server: refused: ${reason}`,
 	},
 	walkie: {
 		idle: (key: string) => `Walkie: hold ${key} to talk`,

@@ -6,6 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <deque>
 #include <iostream>
 #include <memory>
@@ -171,13 +172,16 @@ class Bridge {
 			return;
 		}
 		applicationId = *id;
+		const char *verbose = std::getenv("MOLDIUS_DISCORD_VERBOSE");
 		client->AddLogCallback(
 		    [](std::string text, discordpp::LoggingSeverity severity) {
-			    log(severity == discordpp::LoggingSeverity::Error ? "error"
-			                                                        : "warning",
+			    log(severity == discordpp::LoggingSeverity::Error     ? "error"
+			        : severity == discordpp::LoggingSeverity::Warning ? "warning"
+			                                                          : "info",
 			        text);
 		    },
-		    discordpp::LoggingSeverity::Warning);
+		    verbose && *verbose ? discordpp::LoggingSeverity::Verbose
+		                        : discordpp::LoggingSeverity::Warning);
 		client->SetApplicationId(applicationId);
 		if (message.contains("launchCommand") &&
 		    message["launchCommand"].is_string()) {
@@ -232,8 +236,24 @@ class Bridge {
 		}
 	}
 
+	void authorized(bool ok, const std::string &error = "") {
+		json message = {{"type", "authorized"}, {"ok", ok}};
+		if (!error.empty()) {
+			message["error"] = error;
+		}
+		emit(message);
+	}
+
+	void restoreStatus(const std::string &error) {
+		if (client->GetStatus() == discordpp::Client::Status::Ready) {
+			status("ready");
+		} else {
+			status(refreshToken.empty() ? "signed-out" : "error", error);
+		}
+	}
+
 	void authorize() {
-		if (authorizing || client->GetStatus() == discordpp::Client::Status::Ready) {
+		if (authorizing) {
 			return;
 		}
 		authorizing = true;
@@ -241,14 +261,16 @@ class Bridge {
 		auto verifier = client->CreateAuthorizationCodeVerifier();
 		discordpp::AuthorizationArgs args{};
 		args.SetClientId(applicationId);
-		args.SetScopes(discordpp::Client::GetDefaultPresenceScopes());
+		args.SetScopes(discordpp::Client::GetDefaultPresenceScopes() +
+		               " identify email");
 		args.SetCodeChallenge(verifier.Challenge());
 		client->Authorize(args, [this, verifier](discordpp::ClientResult result,
 		                                         std::string code,
 		                                         std::string redirectUri) {
 			if (!result.Successful()) {
 				authorizing = false;
-				status(refreshToken.empty() ? "signed-out" : "error", result.Error());
+				restoreStatus(result.Error());
+				authorized(false, result.Error());
 				return;
 			}
 			client->GetToken(applicationId, code, verifier.Verifier(), redirectUri,
@@ -258,7 +280,13 @@ class Bridge {
 			                        discordpp::AuthorizationTokenType,
 			                        int32_t, std::string) {
 				                 authorizing = false;
+				                 if (!result.Successful()) {
+					                 restoreStatus(result.Error());
+					                 authorized(false, result.Error());
+					                 return;
+				                 }
 				                 onTokens(result, accessToken, nextRefresh, false);
+				                 authorized(true);
 			                 });
 		});
 	}
@@ -293,7 +321,9 @@ class Bridge {
 			return;
 		}
 		refreshToken = nextRefresh;
-		emit({{"type", "token"}, {"refreshToken", refreshToken}});
+		emit({{"type", "token"},
+		      {"refreshToken", refreshToken},
+		      {"accessToken", accessToken}});
 		client->UpdateToken(discordpp::AuthorizationTokenType::Bearer, accessToken,
 		                    [this](discordpp::ClientResult updated) {
 			                    if (!updated.Successful()) {
@@ -387,7 +417,9 @@ class Bridge {
 			}
 		}
 		client->UpdateRichPresence(activity, [](discordpp::ClientResult result) {
-			if (!result.Successful()) {
+			if (result.Successful()) {
+				log("info", "Présence acceptée");
+			} else {
 				log("warning", "Présence refusée : " + result.Error());
 			}
 		});

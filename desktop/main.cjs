@@ -45,6 +45,7 @@ const discord = createDiscord({
 	applicationId: String(
 		process.env.MOLDIUS_DISCORD_APP_ID || config.discordApplicationId || "",
 	),
+	gameOrigin: GAME_ORIGIN,
 	isGame: (url) => isGame(url),
 	getWindow: () => window,
 });

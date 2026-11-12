@@ -8,6 +8,7 @@ import {
 } from "@shared/protocol/account";
 import type { LanternTint, Tagline } from "@shared/rewards";
 import { openOverlay } from "../../app/appStore";
+import { desktopApp } from "../../app/desktopApp";
 import type { AccountNoticeKey } from "../../i18n/sections/account";
 import { createStore } from "../../utils/store";
 import { reconnectSocket } from "../network/connection";
@@ -33,6 +34,7 @@ export interface AccountState {
 	notice: AccountNotice | null;
 	resetToken: string | null;
 	discordEnabled: boolean;
+	discordBusy: boolean;
 }
 
 export const accountStore = createStore<AccountState>({
@@ -41,6 +43,7 @@ export const accountStore = createStore<AccountState>({
 	notice: null,
 	resetToken: null,
 	discordEnabled: false,
+	discordBusy: false,
 });
 
 const DISCORD_PATTERN = /^#discord=([a-z-]+)$/;
@@ -162,9 +165,13 @@ function readDiscordResult(): boolean {
 		window.location.pathname + window.location.search,
 	);
 	const outcome = DISCORD_OUTCOMES.find((candidate) => candidate === match[1]);
-	if (!outcome) {
-		return true;
+	if (outcome) {
+		applyDiscordOutcome(outcome);
 	}
+	return true;
+}
+
+function applyDiscordOutcome(outcome: DiscordOutcome): void {
 	const local = settingsStore.get();
 	openOverlay("account");
 	const success = DISCORD_SUCCESS.includes(outcome);
@@ -185,7 +192,17 @@ function readDiscordResult(): boolean {
 			}
 		});
 	}
-	return true;
+}
+
+async function appDiscord(): Promise<
+	NonNullable<typeof desktopApp>["discord"] | null
+> {
+	const bridge = desktopApp?.discord;
+	if (!bridge || typeof bridge.account !== "function") {
+		return null;
+	}
+	const state = await bridge.getState().catch(() => null);
+	return state?.available ? bridge : null;
 }
 
 function readEmailLink(): void {
@@ -267,8 +284,18 @@ export async function login(
 export async function register(
 	email: string,
 	password: string,
-): Promise<ApiResult<string>> {
+): Promise<ApiResult<{ email: string; discord: string | null }>> {
 	const settings = settingsStore.get();
+	const bridge = await appDiscord();
+	let discordProof: string | undefined;
+	if (bridge) {
+		accountStore.set({ discordBusy: true });
+		const proof = await bridge
+			.account("proof", settings.language)
+			.catch(() => null);
+		accountStore.set({ discordBusy: false });
+		discordProof = proof?.ok && proof.proof ? proof.proof : undefined;
+	}
 	const result = await accountApi.register({
 		email,
 		password,
@@ -276,8 +303,14 @@ export async function register(
 		color: settings.playerColor,
 		pattern: settings.playerPattern,
 		language: settings.language,
+		...(discordProof ? { discordProof } : {}),
 	});
-	return result.ok ? { ok: true, value: result.value.email } : result;
+	return result.ok
+		? {
+				ok: true,
+				value: { email: result.value.email, discord: result.value.discord },
+			}
+		: result;
 }
 
 export async function requestPasswordReset(
@@ -364,12 +397,26 @@ export async function changePassword(
 	return { ok: true, value: null };
 }
 
-export function startDiscord(mode: "login" | "link"): void {
-	const query = new URLSearchParams({
-		mode,
-		lang: settingsStore.get().language,
-	});
-	window.location.assign(`/api/account/discord/start?${query.toString()}`);
+export async function startDiscord(mode: "login" | "link"): Promise<void> {
+	const language = settingsStore.get().language;
+	const bridge = await appDiscord();
+	if (!bridge) {
+		const query = new URLSearchParams({ mode, lang: language });
+		window.location.assign(`/api/account/discord/start?${query.toString()}`);
+		return;
+	}
+	if (accountStore.get().discordBusy) {
+		return;
+	}
+	accountStore.set({ discordBusy: true, notice: null });
+	const reply = await bridge.account(mode, language).catch(() => null);
+	accountStore.set({ discordBusy: false });
+	const outcome = DISCORD_OUTCOMES.find(
+		(candidate) => candidate === reply?.outcome,
+	);
+	applyDiscordOutcome(
+		outcome ?? (reply?.error === "cancelled" ? "annule" : "erreur-discord"),
+	);
 }
 
 export async function unlinkDiscord(): Promise<ApiResult<null>> {
@@ -377,6 +424,7 @@ export async function unlinkDiscord(): Promise<ApiResult<null>> {
 	if (!result.ok) {
 		return result;
 	}
+	desktopApp?.discord?.disconnect();
 	accountStore.set({ account: result.value.account });
 	return { ok: true, value: null };
 }

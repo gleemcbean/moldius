@@ -49,6 +49,8 @@ import {
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const OAUTH_TTL_MS = 10 * 60_000;
 const MAX_OAUTH_STATES = 10_000;
+const DISCORD_PROOF_TTL_MS = 30 * 60_000;
+const APP_INTENTS = new Set(["login", "link", "proof"]);
 
 interface OAuthState {
 	mode: "login" | "link";
@@ -158,12 +160,30 @@ export function createAccountRouter(accounts: AccountModule): AccountRouter {
 	const throttles = createThrottles();
 	const now = () => Date.now();
 	const oauthStates = new Map<string, OAuthState>();
+	const discordProofs = new Map<
+		string,
+		{ profile: DiscordProfile; expiresAt: number }
+	>();
 	const pruneStates = () => {
 		for (const [key, state] of oauthStates) {
 			if (state.expiresAt <= now()) {
 				oauthStates.delete(key);
 			}
 		}
+		for (const [key, proof] of discordProofs) {
+			if (proof.expiresAt <= now()) {
+				discordProofs.delete(key);
+			}
+		}
+	};
+	const takeDiscordProof = (value: unknown): DiscordProfile | null => {
+		if (typeof value !== "string" || !isSessionToken(value)) {
+			return null;
+		}
+		const key = hashSessionToken(value);
+		const proof = discordProofs.get(key);
+		discordProofs.delete(key);
+		return proof && proof.expiresAt > now() ? proof.profile : null;
 	};
 	const pruneTimer = setInterval(() => {
 		for (const throttle of Object.values(throttles)) {
@@ -342,6 +362,7 @@ export function createAccountRouter(accounts: AccountModule): AccountRouter {
 			},
 			base,
 			requestLanguage(request),
+			takeDiscordProof(body.discordProof),
 		);
 		if (!result.ok) {
 			sendProblem(
@@ -621,6 +642,70 @@ export function createAccountRouter(accounts: AccountModule): AccountRouter {
 			setSession(response, issued.token);
 		}
 		discordResult(response, base, outcome);
+	});
+
+	router.post("/discord/app", async (request, response) => {
+		const ready = service(request, response);
+		if (!ready) {
+			return;
+		}
+		const client = accounts.discord;
+		if (!client) {
+			response.json({ outcome: "indisponible" });
+			return;
+		}
+		const blocked = throttles.oauthByIp.hit(clientIp(request), now());
+		if (blocked > 0) {
+			tooMany(request, response, blocked);
+			return;
+		}
+		const body = request.body as Record<string, unknown>;
+		const intent = typeof body.intent === "string" ? body.intent : "";
+		const accessToken =
+			typeof body.accessToken === "string" &&
+			/^[A-Za-z0-9._~+/=-]{10,512}$/.test(body.accessToken)
+				? body.accessToken
+				: null;
+		if (!APP_INTENTS.has(intent) || !accessToken) {
+			sendError(request, response, 400, "invalidRequest");
+			return;
+		}
+		let profile: DiscordProfile;
+		try {
+			profile = await client.profileFromToken(accessToken);
+		} catch {
+			response.status(401).json({ outcome: "erreur-discord" });
+			return;
+		}
+		if (intent === "proof") {
+			if (discordProofs.size >= MAX_OAUTH_STATES) {
+				pruneStates();
+			}
+			const proof = createSessionToken();
+			discordProofs.set(hashSessionToken(proof), {
+				profile,
+				expiresAt: now() + DISCORD_PROOF_TTL_MS,
+			});
+			response.json({ proof, discord: profile.username });
+			return;
+		}
+		if (intent === "link") {
+			const session = await ready.authenticate(cookieToken(request));
+			response.json({
+				outcome: session
+					? await ready.linkDiscord(session.accountId, profile)
+					: "erreur-session",
+			});
+			return;
+		}
+		const language = isLanguage(body.language)
+			? body.language
+			: requestLanguage(request);
+		const { outcome, issued } = await ready.discordLogin(profile, language);
+		if (issued) {
+			setSession(response, issued.token);
+		}
+		response.json({ outcome });
 	});
 
 	router.post("/discord/unlink", async (request, response) => {

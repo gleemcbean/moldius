@@ -1,12 +1,10 @@
 export const discordFr = {
 	title: "Discord",
-	connect: "Connecter Discord",
-	disconnect: "Déconnecter",
 	connecting: "Connexion à Discord…",
 	authorizing: "Autorisez Moldius dans Discord…",
 	connectedAs: (name: string) => `Connecté en tant que ${name}`,
-	signedOutHint:
-		"Retrouvez vos amis Discord dans le jeu, et laissez-les vous rejoindre depuis votre statut.",
+	connectFromAccount:
+		"Connectez-vous avec Discord, ou liez Discord dans « Mon compte », pour retrouver vos amis Discord ici.",
 	error: "Discord est injoignable pour l'instant.",
 	syncNotLinked:
 		"Liez ce compte Discord à votre compte de jeu (fenêtre Compte) pour retrouver vos amis Discord.",
@@ -43,13 +41,11 @@ export const discordFr = {
 
 export const discordEn: typeof discordFr = {
 	title: "Discord",
-	connect: "Connect Discord",
-	disconnect: "Disconnect",
 	connecting: "Connecting to Discord…",
 	authorizing: "Authorise Moldius in Discord…",
 	connectedAs: (name: string) => `Connected as ${name}`,
-	signedOutHint:
-		"Find your Discord friends in the game, and let them join you from your status.",
+	connectFromAccount:
+		"Sign in with Discord, or link Discord in “My account”, to find your Discord friends here.",
 	error: "Discord can't be reached right now.",
 	syncNotLinked:
 		"Link this Discord account to your game account (Account window) to find your Discord friends.",

@@ -36,15 +36,6 @@ export const discordStore = createStore<DiscordStoreState>({
 	syncError: null,
 });
 
-export function connectDiscord(): void {
-	bridge?.connect();
-}
-
-export function disconnectDiscord(): void {
-	bridge?.disconnect();
-	discordStore.set({ syncError: null });
-}
-
 export async function inviteOnDiscord(userId: string): Promise<boolean> {
 	if (!bridge) {
 		return false;

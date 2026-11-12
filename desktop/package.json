@@ -1,7 +1,7 @@
 {
 	"name": "moldius-desktop",
 	"productName": "Moldius",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"description": "Moldius, le jeu d'horreur multijoueur, en application de bureau.",
 	"author": "Glee McBean",
 	"private": true,

@@ -5,12 +5,7 @@ import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
-import {
-	connectDiscord,
-	disconnectDiscord,
-	discordStore,
-	inviteOnDiscord,
-} from "../discord/discordStore";
+import { discordStore, inviteOnDiscord } from "../discord/discordStore";
 import styles from "./FriendsModal.module.scss";
 
 const INVITED_MS = 6000;
@@ -22,8 +17,6 @@ export function DiscordPanel({ synced }: { synced: number }) {
 	if (!discord.available) {
 		return null;
 	}
-	const busy =
-		discord.status === "authorizing" || discord.status === "connecting";
 	const line =
 		discord.status === "ready" && discord.user
 			? t.discord.connectedAs(discord.user.displayName)
@@ -33,7 +26,7 @@ export function DiscordPanel({ synced }: { synced: number }) {
 					? t.discord.connecting
 					: discord.status === "error"
 						? t.discord.error
-						: t.discord.signedOutHint;
+						: t.discord.connectFromAccount;
 	const sync =
 		discord.status !== "ready"
 			? null
@@ -53,15 +46,6 @@ export function DiscordPanel({ synced }: { synced: number }) {
 					</small>
 				) : null}
 			</span>
-			{discord.status === "ready" ? (
-				<Button variant="ghost" onClick={disconnectDiscord}>
-					{t.discord.disconnect}
-				</Button>
-			) : (
-				<Button variant="secondary" disabled={busy} onClick={connectDiscord}>
-					{t.discord.connect}
-				</Button>
-			)}
 		</div>
 	);
 }

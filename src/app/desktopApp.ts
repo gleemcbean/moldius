@@ -44,10 +44,21 @@ export interface DiscordActivity {
 	joinSecret?: string;
 }
 
+export interface DiscordAccountReply {
+	ok: boolean;
+	outcome?: string | null;
+	proof?: string | null;
+	discord?: string | null;
+	error?: string | null;
+}
+
 export interface DesktopDiscord {
 	getState(): Promise<DiscordBridgeState | null>;
 	onState(listener: (state: DiscordBridgeState) => void): () => void;
-	connect(): void;
+	account(
+		intent: "login" | "link" | "proof",
+		language: string,
+	): Promise<DiscordAccountReply>;
 	disconnect(): void;
 	setPresence(activity: DiscordActivity | null): void;
 	invite(

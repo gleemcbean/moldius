@@ -1,4 +1,4 @@
-# MOLDIUS — application de bureau
+# MOLDIUS : application de bureau
 
 Une fenêtre Electron qui charge le serveur du jeu : sans barre de navigateur, plein écran
 (F11 ou Alt+Entrée), micro et verrouillage de la souris autorisés pour le seul site du jeu,

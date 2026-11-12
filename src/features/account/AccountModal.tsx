@@ -43,6 +43,7 @@ import { shallowEqual, useStore } from "../../hooks/useStore";
 import { useLanguage, useT } from "../../i18n";
 import { hexColor } from "../../utils/format";
 import { rewardName, rewardRequirement } from "../challenges/rewardLabels";
+import { discordStore } from "../discord/discordStore";
 import { LevelProgress } from "../profile/LevelProgress";
 import { settingsStore } from "../settings/settingsStore";
 import styles from "./AccountModal.module.scss";
@@ -112,15 +113,18 @@ function DiscordButton({
 	label: string;
 	onClick: () => void;
 }) {
+	const t = useT();
+	const busy = useStore(accountStore, (state) => state.discordBusy);
 	return (
 		<button
 			type="button"
 			className={styles.discordButton}
 			onClick={onClick}
+			disabled={busy}
 			data-selectable=""
 		>
 			<Icon name="discord" />
-			<span>{label}</span>
+			<span>{busy ? t.account.discordWaiting : label}</span>
 		</button>
 	);
 }
@@ -146,6 +150,7 @@ function GuestPanel() {
 	const [sentTo, setSentTo] = useState<{
 		email: string;
 		kind: "register" | "forgot";
+		discord?: string | null;
 	} | null>(null);
 	const registering = mode === "register";
 
@@ -215,6 +220,10 @@ function GuestPanel() {
 		setSentTo({
 			email: email.trim(),
 			kind: mode === "register" ? "register" : "forgot",
+			discord:
+				typeof result.value === "object" && result.value
+					? result.value.discord
+					: null,
 		});
 	};
 
@@ -235,6 +244,11 @@ function GuestPanel() {
 								: t.account.resetSent(sentTo.email)}{" "}
 							{t.account.spamHint}
 						</p>
+						{sentTo.discord ? (
+							<p className={styles.hint}>
+								{t.account.registerDiscord(sentTo.discord)}
+							</p>
+						) : null}
 					</div>
 				</div>
 				<div className={styles.row}>
@@ -264,7 +278,7 @@ function GuestPanel() {
 						label={
 							registering ? t.account.discordRegister : t.account.discordLogin
 						}
-						onClick={() => startDiscord("login")}
+						onClick={() => void startDiscord("login")}
 					/>
 					<p className={styles.separator}>{t.account.orEmail}</p>
 				</>
@@ -871,9 +885,16 @@ function DiscordSection({ account }: { account: AccountProfile }) {
 	);
 	const [error, setError] = useState<FormError | null>(null);
 	const [busy, setBusy] = useState(false);
+	const appDiscord = useStore(discordStore, (state) => state);
 	if (!account.discord && !discordEnabled) {
 		return null;
 	}
+	const appNeedsDiscord =
+		account.discord !== null &&
+		discordEnabled &&
+		appDiscord.available &&
+		appDiscord.status !== "ready" &&
+		appDiscord.status !== "connecting";
 	const canUnlink = account.hasPassword && account.email !== null;
 	const unlink = async () => {
 		setBusy(true);
@@ -916,12 +937,22 @@ function DiscordSection({ account }: { account: AccountProfile }) {
 						{labels.unlink}
 					</Button>
 				</div>
-			) : (
+			) : null}
+			{appNeedsDiscord ? (
+				<>
+					<p className={styles.hint}>{labels.appHint}</p>
+					<DiscordButton
+						label={labels.appConnect}
+						onClick={() => void startDiscord("link")}
+					/>
+				</>
+			) : null}
+			{account.discord ? null : (
 				<>
 					<p className={styles.hint}>{labels.linkHint}</p>
 					<DiscordButton
 						label={labels.link}
-						onClick={() => startDiscord("link")}
+						onClick={() => void startDiscord("link")}
 					/>
 				</>
 			)}

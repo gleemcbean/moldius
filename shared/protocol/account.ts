@@ -190,6 +190,7 @@ export interface RegisterRequest {
 	color: number;
 	pattern?: HatPattern;
 	language?: Language;
+	discordProof?: string;
 }
 
 export interface LoginRequest {
@@ -200,6 +201,7 @@ export interface LoginRequest {
 export interface RegisterResponse {
 	pending: true;
 	email: string;
+	discord: string | null;
 }
 
 export interface EmailTokenRequest {
