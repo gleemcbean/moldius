@@ -8,6 +8,7 @@ const {
 } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
+const { createDiscord } = require("./discord.cjs");
 
 const config = JSON.parse(
 	fs.readFileSync(path.join(__dirname, "app-config.json"), "utf8"),
@@ -39,6 +40,14 @@ if (SMOKE_TEST) {
 }
 
 let window = null;
+
+const discord = createDiscord({
+	applicationId: String(
+		process.env.MOLDIUS_DISCORD_APP_ID || config.discordApplicationId || "",
+	),
+	isGame: (url) => isGame(url),
+	getWindow: () => window,
+});
 
 function isGame(url) {
 	try {
@@ -386,7 +395,12 @@ app.whenReady().then(() => {
 		}
 	});
 	createWindow();
+	if (!SMOKE_TEST) {
+		discord.start();
+	}
 });
+
+app.on("will-quit", () => discord.stop());
 
 app.on("window-all-closed", () => {
 	app.quit();

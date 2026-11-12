@@ -1,3 +1,6 @@
 node_modules
 release
 app-config.json
+discord-bridge/build
+discord-bridge/dist
+discord-bridge/sdk

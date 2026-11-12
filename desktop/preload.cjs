@@ -52,6 +52,34 @@ contextBridge.exposeInMainWorld("moldiusDesktop", {
 		listeners.add(listener);
 		return () => listeners.delete(listener);
 	},
+	discord: {
+		getState: () => ipcRenderer.invoke("moldius:discord-state"),
+		onState: (listener) => {
+			const handler = (_event, state) => listener(state);
+			ipcRenderer.on("moldius:discord-state", handler);
+			return () => ipcRenderer.removeListener("moldius:discord-state", handler);
+		},
+		connect: () => ipcRenderer.send("moldius:discord-connect"),
+		disconnect: () => ipcRenderer.send("moldius:discord-disconnect"),
+		setPresence: (activity) =>
+			ipcRenderer.send("moldius:discord-presence", activity),
+		invite: (userId, message) =>
+			ipcRenderer.invoke("moldius:discord-invite", userId, message),
+		onJoin: (listener) => {
+			const take = () =>
+				ipcRenderer
+					.invoke("moldius:discord-take-joins")
+					.then((secrets) => {
+						for (const secret of secrets) {
+							listener(secret);
+						}
+					})
+					.catch(() => undefined);
+			ipcRenderer.on("moldius:discord-join", take);
+			take();
+			return () => ipcRenderer.removeListener("moldius:discord-join", take);
+		},
+	},
 });
 
 const ICONS = {

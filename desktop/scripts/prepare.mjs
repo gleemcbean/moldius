@@ -1,10 +1,10 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-function publicUrlFromEnv() {
+function fromEnvFile(name) {
 	const envFile = join(root, "..", ".env");
 	if (!existsSync(envFile)) {
 		return null;
@@ -12,18 +12,20 @@ function publicUrlFromEnv() {
 
 	const line = readFileSync(envFile, "utf8")
 		.split(/\r?\n/)
-		.find((entry) => entry.startsWith("PUBLIC_URL="));
+		.find((entry) => entry.startsWith(`${name}=`));
 
 	return line
 		? line
-				.slice("PUBLIC_URL=".length)
+				.slice(name.length + 1)
 				.trim()
 				.replace(/^["']|["']$/g, "")
 		: null;
 }
 
 const raw =
-	process.env.MOLDIUS_URL || publicUrlFromEnv() || "http://localhost:5173";
+	process.env.MOLDIUS_URL ||
+	fromEnvFile("PUBLIC_URL") ||
+	"http://localhost:5173";
 let url;
 
 try {
@@ -42,10 +44,28 @@ if (
 	process.exit(1);
 }
 
+const discordApplicationId =
+	process.env.MOLDIUS_DISCORD_APP_ID || fromEnvFile("DISCORD_CLIENT_ID") || "";
+if (discordApplicationId && !/^[0-9]{5,25}$/.test(discordApplicationId)) {
+	console.error("Identifiant d'application Discord invalide.");
+	process.exit(1);
+}
+
 writeFileSync(
 	join(root, "app-config.json"),
-	`${JSON.stringify({ url: url.origin }, null, "\t")}\n`,
+	`${JSON.stringify({ url: url.origin, discordApplicationId }, null, "\t")}\n`,
 );
+
+const bridge = join(root, "discord-bridge", "dist");
+mkdirSync(bridge, { recursive: true });
+const bridgeBuilt = ["moldius-discord.exe", "moldius-discord"].some((name) =>
+	existsSync(join(bridge, name)),
+);
+if (discordApplicationId && !bridgeBuilt) {
+	console.warn(
+		"Pont Discord absent (discord-bridge/dist) : amis et présence Discord désactivés. Voir npm run bridge:build.",
+	);
+}
 
 console.log(
 	url.hostname === "localhost" || url.hostname === "127.0.0.1"
