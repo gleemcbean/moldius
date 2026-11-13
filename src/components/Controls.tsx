@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext, useId } from "react";
 import { useT } from "../i18n";
 import styles from "./Controls.module.scss";
+
+const FieldLabel = createContext<string | undefined>(undefined);
 
 export function Field({
 	label,
@@ -11,12 +13,17 @@ export function Field({
 	hint?: ReactNode;
 	children: ReactNode;
 }) {
+	const labelId = useId();
 	return (
-		<label className={styles.field}>
-			<span className={styles.fieldLabel}>{label}</span>
-			<span className={styles.fieldControl}>{children}</span>
+		<fieldset className={styles.field} aria-labelledby={labelId}>
+			<span id={labelId} className={styles.fieldLabel}>
+				{label}
+			</span>
+			<span className={styles.fieldControl}>
+				<FieldLabel value={labelId}>{children}</FieldLabel>
+			</span>
 			{hint ? <span className={styles.fieldHint}>{hint}</span> : null}
-		</label>
+		</fieldset>
 	);
 }
 
@@ -39,11 +46,13 @@ export function Slider({
 	format,
 	disabled,
 }: SliderProps) {
+	const labelledBy = useContext(FieldLabel);
 	const percent = ((value - min) / (max - min)) * 100;
 	return (
 		<span className={styles.slider}>
 			<input
 				type="range"
+				aria-labelledby={labelledBy}
 				min={min}
 				max={max}
 				step={step}
@@ -72,12 +81,14 @@ export function Toggle({
 	label?: string;
 }) {
 	const t = useT();
+	const labelledBy = useContext(FieldLabel);
 	return (
 		<button
 			type="button"
 			role="switch"
 			aria-checked={checked}
 			aria-label={label}
+			aria-labelledby={label ? undefined : labelledBy}
 			disabled={disabled}
 			className={[styles.toggle, checked ? styles.toggleOn : ""].join(" ")}
 			onClick={() => onChange(!checked)}
@@ -107,8 +118,13 @@ export function Segmented<T extends string | number>({
 	onChange: (value: T) => void;
 	disabled?: boolean;
 }) {
+	const labelledBy = useContext(FieldLabel);
 	return (
-		<span className={styles.segmented} role="radiogroup">
+		<span
+			className={styles.segmented}
+			role="radiogroup"
+			aria-labelledby={labelledBy}
+		>
 			{options.map((option) => (
 				<button
 					key={String(option.value)}
