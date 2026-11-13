@@ -61,6 +61,7 @@ export interface VolumeSettings {
 
 export interface PlayerSettings {
 	version: 1;
+	keysRevision: number;
 	language: Language;
 	playerName: string;
 	playerColor: number;

@@ -8,10 +8,11 @@ const { DEFAULT_KEYS } = (await import(
 )) as {
 	DEFAULT_KEYS: Keys;
 };
-const { migrateAimKey } = (await import(
+const { migrateAimKey, migrateCameraClicks } = (await import(
 	`${clientRoot}/features/settings/settingsStore.ts`
 )) as {
 	migrateAimKey: (keys: Keys, saved: Partial<Keys> | undefined) => void;
+	migrateCameraClicks: (keys: Keys, revision: unknown) => void;
 };
 
 function savedBeforeAim(overrides: Keys = {}): Keys {
@@ -26,18 +27,18 @@ function duplicates(keys: Keys): string[] {
 }
 
 describe("visée avec l'appareil photo", () => {
-	it("vise au clic gauche et photographie au clic droit par défaut", () => {
-		expect(DEFAULT_KEYS.aim).toBe("MouseLeft");
-		expect(DEFAULT_KEYS.photo).toBe("MouseRight");
+	it("vise au clic droit et photographie au clic gauche par défaut", () => {
+		expect(DEFAULT_KEYS.aim).toBe("MouseRight");
+		expect(DEFAULT_KEYS.photo).toBe("MouseLeft");
 		expect(duplicates({ ...DEFAULT_KEYS })).toEqual([]);
 	});
 
-	it("passe la photo au clic droit dans d'anciens réglages", () => {
+	it("garde la photo au clic gauche dans d'anciens réglages", () => {
 		const saved = savedBeforeAim();
 		const keys: Keys = { ...DEFAULT_KEYS, ...saved };
 		migrateAimKey(keys, saved);
-		expect(keys.aim).toBe("MouseLeft");
-		expect(keys.photo).toBe("MouseRight");
+		expect(keys.aim).toBe("MouseRight");
+		expect(keys.photo).toBe("MouseLeft");
 		expect(duplicates(keys)).toEqual([]);
 	});
 
@@ -46,7 +47,7 @@ describe("visée avec l'appareil photo", () => {
 		const keys: Keys = { ...DEFAULT_KEYS, ...saved };
 		migrateAimKey(keys, saved);
 		expect(keys.photo).toBe("KeyP");
-		expect(keys.aim).toBe("MouseLeft");
+		expect(keys.aim).toBe("MouseRight");
 	});
 
 	it("trouve une touche libre quand les deux clics sont déjà pris", () => {
@@ -63,5 +64,27 @@ describe("visée avec l'appareil photo", () => {
 		const keys: Keys = { ...saved };
 		migrateAimKey(keys, saved);
 		expect(keys).toEqual(saved);
+	});
+
+	it("inverse une fois les clics de l'ancien réglage par défaut", () => {
+		const keys: Keys = {
+			...DEFAULT_KEYS,
+			aim: "MouseLeft",
+			photo: "MouseRight",
+		};
+		migrateCameraClicks(keys, undefined);
+		expect(keys.aim).toBe("MouseRight");
+		expect(keys.photo).toBe("MouseLeft");
+	});
+
+	it("respecte un choix fait après l'inversion", () => {
+		const keys: Keys = {
+			...DEFAULT_KEYS,
+			aim: "MouseLeft",
+			photo: "MouseRight",
+		};
+		migrateCameraClicks(keys, 2);
+		expect(keys.aim).toBe("MouseLeft");
+		expect(keys.photo).toBe("MouseRight");
 	});
 });

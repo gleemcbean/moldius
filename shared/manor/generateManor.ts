@@ -79,6 +79,11 @@ const GROUND_EXTRA: readonly (readonly [RoomType, number])[] = [
 	["theater", 0.8],
 	["dungeon", 1.4],
 	["pond", 1.4],
+	["infirmary", 0.8],
+	["seance", 0.9],
+	["larder", 1],
+	["cartography", 0.8],
+	["horology", 0.8],
 ];
 
 const UPPER_CORE: RoomType[] = ["bedroom", "toilets"];
@@ -101,6 +106,10 @@ const UPPER_EXTRA: readonly (readonly [RoomType, number])[] = [
 	["armory", 0.7],
 	["ballroom", 0.6],
 	["theater", 0.5],
+	["infirmary", 1],
+	["seance", 0.9],
+	["cartography", 0.8],
+	["horology", 0.8],
 ];
 
 const GRAND_ROOM_TYPES: RoomType[] = [

@@ -40,6 +40,11 @@ export type RoomType =
 	| "undercroft"
 	| "dungeon"
 	| "pond"
+	| "infirmary"
+	| "seance"
+	| "larder"
+	| "cartography"
+	| "horology"
 	| "stairwell";
 
 export interface LineEdge {

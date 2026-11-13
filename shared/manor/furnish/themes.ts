@@ -98,6 +98,46 @@ const SIDE_TABLE_DECOR = [
 	["candle", 2],
 ] as const;
 
+const INFIRMARY_DECOR = [
+	["potions", 3],
+	["bellJar", 1],
+	["jar", 2],
+	["mortar", 1],
+	["oilLamp", 1],
+	["candle", 1],
+] as const;
+
+const SEANCE_DECOR = [
+	["candle", 3],
+	["crystalBall", 1],
+	["skull", 1],
+	["stuffedRaven", 1],
+	["hourglass", 1],
+] as const;
+
+const LARDER_DECOR = [
+	["jar", 4],
+	["plateSet", 1],
+	["candle", 1],
+] as const;
+
+const MAP_DECOR = [
+	["scrolls", 4],
+	["openBook", 2],
+	["inkwell", 2],
+	["hourglass", 1],
+	["candle", 2],
+	["oilLamp", 1],
+] as const;
+
+const CLOCK_DECOR = [
+	["mantelClock", 4],
+	["hourglass", 2],
+	["oilLamp", 1],
+	["candle", 1],
+	["books", 1],
+] as const;
+
 function rugUnder(
 	furnisher: RoomFurnisher,
 	target: FurnitureItem,
@@ -854,6 +894,210 @@ function undercroftLayout(furnisher: RoomFurnisher): void {
 	furnisher.hangingCobwebs(furnisher.rng.int(1, 3));
 }
 
+function infirmaryLayout(furnisher: RoomFurnisher): void {
+	windowsFor(furnisher, [0, 1]);
+	const beds = furnisher.wallItemsBetween("bed", 2, 4, { variant: 0 });
+	for (const bed of beds) {
+		const side = furnisher.rng.chance(0.5) ? 1 : -1;
+		const head = rotate2(
+			{ x: side * (bed.width / 2 + 0.33), z: -bed.depth / 2 + 0.23 },
+			bed.rotation,
+		);
+		const stand = furnisher.floorItem("nightstand", {
+			at: { x: bed.x + head.x, z: bed.z + head.z },
+			rotation: bed.rotation,
+			variant: 0,
+		});
+		if (stand) {
+			furnisher.decorateSurface(stand, INFIRMARY_DECOR, 1, 1);
+		}
+		if (furnisher.rng.chance(0.45)) {
+			const flank = rotate2(
+				{ x: -side * (bed.width / 2 + 0.3), z: 0.2 },
+				bed.rotation,
+			);
+			furnisher.floorItem("screen", {
+				variant: 1,
+				at: { x: bed.x + flank.x, z: bed.z + flank.z },
+				rotation: bed.rotation + Math.PI / 2,
+			});
+		}
+	}
+	furnisher.floorItem("wheelchair", { wallMargin: 0.4 });
+	furnisher.wallItemsBetween("curtainAlcove", 0, 1);
+	furnisher
+		.wallItemsBetween("cabinet", 1, 1)
+		.forEach(
+			(cabinet) =>
+				void furnisher.decorateSurface(cabinet, INFIRMARY_DECOR, 2, 3),
+		);
+	furnisher.wallItemsBetween("displayCase", 0, 1);
+	furnisher.wallItemsBetween("sink", 0, 1);
+	furnisher.wallItemsBetween("washstand", 0, 1);
+	furnisher.wallItemsBetween("lockers", 0, 1);
+	for (const table of furnisher.floorItemsBetween("sideTable", 0, 1, {
+		wallMargin: 0.5,
+	})) {
+		furnisher.decorateSurface(table, INFIRMARY_DECOR, 1, 1);
+	}
+	furnisher.floorItemsBetween("bucket", 0, 2, { wallMargin: 0.3 });
+	furnisher.floorItemsBetween("laundryBasket", 0, 1, { wallMargin: 0.3 });
+	ghostFurniture(furnisher, 0, 1);
+	furnisher.wallDecorBetween("crucifix", 0, 1);
+	furnisher.wallDecorBetween("wallClock", 0, 1);
+	furnisher.wallDecorBetween("specimenFrame", 0, 1);
+	furnisher.wallDecorBetween("pipeRun", 0, 1);
+	furnisher.wallDecorBetween("sconce", 1, 2);
+	ceilingBetween(furnisher, "hangingLantern", 1, 2);
+	furnisher.cobwebs(2, 3);
+}
+
+function seanceLayout(furnisher: RoomFurnisher): void {
+	const room = furnisher.room;
+	const table =
+		furnisher.floorItem("table", {
+			variant: 2,
+			at: room.labelPoint,
+			rotation: room.axisAngle,
+			wallMargin: 1.15,
+		}) ?? furnisher.floorItem("table", { variant: 2, wallMargin: 1.15 });
+	if (table) {
+		placeChairs(furnisher, table, 4);
+		placeRug(furnisher, { x: table.x, z: table.z }, table.rotation, 2);
+		furnisher.surfaceItem(table, "crystalBall", 0, 0);
+		for (const side of [-1, 1]) {
+			furnisher.surfaceItem(table, "candle", side * 0.27, side * 0.2);
+		}
+	} else {
+		const cabinet = furnisher.wallItem("cabinet");
+		if (cabinet) {
+			furnisher.surfaceItem(cabinet, "crystalBall", 0, 0);
+		}
+	}
+	const roomy = room.area >= SMALL_ROOM_AREA;
+	furnisher.wallItemsBetween("curtainAlcove", 1, roomy ? 2 : 1);
+	furnisher
+		.wallItemsBetween("cabinet", 0, 1)
+		.forEach(
+			(cabinet) => void furnisher.decorateSurface(cabinet, SEANCE_DECOR, 2, 3),
+		);
+	furnisher.floorItemsBetween("candelabra", 1, roomy ? 2 : 1, {
+		wallMargin: 0.5,
+	});
+	furnisher.floorItemsBetween("floorCandles", 1, 3, { wallMargin: 0.4 });
+	if (roomy) {
+		furnisher.wallItemsBetween("bookcase", 0, 1);
+		furnisher.floorItemsBetween("screen", 0, 1, { wallMargin: 0.4 });
+		furnisher.floorItemsBetween("armchair", 0, 1, { wallMargin: 0.6 });
+		furnisher.floorItemsBetween("gramophone", 0, 1, { wallMargin: 0.4 });
+	}
+	furnisher.wallDecorBetween("ovalPortrait", 1, 3);
+	furnisher.wallDecorBetween("mirror", 0, 1);
+	furnisher.wallDecorBetween("tapestry", 0, 1);
+	furnisher.wallDecorBetween("sconce", 0, 1);
+	furnisher.cobwebs(2, 3);
+	furnisher.hangingCobwebs(1);
+}
+
+function larderLayout(furnisher: RoomFurnisher): void {
+	windowsFor(furnisher, [3], 3.2);
+	const counter =
+		furnisher.wallItem("kitchenCounter") ??
+		furnisher.floorItem("table", {
+			variant: furnisher.rng.int(0, 1),
+			wallMargin: 0.8,
+		});
+	if (counter) {
+		furnisher.decorateSurface(counter, LARDER_DECOR, 2, 3);
+	}
+	furnisher.wallItemsBetween("shelf", 1, 2);
+	furnisher
+		.wallItemsBetween("cabinet", 0, 1)
+		.forEach(
+			(cabinet) => void furnisher.decorateSurface(cabinet, LARDER_DECOR, 1, 3),
+		);
+	furnisher.wallItemsBetween("cask", 0, 1);
+	furnisher.floorItemsBetween("grainSacks", 0, 1, { wallMargin: 0.3 });
+	furnisher.floorItemsBetween("barrel", 0, 1, { wallMargin: 0.35 });
+	furnisher.floorItemsBetween("crate", 0, 1, { wallMargin: 0.35 });
+	furnisher.floorItemsBetween(
+		furnisher.rng.pick(["milkChurns", "butterChurn"]),
+		0,
+		1,
+		{ wallMargin: 0.25 },
+	);
+	furnisher.wallDecorBetween("hangingHerbs", 1, 2);
+	furnisher.wallDecorBetween("spiceRack", 0, 1);
+	furnisher.wallDecorBetween("wallShelf", 1, 2);
+	furnisher.wallDecorBetween("sconce", 0, 1);
+	ceilingBetween(furnisher, "meatHooks", 1, 2);
+	ceilingBetween(furnisher, "hangingLantern", 0, 1);
+	furnisher.cobwebs(2, 4);
+	furnisher.hangingCobwebs(1);
+}
+
+function cartographyLayout(furnisher: RoomFurnisher): void {
+	const room = furnisher.room;
+	windowsFor(furnisher, [0, 1]);
+	tableSet(furnisher, {
+		variants: [1, 3],
+		chairs: [1, 3],
+		decor: MAP_DECOR,
+		at: room.labelPoint,
+		rotation: room.axisAngle,
+		rug: true,
+	}) ??
+		tableSet(furnisher, {
+			variants: [0, 1],
+			chairs: [1, 2],
+			decor: MAP_DECOR,
+			rug: true,
+		});
+	furnisher.floorItemsBetween("globe", 1, 2, { wallMargin: 0.6 });
+	furnisher.wallItemsBetween("bookcase", 1, 2);
+	furnisher.wallItemsBetween("trunk", 1, 2);
+	furnisher.wallItemsBetween("displayCase", 0, 1);
+	furnisher.wallItemsBetween("fileCabinet", 0, 1);
+	furnisher.floorItemsBetween("lectern", 0, 1, { wallMargin: 0.7 });
+	furnisher.floorItemsBetween("coatRack", 0, 1, { wallMargin: 0.3 });
+	furnisher.floorItemsBetween("bookPile", 0, 2, { wallMargin: 0.3 });
+	furnisher.wallDecorBetween("oldMap", 3, 5);
+	furnisher.wallDecorBetween("starChart", 0, 1);
+	furnisher.wallDecorBetween("barometer", 0, 1);
+	furnisher.wallDecorBetween("sconce", 1, 2);
+	chandeliers(furnisher, 1);
+	furnisher.cobwebs(1, 3);
+}
+
+function horologyLayout(furnisher: RoomFurnisher): void {
+	windowsFor(furnisher, [0, 1]);
+	furnisher.wallItem(furnisher.rng.pick(["wardrobe", "lockers"]));
+	furnisher.wallItemsBetween("grandfatherClock", 3, 6);
+	for (const bench of furnisher.wallItemsBetween("workbench", 1, 2)) {
+		furnisher.decorateSurface(bench, CLOCK_DECOR, 2, 3);
+		const front = rotate2({ x: 0, z: bench.depth / 2 + 0.4 }, bench.rotation);
+		furnisher.floorItem("stool", {
+			at: { x: bench.x + front.x, z: bench.z + front.z },
+			rotation: bench.rotation,
+		});
+	}
+	furnisher
+		.wallItemsBetween("cabinet", 1, 2)
+		.forEach(
+			(cabinet) => void furnisher.decorateSurface(cabinet, CLOCK_DECOR, 1, 3),
+		);
+	furnisher.wallItemsBetween("displayCase", 0, 1);
+	tableSet(furnisher, { variants: [2], chairs: [0, 1], decor: CLOCK_DECOR });
+	furnisher.floorItemsBetween("armchair", 0, 1, { wallMargin: 0.6 });
+	furnisher.wallDecorBetween("wallClock", 3, 6);
+	furnisher.wallDecorBetween("barometer", 0, 1);
+	furnisher.wallDecorBetween("keyRack", 0, 1);
+	furnisher.wallDecorBetween("sconce", 1, 2);
+	randomRugs(furnisher, 0, 1);
+	chandeliers(furnisher, 1);
+	furnisher.cobwebs(2, 3);
+}
+
 const RECIPES: Record<RoomType, Recipe> = {
 	hall: (f) => {
 		windowsFor(f, [0, 1]);
@@ -1352,6 +1596,11 @@ const RECIPES: Record<RoomType, Recipe> = {
 	},
 	attic: atticLayout,
 	undercroft: undercroftLayout,
+	infirmary: infirmaryLayout,
+	seance: seanceLayout,
+	larder: larderLayout,
+	cartography: cartographyLayout,
+	horology: horologyLayout,
 	stairwell: (f) => {
 		f.wallDecorBetween("painting", 1, 2);
 		f.wallDecorBetween("ovalPortrait", 0, 1);
@@ -1572,6 +1821,36 @@ const EXTRAS: Partial<Record<RoomType, Recipe>> = {
 		f.floorItemsBetween("grainSacks", 0, 2, { wallMargin: 0.3 });
 		ceilingBetween(f, "meatHooks", 0, 1);
 	},
+	infirmary: (f) => {
+		f.floorItemsBetween("rockingChair", 0, 1, { wallMargin: 0.5 });
+		f.floorItemsBetween("stool", 0, 1, { wallMargin: 0.4 });
+		f.wallDecorBetween("mirror", 0, 1);
+	},
+	seance: (f) => {
+		if (f.room.area < SMALL_ROOM_AREA) {
+			return;
+		}
+		f.wallItemsBetween("throne", 0, 1);
+		f.floorItemsBetween("chaiseLongue", 0, 1, { wallMargin: 0.6 });
+		f.floorItemsBetween("urn", 0, 1, { wallMargin: 0.4 });
+		sideTables(f, 0, 1);
+	},
+	larder: (f) => {
+		f.wallItemsBetween("woodpile", 0, 1);
+		f.wallDecorBetween("hangingPots", 0, 1);
+		f.floorItemsBetween("logBasket", 0, 1, { wallMargin: 0.25 });
+	},
+	cartography: (f) => {
+		f.wallItemsBetween("secretary", 0, 1);
+		f.wallDecorBetween("trophyHead", 0, 1);
+		f.wallDecorBetween("wallClock", 0, 1);
+		sideTables(f, 0, 1);
+	},
+	horology: (f) => {
+		f.floorItemsBetween("stool", 0, 1, { wallMargin: 0.4 });
+		f.wallDecorBetween("ovalPortrait", 0, 1);
+		f.wallDecorBetween("mirror", 0, 1);
+	},
 };
 
 type Filler = readonly [kind: string, placement: "wall" | "floor"];
@@ -1717,6 +1996,36 @@ const FILLERS: Partial<Record<RoomType, readonly Filler[]>> = {
 		["grainSacks", "floor"],
 		["crate", "floor"],
 		["barrelStack", "wall"],
+	],
+	infirmary: [
+		["screen", "floor"],
+		["wheelchair", "floor"],
+		["sheetedFurniture", "floor"],
+		["lockers", "wall"],
+		["cabinet", "wall"],
+		["washstand", "wall"],
+	],
+	seance: [
+		["candelabra", "floor"],
+		["armchair", "floor"],
+		["screen", "floor"],
+		["urn", "floor"],
+		["curtainAlcove", "wall"],
+	],
+	cartography: [
+		["globe", "floor"],
+		["lectern", "floor"],
+		["armchair", "floor"],
+		["bookcase", "wall"],
+		["trunk", "wall"],
+		["displayCase", "wall"],
+	],
+	horology: [
+		["armchair", "floor"],
+		["sheetedFurniture", "floor"],
+		["candelabra", "floor"],
+		["grandfatherClock", "wall"],
+		["cabinet", "wall"],
 	],
 	corridor: [],
 	stairwell: [],
@@ -2296,6 +2605,11 @@ const TOP_UP_HIDES: Partial<Record<RoomType, string[]>> = {
 	crypt: ["standingCoffin", "trunk"],
 	dungeon: ["standingCoffin", "cask"],
 	pond: ["curtainAlcove", "wardrobe"],
+	infirmary: ["lockers", "wardrobe", "curtainAlcove"],
+	seance: ["curtainAlcove", "wardrobe"],
+	larder: ["cask", "lockers"],
+	cartography: ["trunk", "wardrobe", "curtainAlcove"],
+	horology: ["wardrobe", "curtainAlcove", "lockers"],
 };
 
 export function topUpHidingSpots(furnisher: RoomFurnisher): void {

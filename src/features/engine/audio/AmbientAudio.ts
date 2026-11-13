@@ -39,6 +39,8 @@ const ROOM_TONES: Partial<Record<RoomType, { id: string; volume: number }>> = {
 	cellar: { id: "crypt-rumble-loop", volume: 0.16 },
 	chapel: { id: "organ-drone-loop", volume: 0.17 },
 	ritual: { id: "organ-drone-loop", volume: 0.12 },
+	seance: { id: "organ-drone-loop", volume: 0.1 },
+	infirmary: { id: "pipes-loop", volume: 0.12 },
 	kitchen: { id: "pipes-loop", volume: 0.18 },
 	laundry: { id: "pipes-loop", volume: 0.22 },
 	bathroom: { id: "pipes-loop", volume: 0.2 },

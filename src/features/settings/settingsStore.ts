@@ -33,12 +33,14 @@ import { createStore } from "../../utils/store";
 const STORAGE_KEY = "mycelium.settings.v1";
 const DEFAULT_FOV = 86;
 const PREVIOUS_DEFAULT_FOV = 78;
+const KEYS_REVISION = 2;
 
 export function defaultSettings(
 	language: Language = browserLanguage(),
 ): PlayerSettings {
 	return {
 		version: 1,
+		keysRevision: KEYS_REVISION,
 		language,
 		playerName: randomDefaultName(language),
 		playerColor: DEFAULT_PLAYER_COLOR,
@@ -95,9 +97,6 @@ export function migrateAimKey(
 		(Object.keys(keys) as ActionId[]).some(
 			(action) => action !== except && keys[action] === code,
 		);
-	if (keys.photo === DEFAULT_KEYS.aim && !usedBy(DEFAULT_KEYS.photo, "photo")) {
-		keys.photo = DEFAULT_KEYS.photo;
-	}
 	if (usedBy(keys.aim, "aim")) {
 		const free = [
 			"MouseLeft",
@@ -107,6 +106,19 @@ export function migrateAimKey(
 			"KeyZ",
 		].find((code) => !usedBy(code, "aim"));
 		keys.aim = free ?? keys.aim;
+	}
+}
+
+export function migrateCameraClicks(
+	keys: Record<ActionId, string>,
+	revision: unknown,
+): void {
+	if (typeof revision === "number" && revision >= KEYS_REVISION) {
+		return;
+	}
+	if (keys.aim === "MouseLeft" && keys.photo === "MouseRight") {
+		keys.aim = "MouseRight";
+		keys.photo = "MouseLeft";
 	}
 }
 
@@ -143,8 +155,10 @@ function sanitize(raw: StoredSettings | null): PlayerSettings {
 		}
 	}
 	migrateAimKey(keys, raw.keys);
+	migrateCameraClicks(keys, raw.keysRevision);
 	return {
 		version: 1,
+		keysRevision: KEYS_REVISION,
 		language: base.language,
 		playerName:
 			typeof raw.playerName === "string" && raw.playerName.trim().length >= 2
