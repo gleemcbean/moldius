@@ -3,10 +3,16 @@ import basicSsl from "@vitejs/plugin-basic-ssl";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { lanReport } from "./scripts/lanNetwork.mjs";
+import { obfuscate } from "./scripts/obfuscate";
 
 const backendPort = Number(process.env.PORT ?? 3001);
 const backend = `http://127.0.0.1:${backendPort}`;
 const lan = process.env.MYCELIUM_LAN === "true";
+const vendorChunks = {
+	three: ["three"],
+	react: ["react", "react-dom", "react-dom/client"],
+	network: ["socket.io-client"],
+};
 
 const lanUrls: Plugin = {
 	name: "mycelium-lan-urls",
@@ -27,6 +33,7 @@ const lanUrls: Plugin = {
 export default defineConfig({
 	plugins: [
 		react(),
+		obfuscate(Object.keys(vendorChunks)),
 		...(lan ? [basicSsl({ name: "mycelium-lan" }), lanUrls] : []),
 	],
 	resolve: {
@@ -56,15 +63,11 @@ export default defineConfig({
 	},
 	build: {
 		outDir: "dist",
-		sourcemap: true,
+		sourcemap: false,
 		chunkSizeWarningLimit: 800,
 		rollupOptions: {
 			output: {
-				manualChunks: {
-					three: ["three"],
-					react: ["react", "react-dom", "react-dom/client"],
-					network: ["socket.io-client"],
-				},
+				manualChunks: vendorChunks,
 			},
 		},
 	},
