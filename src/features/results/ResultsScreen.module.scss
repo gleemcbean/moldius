@@ -5,11 +5,7 @@
   height: 100%;
   overflow: hidden;
   display: flex;
-  background:
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.015) 0 2px, transparent 2px 4px),
-    radial-gradient(ellipse at 30% -10%, #2c2d14 0%, transparent 55%),
-    radial-gradient(ellipse at 90% 110%, #182417 0%, $background 60%);
-  image-rendering: pixelated;
+  background: var(--screen-backdrop, $bg);
 }
 
 .layout {
@@ -17,10 +13,10 @@
   max-height: 100%;
   min-height: 0;
   margin: auto;
-  padding: 26px 0 24px;
+  padding: 24px 0 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .header,
@@ -30,14 +26,19 @@
 .card,
 .photos,
 .footer {
-  animation: reveal 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--reveal, 0) * 80ms);
+  animation: reveal 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--reveal, 0) * 90ms);
+
+  @include no-motion {
+    animation: none;
+  }
 }
 
 @keyframes reveal {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
+    filter: blur(3px);
   }
 }
 
@@ -48,48 +49,45 @@
   justify-content: space-between;
   gap: 24px;
   padding-bottom: 16px;
-  border-bottom: 2px solid $line;
+  @include rule;
 }
 
 .kicker {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 14px;
-  margin: 0 0 6px;
+  gap: 0 16px;
+  margin: 0 0 8px;
   @include label;
-  color: $yellow;
+  color: $accent;
 }
 
 .kickerMuted {
-  color: $text-muted;
+  color: $ink-muted;
 }
 
 .title {
   margin: 0;
-  @include title(54px);
-  line-height: 1.05;
-  color: $yellow;
-  text-shadow: 3px 3px 0 #3b4115;
+  @include display(58px);
+  color: $accent;
 }
 
 .winner {
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: 460px;
+  gap: 12px;
+  max-width: 480px;
   margin: 0;
-  padding: 10px 16px;
-  border: 2px solid $yellow;
-  background: rgba(220, 229, 77, 0.08);
-  font-family: $font-book;
-  font-size: 19px;
-  line-height: 1.3;
+  padding: 12px 16px;
+  @include surface;
+  @include selected;
+  @include body(19px);
 
   svg {
     flex: none;
     width: 26px;
     height: 26px;
-    color: $yellow;
+    color: $accent;
+    filter: drop-shadow(0 0 6px tint($accent, 0.6));
   }
 }
 
@@ -97,9 +95,9 @@
   flex: 0 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) 390px;
   grid-template-rows: minmax(0, 1fr);
-  gap: 20px;
+  gap: 24px;
 }
 
 .main,
@@ -108,7 +106,7 @@
   overflow: hidden auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .main {
@@ -116,20 +114,25 @@
 }
 
 .heading {
-  margin: 0 0 8px;
-  @include label;
-  color: $yellow;
+  margin: 0 0 12px;
+  @include heading(22px);
+  color: $accent;
 }
 
 .podium {
   flex-shrink: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: end;
   gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.podium:has(> .step:nth-child(2):last-child) {
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  justify-content: center;
 }
 
 .step {
@@ -143,13 +146,8 @@
   .name {
     justify-content: center;
     max-width: 100%;
-    font-size: 22px;
+    font-size: 24px;
   }
-}
-
-.podium:has(> .step:nth-child(2):last-child) {
-  grid-template-columns: repeat(2, minmax(0, 220px));
-  justify-content: center;
 }
 
 .stepHat {
@@ -160,13 +158,13 @@
 
 .stepCrown {
   position: absolute;
-  left: 50%;
   bottom: calc(100% + 2px);
+  left: 50%;
   width: 26px;
   height: 26px;
   transform: translateX(-50%);
-  color: $yellow;
-  filter: drop-shadow(0 0 6px rgba(220, 229, 77, 0.55));
+  color: $accent;
+  filter: drop-shadow(0 0 8px tint($accent, 0.7));
 
   svg {
     width: 100%;
@@ -176,7 +174,7 @@
 
 .stepScore {
   @include figures(22px);
-  color: $text;
+  color: $ink;
 }
 
 .stepBlock {
@@ -185,11 +183,9 @@
   place-items: center;
   margin-top: 4px;
   @include figures(34px);
-  color: $text-muted;
-  background: $background-panel;
-  box-shadow:
-    inset 0 0 0 2px $line,
-    inset 0 4px 0 $line-strong;
+  color: $ink-muted;
+  @include surface;
+  border-radius: $radius $radius 0 0;
 }
 
 .step[data-place='1'] {
@@ -198,16 +194,14 @@
   }
 
   .stepBlock {
-    height: 84px;
-    color: $yellow;
-    background: linear-gradient(180deg, rgba(220, 229, 77, 0.16), $background-panel 70%);
-    box-shadow:
-      inset 0 0 0 2px $yellow,
-      inset 0 5px 0 $yellow;
+    height: 86px;
+    color: $accent;
+    @include selected;
+    background: linear-gradient(180deg, tint($accent, 0.2), $surface 75%);
   }
 
   .stepScore {
-    color: $yellow;
+    color: $accent;
   }
 }
 
@@ -221,12 +215,12 @@
 
 .teams {
   flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
 }
 
 .team,
@@ -239,28 +233,29 @@
     'place stats';
   align-items: baseline;
   gap: 0 12px;
-  padding: 12px 14px 12px 16px;
-  background: $background-panel;
+  padding: 12px 16px 12px 16px;
+  @include row;
   box-shadow:
     inset 4px 0 0 var(--team),
-    inset 0 0 0 2px $line;
+    inset 0 0 0 1px $line;
 }
 
 .teamWon {
-  background: linear-gradient(90deg, rgba(220, 229, 77, 0.12), $background-panel 70%);
+  background: linear-gradient(90deg, tint($accent, 0.14), $surface 70%);
   box-shadow:
     inset 4px 0 0 var(--team),
-    inset 0 0 0 2px $yellow;
+    inset 0 0 0 1px $accent,
+    0 0 18px tint($accent, 0.18);
 }
 
 .teamPlace {
   grid-area: place;
   align-self: center;
   @include figures(40px);
-  color: $text-muted;
+  color: $ink-muted;
 
   .teamWon & {
-    color: $yellow;
+    color: $accent;
   }
 }
 
@@ -268,13 +263,13 @@
   grid-area: name;
   display: flex;
   align-items: center;
-  gap: 6px;
-  @include title(22px);
+  gap: 8px;
+  @include heading(22px);
 
   svg {
     width: 18px;
     height: 18px;
-    color: $yellow;
+    color: $accent;
   }
 }
 
@@ -286,7 +281,7 @@
 .teamStats {
   grid-area: stats;
   @include label;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .standings {
@@ -296,38 +291,37 @@
 }
 
 .table {
-  margin: 0;
-  padding: 0;
-  list-style: none;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .row {
   display: grid;
-  grid-template-columns: 34px 40px minmax(0, 1fr) auto auto 96px;
+  grid-template-columns: 34px 40px minmax(0, 1fr) auto auto minmax(96px, auto);
   align-items: center;
   gap: 12px;
-  min-height: 48px;
-  padding: 4px 14px;
-  background: $background-panel;
-  box-shadow: inset 0 0 0 2px $line;
+  min-height: 50px;
+  padding: 4px 16px;
+  @include row;
 }
 
 .first {
-  background: linear-gradient(90deg, rgba(220, 229, 77, 0.1), $background-panel 55%);
+  background: linear-gradient(90deg, tint($accent, 0.12), $surface 55%);
 }
 
 .self {
-  box-shadow: inset 0 0 0 2px $yellow;
+  @include selected;
 }
 
 .teamHeader {
   margin-top: 8px;
   padding: 4px 2px 4px 12px;
-  @include title(20px);
-  color: $text;
+  @include heading(20px);
+  color: $ink;
   box-shadow: inset 4px 0 0 var(--team);
 
   &:first-child {
@@ -337,7 +331,7 @@
 
 .rank {
   @include figures(26px);
-  color: $yellow;
+  color: $accent;
   text-align: center;
 }
 
@@ -351,7 +345,7 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
-  @include title(24px);
+  @include heading(24px);
   white-space: nowrap;
 }
 
@@ -364,9 +358,7 @@
 .name .level {
   flex-shrink: 0;
   margin-left: 0;
-  padding: 0 5px;
   font-size: 14px;
-  line-height: 18px;
 }
 
 .name .tagline {
@@ -382,31 +374,30 @@
 }
 
 .score {
-  text-align: right;
   @include figures(26px);
+  text-align: right;
+  white-space: nowrap;
 }
 
 .card {
   flex-shrink: 0;
-  padding: 14px 16px;
-  background: $background-panel;
-  box-shadow: inset 0 0 0 2px $line;
+  padding: 16px 16px;
+  @include surface;
 }
 
 .cardWon {
-  box-shadow: inset 0 0 0 2px $yellow;
+  @include selected;
 }
 
 .facts {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
   margin: 0 0 12px;
 
   div {
-    padding: 8px 10px;
-    background: $background;
-    box-shadow: inset 0 0 0 1px $line;
+    padding: 8px 12px;
+    @include well;
   }
 
   dt {
@@ -417,66 +408,58 @@
   dd {
     margin: 4px 0 0;
     @include figures(26px);
-    color: $yellow;
+    color: $accent;
 
     small {
       margin-left: 2px;
       font-size: 16px;
-      color: $text-muted;
+      color: $ink-muted;
     }
   }
 }
 
 .xp {
   padding-top: 12px;
-  border-top: 1px solid $line;
+  @include rule(top);
 }
 
 .news {
-  background: linear-gradient(180deg, rgba(220, 229, 77, 0.1), $background-panel 80%);
+  background: linear-gradient(180deg, tint($rare, 0.14), $surface 80%);
   box-shadow:
-    inset 0 0 0 2px $yellow,
-    0 0 18px rgba(220, 229, 77, 0.12);
+    inset 0 0 0 1px $rare,
+    0 0 22px tint($rare, 0.2);
 }
 
 .newsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 
   li {
     display: flex;
     align-items: baseline;
-    gap: 10px;
-    font-family: $font-book;
-    font-size: 17px;
-    font-weight: 700;
-    color: $text;
+    gap: 12px;
+    @include heading(17px);
+    color: $ink;
   }
 }
 
 .newsTag {
   flex: none;
-  padding: 0 6px;
-  background: $yellow;
-  color: $background;
-  font-family: $font-text;
+  @include tag;
+  background: $rare;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 18px;
-  text-transform: uppercase;
 }
 
 .awards {
+  display: grid;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
-  display: grid;
-  gap: 6px;
 
   li {
     display: grid;
@@ -484,63 +467,61 @@
     grid-template-areas:
       'title who'
       'detail detail';
-    gap: 2px 10px;
-    padding: 8px 10px;
-    background: $background;
-    box-shadow: inset 0 0 0 1px $line;
+    gap: 2px 12px;
+    padding: 8px 12px;
+    @include well;
   }
 
   strong {
     grid-area: title;
-    font-family: $font-book;
-    font-size: 16px;
-    color: $yellow;
+    @include heading(16px);
+    color: $accent;
   }
 
   em {
     grid-area: detail;
+    @include body(14px);
     font-style: normal;
-    font-size: 14px;
-    color: $text-muted;
+    color: $ink-muted;
   }
 }
 
-.awardSelf {
-  box-shadow: inset 0 0 0 1px $yellow !important;
+.awards li.awardSelf {
+  @include selected;
 }
 
 .awardWho {
   grid-area: who;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   max-width: 150px;
   overflow: hidden;
-  font-size: 15px;
-  text-overflow: ellipsis;
+  @include body(15px);
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .swatch {
   flex: none;
   width: 12px;
   height: 12px;
+  border-radius: 50%;
 }
 
 .photos {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
-  background: $background-panel;
-  box-shadow: inset 0 0 0 2px $line;
+  gap: 12px;
+  padding: 16px 16px;
+  @include surface;
   --reveal: 6;
 
   h2 {
     margin: 0;
-    @include label;
-    color: $yellow;
+    @include heading(20px);
+    color: $accent;
   }
 
   ul {
@@ -555,15 +536,19 @@
   a {
     display: block;
     aspect-ratio: 1;
-    box-shadow: 0 0 0 2px $line-strong;
+    overflow: hidden;
+    border-radius: $radius-s;
+    box-shadow: 0 0 0 1px $line-hi;
     transition:
-      box-shadow $transition-fast,
-      transform $transition-fast;
+      box-shadow $fast $ease,
+      transform $fast $spring;
 
     &:hover,
     &:focus-visible {
-      box-shadow: 0 0 0 2px $yellow;
-      transform: translateY(-2px);
+      transform: translateY(-2px) rotate(-1deg);
+      box-shadow:
+        0 0 0 2px $accent,
+        0 8px 18px rgba(0, 0, 0, 0.5);
     }
   }
 
@@ -584,9 +569,8 @@
 
 .photosNote {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.35;
-  color: $text-muted;
+  @include body(13px);
+  color: $ink-muted;
 }
 
 .footer {
@@ -594,9 +578,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 24px;
   padding-top: 16px;
-  border-top: 2px solid $line;
+  @include rule(top);
 }
 
 .notes {
@@ -608,8 +592,8 @@
 
 .note {
   margin: 0;
-  @include label;
-  font-size: 14px;
+  @include body(14px);
+  color: $ink-muted;
 }
 
 .actions {
@@ -623,16 +607,15 @@
   padding: 0;
   border: 0;
   background: none;
-  color: $yellow;
-  text-decoration: underline;
-  cursor: pointer;
   font: inherit;
+  cursor: pointer;
+  @include link;
 }
 
 @media (max-height: 820px) {
   .layout {
     padding: 16px 0;
-    gap: 14px;
+    gap: 16px;
   }
 
   .header {
@@ -640,7 +623,7 @@
   }
 
   .title {
-    font-size: 42px;
+    font-size: 48px;
   }
 
   .step[data-place='1'] .stepBlock {
@@ -656,7 +639,7 @@
   }
 
   .stepBlock {
-    font-size: 26px;
+    font-size: 28px;
   }
 
   .stepHat {
@@ -716,18 +699,6 @@
   .footer {
     flex-direction: column;
     align-items: stretch;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .header,
-  .podium,
-  .teams,
-  .standings,
-  .card,
-  .photos,
-  .footer {
-    animation: none;
   }
 }
 

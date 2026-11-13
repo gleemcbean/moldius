@@ -1,4 +1,8 @@
-import type { ActionId } from "../../types/settings";
+import type {
+	ActionId,
+	PostEffectId,
+	PostEffectPreset,
+} from "../../types/settings";
 
 export const settingsFr = {
 	title: "Paramètres",
@@ -79,9 +83,62 @@ export const settingsFr = {
 		brightness: "Luminosité",
 		brightnessHint:
 			"Agit sur l'exposition de l'image uniquement : la détection par les anomalies reste calculée par le serveur.",
-		ambiance: "Filtre d'ambiance",
-		ambianceHint:
-			"Vignettage, grain, tramage et léger effet de cassette VHS. À 0 %, l'image reste nette.",
+		imageEffects: "Effets d'image",
+		effectsPreset: "Style de l'image",
+		effectsPresetHint:
+			"Applique un ensemble de réglages, que vous pouvez ensuite ajuster effet par effet. Aucun style n'est surligné quand vos réglages sont personnalisés.",
+		effectsPresets: {
+			clear: "Net",
+			balanced: "Équilibré",
+			vhs: "Cassette VHS",
+		} satisfies Record<PostEffectPreset, string>,
+		motionLocked: "Coupé par « Réduire les effets gênants ».",
+		postEffects: {
+			curvature: {
+				label: "Courbure de l'écran",
+				hint: "Bombe l'image comme un vieux téléviseur : le centre est agrandi, donc un peu adouci.",
+			},
+			aberration: {
+				label: "Aberration chromatique",
+				hint: "Décale le rouge et le bleu vers les bords de l'écran.",
+			},
+			bleed: {
+				label: "Bavure des couleurs",
+				hint: "Les couleurs débordent à l'horizontale comme sur une cassette usée. Rend l'image floue.",
+			},
+			vignette: {
+				label: "Vignettage",
+				hint: "Assombrit les bords et les coins de l'écran.",
+			},
+			grain: {
+				label: "Grain",
+				hint: "Bruit animé, plus marqué dans les zones sombres.",
+			},
+			scanlines: {
+				label: "Lignes de balayage",
+				hint: "Fines lignes horizontales d'un écran cathodique.",
+			},
+			dither: {
+				label: "Tramage",
+				hint: "Motif régulier de points dans les ombres.",
+			},
+			flicker: {
+				label: "Scintillement",
+				hint: "Légères pulsations de la luminosité.",
+			},
+			band: {
+				label: "Bande de défilement",
+				hint: "Bande claire qui remonte lentement l'écran, comme une cassette mal calée.",
+			},
+			saturation: {
+				label: "Couleurs vives",
+				hint: "Renforce légèrement la saturation des couleurs.",
+			},
+			danger: {
+				label: "Effets de danger",
+				hint: "Bords assombris, couleurs séparées et image délavée quand une anomalie vous repère ou que vous êtes blessé.",
+			},
+		} satisfies Record<PostEffectId, { label: string; hint: string }>,
 		colorLevels: "Précision des couleurs",
 		colorLevelsHint:
 			"Nombre de niveaux par couleur : moins il y en a, plus l'image prend le grain d'une cassette VHS.",
@@ -94,7 +151,7 @@ export const settingsFr = {
 		qualities: { low: "Basse", medium: "Moyenne", high: "Haute" },
 		shadows: "Ombres de la lanterne",
 		renderScale: "Échelle de rendu",
-		effects: "Particules et effets",
+		effects: "Particules et poussière",
 		fpsLimit: "Limite d'images par seconde",
 		unlimited: "Libre",
 		showFps: "Afficher les images par seconde",
@@ -231,9 +288,62 @@ export const settingsEn: typeof settingsFr = {
 		brightness: "Brightness",
 		brightnessHint:
 			"Only changes the image exposure: detection by the anomalies is still computed by the server.",
-		ambiance: "Mood filter",
-		ambianceHint:
-			"Vignette, grain, dithering and a light VHS tape effect. At 0% the image stays clean.",
+		imageEffects: "Image effects",
+		effectsPreset: "Image style",
+		effectsPresetHint:
+			"Applies a set of values that you can then fine-tune one effect at a time. No style is highlighted once your values are custom.",
+		effectsPresets: {
+			clear: "Clean",
+			balanced: "Balanced",
+			vhs: "VHS tape",
+		},
+		motionLocked: "Turned off by “Reduce discomforting effects”.",
+		postEffects: {
+			curvature: {
+				label: "Screen curvature",
+				hint: "Bulges the image like an old TV: the center is enlarged, so slightly softened.",
+			},
+			aberration: {
+				label: "Chromatic aberration",
+				hint: "Shifts red and blue apart towards the edges of the screen.",
+			},
+			bleed: {
+				label: "Color bleed",
+				hint: "Colors smear sideways like on a worn tape. Makes the image blurry.",
+			},
+			vignette: {
+				label: "Vignette",
+				hint: "Darkens the edges and corners of the screen.",
+			},
+			grain: {
+				label: "Grain",
+				hint: "Animated noise, stronger in dark areas.",
+			},
+			scanlines: {
+				label: "Scanlines",
+				hint: "Thin horizontal lines of a CRT screen.",
+			},
+			dither: {
+				label: "Dithering",
+				hint: "Ordered dot pattern in the shadows.",
+			},
+			flicker: {
+				label: "Flicker",
+				hint: "Slight pulses of brightness.",
+			},
+			band: {
+				label: "Tracking band",
+				hint: "A light band slowly rolling up the screen, like a badly tracked tape.",
+			},
+			saturation: {
+				label: "Vivid colors",
+				hint: "Slightly boosts color saturation.",
+			},
+			danger: {
+				label: "Danger effects",
+				hint: "Darker edges, split colors and a washed-out image when an anomaly spots you or you are hurt.",
+			},
+		},
 		colorLevels: "Color precision",
 		colorLevelsHint:
 			"Levels per color channel: fewer levels give the image the grain of a VHS tape.",
@@ -245,7 +355,7 @@ export const settingsEn: typeof settingsFr = {
 		qualities: { low: "Low", medium: "Medium", high: "High" },
 		shadows: "Lantern shadows",
 		renderScale: "Render scale",
-		effects: "Particles and effects",
+		effects: "Particles and dust",
 		fpsLimit: "Frame rate limit",
 		unlimited: "None",
 		showFps: "Show frames per second",

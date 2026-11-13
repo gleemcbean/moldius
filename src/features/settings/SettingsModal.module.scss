@@ -4,76 +4,68 @@
   position: sticky;
   top: -10px;
   z-index: 3;
-  padding: 10px 0 12px;
-  background: $background-raised;
+  padding: 12px 0 12px;
+  background: $surface-2;
+  @include rule;
 }
 
 .section {
-  margin: 18px 0 4px;
-  @include title(22px);
-  color: $yellow;
+  margin: 24px 0 2px;
+  @include heading(22px);
+  color: $accent;
 }
 
 .row {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
   margin-top: 16px;
 }
 
 .notice {
-  margin: 10px 0 0;
-  padding: 10px 14px;
-  background: rgba(220, 229, 77, 0.1);
-  box-shadow: inset 3px 0 0 $yellow;
-  font-size: 16px;
+  margin: 12px 0 0;
+  padding: 12px 16px;
+  @include notice($accent);
+  @include body(16px);
 }
 
 .hint {
-  margin: 6px 0 0;
-  font-family: $font-text;
-  font-size: 15px;
-  color: $text-muted;
-  line-height: 1.5;
+  margin: 8px 0 0;
+  @include body(15px);
+  color: $ink-muted;
 }
 
 .keyButton {
   min-width: 150px;
-  height: 36px;
-  padding: 0 12px;
-  border: 2px solid $line-strong;
-  background: $background;
+  height: 38px;
+  padding: 0 16px;
+  @include field;
+  @include mono(15px);
   cursor: pointer;
-  font-family: $font-title;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: $text;
 
   &:hover {
-    border-color: $yellow;
+    border-color: $accent;
   }
 }
 
 .listening {
-  border-color: $yellow;
-  color: $yellow;
-  animation: blink 900ms steps(2) infinite;
+  border-color: $accent;
+  color: $accent;
+  animation: listening 900ms steps(2) infinite;
 }
 
 .select {
-  height: 36px;
+  height: 38px;
   min-width: 220px;
   max-width: 100%;
-  padding: 0 8px;
-  border: 2px solid $line-strong;
-  background: $background;
-  font-family: $font-text;
-  font-size: 15px;
+  padding: 0 12px;
+  @include field;
+  @include body(15px);
 }
 
-@keyframes blink {
+@keyframes listening {
   50% {
-    border-color: $line-strong;
+    border-color: $line-hi;
+    box-shadow: 0 0 0 3px tint($accent, 0.25);
   }
 }

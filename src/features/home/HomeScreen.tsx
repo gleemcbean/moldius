@@ -204,6 +204,9 @@ export function HomeScreen() {
 						<span className={styles.tileIcon}>
 							<Icon name="check" />
 						</span>
+						<span className={styles.tileTitle}>
+							<span>{t.challenges.button}</span>
+						</span>
 					</button>
 					{accountStatus === "loading" ||
 					accountStatus === "disabled" ? null : (
@@ -216,6 +219,9 @@ export function HomeScreen() {
 						>
 							<span className={styles.tileIcon}>
 								<Icon name="user" />
+							</span>
+							<span className={styles.tileTitle}>
+								<span>{account ? t.home.myAccount : t.home.signIn}</span>
 							</span>
 						</button>
 					)}
@@ -232,6 +238,9 @@ export function HomeScreen() {
 							<span className={styles.tileIcon}>
 								<Icon name="users" />
 							</span>
+							<span className={styles.tileTitle}>
+								<span>{t.home.friends}</span>
+							</span>
 							{friendAlerts > 0 ? (
 								<span className={styles.tileBadge}>{friendAlerts}</span>
 							) : null}
@@ -241,10 +250,15 @@ export function HomeScreen() {
 						type="button"
 						className={styles.tile}
 						onClick={() => openOverlay("settings")}
+						title={t.home.settings}
+						aria-label={t.home.settings}
 						data-selectable=""
 					>
 						<span className={styles.tileIcon}>
 							<Icon name="gear" />
+						</span>
+						<span className={styles.tileTitle}>
+							<span>{t.home.settings}</span>
 						</span>
 					</button>
 					{installable ? (
@@ -258,6 +272,9 @@ export function HomeScreen() {
 						>
 							<span className={styles.tileIcon}>
 								<Icon name="download" />
+							</span>
+							<span className={styles.tileTitle}>
+								<span>{t.home.install}</span>
 							</span>
 						</button>
 					) : null}

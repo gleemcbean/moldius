@@ -9,7 +9,7 @@ import {
 	randomChaseCourse,
 } from "@shared/showcase/chaseDirector";
 import * as THREE from "three";
-import { QUALITY_PRESETS } from "../../config/graphics";
+import { renderPixelRatio } from "../../config/graphics";
 import { AmbientMotes } from "../engine/effects/AmbientMotes";
 import { LightPool } from "../engine/lighting/LightPool";
 import { PostEffects } from "../engine/render/PostEffects";
@@ -68,7 +68,7 @@ export class HomeScene {
 		});
 		const settings = settingsStore.get();
 		this.renderer.setPixelRatio(
-			QUALITY_PRESETS[settings.quality].pixelRatio * settings.renderScale,
+			renderPixelRatio(settings.quality, settings.renderScale),
 		);
 		this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 		this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -226,13 +226,17 @@ export class HomeScene {
 		this.lights.update(this.camera.position, [], dt);
 		this.motes.update(dt, this.camera.position);
 		const settings = settingsStore.get();
+		const ratio = renderPixelRatio(settings.quality, settings.renderScale);
+		if (this.renderer.getPixelRatio() !== ratio) {
+			this.renderer.setPixelRatio(ratio);
+		}
 		this.post.render(
 			{
 				dt,
-				strength: settings.ambiance,
+				effects: settings.postEffects,
 				tension: shot.lunge > 0 ? 0.7 : 0.2,
 				animated: !settings.reduceMotion,
-				levels: settings.colorLevels,
+				colorLevels: settings.colorLevels,
 			},
 			() => this.renderer.render(this.scene, this.camera),
 		);

@@ -8,12 +8,13 @@
 
 .prompt {
   margin: 0 0 16px;
-  color: $text-muted;
+  @include body(16px);
+  color: $ink-muted;
 }
 
 .own {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
   align-items: stretch;
 }
@@ -22,71 +23,78 @@
   display: grid;
   grid-template-columns: auto auto;
   align-items: center;
-  column-gap: 12px;
-  padding: 8px 12px;
-  border: 2px solid $line-strong;
-  background: rgba(10, 12, 10, 0.78);
-  color: $text;
+  column-gap: 16px;
+  padding: 12px 16px;
+  @include well;
+  border: 1px dashed $line-hi;
+  color: $ink;
   cursor: pointer;
   text-align: left;
+  transition: border-color $fast $ease;
 
   &:hover,
   &:focus-visible {
-    border-color: $yellow;
+    border-color: $accent;
+
+    svg {
+      color: $accent;
+    }
   }
 
   svg {
     grid-row: 1 / span 2;
     grid-column: 2;
-    width: 16px;
-    height: 16px;
-    color: $text-muted;
+    width: 18px;
+    height: 18px;
+    color: $ink-muted;
+    transition: color $fast $ease;
   }
 }
 
 .codeLabel {
   @include label;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .codeValue {
-  font-family: $font-code;
-  font-size: 19px;
-  letter-spacing: 0.12em;
+  @include mono(19px);
+  color: $accent;
   user-select: all;
 }
 
 .add {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
 }
 
 .addInput {
   min-width: 0;
-  padding: 0 12px;
-  border: 2px solid $line-strong;
-  background: rgba(10, 12, 10, 0.78);
-  color: $text;
-  font-family: $font-code;
-  font-size: 17px;
-  letter-spacing: 0.14em;
+  height: 46px;
+  padding: 0 16px;
+  @include field;
+  @include mono(17px);
 }
 
 .heading {
-  margin: 0 0 6px;
-  @include label;
+  margin: 0 0 8px;
+  @include heading(20px);
+  color: $ink;
 }
 
 .empty {
   margin: 0;
-  color: $text-dim;
+  padding: 12px 16px;
+  border: 1px dashed $line;
+  border-radius: $radius-s;
+  @include body(15px);
+  color: $ink-dim;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -96,8 +104,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 6px 8px;
-  background: rgba(10, 12, 10, 0.5);
+  padding: 8px 12px;
+  @include row;
 }
 
 .hat {
@@ -111,68 +119,75 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 .name {
   overflow: hidden;
-  text-overflow: ellipsis;
+  @include heading(17px);
+  color: $ink;
   white-space: nowrap;
-  font-weight: 600;
+  text-overflow: ellipsis;
 }
 
 .detail {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  color: $text-muted;
+  gap: 8px;
+  @include body(14px);
+  color: $ink-muted;
 
   i {
+    flex: none;
     width: 8px;
     height: 8px;
     border-radius: 50%;
+    box-shadow: 0 0 6px currentColor;
   }
 }
 
 .online i,
 i.online {
   background: $ok;
+  color: $ok;
 }
 
 .dnd i,
 i.dnd {
   background: $danger;
+  color: $danger;
 }
 
 .idle i,
 i.idle {
   background: $warning;
+  color: $warning;
 }
 
 .offline i,
 i.offline {
-  background: $text-dim;
+  background: $ink-dim;
+  color: transparent;
 }
 
 i.lobby {
-  background: $yellow;
+  background: $accent;
+  color: $accent;
 }
 
 i.match {
-  background: $voice;
-}
-
-i.offline {
-  background: $text-dim;
+  background: $info;
+  color: $info;
 }
 
 .discord {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 10px;
-  border: 2px solid $line;
-  background: rgba(88, 101, 242, 0.08);
+  padding: 12px 12px;
+  border-radius: $radius;
+  background: rgba(88, 101, 242, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(88, 101, 242, 0.4);
 
   > svg {
     flex: none;
@@ -187,27 +202,26 @@ i.offline {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 
   strong {
-    font-weight: 600;
-    color: $text;
+    @include heading(16px);
+    color: $ink;
   }
 
   small {
-    font-size: 13px;
-    line-height: 1.25;
-    color: $text-muted;
+    @include body(13px);
+    color: $ink-muted;
   }
 
   .warning {
-    color: $yellow;
+    color: $warning;
   }
 }
 
 .discordBadge {
   display: inline-flex;
-  margin-left: 6px;
-  vertical-align: -2px;
+  margin-left: 8px;
   color: #8c96f5;
 
   svg {
@@ -222,11 +236,12 @@ i.offline {
   place-items: center;
   width: 32px;
   height: 32px;
-  margin: 0 5px;
+  margin: 0 4px;
   border-radius: 50%;
-  background: rgba(88, 101, 242, 0.2);
+  background: rgba(88, 101, 242, 0.22);
   color: #8c96f5;
   image-rendering: pixelated;
+  object-fit: cover;
 
   svg {
     width: 16px;
@@ -239,7 +254,7 @@ i.offline {
   z-index: 1;
   flex: none;
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 @include enter-keyframes;

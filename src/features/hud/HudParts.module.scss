@@ -5,39 +5,57 @@
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(5, 6, 5, 0.7);
+  background: $scrim;
+  backdrop-filter: blur(3px) saturate(0.7);
   pointer-events: auto;
   cursor: default;
   text-shadow: none;
+  animation: pause-fade 260ms ease-out backwards;
 }
 
 .pausePanel {
-  width: min(420px, calc(100% - 40px));
+  width: min(440px, calc(100% - 40px));
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 24px;
-  background: $background-raised;
-  box-shadow:
-    0 0 0 2px $yellow,
-    0 0 0 6px $background;
+  padding: 32px 32px 24px;
+  @include surface-raised;
+  animation: pause-in 420ms $spring backwards;
 
   h2 {
     margin: 0;
-    @include title(36px);
-    color: $yellow;
+    @include display(46px);
+    color: $accent;
   }
 
   p {
-    margin: 0 0 6px;
-    font-family: $font-book;
-    color: $text-muted;
+    margin: 0 0 8px;
+    @include body(17px);
+    color: $ink-muted;
   }
 
   .pauseHint {
-    margin: 6px 0 0;
-    font-family: $font-text;
-    font-size: 15px;
-    line-height: 1.45;
+    margin: 8px 0 0;
+    @include body(14px);
+  }
+}
+
+@keyframes pause-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pause-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pause,
+  .pausePanel {
+    animation: none;
   }
 }

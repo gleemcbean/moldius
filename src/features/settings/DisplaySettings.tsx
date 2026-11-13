@@ -1,18 +1,33 @@
 import { Button } from "../../components/Button";
 import { Field, Segmented, Slider, Toggle } from "../../components/Controls";
-import { COLOR_LEVELS, FPS_LIMITS } from "../../config/graphics";
+import {
+	COLOR_LEVELS,
+	FPS_LIMITS,
+	POST_EFFECT_PRESETS,
+} from "../../config/graphics";
 import { shallowEqual, useStore } from "../../hooks/useStore";
 import { useLanguage, useT } from "../../i18n";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "../../i18n/language";
-import type { ColorLevels, GraphicsQuality } from "../../types/settings";
+import {
+	type ColorLevels,
+	type GraphicsQuality,
+	POST_EFFECT_IDS,
+	type PostEffectId,
+	type PostEffectPreset,
+} from "../../types/settings";
 import { accountStore } from "../account/accountStore";
 import styles from "./SettingsModal.module.scss";
 import {
+	applyPostEffectPreset,
+	matchingPostEffectPreset,
 	resetAllSettings,
 	setLanguage,
+	setPostEffect,
 	settingsStore,
 	updateSettings,
 } from "./settingsStore";
+
+const MOTION_EFFECTS: ReadonlySet<PostEffectId> = new Set(["flicker", "band"]);
 
 export function DisplaySettings() {
 	const t = useT();
@@ -31,7 +46,7 @@ export function DisplaySettings() {
 			shadows: state.shadows,
 			renderScale: state.renderScale,
 			effects: state.effects,
-			ambiance: state.ambiance,
+			postEffects: state.postEffects,
 			colorLevels: state.colorLevels,
 			fpsLimit: state.fpsLimit,
 			headBob: state.headBob,
@@ -74,26 +89,6 @@ export function DisplaySettings() {
 					format={t.common.percent}
 				/>
 			</Field>
-			<Field label={labels.ambiance} hint={labels.ambianceHint}>
-				<Slider
-					value={settings.ambiance}
-					min={0}
-					max={1}
-					step={0.05}
-					onChange={(ambiance) => updateSettings({ ambiance })}
-					format={t.common.percent}
-				/>
-			</Field>
-			<Field label={labels.colorLevels} hint={labels.colorLevelsHint}>
-				<Segmented<ColorLevels>
-					value={settings.colorLevels}
-					onChange={(colorLevels) => updateSettings({ colorLevels })}
-					options={COLOR_LEVELS.map((value) => ({
-						value,
-						label: String(value),
-					}))}
-				/>
-			</Field>
 			<Field label={labels.headBob}>
 				<Toggle
 					checked={settings.headBob}
@@ -104,6 +99,50 @@ export function DisplaySettings() {
 				<Toggle
 					checked={settings.reduceMotion}
 					onChange={(reduceMotion) => updateSettings({ reduceMotion })}
+				/>
+			</Field>
+			<h3 className={styles.section}>{labels.imageEffects}</h3>
+			<Field label={labels.effectsPreset} hint={labels.effectsPresetHint}>
+				<Segmented<PostEffectPreset | "custom">
+					value={matchingPostEffectPreset(settings.postEffects) ?? "custom"}
+					onChange={(preset) => {
+						if (preset !== "custom") {
+							applyPostEffectPreset(preset);
+						}
+					}}
+					options={(Object.keys(POST_EFFECT_PRESETS) as PostEffectPreset[]).map(
+						(value) => ({ value, label: labels.effectsPresets[value] }),
+					)}
+				/>
+			</Field>
+			{POST_EFFECT_IDS.map((id) => {
+				const locked = settings.reduceMotion && MOTION_EFFECTS.has(id);
+				return (
+					<Field
+						key={id}
+						label={labels.postEffects[id].label}
+						hint={locked ? labels.motionLocked : labels.postEffects[id].hint}
+					>
+						<Slider
+							value={settings.postEffects[id]}
+							min={0}
+							max={1}
+							step={0.05}
+							disabled={locked}
+							onChange={(value) => setPostEffect(id, value)}
+							format={t.common.percent}
+						/>
+					</Field>
+				);
+			})}
+			<Field label={labels.colorLevels} hint={labels.colorLevelsHint}>
+				<Segmented<ColorLevels>
+					value={settings.colorLevels}
+					onChange={(colorLevels) => updateSettings({ colorLevels })}
+					options={COLOR_LEVELS.map((value) => ({
+						value,
+						label: String(value),
+					}))}
 				/>
 			</Field>
 			<h3 className={styles.section}>{labels.performance}</h3>

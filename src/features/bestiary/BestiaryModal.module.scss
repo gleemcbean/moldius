@@ -1,16 +1,9 @@
 @use '../../styles/tokens' as *;
 
-$parchment: #e2cfa4;
-$parchment-deep: #cdb27d;
-$ink: #2a1a0e;
-$ink-soft: #5b4129;
-$ink-faint: rgba(42, 26, 14, 0.18);
-$rubric: #8c2a1c;
-
 .layout {
   display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 18px;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
   height: min(640px, calc(100vh - 170px));
   padding-top: 8px;
 }
@@ -19,49 +12,55 @@ $rubric: #8c2a1c;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 8px 8px 8px 2px;
   overflow-y: auto;
-  padding: 6px 6px 6px 2px;
 }
 
 .entry {
   display: grid;
-  grid-template-columns: 44px 1fr auto;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 5px 10px 5px 5px;
+  gap: 12px;
+  padding: 4px 12px 4px 4px;
   border: 1px solid transparent;
+  border-radius: $radius-s;
   background: transparent;
-  color: $text-muted;
-  text-align: left;
+  color: $ink-muted;
   cursor: pointer;
+  text-align: left;
   transition:
-    color $transition-fast,
-    background $transition-fast,
-    border-color $transition-fast;
+    color $fast $ease,
+    background-color $fast $ease,
+    border-color $fast $ease;
 
   &:hover {
-    color: $text;
-    background: rgba(255, 255, 255, 0.03);
+    color: $ink;
+    background: tint($ink, 0.05);
   }
 }
 
 .entryActive {
-  color: $yellow;
-  border-color: $line-strong;
-  background: $background-panel;
+  border-color: $accent;
+  background: tint($accent, 0.12);
+  color: $ink;
 
   &:hover {
-    color: $yellow;
-    background: $background-panel;
+    background: tint($accent, 0.16);
+  }
+
+  .entryPoints {
+    color: $accent;
   }
 }
 
 .thumb {
+  display: block;
   width: 44px;
   height: 44px;
-  display: block;
-  background: radial-gradient(circle at 50% 40%, $parchment, $parchment-deep);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  border-radius: $radius-s;
+  background: radial-gradient(circle at 50% 40%, $plate, $plate-deep);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
 
   img {
     width: 100%;
@@ -71,85 +70,75 @@ $rubric: #8c2a1c;
 }
 
 .entryName {
-  font-family: $font-book;
-  font-weight: 700;
-  font-size: 17px;
-  line-height: 1.15;
+  overflow: hidden;
+  @include heading(16px);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .entryPoints {
-  @include numeric;
-  font-size: 15px;
-  color: $text-dim;
+  @include figures(15px);
+  color: $ink-dim;
 }
 
 .page {
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(42, 26, 14, 0.45) transparent;
-  padding: 26px 34px 30px;
-  background:
-    radial-gradient(ellipse at 30% 0%, rgba(255, 246, 220, 0.5), transparent 60%),
-    radial-gradient(ellipse at 100% 100%, rgba(120, 80, 30, 0.22), transparent 55%),
-    linear-gradient(180deg, $parchment, $parchment-deep);
-  box-shadow:
-    inset 0 0 0 1px rgba(60, 36, 14, 0.4),
-    inset 0 0 60px rgba(90, 55, 20, 0.35);
+  padding: 24px 32px 32px;
+  @include well;
+  @include body(17px);
   color: $ink;
-  font-family: $font-book;
-  font-weight: 500;
-  font-size: 17px;
-  line-height: 1.5;
 }
 
 .heading {
-  text-align: center;
-  padding-bottom: 14px;
-  border-bottom: 1px solid $ink-faint;
+  padding-bottom: 16px;
+  @include rule;
 }
 
 .plate {
   margin: 0;
+  @include label;
   font-size: 14px;
-  letter-spacing: 0.08em;
-  color: $ink-soft;
 }
 
 .name {
   margin: 4px 0 2px;
-  font-family: $font-book-title;
-  font-weight: 400;
-  font-size: 40px;
-  line-height: 1.05;
-  color: $rubric;
+  @include display(46px);
+  color: $accent;
 }
 
 .portrait {
   display: grid;
-  grid-template-columns: minmax(180px, 250px) 1fr;
-  gap: 24px;
+  grid-template-columns: minmax(180px, 250px) minmax(0, 1fr);
   align-items: center;
-  padding: 18px 0 8px;
+  gap: 24px;
+  padding: 24px 0 12px;
 }
 
 .figure {
   position: relative;
-  margin: 0;
-  aspect-ratio: 1;
   display: grid;
   place-items: center;
+  margin: 0;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: $radius;
+  background:
+    radial-gradient(circle at 50% 42%, $plate 0%, $plate-deep 78%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    inset 0 0 40px rgba(0, 0, 0, 0.25);
 
   img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: drop-shadow(0 2px 0 rgba(255, 246, 220, 0.4));
   }
 }
 
 .sketching {
+  @include body(15px);
   font-style: italic;
-  color: $ink-soft;
+  color: $plate-ink;
   animation: breathe 1.6s ease-in-out infinite;
 }
 
@@ -161,27 +150,24 @@ $rubric: #8c2a1c;
 
 .points {
   margin: 0;
-  font-weight: 800;
-  font-size: 22px;
-  color: $rubric;
+  @include figures(24px);
+  color: $accent;
 }
 
 .facts {
   display: grid;
-  gap: 7px;
+  gap: 8px;
   margin: 0;
 }
 
 .fact {
   display: grid;
-  grid-template-columns: 82px 1fr;
+  grid-template-columns: 88px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 
   dt {
-    font-weight: 700;
-    font-size: 15px;
-    color: $ink-soft;
+    @include label;
   }
 
   dd {
@@ -190,12 +176,13 @@ $rubric: #8c2a1c;
 }
 
 .damage {
-  font-weight: 700;
+  @include heading(16px);
+  color: $danger;
 }
 
 .gauge {
   display: flex;
-  gap: 5px;
+  gap: 4px;
 }
 
 .spoken {
@@ -204,55 +191,51 @@ $rubric: #8c2a1c;
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 .pip,
 .pipOn {
   width: 14px;
   height: 14px;
-  border: 1.5px solid $ink-soft;
-  transform: rotate(45deg) scale(0.8);
+  border: 1.5px solid $ink-dim;
+  border-radius: 2px;
+  transform: rotate(45deg) scale(0.78);
 }
 
 .pipOn {
-  background: $ink;
-  border-color: $ink;
+  border-color: $accent;
+  background: $accent;
+  box-shadow: 0 0 6px tint($accent, 0.5);
 }
 
 .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   margin: 2px 0 0;
   padding: 0;
   list-style: none;
 
   li {
-    padding: 1px 10px;
-    border: 1px solid rgba(42, 26, 14, 0.4);
+    padding: 1px 12px;
+    @include chip;
     font-size: 14px;
-    font-weight: 700;
-    color: $ink-soft;
   }
 }
 
 .section {
-  padding-top: 12px;
+  padding-top: 16px;
 
   h4 {
     margin: 0 0 4px;
-    font-family: $font-book-title;
-    font-weight: 400;
-    font-size: 22px;
-    color: $rubric;
+    @include heading(22px);
+    color: $accent;
   }
 
   p {
     margin: 0;
   }
 }
-
 
 @keyframes breathe {
   50% {
@@ -262,8 +245,8 @@ $rubric: #8c2a1c;
 
 @media (max-width: 760px) {
   .layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     height: calc(100vh - 140px);
   }
 
@@ -284,15 +267,21 @@ $rubric: #8c2a1c;
   }
 
   .page {
-    padding: 20px 18px 24px;
+    padding: 24px 16px 24px;
   }
 
   .portrait {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .figure {
     width: min(220px, 70%);
     justify-self: center;
   }
+}
+
+@include enter-keyframes;
+
+.portrait .figure {
+  @include enter(pop, 60ms);
 }

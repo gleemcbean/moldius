@@ -1,11 +1,12 @@
 import * as THREE from "three";
+import type { PostEffectLevels } from "../../../types/settings";
 
 export interface PostEffectsFrame {
 	dt: number;
-	strength: number;
+	effects: PostEffectLevels;
 	tension: number;
 	animated: boolean;
-	levels: number;
+	colorLevels: number;
 	desaturate?: number;
 	nausea?: number;
 }
@@ -33,11 +34,20 @@ uniform vec2 resolution;
 uniform float lines;
 uniform float time;
 uniform float grainTime;
-uniform float strength;
 uniform float tension;
 uniform float animated;
 uniform float levels;
 uniform float nausea;
+uniform float curvature;
+uniform float aberration;
+uniform float bleed;
+uniform float vignetteAmount;
+uniform float grainAmount;
+uniform float scanlines;
+uniform float dither;
+uniform float flicker;
+uniform float band;
+uniform float saturation;
 varying vec2 vUv;
 
 const vec3 LUMA = vec3(0.299, 0.587, 0.114);
@@ -69,10 +79,9 @@ void main() {
   vec2 aspect = vec2(resolution.x / resolution.y, 1.0);
   vec2 radial = centered * aspect;
   float spread = dot(radial, radial);
-  float bulge = ${POST_BULGE.toFixed(3)} * strength;
+  float bulge = ${POST_BULGE.toFixed(3)} * curvature;
   vec2 uv = 0.5 + centered * (1.0 + bulge * spread) / (1.0 + bulge * (0.25 + 0.25 * aspect.x * aspect.x));
-  vec2 shift = centered * spread * (0.012 + tension * 0.014) * strength;
-  // La nausée du chaudron : l'image ondule, tourne un peu et se dédouble.
+  vec2 shift = centered * spread * (0.012 * aberration + 0.014 * tension);
   vec2 doubled = vec2(0.0);
   if (nausea > 0.001) {
     uv += vec2(sin(uv.y * 9.0 + time * 1.7), cos(uv.x * 7.0 + time * 1.3)) * 0.014 * nausea;
@@ -88,9 +97,11 @@ void main() {
     texture2D(scene, uv).g,
     texture2D(scene, uv - shift).b
   );
-  vec2 smear = vec2(1.6 / resolution.x, 0.0);
-  vec3 bleed = (color + texture2D(scene, uv - smear).rgb + texture2D(scene, uv - smear * 2.0).rgb) / 3.0;
-  color = mix(color, bleed - dot(bleed, LUMA) + dot(color, LUMA), 0.7 * strength);
+  if (bleed > 0.001) {
+    vec2 smear = vec2(1.6 / resolution.x, 0.0);
+    vec3 smeared = (color + texture2D(scene, uv - smear).rgb + texture2D(scene, uv - smear * 2.0).rgb) / 3.0;
+    color = mix(color, smeared - dot(smeared, LUMA) + dot(color, LUMA), 0.7 * bleed);
+  }
   if (nausea > 0.001) {
     color = mix(color, texture2D(scene, uv + doubled).rgb, 0.38 * nausea);
     color *= mix(vec3(1.0), vec3(0.86, 1.08, 0.78), nausea * 0.6);
@@ -102,11 +113,9 @@ void main() {
   vignette *= 1.0 - smoothstep(0.55, 1.6, edge) * 0.55;
 
   float gray = dot(color, LUMA);
-  vec3 graded = max(mix(vec3(gray), color, 1.12), 0.0);
-  color = mix(color, graded, strength);
+  color = max(mix(vec3(gray), color, 1.0 + 0.12 * saturation), 0.0);
 
-  float flicker = 1.0 - animated * strength * (0.012 * sin(time * 47.0) + 0.008 * sin(time * 13.0));
-  color *= flicker;
+  color *= 1.0 - animated * flicker * (0.012 * sin(time * 47.0) + 0.008 * sin(time * 13.0));
 
   gl_FragColor = vec4(color, 1.0);
   #include <tonemapping_fragment>
@@ -126,20 +135,20 @@ void main() {
   }
 
   float luminance = dot(gl_FragColor.rgb, LUMA);
-  float grain = hash(floor(gl_FragCoord.xy) + grainTime * 131.0) - 0.5;
-  gl_FragColor.rgb += grain * (0.022 + 0.03 * (1.0 - luminance)) * strength;
+  float noise = hash(floor(gl_FragCoord.xy) + grainTime * 131.0) - 0.5;
+  gl_FragColor.rgb += noise * (0.022 + 0.03 * (1.0 - luminance)) * grainAmount;
 
   float scan = 0.5 + 0.5 * sin(vUv.y * lines * 6.28318);
-  gl_FragColor.rgb *= 1.0 - scan * 0.07 * strength;
+  gl_FragColor.rgb *= 1.0 - scan * 0.07 * scanlines;
 
-  float band = fract(vUv.y * 0.6 - time * 0.07);
-  gl_FragColor.rgb *= 1.0 + animated * strength * smoothstep(0.0, 0.04, band) * smoothstep(0.1, 0.04, band) * 0.035;
+  float roll = fract(vUv.y * 0.6 - time * 0.07);
+  gl_FragColor.rgb *= 1.0 + animated * band * smoothstep(0.0, 0.04, roll) * smoothstep(0.1, 0.04, roll) * 0.035;
 
-  float dither = bayer4(gl_FragCoord.xy);
+  float pattern = bayer4(gl_FragCoord.xy);
   float shadow = 1.0 - smoothstep(0.02, 0.4, luminance);
-  gl_FragColor.rgb += (dither - 0.5) * 0.05 * shadow * strength;
-  gl_FragColor.rgb = floor(clamp(gl_FragColor.rgb, 0.0, 1.0) * levels + dither) / levels;
-  gl_FragColor.rgb *= 1.0 - (1.0 - vignette) * (0.62 + tension * 0.25) * strength * (1.0 - hudAlpha * 0.9);
+  gl_FragColor.rgb += (pattern - 0.5) * 0.05 * shadow * dither;
+  gl_FragColor.rgb = floor(clamp(gl_FragColor.rgb, 0.0, 1.0) * levels + pattern) / levels;
+  gl_FragColor.rgb *= 1.0 - (1.0 - vignette) * (0.62 * vignetteAmount + 0.25 * tension) * (1.0 - hudAlpha * 0.9);
   gl_FragColor.rgb = clamp(gl_FragColor.rgb, 0.0, 1.0);
 }
 `;
@@ -177,11 +186,20 @@ export class PostEffects {
 				lines: { value: 300 },
 				time: { value: 0 },
 				grainTime: { value: 0 },
-				strength: { value: 1 },
 				tension: { value: 0 },
 				animated: { value: 1 },
 				levels: { value: 127 },
 				nausea: { value: 0 },
+				curvature: { value: 0 },
+				aberration: { value: 0 },
+				bleed: { value: 0 },
+				vignetteAmount: { value: 0 },
+				grainAmount: { value: 0 },
+				scanlines: { value: 0 },
+				dither: { value: 0 },
+				flicker: { value: 0 },
+				band: { value: 0 },
+				saturation: { value: 0 },
 			},
 			depthTest: false,
 			depthWrite: false,
@@ -220,15 +238,25 @@ export class PostEffects {
 		uniforms.lines.value = Math.min(cssHeight / 3, this.size.y / 2.5);
 		uniforms.time.value = this.time;
 		uniforms.grainTime.value = Math.floor(this.time * 24) / 24;
-		uniforms.strength.value = frame.strength;
-		uniforms.tension.value = this.tension;
+		const effects = frame.effects;
+		uniforms.tension.value = this.tension * effects.danger;
 		uniforms.animated.value = frame.animated ? 1 : 0;
-		uniforms.levels.value = frame.levels;
+		uniforms.levels.value = frame.colorLevels;
 		this.nausea +=
 			(Math.min(1, Math.max(0, frame.nausea ?? 0)) - this.nausea) *
 			Math.min(1, frame.dt * 1.5);
 		uniforms.nausea.value = this.nausea;
-		uniforms.desaturate.value = (frame.desaturate ?? 0) * 0.75 * frame.strength;
+		uniforms.desaturate.value = (frame.desaturate ?? 0) * 0.75 * effects.danger;
+		uniforms.curvature.value = effects.curvature;
+		uniforms.aberration.value = effects.aberration;
+		uniforms.bleed.value = effects.bleed;
+		uniforms.vignetteAmount.value = effects.vignette;
+		uniforms.grainAmount.value = effects.grain;
+		uniforms.scanlines.value = effects.scanlines;
+		uniforms.dither.value = effects.dither;
+		uniforms.flicker.value = effects.flicker;
+		uniforms.band.value = effects.band;
+		uniforms.saturation.value = effects.saturation;
 
 		const previous = this.renderer.getRenderTarget();
 		this.renderer.setRenderTarget(this.target);

@@ -3,23 +3,26 @@
 .meter {
   display: grid;
   grid-template-columns: repeat(28, minmax(0, 1fr));
-  gap: 3px;
+  gap: 4px;
   width: 100%;
   height: 16px;
-  padding: 3px;
-  background: rgba(0, 0, 0, 0.45);
-  box-shadow: inset 0 0 0 2px $line-strong;
+  padding: 4px;
+  @include meter-track;
+  border-radius: $radius-s;
 }
 
 .segment {
-  background: rgba(255, 255, 255, 0.09);
-  transition: background 80ms linear;
+  border-radius: 1px;
+  background: tint($ink, 0.08);
+  transition: background-color 80ms linear;
 }
 
 .lit {
-  background: $voice;
+  background: $info;
+  box-shadow: 0 0 6px tint($info, 0.5);
 }
 
 .hot {
-  background: $yellow;
+  background: $warning;
+  box-shadow: 0 0 6px tint($warning, 0.6);
 }

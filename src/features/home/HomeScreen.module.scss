@@ -14,9 +14,9 @@
   background:
     linear-gradient(
       90deg,
-      rgba(10, 12, 10, 0.92) 0%,
-      rgba(10, 12, 10, 0.55) 34%,
-      rgba(10, 12, 10, 0) 62%
+      tint($bg-deep, 0.92) 0%,
+      tint($bg-deep, 0.55) 34%,
+      tint($bg-deep, 0) 62%
     ),
     radial-gradient(ellipse at 70% 50%, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.6) 100%);
 }
@@ -29,25 +29,24 @@
   width: min(460px, calc(100% - 40px));
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 24px;
 }
 
 .brand {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .title {
   margin: 0;
-  @include title(clamp(64px, 9vw, 112px));
-  color: $yellow;
-  letter-spacing: 0.02em;
+  @include display(clamp(64px, 9vw, 112px));
+  line-height: 0.95;
+  color: $accent;
   text-shadow:
     4px 4px 0 #3b4115,
     8px 8px 0 rgba(0, 0, 0, 0.6);
 }
-
 
 .nameBlock {
   display: flex;
@@ -61,20 +60,14 @@
 
 .nameInput,
 .codeInput {
-  height: 50px;
+  height: 48px;
   padding: 0 16px;
-  border: 2px solid $line-strong;
-  background: rgba(10, 12, 10, 0.86);
-  font-family: $font-text;
-  font-weight: 700;
-  font-size: 26px;
-  letter-spacing: 0.03em;
-  color: $text;
-  outline: none;
+  @include field;
+  color: $ink;
+}
 
-  &:focus {
-    border-color: $yellow;
-  }
+.nameInput {
+  @include heading(28px);
 }
 
 .appearance {
@@ -85,31 +78,29 @@
 .triggers {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
 }
 
 .trigger {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   height: 46px;
   min-width: 0;
   padding: 0 8px;
-  border: 2px solid $line-strong;
-  background: rgba(10, 12, 10, 0.86);
+  border: 2px solid $line-hi;
+  background: tint($bg-deep, 0.86);
   cursor: pointer;
-  font-family: $font-text;
-  font-size: 15px;
-  font-weight: 700;
-  color: $text;
+  @include ui(14px);
+  color: $ink;
 
   &:hover {
-    border-color: $yellow;
+    border-color: $accent;
   }
 }
 
 .triggerOpen {
-  border-color: $yellow;
+  border-color: $accent;
 }
 
 .triggerPreview {
@@ -129,8 +120,8 @@
 
 .triggerArrow {
   flex-shrink: 0;
-  font-size: 13px;
-  color: $text-muted;
+  font-size: 14px;
+  color: $ink-muted;
 }
 
 .options {
@@ -141,10 +132,10 @@
   z-index: 20;
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
   padding: 12px;
-  border: 2px solid $yellow;
-  background: $background-raised;
+  border: 2px solid $accent;
+  background: $surface-2;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
 }
 
@@ -155,21 +146,21 @@
   border: 0;
   background: transparent;
   cursor: pointer;
-  transition: transform $transition-fast;
+  transition: transform $fast $ease;
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
 
     .swatch {
-      box-shadow: 0 0 0 1px $yellow;
+      box-shadow: 0 0 0 1px $accent;
     }
   }
 }
 
 .option.optionActive .swatch {
   box-shadow:
-    0 0 0 2px $yellow,
-    0 0 0 4px rgba(10, 12, 10, 0.9);
+    0 0 0 2px $accent,
+    0 0 0 4px tint($bg-deep, 0.9);
 }
 
 .locked {
@@ -184,8 +175,8 @@
   place-items: center;
   width: 100%;
   height: 100%;
-  border: 2px solid rgba(10, 12, 10, 0.9);
-  box-shadow: 0 0 0 1px $line-strong;
+  border: 2px solid tint($bg-deep, 0.9);
+  box-shadow: 0 0 0 1px $line-hi;
 
   canvas {
     display: block;
@@ -216,7 +207,7 @@
 }
 
 .quoteIcon {
-  color: $yellow;
+  color: $accent;
 
   svg {
     width: 62%;
@@ -231,19 +222,17 @@
 .textOption {
   min-height: 34px;
   padding: 4px 8px;
-  border: 2px solid $line-strong;
-  background: rgba(10, 12, 10, 0.86);
+  border: 2px solid $line-hi;
+  background: tint($bg-deep, 0.86);
   cursor: pointer;
-  font-family: $font-text;
-  font-size: 15px;
-  font-weight: 700;
-  color: $text;
+  @include heading(16px);
+  color: $ink;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 
   &:hover:not(:disabled) {
-    border-color: $yellow;
+    border-color: $accent;
   }
 
   &:disabled {
@@ -252,13 +241,13 @@
 }
 
 .textOptionActive {
-  border-color: $yellow;
-  color: $yellow;
+  border-color: $accent;
+  color: $accent;
 }
 
 .textOptionNone {
   font-style: italic;
-  color: $text-muted;
+  color: $ink-muted;
 }
 
 .lanternIcon svg {
@@ -275,17 +264,17 @@
 
 .publicCount {
   font-weight: 600;
-  color: $text;
+  color: $ink;
   font-variant-numeric: tabular-nums;
 }
 
 .publicEmpty {
-  color: $text-muted;
+  color: $ink-muted;
 }
 
 .publicPlayers {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -322,18 +311,18 @@
   z-index: 5;
   display: flex;
   align-items: center;
-  padding: 0 14px;
-  border: 1px solid $line-strong;
-  background: $background-panel;
-  color: $text;
-  font-size: 15px;
+  padding: 0 16px;
+  border: 1px solid $line-hi;
+  background: $surface;
+  color: $ink;
+  font-size: 16px;
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
   transform: translateX(-4px);
   transition:
-    opacity $transition-fast,
-    transform $transition-fast;
+    opacity $fast $ease,
+    transform $fast $ease;
 }
 
 .hintAnchor:hover .sideHint,
@@ -345,74 +334,87 @@
 .codeRow {
   display: grid;
   grid-template-columns: 158px 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .codeInput {
   min-width: 0;
-  padding: 0 10px;
+  padding: 0 8px;
   text-align: center;
-  font-family: $font-code;
-  font-size: 22px;
+  @include mono(20px);
   letter-spacing: 0.3em;
 }
 
 .more {
   display: flex;
-  gap: 10px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(70, 84, 63, 0.7);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 16px;
+  @include rule(top);
 }
 
 .tileBadge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -8px;
+  right: -8px;
   min-width: 20px;
-  padding: 0 5px;
-  background: $yellow;
-  color: $background;
-  font-weight: 700;
-  font-size: 14px;
+  padding: 0 4px;
+  background: $accent;
+  color: $bg;
+  @include figures(14px);
   line-height: 20px;
+  text-align: center;
 }
 
 .tile {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.8rem;
-  min-height: 60px;
-  min-width: 60px;
-  padding: 4px 12px;
-  border: 2px solid $line-strong;
-  background: rgba(10, 12, 10, 0.78);
+  justify-content: flex-start;
+  height: 52px;
+  min-width: 52px;
+  padding: 0 15px;
+  border: 2px solid $line-hi;
+  background: tint($bg-deep, 0.78);
   cursor: pointer;
-  text-align: center;
-  color: $text;
+  color: $ink;
   transition:
-    border-color $transition-fast,
-    transform $transition-fast;
+    border-color $base $ease,
+    background-color $base $ease,
+    transform $base $ease;
 
   &:hover,
   &:focus-visible {
-    border-color: $yellow;
+    border-color: $accent;
+    background: tint($accent, 0.08);
+    outline: none;
     transform: translateY(-2px);
 
-    .tileTitle,
     .tileIcon {
-      color: $yellow;
+      color: $accent;
     }
+
+    .tileTitle {
+      grid-template-columns: 1fr;
+      margin-left: 12px;
+      opacity: 1;
+      color: $accent;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 }
 
 .tileIcon {
   display: flex;
-  width: 24px;
-  height: 24px;
-  color: $text-muted;
-  transition: color $transition-fast;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: $ink-muted;
+  transition: color $base $ease;
 
   svg {
     width: 100%;
@@ -421,19 +423,29 @@
 }
 
 .tileTitle {
-  @include title(18px);
-  text-wrap: balance;
-  color: $text;
-  transition: color $transition-fast;
+  display: grid;
+  grid-template-columns: 0fr;
+  margin-left: 0;
+  @include ui(16px);
+  color: $ink;
+  opacity: 0;
+  transition:
+    grid-template-columns 480ms cubic-bezier(0.45, 0, 0.25, 1),
+    margin-left 480ms cubic-bezier(0.45, 0, 0.25, 1),
+    opacity 320ms ease 130ms,
+    color $base $ease;
+
+  > span {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
 }
 
-@media (max-width: 420px) {
-  .more {
-    gap: 8px;
-  }
-
+@include no-motion {
+  .tile,
   .tileTitle {
-    font-size: 16px;
+    transition: none;
   }
 }
 
@@ -444,20 +456,18 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 6px 20px;
-  font-family: $font-text;
-  font-size: 15px;
-  letter-spacing: 0.01em;
+  gap: 8px 24px;
+  @include label;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 
   a {
-    color: $text-muted;
+    color: $ink-muted;
     text-decoration: none;
-    transition: color $transition-fast;
+    transition: color $fast $ease;
 
     &:hover,
     &:focus-visible {
-      color: $yellow;
+      color: $accent;
       text-decoration: underline;
     }
   }
@@ -477,7 +487,7 @@
   }
 
   .title {
-    font-size: 68px;
+    font-size: 72px;
   }
 
   .actions {
@@ -485,12 +495,13 @@
   }
 
   .more {
-    padding-top: 10px;
+    padding-top: 12px;
   }
 
   .tile {
-    min-height: 44px;
+    height: 44px;
     min-width: 44px;
+    padding: 0 11px;
   }
 }
 
@@ -556,15 +567,15 @@
   0%,
   100% {
     box-shadow:
-      0 0 0 2px $yellow,
-      0 0 0 4px rgba(10, 12, 10, 0.9),
-      0 0 0 rgba(220, 229, 77, 0);
+      0 0 0 2px $accent,
+      0 0 0 4px tint($bg-deep, 0.9),
+      0 0 0 tint($accent, 0);
   }
   50% {
     box-shadow:
-      0 0 0 2px $yellow,
-      0 0 0 4px rgba(10, 12, 10, 0.9),
-      0 0 14px rgba(220, 229, 77, 0.6);
+      0 0 0 2px $accent,
+      0 0 0 4px tint($bg-deep, 0.9),
+      0 0 14px tint($accent, 0.6);
   }
 }
 
@@ -597,7 +608,7 @@
 
 .textOption {
   transition:
-    border-color $transition-fast,
+    border-color $fast $ease,
     transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
   &:hover:not(:disabled) {
@@ -610,7 +621,7 @@
 }
 
 .triggerArrow {
-  transition: transform $transition-fast;
+  transition: transform $fast $ease;
 }
 
 .trigger:hover .triggerPreview {

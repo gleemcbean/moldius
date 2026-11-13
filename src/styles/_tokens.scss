@@ -1,68 +1,276 @@
-$yellow: #dce54d;
-$yellow-bright: #eef46a;
-$yellow-deep: #b9c22f;
-$map-label: #f9e55d;
-$background: #111512;
-$background-raised: #191e1a;
-$background-panel: #1d231f;
-$line: #2f3a31;
-$line-strong: #46543f;
-$text: #ecefe2;
-$text-muted: #9fa894;
-$text-dim: #6c7566;
-$danger: #e5533d;
-$warning: #f9c23c;
-$danger-soft: #7a2c22;
-$health: #d9493a;
-$energy: #dce54d;
-$ok: #8fd36a;
-$voice: #63c6e8;
+@use 'sass:list';
+@use 'sass:math';
+@use 'sass:meta';
 
-$font-title: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
-$font-text: 'Alegreya', 'Georgia', 'Times New Roman', serif;
-$font-code: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
-$font-book: 'Alegreya', 'Georgia', 'Times New Roman', serif;
-$font-book-title: 'IM Fell English SC', 'Alegreya', 'Georgia', serif;
+$bg: var(--bg);
+$bg-deep: var(--bg-deep);
+$surface: var(--surface);
+$surface-2: var(--surface-2);
+$sunken: var(--sunken);
+$scrim: var(--scrim);
+$ink: var(--ink);
+$ink-muted: var(--ink-muted);
+$ink-dim: var(--ink-dim);
+$accent: var(--accent);
+$accent-hi: var(--accent-hi);
+$accent-lo: var(--accent-lo);
+$on-accent: var(--on-accent);
+$line: var(--line);
+$line-hi: var(--line-hi);
+$danger: var(--danger);
+$warning: var(--warning);
+$ok: var(--ok);
+$info: var(--info);
+$rare: var(--rare);
+$plate: var(--plate);
+$plate-deep: var(--plate-deep);
+$plate-ink: var(--plate-ink);
+
+$font-display: 'IM Fell English SC', 'IM Fell English', Georgia, serif;
+$font-heading: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+$font-small-caps: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+$font-body: 'Alegreya', Georgia, 'Times New Roman', serif;
+$font-ui: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+$font-figures: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+$font-code: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+$type-scale: 12px, 14px, 16px, 18px, 20px, 24px, 28px, 32px, 40px, 48px, 56px, 72px, 96px;
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-5: 24px;
+$space-6: 32px;
+$space-7: 48px;
+$space-8: 64px;
+$border: 2px;
 
 $radius: 0;
-$gap: 12px;
-$transition-fast: 120ms ease-out;
-$transition: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+$radius-s: 0;
+$radius-l: 0;
+$radius-pill: 0;
 
-@mixin pixel-border($color: $line-strong) {
-  box-shadow:
-    0 0 0 2px $color,
-    0 0 0 4px $background;
+$ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+$spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+$fast: 120ms;
+$base: 220ms;
+
+@function snap($size) {
+  @if meta.type-of($size) != 'number' or math.unit($size) != 'px' {
+    @return $size;
+  }
+  $best: list.nth($type-scale, 1);
+  @each $step in $type-scale {
+    @if math.abs($step - $size) < math.abs($best - $size) {
+      $best: $step;
+    }
+  }
+  @return $best;
 }
 
-@mixin title($size: 28px) {
-  font-family: $font-book-title;
+@function tint($color, $amount) {
+  @return color-mix(in srgb, #{$color} #{math.percentage($amount)}, transparent);
+}
+
+@function blend($a, $b, $amount) {
+  @return color-mix(in srgb, #{$a} #{math.percentage($amount)}, #{$b});
+}
+
+@mixin display($size: 56px) {
+  font-family: $font-display;
   font-weight: 400;
-  font-size: $size;
-  letter-spacing: 0.02em;
+  font-size: snap($size);
   line-height: 1.05;
+  letter-spacing: 0.02em;
 }
 
-@mixin figures($size: 28px) {
-  font-family: $font-title;
+@mixin heading($size: 24px) {
+  font-family: $font-heading;
   font-weight: 700;
-  font-size: $size;
+  font-size: snap($size);
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+}
+
+@mixin label {
+  font-family: $font-small-caps;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: $ink-muted;
+}
+
+@mixin ui($size: 18px) {
+  font-family: $font-ui;
+  font-weight: 700;
+  font-size: snap($size);
+  line-height: 1.1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+@mixin body($size: 16px) {
+  font-family: $font-body;
+  font-weight: 500;
+  font-size: snap($size);
+  line-height: 1.45;
+}
+
+@mixin figures($size: 24px) {
+  font-family: $font-figures;
+  font-weight: 700;
+  font-size: snap($size);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-@mixin label {
-  font-family: $font-text;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: $text-muted;
+@mixin mono($size: 16px) {
+  font-family: $font-code;
+  font-weight: 700;
+  font-size: snap($size);
+  letter-spacing: 0.12em;
 }
 
-@mixin numeric {
-  font-family: $font-title;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
+@mixin surface {
+  border-radius: 0;
+  background: $surface;
+  box-shadow: inset 0 0 0 $border $line;
+}
+
+@mixin surface-raised {
+  border-radius: 0;
+  background: $surface-2;
+  box-shadow:
+    0 0 0 $border $accent,
+    0 0 0 6px $bg,
+    0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+@mixin well {
+  border-radius: 0;
+  background: $sunken;
+  box-shadow: inset 0 0 0 1px $line;
+}
+
+@mixin row {
+  border-radius: 0;
+  background: $surface;
+  box-shadow: inset 0 0 0 $border $line;
+}
+
+@mixin selected {
+  box-shadow: inset 0 0 0 $border $accent;
+}
+
+@mixin field {
+  border: $border solid $line-hi;
+  border-radius: 0;
+  background: $sunken;
+  color: $ink;
+  outline: none;
+  transition: border-color $fast $ease;
+
+  &:focus,
+  &:focus-visible {
+    border-color: $accent;
+  }
+}
+
+@mixin chip {
+  border: $border solid $line-hi;
+  border-radius: 0;
+  background: transparent;
+  color: $ink-muted;
+  font-family: $font-ui;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  transition:
+    color $fast $ease,
+    border-color $fast $ease,
+    background-color $fast $ease;
+}
+
+@mixin chip-on {
+  border-color: $accent;
+  background: tint($accent, 0.08);
+  color: $ink;
+}
+
+@mixin tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 0;
+  background: $accent;
+  color: $on-accent;
+  font-family: $font-ui;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@mixin badge {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid $line-hi;
+  border-radius: 0;
+  background: $bg;
+  color: $accent;
+  font-family: $font-figures;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+}
+
+@mixin rule($side: bottom) {
+  border-#{$side}: $border solid $line;
+}
+
+@mixin notice($tone: $accent) {
+  border-radius: 0;
+  background: tint($tone, 0.1);
+  box-shadow: inset 4px 0 0 $tone;
+}
+
+@mixin link {
+  color: $accent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+
+  &:hover,
+  &:focus-visible {
+    color: $accent-hi;
+  }
+}
+
+@mixin meter-track {
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 0 $border $line-hi;
+}
+
+@mixin meter-fill($color: $accent) {
+  border-radius: 0;
+  background: $color;
+}
+
+@mixin no-motion {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+
+  @if & {
+    :global(html[data-reduce-motion]) & {
+      @content;
+    }
+  } @else {
+    :global(html[data-reduce-motion]) {
+      @content;
+    }
+  }
 }
 
 $enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -71,38 +279,38 @@ $enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   @keyframes enter-up {
     from {
       opacity: 0;
-      translate: 0 22px;
+      translate: 0 16px;
     }
   }
 
   @keyframes enter-down {
     from {
       opacity: 0;
-      translate: 0 -28px;
+      translate: 0 -16px;
     }
   }
 
   @keyframes enter-left {
     from {
       opacity: 0;
-      translate: -36px 0;
+      translate: -24px 0;
     }
   }
 
   @keyframes enter-right {
     from {
       opacity: 0;
-      translate: 36px 0;
+      translate: 24px 0;
     }
   }
 
   @keyframes enter-pop {
     from {
       opacity: 0;
-      scale: 0.8;
+      scale: 0.85;
     }
     60% {
-      scale: 1.05;
+      scale: 1.04;
     }
   }
 
@@ -119,14 +327,10 @@ $enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 }
 
-@mixin enter($kind: up, $delay: 0ms, $duration: 560ms) {
+@mixin enter($kind: up, $delay: 0ms, $duration: 520ms) {
   animation: enter-#{$kind} $duration $enter-ease $delay backwards;
 
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-
-  :global(html[data-reduce-motion]) & {
+  @include no-motion {
     animation: none;
   }
 }

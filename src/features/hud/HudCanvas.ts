@@ -77,6 +77,7 @@ const BREW_COLORS: Record<BrewEffect, string> = {
 };
 const FIGURES = '"Barlow Condensed", "Arial Narrow", sans-serif';
 const TITLE = '"IM Fell English SC", Alegreya, Georgia, serif';
+const UI = '"Barlow Condensed", "Arial Narrow", sans-serif';
 
 const FEEDBACK_TONES: Record<string, string> = {
 	success: OK,
@@ -127,11 +128,11 @@ export function ensureHudFonts(): Promise<unknown> {
 	}
 	return Promise.all(
 		[
-			`500 20px ${BODY}`,
-			`700 20px ${BODY}`,
+			`500 20px ${UI}`,
+			`700 20px ${UI}`,
 			`700 40px ${FIGURES}`,
 			`500 20px ${FIGURES}`,
-			`400 30px ${TITLE}`,
+			`400 32px ${TITLE}`,
 		].map((font) => document.fonts.load(font)),
 	);
 }
@@ -150,7 +151,7 @@ export class HudCanvas {
 	private readonly context: CanvasRenderingContext2D;
 	private width = 1;
 	private height = 1;
-	private strength = 1;
+	private curvature = 0;
 	private drawScale = RESOLUTION;
 	private paintedAt = -Infinity;
 	private feedbackId = -1;
@@ -214,7 +215,7 @@ export class HudCanvas {
 		const dt = Math.min(0.2, (now - this.paintedAt) / 1000);
 		this.paintedAt = now;
 		const settings = settingsStore.get();
-		this.strength = settings.ambiance;
+		this.curvature = settings.postEffects.curvature;
 		const hud = hudStore.get();
 		const context = this.context;
 		context.setTransform(1, 0, 0, 1, 0, 0);
@@ -249,7 +250,7 @@ export class HudCanvas {
 				"bottom",
 			);
 			this.text(currentMessages().game.hud.fps(hud.fps), at.x + 80, at.y + 9, {
-				font: `500 16px ${BODY}`,
+				font: `500 16px ${UI}`,
 				color: TEXT_DIM,
 				align: "right",
 			});
@@ -376,7 +377,7 @@ export class HudCanvas {
 		const cx = nx - 0.5;
 		const cy = ny - 0.5;
 		const aspect = this.width / this.height;
-		const bulge = POST_BULGE * this.strength;
+		const bulge = POST_BULGE * this.curvature;
 		const factor =
 			(1 + bulge * ((cx * aspect) ** 2 + cy * cy)) /
 			(1 + bulge * (0.25 + 0.25 * aspect * aspect));
@@ -612,7 +613,7 @@ export class HudCanvas {
 		if (hud.gaze > 0.35) {
 			const at = this.at(width / 2, height * 0.22);
 			this.text(currentMessages().game.hud.lookAway, at.x, at.y, {
-				font: `400 30px ${TITLE}`,
+				font: `400 32px ${TITLE}`,
 				color: "#b8fff0",
 				align: "center",
 			});
@@ -622,7 +623,7 @@ export class HudCanvas {
 	private paintMinimap(hud: HudState): void {
 		const context = this.context;
 		const size = this.minimapSize();
-		const { x, y } = this.place(16, 16, size, size, "left", "top");
+		const { x, y } = this.place(20, 20, size, size, "left", "top");
 		this.minimapBottom = y + size;
 		context.fillStyle = "rgba(0, 0, 0, 0.7)";
 		context.fillRect(x - 5, y - 5, size + 10, size + 10);
@@ -636,12 +637,12 @@ export class HudCanvas {
 		context.filter = "none";
 		if (this.minimapRoom) {
 			this.text(this.minimapRoom, x + 8, y + 15, {
-				font: `700 16px ${BODY}`,
+				font: `700 16px ${UI}`,
 			});
 		}
 		if (this.minimapLabel) {
 			this.text(this.minimapLabel, x + 8, y + size - 13, {
-				font: `700 16px ${BODY}`,
+				font: `700 16px ${UI}`,
 			});
 		}
 	}
@@ -671,7 +672,7 @@ export class HudCanvas {
 		context.fillStyle = MAP_BACKGROUND;
 		context.fillRect(frame.x, frame.y, frame.width, frame.height);
 		this.text(messages.title, frame.x + 18, frame.y + MAP_HEADER / 2, {
-			font: `400 30px ${TITLE}`,
+			font: `400 32px ${TITLE}`,
 			color: YELLOW,
 			outline: false,
 		});
@@ -691,7 +692,7 @@ export class HudCanvas {
 		});
 		const zoomText = `×${state.zoom.toFixed(1)}`;
 		this.text(zoomText, right - 30, top + 19, {
-			font: `700 19px ${FIGURES}`,
+			font: `700 20px ${FIGURES}`,
 			color: TEXT,
 			align: "center",
 			outline: false,
@@ -743,7 +744,7 @@ export class HudCanvas {
 		}: { primary?: boolean; disabled?: boolean; run: () => void },
 	): number {
 		const context = this.context;
-		const font = `700 18px ${BODY}`;
+		const font = `700 18px ${UI}`;
 		context.font = font;
 		const width = Math.max(
 			38,
@@ -779,7 +780,7 @@ export class HudCanvas {
 	): void {
 		const legend = currentMessages().game.map.legend;
 		const context = this.context;
-		const font = `500 16px ${BODY}`;
+		const font = `500 16px ${UI}`;
 		const y = top + 20;
 		const items: [string, (x: number) => number][] = [
 			[
@@ -844,7 +845,7 @@ export class HudCanvas {
 			context.font = font;
 			x += context.measureText(label).width + 20;
 		}
-		const hintFont = `500 15px ${BODY}`;
+		const hintFont = `500 14px ${BODY}`;
 		const lines = this.wrap(
 			currentMessages().game.map.footer,
 			hintFont,
@@ -869,7 +870,7 @@ export class HudCanvas {
 		context.fill();
 		context.stroke();
 		this.text("↑", x + 9, y + 1, {
-			font: `400 13px ${TITLE}`,
+			font: `400 14px ${TITLE}`,
 			color,
 			align: "center",
 			outline: false,
@@ -881,10 +882,10 @@ export class HudCanvas {
 		const messages = currentMessages().game;
 		const urgent = hud.remainingMs < 60_000;
 		const clock = formatClock(hud.remainingMs);
-		const font = `700 42px ${FIGURES}`;
+		const font = `700 40px ${FIGURES}`;
 		this.context.font = font;
 		const width = this.context.measureText(clock).width + 34;
-		const placed = this.place(this.width / 2, 12, width, 50, "center", "top");
+		const placed = this.place(this.width / 2, 20, width, 50, "center", "top");
 		const x = placed.x + width / 2;
 		const y = placed.y;
 		this.panel(placed.x, y, width, 50, "rgba(10, 12, 10, 0.75)");
@@ -902,7 +903,7 @@ export class HudCanvas {
 				messages.hud.awakening(Math.ceil(hud.anomaliesInMs / 1000)),
 				x,
 				y + 66,
-				{ font: `700 18px ${BODY}`, color: TEXT_MUTED, align: "center" },
+				{ font: `700 18px ${UI}`, color: TEXT_MUTED, align: "center" },
 			);
 		}
 	}
@@ -913,8 +914,8 @@ export class HudCanvas {
 		const rowHeight = 26;
 		const height = MATERIAL_IDS.length * rowHeight;
 		const placed = this.place(
-			this.width - 18,
-			18,
+			this.width - 20,
+			20,
 			width,
 			height,
 			"right",
@@ -936,7 +937,7 @@ export class HudCanvas {
 				owned > 0 ? 1 : 0.35,
 			);
 			this.text(`×${owned}`, right - rowHeight - 4, middle, {
-				font: `700 19px ${FIGURES}`,
+				font: `700 20px ${FIGURES}`,
 				color: owned > 0 ? YELLOW : TEXT_DIM,
 				align: "right",
 			});
@@ -945,7 +946,7 @@ export class HudCanvas {
 				right - rowHeight - 34,
 				middle,
 				{
-					font: `500 17px ${BODY}`,
+					font: `500 18px ${UI}`,
 					color: owned > 0 ? TEXT : TEXT_MUTED,
 					align: "right",
 				},
@@ -962,7 +963,7 @@ export class HudCanvas {
 		const height = 46;
 		const { x, y } = this.place(
 			20,
-			this.height - 16,
+			this.height - 20,
 			figureWidth + barWidth,
 			height,
 			"left",
@@ -985,7 +986,7 @@ export class HudCanvas {
 		const barX = x + figureWidth;
 		const barsTop = y + (height - healthHeight - gap - energyHeight) / 2;
 		this.text(String(Math.round(hud.health)), barX - 12, y + height / 2 + 1, {
-			font: `700 52px ${FIGURES}`,
+			font: `700 56px ${FIGURES}`,
 			color: low ? `rgb(255, ${70 + Math.round(beat * 60)}, 60)` : TEXT,
 			align: "right",
 		});
@@ -1035,8 +1036,8 @@ export class HudCanvas {
 		const name = labels.names[hud.brew];
 		const seconds = `${Math.max(0, Math.ceil(hud.brewLeftMs / 1000))} s`;
 		const context = this.context;
-		const nameFont = `600 18px ${BODY}`;
-		const timeFont = `700 22px ${FIGURES}`;
+		const nameFont = `600 18px ${UI}`;
+		const timeFont = `700 24px ${FIGURES}`;
 		context.font = nameFont;
 		const nameWidth = context.measureText(name).width;
 		context.font = timeFont;
@@ -1045,7 +1046,7 @@ export class HudCanvas {
 		const height = BREW_PANEL_HEIGHT;
 		const { x, y } = this.place(
 			20,
-			this.height - 16 - 46 - 12,
+			this.height - 20 - 46 - 12,
 			width,
 			height,
 			"left",
@@ -1127,7 +1128,7 @@ export class HudCanvas {
 				? speakers.map((name) => labels.hearing(name))
 				: [labels.idle(keyLabel(settingsStore.get().keys.radio))];
 		const color = hud.walkieTalking ? DANGER : active ? OK : TEXT_MUTED;
-		const font = `500 18px ${BODY}`;
+		const font = `500 18px ${UI}`;
 		const context = this.context;
 		context.font = font;
 		const textWidth = Math.max(
@@ -1139,7 +1140,7 @@ export class HudCanvas {
 		const height = Math.max(44, 12 + lines.length * 24);
 		const { x, y } = this.place(
 			20,
-			this.height - 16 - 46 - 12 - this.brewSpace(hud),
+			this.height - 20 - 46 - 12 - this.brewSpace(hud),
 			width,
 			height,
 			"left",
@@ -1197,7 +1198,7 @@ export class HudCanvas {
 					)
 				: labels.lowered(keyLabel(keys.aim), keyLabel(keys.camera));
 		const color = hud.cameraRaised ? YELLOW : TEXT_MUTED;
-		const font = `500 18px ${BODY}`;
+		const font = `500 18px ${UI}`;
 		const context = this.context;
 		context.font = font;
 		const iconSize = 24;
@@ -1206,7 +1207,7 @@ export class HudCanvas {
 		const below = hud.walkieHeld ? this.walkieHeight(hud) + 8 : 0;
 		const { x, y } = this.place(
 			20,
-			this.height - 16 - 46 - 12 - this.brewSpace(hud) - below,
+			this.height - 20 - 46 - 12 - this.brewSpace(hud) - below,
 			width,
 			height,
 			"left",
@@ -1311,7 +1312,7 @@ export class HudCanvas {
 			color: YELLOW,
 		});
 		const headY = top + padding + titleHeight + headHeight / 2 - 4;
-		const headFont = `500 15px ${BODY}`;
+		const headFont = `500 16px ${UI}`;
 		const headStyle = { font: headFont, color: TEXT_MUTED, outline: false };
 		this.text("#", inner + 12, headY, headStyle);
 		this.text(labels.mushroom, nameX, headY, headStyle);
@@ -1323,7 +1324,7 @@ export class HudCanvas {
 		this.text(labels.energy, energyX, headY, headStyle);
 		let y = top + padding + titleHeight + headHeight;
 		const figures = `700 ${Math.round(rowHeight * 0.62)}px ${FIGURES}`;
-		const names = `400 ${Math.round(rowHeight * 0.56)}px ${TITLE}`;
+		const names = `700 ${Math.round(rowHeight * 0.6)}px ${UI}`;
 		const swatch = Math.round(rowHeight * 0.42);
 		const middle = () => y + rowHeight / 2 + 1;
 		const paintPlayer = (row: LeaderboardRow, rank: string) => {
@@ -1350,7 +1351,7 @@ export class HudCanvas {
 			context.font = names;
 			cursor += context.measureText(name).width + 12;
 			if (row.tagline) {
-				const taglineFont = `italic 600 ${Math.round(rowHeight * 0.4)}px ${BODY}`;
+				const taglineFont = `italic 500 ${Math.round(rowHeight * 0.4)}px ${BODY}`;
 				const room = nameX + nameLimit - cursor - 60;
 				if (room > 30) {
 					const tagline = this.fitText(
@@ -1380,7 +1381,7 @@ export class HudCanvas {
 			}
 			const tag = !row.alive ? labels.down : row.self ? labels.you : null;
 			if (tag) {
-				const tagFont = `700 14px ${BODY}`;
+				const tagFont = `700 14px ${UI}`;
 				context.font = tagFont;
 				const tagWidth = context.measureText(tag).width + 12;
 				this.panel(
@@ -1509,7 +1510,7 @@ export class HudCanvas {
 			},
 		];
 		const context = this.context;
-		const font = `700 17px ${BODY}`;
+		const font = `700 18px ${UI}`;
 		context.font = font;
 		const total = entries.reduce(
 			(sum, entry) =>
@@ -1520,8 +1521,8 @@ export class HudCanvas {
 			-8,
 		);
 		const placed = this.place(
-			this.width - 18,
-			this.height - 16,
+			this.width - 20,
+			this.height - 20,
 			total,
 			38,
 			"right",
@@ -1569,7 +1570,7 @@ export class HudCanvas {
 		const total = OCCULT_IDS.length * (slot + gap) + gap;
 		const placed = this.place(
 			this.width / 2,
-			this.height - 10,
+			this.height - 20,
 			total,
 			slot + gap * 2,
 			"center",
@@ -1587,7 +1588,7 @@ export class HudCanvas {
 			anchor.x,
 			y - 14,
 			{
-				font: `700 19px ${BODY}`,
+				font: `700 20px ${UI}`,
 				color: owned ? YELLOW : TEXT_MUTED,
 				align: "center",
 			},
@@ -1609,12 +1610,12 @@ export class HudCanvas {
 			);
 			this.drawArt(id, slotX, slotY, slot, count > 0 ? 1 : 0.2);
 			this.text(String(index + 1), slotX + 5, slotY + 9, {
-				font: `700 15px ${BODY}`,
+				font: `700 16px ${UI}`,
 				color: TEXT_MUTED,
 			});
 			if (count > 0) {
 				this.text(String(count), slotX + slot - 4, slotY + slot - 10, {
-					font: `700 18px ${BODY}`,
+					font: `700 18px ${UI}`,
 					align: "right",
 				});
 			}
@@ -1628,7 +1629,7 @@ export class HudCanvas {
 		const context = this.context;
 		const x = this.width / 2;
 		const y = this.height / 2;
-		const font = `700 19px ${BODY}`;
+		const font = `700 20px ${UI}`;
 		context.font = font;
 		const keyText = keyLabel(settingsStore.get().keys.interact);
 		const keyWidth = Math.max(24, context.measureText(keyText).width + 8);
@@ -1654,7 +1655,7 @@ export class HudCanvas {
 		const context = this.context;
 		if (hud.howlerNearby) {
 			const at = this.at(this.width / 2, 110);
-			const font = `700 18px ${BODY}`;
+			const font = `700 18px ${UI}`;
 			context.font = font;
 			const width = context.measureText(messages.howler).width + 28;
 			context.globalAlpha = Math.floor(now / 250) % 2 === 1 ? 0.55 : 1;
@@ -1668,7 +1669,7 @@ export class HudCanvas {
 		}
 		if (hud.castPhase === "sent") {
 			const at = this.at(this.width / 2, this.height * 0.84);
-			const font = `500 16px ${BODY}`;
+			const font = `500 16px ${UI}`;
 			context.font = font;
 			const width = context.measureText(messages.sent).width + 36;
 			this.panel(
@@ -1708,7 +1709,7 @@ export class HudCanvas {
 					? (1 - progress) / 0.2
 					: 1;
 		const at = this.at(this.width / 2, this.height * 0.74);
-		const font = `700 21px ${BODY}`;
+		const font = `500 20px ${BODY}`;
 		const lines = this.wrap(feedback.text, font, 620);
 		const context = this.context;
 		context.font = font;
@@ -1750,12 +1751,12 @@ export class HudCanvas {
 		const y = placed.y;
 		this.panel(x, y, width, height, "rgba(16, 8, 26, 0.92)", ALTAR);
 		this.text(messages.game.altar.title, x + 16, y + 18, {
-			font: `500 16px ${BODY}`,
+			font: `500 16px ${UI}`,
 			color: ALTAR,
 			outline: false,
 		});
 		if (hud.prompt) {
-			const promptFont = `700 17px ${BODY}`;
+			const promptFont = `700 18px ${UI}`;
 			this.context.font = promptFont;
 			const keyText = keyLabel(settingsStore.get().keys.interact);
 			const keyWidth = Math.max(
@@ -1800,20 +1801,20 @@ export class HudCanvas {
 			this.context.globalAlpha = alpha;
 			this.panel(x + 16, rowY + 6, 24, 24, YELLOW);
 			this.text(String(index + 1), x + 28, rowY + 19, {
-				font: `700 16px ${BODY}`,
+				font: `700 16px ${UI}`,
 				color: BACKGROUND,
 				align: "center",
 				outline: false,
 			});
 			this.drawArt(object, x + 46, rowY + 1, 34, alpha);
 			this.text(messages.grimoire.objects[object], x + 92, rowY + 18, {
-				font: `700 18px ${BODY}`,
+				font: `700 18px ${UI}`,
 				outline: false,
 			});
 			let right = x + width - 54;
 			for (const [id, count] of [...recipe].reverse()) {
 				this.text(`${owned(id)}/${count}`, right, rowY + 18, {
-					font: `700 16px ${BODY}`,
+					font: `700 16px ${UI}`,
 					align: "right",
 					outline: false,
 				});
@@ -1825,7 +1826,7 @@ export class HudCanvas {
 				x + width - 16,
 				rowY + 18,
 				{
-					font: `700 16px ${BODY}`,
+					font: `700 16px ${UI}`,
 					color: YELLOW,
 					align: "right",
 					outline: false,
@@ -1855,18 +1856,18 @@ export class HudCanvas {
 			tutorial.checks.length * 22 +
 			(tutorial.checks.length > 0 ? 8 : 0) +
 			34;
-		const placed = this.place(14, 150, width, height, "left", "top");
+		const placed = this.place(20, 150, width, height, "left", "top");
 		const x = placed.x;
-		const y = Math.max(placed.y, this.minimapBottom + 14);
+		const y = Math.max(placed.y, this.minimapBottom + 16);
 		this.panel(x, y, width, height, "rgba(10, 12, 10, 0.88)", YELLOW);
 		this.text(
 			messages.progress(tutorial.index + 1, tutorial.total),
 			x + 14,
 			y + 18,
-			{ font: `500 16px ${BODY}`, color: TEXT_MUTED, outline: false },
+			{ font: `500 16px ${UI}`, color: TEXT_MUTED, outline: false },
 		);
 		this.text(tutorial.title, x + 14, y + 42, {
-			font: `400 26px ${TITLE}`,
+			font: `400 28px ${TITLE}`,
 			color: YELLOW,
 			outline: false,
 		});
@@ -1879,7 +1880,7 @@ export class HudCanvas {
 			cursor += 6;
 			for (const check of tutorial.checks) {
 				this.text(`${check.ok ? "✔" : "✘"} ${check.label}`, x + 14, cursor, {
-					font: `700 16px ${BODY}`,
+					font: `700 16px ${UI}`,
 					color: check.ok ? "#8fe388" : "#ff8a7a",
 					outline: false,
 				});
@@ -1904,12 +1905,12 @@ export class HudCanvas {
 			context.fill();
 			context.restore();
 			this.text(`${tutorial.distance} m`, x + 46, cursor + 6, {
-				font: `700 18px ${BODY}`,
+				font: `700 18px ${UI}`,
 				outline: false,
 			});
 		}
 		this.text(messages.skip, x + width - 14, cursor + 6, {
-			font: `500 16px ${BODY}`,
+			font: `500 16px ${UI}`,
 			color: TEXT_MUTED,
 			align: "right",
 			outline: false,
@@ -1931,7 +1932,7 @@ export class HudCanvas {
 		const width = 68;
 		const height = 290;
 		const placed = this.place(
-			this.width - 22,
+			this.width - 20,
 			this.height / 2,
 			width,
 			height,
@@ -1947,7 +1948,7 @@ export class HudCanvas {
 		context.globalAlpha = this.gaugeShown;
 		this.panel(x, y, width, height, "rgba(10, 12, 10, 0.72)", LINE_STRONG);
 		this.text(messages.noise, x + width / 2, y + 18, {
-			font: `700 15px ${BODY}`,
+			font: `700 16px ${UI}`,
 			color: TEXT_MUTED,
 			align: "center",
 			outline: false,
@@ -1972,7 +1973,7 @@ export class HudCanvas {
 			x + width / 2,
 			y + height - 18,
 			{
-				font: `700 15px ${BODY}`,
+				font: `700 16px ${UI}`,
 				color: heard ? DANGER : TEXT_MUTED,
 				align: "center",
 				outline: false,
@@ -1987,7 +1988,7 @@ export class HudCanvas {
 		}
 		const messages = currentMessages().game;
 		const labels = messages.dev;
-		const font = `500 16px ${BODY}`;
+		const font = `500 16px ${UI}`;
 		const width = 370;
 		const entries: { text: string; color: string }[] = [];
 		const add = (text: string, color: string) => {
@@ -2041,7 +2042,7 @@ export class HudCanvas {
 		const y = Math.max(placed.y, this.materialsBottom + 10);
 		this.panel(x, y, width, height, DARK_PANEL, LINE_STRONG, 1);
 		this.text(labels.title, x + 12, y + 18, {
-			font: `500 16px ${BODY}`,
+			font: `500 16px ${UI}`,
 			color: YELLOW,
 			outline: false,
 		});
@@ -2065,7 +2066,7 @@ export class HudCanvas {
 		const x = this.width / 2;
 		const y = this.height / 2;
 		this.text(messages.fallen, x, y - 26, {
-			font: `400 58px ${TITLE}`,
+			font: `400 56px ${TITLE}`,
 			color: DANGER,
 			align: "center",
 		});
@@ -2075,7 +2076,7 @@ export class HudCanvas {
 			),
 			x,
 			y + 26,
-			{ font: `400 28px ${TITLE}`, align: "center" },
+			{ font: `700 24px ${UI}`, align: "center" },
 		);
 	}
 

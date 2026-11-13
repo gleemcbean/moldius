@@ -1,6 +1,37 @@
 @use './tokens' as *;
 @use './fonts';
 
+:root {
+  --bg: #111512;
+  --bg-deep: #0a0c0a;
+  --surface: #1d231f;
+  --surface-2: #191e1a;
+  --sunken: rgba(10, 12, 10, 0.86);
+  --scrim: rgba(6, 8, 6, 0.8);
+  --ink: #ecefe2;
+  --ink-muted: #9fa894;
+  --ink-dim: #6c7566;
+  --accent: #dce54d;
+  --accent-hi: #eef46a;
+  --accent-lo: #b9c22f;
+  --on-accent: #111512;
+  --line: #2f3a31;
+  --line-hi: #46543f;
+  --danger: #e5533d;
+  --warning: #f9c23c;
+  --ok: #8fd36a;
+  --info: #63c6e8;
+  --rare: #eef46a;
+  --plate: #e2cfa4;
+  --plate-deep: #cdb27d;
+  --plate-ink: #2a1a0e;
+  --screen-backdrop:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.015) 0 2px, transparent 2px 4px),
+    radial-gradient(ellipse at 20% 0%, #1d2a1c 0%, #111512 60%);
+  color-scheme: dark;
+}
+
+
 *,
 *::before,
 *::after {
@@ -14,11 +45,9 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: $background;
-  color: $text;
-  font-family: $font-text;
-  font-weight: 500;
-  font-size: 17px;
+  background: $bg;
+  color: $ink;
+  @include body(16px);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -38,16 +67,16 @@ input {
 }
 
 a {
-  color: $yellow;
+  color: $accent;
 }
 
 ::selection {
-  background: $yellow;
-  color: $background;
+  background: $accent;
+  color: $bg;
 }
 
 :focus-visible {
-  outline: 2px solid $yellow;
+  outline: 2px solid $accent;
   outline-offset: 3px;
 }
 
@@ -82,16 +111,16 @@ a {
 ::-webkit-scrollbar-thumb {
   min-height: 36px;
   border: 2px solid transparent;
-  background: $line-strong padding-box;
-  box-shadow: inset 0 0 0 1px rgba(220, 229, 77, 0.12);
+  background: $line-hi padding-box;
+  box-shadow: inset 0 0 0 1px tint($accent, 0.12);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: $yellow-deep;
+  background-color: $accent-lo;
 }
 
 ::-webkit-scrollbar-thumb:active {
-  background-color: $yellow;
+  background-color: $accent;
 }
 
 ::-webkit-scrollbar-corner,
@@ -103,7 +132,7 @@ a {
 @supports not selector(::-webkit-scrollbar) {
   * {
     scrollbar-width: thin;
-    scrollbar-color: $line-strong rgba(10, 12, 10, 0.55);
+    scrollbar-color: $line-hi tint($bg-deep, 0.55);
   }
 }
 
@@ -135,7 +164,7 @@ html[data-transition='forward']::view-transition-old(root) {
 
 html[data-transition='forward']::view-transition-new(root) {
   animation-name: screen-enter-right;
-  box-shadow: -32px 0 64px rgba(0, 0, 0, 0.6), -2px 0 0 $yellow;
+  box-shadow: -32px 0 64px rgba(0, 0, 0, 0.6), -2px 0 0 $accent;
 }
 
 html[data-transition='back']::view-transition-old(root) {
@@ -144,7 +173,7 @@ html[data-transition='back']::view-transition-old(root) {
 
 html[data-transition='back']::view-transition-new(root) {
   animation-name: screen-enter-left;
-  box-shadow: 32px 0 64px rgba(0, 0, 0, 0.6), 2px 0 0 $yellow;
+  box-shadow: 32px 0 64px rgba(0, 0, 0, 0.6), 2px 0 0 $accent;
 }
 
 html[data-transition='rise']::view-transition-old(root) {
@@ -155,7 +184,7 @@ html[data-transition='rise']::view-transition-new(root) {
   animation-name: screen-rise;
   animation-duration: 620ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 -32px 64px rgba(0, 0, 0, 0.6), 0 -2px 0 $yellow;
+  box-shadow: 0 -32px 64px rgba(0, 0, 0, 0.6), 0 -2px 0 $accent;
 }
 
 html[data-transition='dive']::view-transition-old(root) {

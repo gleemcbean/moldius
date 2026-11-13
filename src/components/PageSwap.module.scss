@@ -1,37 +1,29 @@
+@use '../styles/tokens' as *;
+
 .page {
   min-width: 0;
 }
 
 .next,
 .previous {
-  animation: page-in 340ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: page-in 380ms $ease backwards;
+
+  @include no-motion {
+    animation: none;
+  }
 }
 
 .next {
-  --page-from: 36px;
+  --page-from: 28px;
 }
 
 .previous {
-  --page-from: -36px;
+  --page-from: -28px;
 }
 
 @keyframes page-in {
   from {
     opacity: 0;
     transform: translateX(var(--page-from));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .next,
-  .previous {
-    animation: none;
-  }
-}
-
-:global(html[data-reduce-motion]) {
-  .next,
-  .previous {
-    animation: none;
   }
 }

@@ -4,27 +4,27 @@
 .account {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .tabs {
   position: sticky;
   top: -10px;
   z-index: 3;
-  padding: 6px 0 4px;
-  background: $background-raised;
+  padding: 8px 0 8px;
+  background: $surface-2;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .textField {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .textLabel {
@@ -33,57 +33,52 @@
 
 .input {
   height: 46px;
-  padding: 0 14px;
-  border: 2px solid $line-strong;
-  background: rgba(10, 12, 10, 0.86);
-  font-family: $font-text;
-  font-size: 18px;
-  color: $text;
-  outline: none;
-
-  &:focus {
-    border-color: $yellow;
-  }
+  padding: 0 16px;
+  @include field;
+  @include body(18px);
 }
 
 .inputInvalid {
   border-color: $danger;
+  box-shadow: 0 0 0 3px tint($danger, 0.18);
 }
 
 .hint,
 .note {
   margin: 0;
-  font-family: $font-text;
-  font-size: 15px;
-  line-height: 1.5;
-  color: $text-muted;
+  @include body(15px);
+  color: $ink-muted;
 }
 
 .notice {
   margin: 0;
-  padding: 12px 14px;
-  background: rgba(220, 229, 77, 0.1);
-  box-shadow: inset 3px 0 0 $yellow;
-  font-size: 17px;
+  padding: 12px 16px;
+  @include notice($accent);
+  @include body(17px);
 }
 
 .success {
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  @include notice($ok);
+  @include body(16px);
+  color: $ink;
+}
+
+.error {
   margin: 0;
-  margin-bottom: 10px;
-  padding: 10px 14px;
-  background: rgba(143, 211, 106, 0.12);
-  box-shadow: inset 3px 0 0 $ok;
-  font-size: 16px;
-  color: $text;
+  padding: 12px 16px;
+  @include notice($danger);
+  @include body(16px);
+  color: $ink;
 }
 
 .mailSent {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 14px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
   padding: 16px;
-  background: rgba(143, 211, 106, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(143, 211, 106, 0.35);
+  @include notice($ok);
 
   svg {
     width: 26px;
@@ -93,9 +88,9 @@
 }
 
 .mailTitle {
-  margin: 0 0 6px;
-  @include title(22px);
-  color: $text;
+  margin: 0 0 8px;
+  @include heading(22px);
+  color: $ink;
 }
 
 .link {
@@ -103,15 +98,9 @@
   padding: 4px 8px;
   border: 0;
   background: transparent;
-  font-family: $font-text;
-  font-size: 15px;
-  color: $yellow;
-  text-decoration: underline;
   cursor: pointer;
-
-  &:hover {
-    color: $yellow-bright;
-  }
+  @include body(15px);
+  @include link;
 }
 
 .discordButton {
@@ -122,11 +111,15 @@
   width: 100%;
   height: 52px;
   border: 0;
+  border-radius: $radius;
   background: #5865f2;
   color: #ffffff;
   cursor: pointer;
-  @include title(20px);
-  transition: background $transition-fast;
+  @include ui(19px);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+  transition:
+    background-color $fast $ease,
+    transform $fast $ease;
 
   svg {
     width: 24px;
@@ -136,35 +129,51 @@
   &:hover {
     background: #4752c4;
   }
+
+  &:active {
+    transform: translateY(1px);
+  }
 }
 
 .separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin: 4px 0 -2px;
-  text-align: center;
   @include label;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: $line-hi;
+  }
 }
 
 .discordLinked {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: $radius;
   background: rgba(88, 101, 242, 0.12);
   box-shadow: inset 0 0 0 1px rgba(88, 101, 242, 0.45);
 
   strong {
     display: block;
-    @include title(20px);
     margin-bottom: 4px;
+    @include heading(18px);
+    color: $ink;
   }
 }
 
 .discordAvatar {
-  width: 44px;
-  height: 44px;
   display: grid;
   place-items: center;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: #5865f2;
   color: #ffffff;
@@ -176,65 +185,59 @@
   }
 }
 
-.error {
-  margin: 0;
-  padding: 10px 14px;
-  background: rgba(229, 83, 61, 0.14);
-  box-shadow: inset 3px 0 0 $danger;
-  font-size: 16px;
-  color: $text;
-}
-
 .empty {
   margin: 8px 0;
-  padding: 26px 18px;
-  border: 2px dashed $line;
+  padding: 24px 16px;
+  border: 1px dashed $line-hi;
+  border-radius: $radius;
+  @include body(16px);
+  color: $ink-muted;
   text-align: center;
-  color: $text-muted;
 }
 
 .row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
 }
 
 .section {
   margin: 0;
-  @include title(22px);
-  color: $yellow;
+  @include heading(23px);
+  color: $accent;
 }
 
 .security {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 32px;
 }
 
 .summary {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-bottom: 14px;
-  border-bottom: 2px solid $line;
+  gap: 16px;
+  padding-bottom: 16px;
+  @include rule;
 }
 
 .identity {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 
 .hat {
   display: block;
-  width: 56px;
+  width: 60px;
 }
 
 .displayName {
   display: block;
-  @include title(30px);
-  color: $text;
+  @include heading(32px);
+  color: $ink;
 }
 
 .username {
@@ -246,64 +249,66 @@
 .stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
   margin: 0;
 
   div {
-    padding: 10px 12px;
-    background: $background-panel;
-    box-shadow: inset 0 0 0 1px $line;
+    padding: 12px 12px;
+    @include well;
   }
 
   dt {
     @include label;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   dd {
-    margin: 6px 0 0;
+    margin: 8px 0 0;
     @include figures(28px);
-    color: $yellow;
+    color: $accent;
   }
 }
 
 .historyWrap {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   overflow-x: auto;
 }
 
 .history {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 16px;
+  border-collapse: separate;
+  border-spacing: 0;
+  @include body(16px);
 
   th {
-    padding: 8px 10px;
-    border-bottom: 2px solid $line-strong;
+    padding: 8px 12px;
+    border-bottom: 1px solid $line-hi;
+    @include label;
     text-align: left;
     white-space: nowrap;
-    @include label;
   }
 
   td {
-    padding: 9px 10px;
+    padding: 8px 12px;
     border-bottom: 1px solid $line;
     white-space: nowrap;
+    transition: background-color $fast $ease;
   }
 
-  tbody tr:hover {
-    background: rgba(220, 229, 77, 0.05);
+  tbody tr:hover td {
+    background: tint($accent, 0.06);
   }
 }
 
 .won td {
-  background: rgba(220, 229, 77, 0.07);
+  background: tint($accent, 0.08);
 }
 
 .number {
-  @include numeric;
+  @include figures(16px);
+  font-weight: 700;
   text-align: right;
 }
 
@@ -321,31 +326,36 @@
 .rank svg {
   width: 15px;
   height: 15px;
-  color: $yellow;
+  color: $accent;
 }
 
 .dot {
   width: 10px;
   height: 10px;
-  box-shadow: 0 0 0 1px rgba(10, 12, 10, 0.9);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
 }
 
-.swatches {
+.swatches,
+.patterns {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   padding: 4px 2px;
 }
 
 .swatch {
   position: relative;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  border: 2px solid rgba(10, 12, 10, 0.9);
-  box-shadow: 0 0 0 1px $line-strong;
+  border: 2px solid rgba(0, 0, 0, 0.6);
+  border-radius: $radius-s;
+  box-shadow: 0 0 0 1px $line-hi;
   cursor: pointer;
-  transition: transform $transition-fast;
+  transition:
+    transform $fast $spring,
+    box-shadow $fast $ease;
 
   &::after {
     content: '';
@@ -354,52 +364,45 @@
     left: 6px;
     width: 6px;
     height: 6px;
+    border-radius: 50%;
     background: rgba(255, 248, 230, 0.85);
-    box-shadow: 9px 7px 0 -1px rgba(255, 248, 230, 0.85);
+    box-shadow: 10px 7px 0 -1px rgba(255, 248, 230, 0.85);
   }
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 0 1px $yellow;
+    box-shadow: 0 0 0 1px $accent;
   }
-}
-
-.patterns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 4px 2px;
 }
 
 .patternChoice {
-  width: 52px;
+  width: 54px;
   padding: 4px;
   border: 0;
-  background: rgba(10, 12, 10, 0.6);
-  box-shadow: 0 0 0 1px $line-strong;
+  border-radius: $radius-s;
+  background: $sunken;
+  box-shadow: 0 0 0 1px $line-hi;
   cursor: pointer;
-  transition: transform $transition-fast;
+  transition:
+    transform $fast $spring,
+    box-shadow $fast $ease;
 
-  &:hover {
+  &:hover:not(:disabled) {
     transform: translateY(-2px);
+    box-shadow: 0 0 0 1px $accent;
   }
 }
 
 .taglineChoice {
   min-height: 36px;
   padding: 4px 12px;
-  border: 0;
-  background: rgba(10, 12, 10, 0.6);
-  box-shadow: 0 0 0 1px $line-strong;
+  @include chip;
+  font-size: 16px;
+  color: $ink;
   cursor: pointer;
-  font-family: $font-text;
-  font-size: 15px;
-  font-weight: 700;
-  color: $text;
-  transition: transform $transition-fast;
 
   &:hover:not(:disabled) {
-    transform: translateY(-2px);
+    border-color: $accent;
   }
 
   &:disabled {
@@ -409,40 +412,30 @@
 
 .taglineNone {
   font-style: italic;
-  color: $text-muted;
+  color: $ink-muted;
 }
 
 .lanternChoice {
   display: grid;
   place-items: center;
-  height: 44px;
+  height: 46px;
 
   svg {
     width: 26px;
     height: 26px;
-    filter: drop-shadow(0 0 3px currentColor);
+    filter: drop-shadow(0 0 4px currentColor);
   }
 }
 
 .swatchActive {
-  box-shadow:
-    0 0 0 2px $yellow,
-    0 0 0 4px rgba(10, 12, 10, 0.9);
   transform: translateY(-2px);
+  box-shadow:
+    0 0 0 2px $accent,
+    0 0 14px tint($accent, 0.45);
 }
 
-@media (max-width: 640px) {
-  .stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .identity {
-    grid-template-columns: auto 1fr;
-  }
-
-  .rewards ul {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.taglineChoice.swatchActive {
+  @include chip-on;
 }
 
 .locked {
@@ -454,44 +447,40 @@
 .rewards {
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  padding-top: 6px;
+  gap: 32px;
+  padding-top: 8px;
 
   h3 {
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
 
   ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 12px;
     margin: 0;
     padding: 0;
     list-style: none;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: 14px;
   }
 
   li {
     display: grid;
     grid-template-columns: 64px minmax(0, 1fr);
     align-items: center;
-    gap: 18px;
-    min-height: 112px;
-    padding: 16px 20px;
-    background: $background-panel;
+    gap: 16px;
+    min-height: 108px;
+    padding: 16px 24px;
+    @include row;
   }
 }
 
-.rewardOn {
-  box-shadow: inset 0 0 0 2px $yellow;
+.rewards li.rewardOn {
+  @include selected;
 }
 
-.rewardOff {
-  box-shadow: inset 0 0 0 2px $line;
-
-  .rewardPreview {
-    opacity: 0.45;
-    filter: grayscale(0.7);
-  }
+.rewardOff .rewardPreview {
+  opacity: 0.45;
+  filter: grayscale(0.7);
 }
 
 .rewardPreview {
@@ -503,7 +492,7 @@
   display: block;
   width: 32px;
   height: 32px;
-  filter: drop-shadow(0 0 4px currentColor);
+  filter: drop-shadow(0 0 5px currentColor);
 }
 
 .rewardBody {
@@ -511,15 +500,12 @@
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  font-family: $font-book;
-  font-size: 16px;
-  line-height: 1.3;
-  color: $text-muted;
+  @include body(15px);
+  color: $ink-muted;
 
   strong {
-    font-family: $font-text;
-    font-size: 19px;
-    color: $text;
+    @include heading(18px);
+    color: $ink;
   }
 }
 
@@ -531,10 +517,24 @@
 }
 
 .rewardCount {
-  @include numeric;
-  font-size: 15px;
-  color: $yellow;
+  @include figures(15px);
+  font-weight: 700;
+  color: $accent;
   white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .identity {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .rewards ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @include enter-keyframes;

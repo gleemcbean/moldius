@@ -58,7 +58,7 @@ import {
 	HAZE_NEAR,
 	STAIR_PRELOAD_RANGE,
 } from "../../../config/feel";
-import { QUALITY_PRESETS } from "../../../config/graphics";
+import { renderPixelRatio } from "../../../config/graphics";
 import { currentMessages } from "../../../i18n";
 import { romanNumeral } from "../../../utils/format";
 import { releaseKeyboardLock } from "../../../utils/fullscreen";
@@ -453,10 +453,11 @@ export class GameSession {
 			return;
 		}
 		const settings = settingsStore.get();
-		const preset = QUALITY_PRESETS[settings.quality];
 		const width = this.container.clientWidth || window.innerWidth;
 		const height = this.container.clientHeight || window.innerHeight;
-		loaded.renderer.setPixelRatio(preset.pixelRatio * settings.renderScale);
+		loaded.renderer.setPixelRatio(
+			renderPixelRatio(settings.quality, settings.renderScale),
+		);
 		loaded.particles.setPixelRatio(loaded.renderer.getPixelRatio());
 		loaded.renderer.setSize(width, height, false);
 		loaded.renderer.domElement.style.width = "100%";
@@ -820,10 +821,10 @@ export class GameSession {
 		loaded.post.render(
 			{
 				dt,
-				strength: settings.ambiance,
+				effects: settings.postEffects,
 				tension: Math.max(spotted, wounded, this.gaze * 0.8, this.haze * 0.5),
 				animated: !settings.reduceMotion,
-				levels: settings.colorLevels,
+				colorLevels: settings.colorLevels,
 				desaturate: spotted,
 				nausea: this.nausea,
 			},
@@ -1237,7 +1238,7 @@ export class GameSession {
 		loaded.renderer.toneMappingExposure = settings.brightness;
 		if (
 			loaded.renderer.getPixelRatio() !==
-			QUALITY_PRESETS[settings.quality].pixelRatio * settings.renderScale
+			renderPixelRatio(settings.quality, settings.renderScale)
 		) {
 			this.resize();
 		}
@@ -2027,10 +2028,10 @@ export class GameSession {
 		loaded.post.render(
 			{
 				dt,
-				strength: settings.ambiance,
+				effects: settings.postEffects,
 				tension: 0,
 				animated: !settings.reduceMotion,
-				levels: settings.colorLevels,
+				colorLevels: settings.colorLevels,
 				desaturate: 0,
 			},
 			() => this.render(loaded),

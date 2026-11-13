@@ -4,8 +4,8 @@
   width: 100%;
   height: 100%;
   overflow: auto;
-  background: #0c110f;
-  color: $text;
+  background: $bg-deep;
+  color: $ink;
   user-select: text;
   scroll-behavior: smooth;
 }
@@ -13,7 +13,7 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse 65% 40% at 80% 5%, rgba(158, 180, 68, 0.1), transparent 75%);
+  background: radial-gradient(ellipse 65% 40% at 80% 5%, tint($accent, 0.1), transparent 75%);
 }
 .shell {
   position: relative;
@@ -25,17 +25,17 @@
   align-items: center;
   gap: 28px;
   min-height: 92px;
-  border-bottom: 1px solid #2f392d;
+  border-bottom: 1px solid $line;
 }
 .brand {
-  font: 800 28px/1 $font-title;
+  font: 800 28px/1 $font-figures;
   letter-spacing: 0.11em;
   text-decoration: none;
-  color: $text;
+  color: $ink;
   white-space: nowrap;
 }
 .brandMark {
-  color: $yellow;
+  color: $accent;
   font-size: 18px;
   vertical-align: top;
   padding-left: 7px;
@@ -47,18 +47,18 @@
 }
 .navLinks a,
 .language a {
-  font: 500 15px/1.5 $font-text;
+  font: 500 15px/1.5 $font-body;
   text-decoration: none;
   letter-spacing: 0.01em;
-  color: #a8b29f;
+  color: $ink-muted;
 }
 .navLinks a[aria-current='page'],
 .language a[aria-current='true'] {
-  color: $yellow;
+  color: $accent;
 }
 .navLinks a:hover,
 .language a:hover {
-  color: #fff;
+  color: $ink;
 }
 .language {
   display: flex;
@@ -66,46 +66,46 @@
   align-items: center;
 }
 .language span {
-  color: #46543f;
+  color: $line-hi;
 }
 .hero {
   padding: 104px 0 72px;
-  border-bottom: 1px solid #2f392d;
+  border-bottom: 1px solid $line;
 }
 .kicker {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: $yellow;
-  font: 700 15px $font-text;
+  color: $accent;
+  font: 700 15px $font-body;
   letter-spacing: 0.04em;
 }
 .dot {
   width: 7px;
   height: 7px;
   display: inline-block;
-  background: $yellow;
+  background: $accent;
   transform: rotate(45deg);
 }
 .edition {
-  color: #667461;
+  color: $ink-dim;
 }
 .hero h1 {
   max-width: 800px;
-  font: 400 clamp(48px, 7vw, 100px) / 1 $font-book-title;
+  font: 400 clamp(48px, 7vw, 100px) / 1 $font-heading;
   letter-spacing: 0.01em;
   margin: 27px 0 24px;
 }
 .lead {
   max-width: 690px;
-  font: 21px/1.6 $font-book;
-  color: #bac4b4;
+  font: 21px/1.6 $font-body;
+  color: $ink-muted;
   margin: 0;
 }
 .date {
-  font: 500 14px $font-text;
+  font: 500 14px $font-body;
   letter-spacing: 0.01em;
-  color: #8b9788;
+  color: $ink-muted;
   margin: 34px 0 0;
 }
 .content {
@@ -123,38 +123,38 @@
   gap: 18px;
 }
 .tocHeading {
-  font: 700 15px $font-text;
+  font: 700 15px $font-body;
   letter-spacing: 0.04em;
-  color: $yellow;
+  color: $accent;
   padding-bottom: 10px;
 }
 .toc a {
-  font: 500 15px/1.5 $font-text;
-  color: #8c9889;
+  font: 500 15px/1.5 $font-body;
+  color: $ink-muted;
   text-decoration: none;
   transition: color 0.15s;
 }
 .toc a:hover {
-  color: $yellow;
+  color: $accent;
 }
 .article {
   min-width: 0;
 }
 .section {
-  border-bottom: 1px solid #283329;
+  border-bottom: 1px solid $line;
   padding: 0 0 36px;
   margin: 0 0 40px;
   scroll-margin-top: 25px;
 }
 .section h2 {
-  font: 400 30px/1.2 $font-book-title;
-  color: #e5ebdc;
+  font: 400 30px/1.2 $font-heading;
+  color: $ink;
   letter-spacing: 0.025em;
   margin: 0 0 19px;
 }
 .section p {
-  font: 18px/1.75 $font-book;
-  color: #aebbac;
+  font: 18px/1.75 $font-body;
+  color: $ink-muted;
   margin: 0 0 15px;
   overflow-wrap: anywhere;
 }
@@ -166,19 +166,19 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 18px;
-  font: 700 15px $font-text;
+  font: 700 15px $font-body;
 }
 .bottomLinks a {
   text-decoration: none;
 }
 .footer {
   padding: 30px 0 45px;
-  border-top: 1px solid #2f392d;
+  border-top: 1px solid $line;
   display: flex;
   justify-content: space-between;
   gap: 15px;
-  color: #74816f;
-  font: 500 14px $font-text;
+  color: $ink-dim;
+  font: 500 14px $font-body;
   letter-spacing: 0.01em;
 }
 @media (max-width: 760px) {
@@ -218,6 +218,6 @@
     font-size: 24px;
   }
   .section p {
-    font-size: 17px;
+    font-size: 18px;
   }
 }

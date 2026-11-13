@@ -31,6 +31,26 @@ export type GraphicsQuality = "low" | "medium" | "high";
 
 export type ColorLevels = 185 | 127 | 104;
 
+export const POST_EFFECT_IDS = [
+	"curvature",
+	"aberration",
+	"bleed",
+	"vignette",
+	"grain",
+	"scanlines",
+	"dither",
+	"flicker",
+	"band",
+	"saturation",
+	"danger",
+] as const;
+
+export type PostEffectId = (typeof POST_EFFECT_IDS)[number];
+
+export type PostEffectLevels = Record<PostEffectId, number>;
+
+export type PostEffectPreset = "clear" | "balanced" | "vhs";
+
 export interface VolumeSettings {
 	master: number;
 	ambience: number;
@@ -56,7 +76,7 @@ export interface PlayerSettings {
 	shadows: boolean;
 	renderScale: number;
 	effects: boolean;
-	ambiance: number;
+	postEffects: PostEffectLevels;
 	colorLevels: ColorLevels;
 	fpsLimit: number;
 	headBob: boolean;

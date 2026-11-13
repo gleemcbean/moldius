@@ -13,7 +13,10 @@ export interface DynamicLight {
 	flicker: number;
 	level?: Level;
 	spansFloors?: boolean;
+	openGallery?: boolean;
 }
+
+type FloorView = "seen" | "through" | "hidden";
 
 interface Slot {
 	light: THREE.PointLight;
@@ -32,6 +35,8 @@ const KIND_FLICKER: Record<LightSource["kind"], number> = {
 
 const INTENSITY_SCALE = 4.2;
 const SPANNING_LIGHT_REACH = 5;
+const THROUGH_FLOOR_HEIGHT = 3.2;
+const THROUGH_FLOOR_PENALTY = 0.25;
 
 export class LightPool {
 	private readonly slots: Slot[] = [];
@@ -50,6 +55,9 @@ export class LightPool {
 			rooms
 				.filter((room) => room.type === "stairwell" || room.mezzanine)
 				.map((room) => room.id),
+		);
+		const galleries = new Set(
+			rooms.filter((room) => room.mezzanine).map((room) => room.id),
 		);
 		for (let index = 0; index < size; index += 1) {
 			const light = new THREE.PointLight(0xffffff, 0, 6, 2);
@@ -71,6 +79,7 @@ export class LightPool {
 			flicker: KIND_FLICKER[source.kind],
 			level: source.level,
 			spansFloors: spanning.has(source.roomId),
+			openGallery: galleries.has(source.roomId),
 		}));
 	}
 
@@ -117,29 +126,34 @@ export class LightPool {
 		}
 	}
 
-	private onOtherFloor(light: DynamicLight, camera: THREE.Vector3): boolean {
+	private floorView(light: DynamicLight, camera: THREE.Vector3): FloorView {
 		const { lowest, highest } = floorsSeenFromEye(
 			camera.y,
 			EYE_HEIGHT_STANDING,
 		);
 		const level = light.level ?? levelForHeight(light.position.y - 1);
 		if (level >= lowest && level <= highest) {
-			return false;
+			return "seen";
 		}
-		return (
-			!light.spansFloors ||
-			Math.hypot(light.position.x - camera.x, light.position.z - camera.z) >
+		return light.spansFloors &&
+			Math.hypot(light.position.x - camera.x, light.position.z - camera.z) <=
 				light.radius + SPANNING_LIGHT_REACH
-		);
+			? "through"
+			: "hidden";
 	}
 
 	private score(light: DynamicLight, camera: THREE.Vector3): number {
-		if (this.onOtherFloor(light, camera)) {
+		const view = this.floorView(light, camera);
+		if (view === "hidden") {
 			return 0;
 		}
 		const distance = this.scratch.copy(light.position).distanceTo(camera);
 		const verticalPenalty =
-			Math.abs(light.position.y - camera.y) > 3.2 ? 0.25 : 1;
+			view === "through" &&
+			!light.openGallery &&
+			Math.abs(light.position.y - camera.y) > THROUGH_FLOOR_HEIGHT
+				? THROUGH_FLOOR_PENALTY
+				: 1;
 		if (distance > light.radius + 22) {
 			return 0;
 		}

@@ -6,8 +6,8 @@
   z-index: 50;
   display: grid;
   place-items: center;
-  padding: 24px;
-  background: rgba(6, 8, 6, 0.78);
+  padding: $space-5;
+  background: $scrim;
   backdrop-filter: blur(2px);
   animation: modal-backdrop-in 220ms ease-out backwards;
 }
@@ -17,12 +17,58 @@
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
-  background: $background-raised;
+  background: $surface-2;
   box-shadow:
-    0 0 0 2px $yellow,
-    0 0 0 6px $background,
+    0 0 0 $border $accent,
+    0 0 0 6px $bg,
     0 24px 80px rgba(0, 0, 0, 0.6);
   animation: modal-in 360ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.wide {
+  width: min(1040px, 100%);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+  min-height: 72px;
+  padding: $space-4 $space-5;
+  @include rule;
+
+  h2 {
+    margin: 0;
+    @include display(32px);
+    color: $accent;
+  }
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: $ink;
+  cursor: pointer;
+  transition: color $fast $ease;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    color: $accent;
+  }
+}
+
+.body {
+  overflow: auto;
+  padding: $space-4 $space-5 $space-5;
 }
 
 @keyframes modal-backdrop-in {
@@ -38,61 +84,11 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@include no-motion {
   .backdrop,
   .modal {
     animation: none;
   }
-}
-
-:global(html[data-reduce-motion]) {
-  .backdrop,
-  .modal {
-    animation: none;
-  }
-}
-
-.wide {
-  width: min(1040px, 100%);
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 22px;
-  border-bottom: 2px solid $line;
-
-  h2 {
-    margin: 0;
-    @include title(34px);
-    color: $yellow;
-  }
-}
-
-.close {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  background: transparent;
-  color: $text;
-  cursor: pointer;
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  &:hover {
-    color: $yellow;
-  }
-}
-
-.body {
-  overflow: auto;
-  padding: 10px 22px 22px;
 }
 
 @include enter-keyframes;

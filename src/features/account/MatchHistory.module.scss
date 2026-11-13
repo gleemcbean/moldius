@@ -10,51 +10,52 @@
 }
 
 .list td {
-  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .clickable {
   cursor: pointer;
 
   &:hover td {
-    background: rgba(220, 229, 77, 0.12);
+    background: tint($accent, 0.12);
   }
 }
 
 .openCell {
   width: 1%;
-  text-align: right;
 }
 
 .openButton {
   width: 30px;
   height: 30px;
   padding: 0;
-  border: 2px solid $line-strong;
-  background: $background;
+  border: 1px solid $line-hi;
+  border-radius: $radius-s;
+  background: $sunken;
   cursor: pointer;
-  font-family: $font-title;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-  color: $yellow;
+  @include figures(20px);
+  color: $accent;
+  transition:
+    border-color $fast $ease,
+    transform $fast $spring;
 
   &:hover {
-    border-color: $yellow;
+    border-color: $accent;
+    transform: translateX(2px);
   }
 }
 
 .noDetails {
   display: inline-block;
   width: 30px;
+  color: $ink-dim;
   text-align: center;
-  color: $text-dim;
 }
 
 .detail {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .toolbar {
@@ -65,9 +66,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px 18px;
-  border: 2px solid $line-strong;
-  background: rgba(10, 12, 10, 0.5);
+  padding: 16px 16px;
+  @include well;
 }
 
 .kicker {
@@ -79,9 +79,9 @@
 .titleWon {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
-  @include title(34px);
+  @include heading(34px);
 
   svg {
     width: 26px;
@@ -90,20 +90,20 @@
 }
 
 .titleWon {
-  color: $yellow;
+  color: $accent;
 }
 
 .facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 32px;
-  margin: 6px 0 0;
+  gap: 12px 32px;
+  margin: 8px 0 0;
 }
 
 .fact {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 
   dt {
     @include label;
@@ -118,97 +118,89 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
 
   h4 {
     margin: 0;
-    @include title(24px);
-    color: $yellow;
+    @include heading(24px);
+    color: $accent;
   }
 }
 
 .columns {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 18px 28px;
+  gap: 16px 32px;
 }
 
-.standings {
-  td {
-    padding-top: 6px;
-    padding-bottom: 6px;
-    vertical-align: middle;
-  }
+.standings td {
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .rankCell {
   width: 36px;
-  text-align: center;
-  @include numeric;
-  color: $yellow;
+  @include figures(17px);
+  color: $accent;
 }
 
 .who {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
 }
 
 .whoName {
   overflow: hidden;
-  font-weight: 700;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .hat {
-  flex-shrink: 0;
   width: 34px;
   height: 24px;
 }
 
 .score {
   font-size: 18px;
-  font-weight: 700;
 }
 
 .teamRow td {
-  border-top: 2px solid $line-strong;
-  font-weight: 700;
-  @include title(21px);
+  border-top: 1px solid $line-hi;
+  @include heading(21px);
 }
 
 .crown {
   width: 15px;
   height: 15px;
-  color: $yellow;
+  color: $accent;
 }
 
 .member td:nth-child(2) {
-  padding-left: 30px;
+  padding-left: 32px;
 }
 
 .self td {
-  background: rgba(99, 198, 232, 0.08);
+  background: tint($info, 0.1);
 }
 
 .self .whoName,
 .awards .self .awardName {
-  color: $yellow;
+  color: $accent;
 }
 
 .numbers {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
-  padding-left: 20px;
-  font-size: 16px;
+  padding-left: 24px;
+  @include body(16px);
 
   li::marker {
-    color: $yellow;
+    color: $accent;
   }
 }
 
@@ -225,32 +217,32 @@
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: 2px 8px;
-    padding: 8px 10px;
-    background: rgba(10, 12, 10, 0.5);
-    box-shadow: 0 0 0 1px $line;
+    padding: 8px 12px;
+    @include row;
   }
 
   strong {
     grid-column: 1 / -1;
-    color: $text;
+    @include heading(16px);
+    color: $ink;
   }
 
   em {
     grid-column: 1 / -1;
-    font-size: 14px;
-    color: $text-muted;
+    @include body(14px);
+    font-style: normal;
+    color: $ink-muted;
   }
 }
 
 .awardName {
   overflow: hidden;
-  font-weight: 700;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .rules {
   margin: 0;
-  font-size: 16px;
-  color: $text-muted;
+  @include body(16px);
+  color: $ink-muted;
 }

@@ -5,17 +5,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: $space-2;
   border: 0;
-  border-radius: $radius;
+  border-radius: 0;
   cursor: pointer;
-  font-family: $font-text;
-  font-weight: 800;
-  letter-spacing: 0.01em;
+  font-family: $font-ui;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   transition:
-    background $transition-fast,
-    color $transition-fast,
-    transform $transition-fast;
+    background-color $fast $ease,
+    color $fast $ease,
+    box-shadow $fast $ease,
+    transform $fast $ease;
 
   &:active:not(:disabled) {
     transform: translateY(1px);
@@ -28,56 +30,56 @@
 }
 
 .primary {
-  background: $yellow;
-  color: $background;
-  box-shadow: inset 0 -3px 0 $yellow-deep;
+  background: $accent;
+  color: $on-accent;
+  box-shadow: inset 0 -3px 0 $accent-lo;
 
   &:hover:not(:disabled) {
-    background: $yellow-bright;
+    background: $accent-hi;
   }
 }
 
 .secondary {
   background: transparent;
-  color: $yellow;
-  box-shadow: inset 0 0 0 2px $yellow;
+  color: $accent;
+  box-shadow: inset 0 0 0 $border $accent;
 
   &:hover:not(:disabled) {
-    background: rgba(220, 229, 77, 0.12);
+    background: tint($accent, 0.12);
   }
 }
 
 .ghost {
   background: transparent;
-  color: $text;
+  color: $ink;
 
   &:hover:not(:disabled) {
-    color: $yellow;
+    color: $accent;
   }
 }
 
 .danger {
   background: $danger;
-  color: $background;
+  color: $bg;
   box-shadow: inset 0 -3px 0 #a8361f;
 }
 
 .small {
-  min-height: 34px;
-  padding: 0 14px;
+  min-height: 32px;
+  padding: 0 $space-3;
   font-size: 16px;
 }
 
 .medium {
-  min-height: 46px;
-  padding: 0 22px;
-  font-size: 20px;
+  min-height: 44px;
+  padding: 0 $space-5;
+  font-size: 18px;
 }
 
 .large {
-  min-height: 60px;
-  padding: 0 30px;
-  font-size: 26px;
+  min-height: 56px;
+  padding: 0 $space-6;
+  font-size: 24px;
 }
 
 .wide {
@@ -86,8 +88,8 @@
 
 .icon {
   display: inline-flex;
-  width: 1.1em;
-  height: 1.1em;
+  width: 0.9em;
+  height: 0.9em;
 
   svg {
     width: 100%;
@@ -96,5 +98,6 @@
 }
 
 .label {
+  padding-top: 1px;
   white-space: nowrap;
 }
