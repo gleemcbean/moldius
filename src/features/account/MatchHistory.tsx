@@ -161,7 +161,6 @@ export function HistoryPanel() {
 					))}
 				</tbody>
 			</table>
-			<p className={styles.note}>{labels.limit(MATCH_HISTORY_LIMIT)}</p>
 		</div>
 	);
 }

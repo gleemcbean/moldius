@@ -140,6 +140,8 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 	const pendingInvites = new Map();
 	let child = null;
 	let restarts = 0;
+	let presenceChild = null;
+	let presenceRestarts = 0;
 	let stopping = false;
 	let lastPresence = null;
 	let accessToken = null;
@@ -178,6 +180,12 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 	function send(message) {
 		if (child?.stdin.writable) {
 			child.stdin.write(`${JSON.stringify(message)}\n`);
+		}
+	}
+
+	function sendPresence(message) {
+		if (presenceChild?.stdin.writable) {
+			presenceChild.stdin.write(`${JSON.stringify(message)}\n`);
 		}
 	}
 
@@ -300,12 +308,44 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 		});
 		send({
 			type: "init",
+			role: "social",
 			applicationId,
-			launchCommand: launchCommand(),
 			refreshToken: readToken(),
 		});
+	}
+
+	function spawnPresence(executable) {
+		presenceChild = spawn(executable, [], {
+			cwd: path.dirname(executable),
+			windowsHide: true,
+			stdio: ["pipe", "pipe", "ignore"],
+		});
+		readline
+			.createInterface({ input: presenceChild.stdout })
+			.on("line", (line) => {
+				try {
+					const message = JSON.parse(line);
+					if (message?.type === "join" || message?.type === "log") {
+						onMessage(message);
+					}
+				} catch {}
+			});
+		presenceChild.on("error", () => {});
+		presenceChild.on("exit", () => {
+			presenceChild = null;
+			if (!stopping && presenceRestarts < MAX_RESTARTS) {
+				presenceRestarts += 1;
+				setTimeout(() => spawnPresence(executable), 2000 * presenceRestarts);
+			}
+		});
+		sendPresence({
+			type: "init",
+			role: "presence",
+			applicationId,
+			launchCommand: launchCommand(),
+		});
 		if (lastPresence) {
-			send({ type: "presence", activity: lastPresence });
+			sendPresence({ type: "presence", activity: lastPresence });
 		}
 	}
 
@@ -443,7 +483,7 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 	ipcMain.on("moldius:discord-presence", (event, activity) => {
 		if (fromGame(event)) {
 			lastPresence = cleanActivity(activity);
-			send({ type: "presence", activity: lastPresence });
+			sendPresence({ type: "presence", activity: lastPresence });
 		}
 	});
 	ipcMain.handle("moldius:discord-invite", (event, userId, message) => {
@@ -469,12 +509,15 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 			}
 			state.available = true;
 			state.status = "connecting";
+			spawnPresence(executable);
 			spawnBridge(executable);
 		},
 		stop() {
 			stopping = true;
-			child?.stdin.end();
-			child?.kill();
+			for (const process of [child, presenceChild]) {
+				process?.stdin.end();
+				process?.kill();
+			}
 		},
 	};
 }

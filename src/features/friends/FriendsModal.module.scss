@@ -56,33 +56,6 @@
   user-select: all;
 }
 
-.offline {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 8px 10px;
-  border: 2px solid $line;
-  cursor: pointer;
-
-  input {
-    margin-top: 3px;
-    accent-color: $yellow;
-  }
-
-  strong {
-    display: block;
-    font-weight: 600;
-    color: $text;
-  }
-
-  small {
-    display: block;
-    font-size: 13px;
-    line-height: 1.2;
-    color: $text-muted;
-  }
-}
-
 .add {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -164,6 +137,21 @@
 .online i,
 i.online {
   background: $ok;
+}
+
+.dnd i,
+i.dnd {
+  background: $danger;
+}
+
+.idle i,
+i.idle {
+  background: $warning;
+}
+
+.offline i,
+i.offline {
+  background: $text-dim;
 }
 
 i.lobby {

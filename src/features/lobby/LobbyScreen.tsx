@@ -15,13 +15,14 @@ import {
 	initVoiceController,
 	leaveVoice,
 } from "../voice/voiceController";
-import { Countdown } from "./Countdown";
+import { InvitePanel } from "./InvitePanel";
 import { LobbyHeader } from "./LobbyHeader";
 import styles from "./LobbyScreen.module.scss";
 import { leaveLobby, setReady, startMatch } from "./lobbyClient";
 import { lobbyStore } from "./lobbyStore";
 import { MicPanel } from "./MicPanel";
 import { PlayerSlots } from "./PlayerSlots";
+import { ReadyStatus } from "./ReadyStatus";
 import { RulesModal, RulesSummary } from "./RulesPanel";
 import { TermsNotice } from "./TermsNotice";
 
@@ -66,6 +67,8 @@ export function LobbyScreen() {
 	const enoughPlayers = connected.length >= lobby.minPlayers;
 	const inMatch = lobby.phase === "loading" || lobby.phase === "playing";
 	const isPrivate = lobby.visibility === "private";
+	const friendsAvailable =
+		accountStatus !== "loading" && accountStatus !== "disabled";
 	const rulesEditable =
 		isHost && lobby.configEditable && lobby.phase === "waiting";
 	const quit = () => {
@@ -76,22 +79,64 @@ export function LobbyScreen() {
 	return (
 		<main className={styles.lobby}>
 			<SelectorGroup className={styles.layout}>
-				<LobbyHeader lobby={lobby} />
+				<LobbyHeader
+					lobby={lobby}
+					actions={
+						<>
+							<Button
+								variant="ghost"
+								icon={<Icon name="gear" />}
+								onClick={() => openOverlay("settings")}
+							>
+								{t.lobby.settings}
+							</Button>
+							{isPrivate ? (
+								<Button
+									variant="ghost"
+									icon={<Icon name="book" />}
+									onClick={() => openOverlay("bestiary")}
+								>
+									{t.bestiary.open}
+								</Button>
+							) : friendsAvailable ? (
+								<Button
+									variant="ghost"
+									icon={<Icon name="users" />}
+									onClick={() => openOverlay("friends")}
+								>
+									{t.friends.lobbyButton}
+								</Button>
+							) : null}
+						</>
+					}
+				/>
 				<div
 					className={[styles.columns, isPrivate ? "" : styles.single].join(" ")}
 				>
 					<section className={styles.main}>
+						<div className={styles.sectionHead}>
+							<h2 className={styles.cardTitle}>{t.lobby.playersTitle}</h2>
+							<span className={styles.playerCount}>
+								{t.lobby.playerCount(lobby.players.length, lobby.capacity)}
+							</span>
+						</div>
 						<PlayerSlots lobby={lobby} selfId={playerId} />
-						{isPrivate ? null : <MicPanel />}
+						<MicPanel />
 					</section>
 					{isPrivate ? (
 						<aside className={styles.side}>
+							{lobby.code ? (
+								<InvitePanel
+									lobby={lobby}
+									isHost={isHost}
+									friendsAvailable={friendsAvailable}
+								/>
+							) : null}
 							<RulesSummary
 								lobby={lobby}
 								editable={rulesEditable}
 								onOpen={() => setRulesOpen(true)}
 							/>
-							<MicPanel />
 						</aside>
 					) : null}
 				</div>
@@ -99,65 +144,34 @@ export function LobbyScreen() {
 					<Button variant="ghost" icon={<Icon name="door" />} onClick={quit}>
 						{t.lobby.leave}
 					</Button>
-					<Button
-						variant="ghost"
-						icon={<Icon name="gear" />}
-						onClick={() => openOverlay("settings")}
-					>
-						{t.lobby.settings}
-					</Button>
-					{isPrivate ? (
+					<ReadyStatus
+						lobby={lobby}
+						me={me}
+						isHost={isHost}
+						micReady={micReady}
+					/>
+					<div className={styles.footerActions}>
 						<Button
-							variant="ghost"
-							icon={<Icon name="book" />}
-							onClick={() => openOverlay("bestiary")}
+							variant={me?.ready ? "secondary" : "primary"}
+							size="large"
+							icon={me?.ready ? null : <Icon name="check" />}
+							disabled={!micReady || inMatch || !accepted}
+							title={micReady ? undefined : t.lobby.micRequiredTitle}
+							onClick={() => setReady(!me?.ready)}
 						>
-							{t.bestiary.open}
+							{me?.ready ? t.lobby.notReadyButton : t.lobby.readyButton}
 						</Button>
-					) : null}
-					{accountStatus === "loading" ||
-					accountStatus === "disabled" ? null : (
-						<Button
-							variant="ghost"
-							icon={<Icon name="users" />}
-							onClick={() => openOverlay("friends")}
-						>
-							{t.friends.lobbyButton}
-						</Button>
-					)}
-					<div className={styles.status}>
-						{!inMatch && !enoughPlayers ? (
-							<p className={styles.needPlayers}>
-								{t.lobby.needPlayers(lobby.minPlayers, connected.length)}
-							</p>
+						{isPrivate && isHost ? (
+							<Button
+								size="large"
+								icon={<Icon name="play" />}
+								disabled={!everyoneReady || !enoughPlayers || inMatch}
+								onClick={startMatch}
+							>
+								{t.lobby.start}
+							</Button>
 						) : null}
 					</div>
-					{lobby.phase === "countdown" && lobby.countdownEndsAt ? (
-						<Countdown endsAt={lobby.countdownEndsAt} />
-					) : null}
-					{inMatch ? (
-						<span className={styles.inMatch}>{t.lobby.inMatch}</span>
-					) : null}
-
-					<Button
-						variant={me?.ready ? "secondary" : "primary"}
-						size="large"
-						disabled={!micReady || inMatch || !accepted}
-						title={micReady ? undefined : t.lobby.micRequiredTitle}
-						onClick={() => setReady(!me?.ready)}
-					>
-						{me?.ready ? t.lobby.notReadyButton : t.lobby.readyButton}
-					</Button>
-					{isPrivate ? (
-						<Button
-							size="large"
-							icon={<Icon name="play" />}
-							disabled={!isHost || !everyoneReady || !enoughPlayers || inMatch}
-							onClick={startMatch}
-						>
-							{t.lobby.start}
-						</Button>
-					) : null}
 				</footer>
 			</SelectorGroup>
 			{isPrivate && rulesOpen ? (

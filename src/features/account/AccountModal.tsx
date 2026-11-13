@@ -33,6 +33,7 @@ import {
 import { type FormEvent, type InputHTMLAttributes, useState } from "react";
 import { showToast } from "../../app/appStore";
 import { Button } from "../../components/Button";
+import { Checkbox } from "../../components/Checkbox";
 import { Meter, Segmented } from "../../components/Controls";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
@@ -368,7 +369,6 @@ function GuestPanel() {
 					</button>
 				) : null}
 			</form>
-			<p className={styles.note}>{t.account.guestNote(MATCH_HISTORY_LIMIT)}</p>
 		</div>
 	);
 }
@@ -683,20 +683,14 @@ function PrivacySection({ account }: { account: AccountProfile }) {
 	return (
 		<div className={styles.form}>
 			<h3 className={styles.section}>{labels.privacyTitle}</h3>
-			<label className={styles.privacy}>
-				<input
-					type="checkbox"
-					checked={account.privateProfile}
-					disabled={busy}
-					onChange={(event) => void toggle(event.target.checked)}
-					data-selectable=""
-				/>
-				<Icon name="lock" className={styles.privacyIcon} />
-				<span>
-					<strong>{labels.privateProfile}</strong>
-					<small>{labels.privateProfileHint}</small>
-				</span>
-			</label>
+			<Checkbox
+				checked={account.privateProfile}
+				disabled={busy}
+				onChange={(value) => void toggle(value)}
+				icon={<Icon name="lock" />}
+				label={labels.privateProfile}
+				hint={labels.privateProfileHint}
+			/>
 			<ErrorLine error={error} />
 		</div>
 	);

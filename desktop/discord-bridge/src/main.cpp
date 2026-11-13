@@ -116,12 +116,14 @@ class Bridge {
 				init(message);
 			} else if (!applicationId) {
 				log("warning", "Ordre reçu avant init");
+			} else if (presenceOnly) {
+				if (type == "presence") {
+					presence(message.contains("activity") ? message["activity"] : json());
+				}
 			} else if (type == "authorize") {
 				authorize();
 			} else if (type == "logout") {
 				logout();
-			} else if (type == "presence") {
-				presence(message.contains("activity") ? message["activity"] : json());
 			} else if (type == "invite") {
 				invite(message);
 			}
@@ -149,6 +151,7 @@ class Bridge {
 	std::string refreshToken;
 	bool friendsDirty = false;
 	bool authorizing = false;
+	bool presenceOnly = false;
 	Clock::time_point lastFriends{};
 	std::optional<Clock::time_point> refreshAt;
 
@@ -172,6 +175,8 @@ class Bridge {
 			return;
 		}
 		applicationId = *id;
+		presenceOnly = message.contains("role") && message["role"].is_string() &&
+		               message["role"].get<std::string>() == "presence";
 		const char *verbose = std::getenv("MOLDIUS_DISCORD_VERBOSE");
 		client->AddLogCallback(
 		    [](std::string text, discordpp::LoggingSeverity severity) {
@@ -189,9 +194,12 @@ class Bridge {
 			                              message["launchCommand"].get<std::string>());
 		}
 
-		client->SetActivityJoinCallback([](std::string secret) {
-			emit({{"type", "join"}, {"secret", secret}});
-		});
+		if (presenceOnly) {
+			client->SetActivityJoinCallback([](std::string secret) {
+				emit({{"type", "join"}, {"secret", secret}});
+			});
+			return;
+		}
 		client->SetStatusChangedCallback([this](discordpp::Client::Status next,
 		                                        discordpp::Client::Error error,
 		                                        int32_t detail) {
@@ -384,7 +392,8 @@ class Bridge {
 		}
 		if (input.contains("startedAt") && input["startedAt"].is_number_unsigned()) {
 			discordpp::ActivityTimestamps timestamps;
-			timestamps.SetStart(input["startedAt"].get<uint64_t>());
+			const auto started = input["startedAt"].get<uint64_t>();
+			timestamps.SetStart(started > 100000000000ULL ? started / 1000 : started);
 			activity.SetTimestamps(timestamps);
 		}
 		if (const auto image = text(input, "largeImage")) {

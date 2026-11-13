@@ -7,6 +7,7 @@ import {
 import { type FormEvent, useEffect, useState } from "react";
 import { openOverlay, showToast } from "../../app/appStore";
 import { Button } from "../../components/Button";
+import { Checkbox } from "../../components/Checkbox";
 import { HatPreview } from "../../components/HatPreview";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
@@ -218,19 +219,13 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 						</span>
 						<Icon name="copy" />
 					</button>
-					<label className={styles.offline} title={t.friends.appearOfflineHint}>
-						<input
-							type="checkbox"
-							checked={overview?.appearOffline ?? false}
-							disabled={!overview}
-							onChange={(event) => setAppearOffline(event.target.checked)}
-							data-selectable=""
-						/>
-						<span>
-							<strong>{t.friends.appearOffline}</strong>
-							<small>{t.friends.appearOfflineHint}</small>
-						</span>
-					</label>
+					<Checkbox
+						checked={overview?.appearOffline ?? false}
+						disabled={!overview}
+						onChange={setAppearOffline}
+						label={t.friends.appearOffline}
+						hint={t.friends.appearOfflineHint}
+					/>
 				</div>
 
 				<DiscordPanel synced={knownOnDiscord.size} />

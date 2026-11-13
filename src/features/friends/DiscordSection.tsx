@@ -86,7 +86,7 @@ function DiscordFriend({
 				<span className={styles.name}>{friend.displayName}</span>
 				<span className={styles.detail}>
 					<i
-						className={friend.playing ? styles.lobby : styles.online}
+						className={friend.playing ? styles.lobby : styles[friend.status]}
 						aria-hidden="true"
 					/>
 					{friend.playing

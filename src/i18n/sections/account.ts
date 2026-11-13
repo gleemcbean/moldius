@@ -50,8 +50,6 @@ export const accountFr = {
 	resetSent: (email: string) =>
 		`Si un compte correspond à ${email}, un lien pour choisir un nouveau mot de passe vient d'être envoyé (valable 1 heure).`,
 	spamHint: "Pensez à regarder dans les courriers indésirables.",
-	guestNote: (limit: number) =>
-		`Un compte conserve votre pseudonyme, votre chapeau, votre langue, vos statistiques et l'historique de vos ${limit} dernières parties. Il reste facultatif pour jouer.`,
 	newPasswordTitle: "Nouveau mot de passe",
 	newPassword: "Nouveau mot de passe",
 	confirmNewPassword: "Confirmer le nouveau mot de passe",
@@ -110,8 +108,6 @@ export const accountFr = {
 			pushes: (value: string) => `${value} poussées`,
 			stakes: (value: string) => `${value} salles à enjeu tentées`,
 		},
-		limit: (limit: number) =>
-			`Seules les ${limit} dernières parties sont conservées.`,
 		dateTime: (date: Date) =>
 			new Intl.DateTimeFormat("fr-FR", DATE_TIME).format(date),
 	},
@@ -241,8 +237,6 @@ export const accountEn: typeof accountFr = {
 	resetSent: (email: string) =>
 		`If an account matches ${email}, a link to choose a new password has just been sent (valid for 1 hour).`,
 	spamHint: "Remember to check your spam folder.",
-	guestNote: (limit: number) =>
-		`An account keeps your name, your hat, your language, your statistics and the history of your last ${limit} games. Playing without one is fine.`,
 	newPasswordTitle: "New password",
 	newPassword: "New password",
 	confirmNewPassword: "Confirm new password",
@@ -307,7 +301,6 @@ export const accountEn: typeof accountFr = {
 					: (["th", "st", "nd", "rd"][rank % 10] ?? "th");
 			return `${rank}${suffix}`;
 		},
-		limit: (limit: number) => `Only the last ${limit} games are kept.`,
 		dateTime: (date: Date) =>
 			new Intl.DateTimeFormat("en-GB", DATE_TIME).format(date),
 	},

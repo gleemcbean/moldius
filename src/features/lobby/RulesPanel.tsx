@@ -60,24 +60,23 @@ export function RulesSummary({
 			label: labels.manor,
 			value: `${t.world.manorSizes[config.manorSize]}, ${labels.floorCount(config.floors)}`,
 		},
+		{
+			label: labels.walkies,
+			value: config.walkies ? t.common.yes : t.common.no,
+		},
 	];
 	return (
-		<section className={styles.rules}>
-			<h2 className={styles.rulesTitle}>{labels.title}</h2>
-			<div className={styles.rulesBody}>
-				<dl className={styles.rulesList}>
-					{rows.map((row) => (
-						<div key={row.label} className={styles.rulesRow}>
-							<dt>{row.label}</dt>
-							<dd>{row.value}</dd>
-						</div>
-					))}
-				</dl>
-				{config.walkies ? (
-					<p className={styles.rulesExtras}>{labels.walkies}</p>
-				) : null}
-			</div>
-			<Button variant="secondary" wide onClick={onOpen}>
+		<section className={[styles.card, styles.rules].join(" ")}>
+			<h2 className={styles.cardTitle}>{labels.title}</h2>
+			<dl className={styles.rulesList}>
+				{rows.map((row) => (
+					<div key={row.label} className={styles.rulesRow}>
+						<dt>{row.label}</dt>
+						<dd>{row.value}</dd>
+					</div>
+				))}
+			</dl>
+			<Button variant="secondary" size="small" wide onClick={onOpen}>
 				{editable ? labels.edit : labels.view}
 			</Button>
 		</section>

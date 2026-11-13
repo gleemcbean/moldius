@@ -27,6 +27,20 @@ export const lobbyFr = {
 	openToFriendsHint:
 		"Vos amis rejoignent sans code, depuis leur liste d'amis ou votre statut Discord.",
 	openToFriendsGuest: "Les amis de l'hôte peuvent rejoindre sans code.",
+	inviteTitle: "Inviter",
+	copyLink: "Copier le lien",
+	linkCopied: "Lien copié !",
+	playersTitle: "Joueurs",
+	readyCount: (ready: number, total: number) => `${ready}/${total} prêts`,
+	status: {
+		micFirst: "Branchez un micro opérationnel pour pouvoir vous déclarer prêt.",
+		yourTurn: "À vous : déclarez-vous prêt.",
+		waitingOthers: (ready: number, total: number) =>
+			`En attente des autres joueurs : ${ready}/${total} prêts.`,
+		hostStart: "Tout le monde est prêt : lancez la partie !",
+		guestStart: "Tout le monde est prêt : l'hôte va lancer la partie.",
+		publicStart: "Tout le monde est prêt : la partie va démarrer.",
+	},
 	publicNote: (minPlayers: number) =>
 		`Les joueurs sont répartis au hasard. La partie démarre quand tout le monde est prêt${minPlayers > 1 ? `, à partir de ${minPlayers} joueurs` : ""}.`,
 	you: "vous",
@@ -172,6 +186,20 @@ export const lobbyEn: typeof lobbyFr = {
 	openToFriendsHint:
 		"Your friends join without a code, from their friend list or your Discord status.",
 	openToFriendsGuest: "The host's friends can join without a code.",
+	inviteTitle: "Invite",
+	copyLink: "Copy link",
+	linkCopied: "Link copied!",
+	playersTitle: "Players",
+	readyCount: (ready: number, total: number) => `${ready}/${total} ready`,
+	status: {
+		micFirst: "Connect a working microphone to mark yourself ready.",
+		yourTurn: "Your turn: mark yourself ready.",
+		waitingOthers: (ready: number, total: number) =>
+			`Waiting for the other players: ${ready}/${total} ready.`,
+		hostStart: "Everyone is ready: start the match!",
+		guestStart: "Everyone is ready: the host will start the match.",
+		publicStart: "Everyone is ready: the match is about to begin.",
+	},
 	publicNote: (minPlayers: number) =>
 		`Players are matched at random. The game starts once everyone is ready${minPlayers > 1 ? `, with at least ${minPlayers} players` : ""}.`,
 	you: "you",

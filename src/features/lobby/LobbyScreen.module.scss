@@ -35,20 +35,17 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 20px;
+  gap: 12px 24px;
+}
+
+.heading {
+  min-width: 0;
 }
 
 .kicker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 12px;
   margin: 0 0 6px;
   @include label;
   color: $yellow;
-}
-
-.playerCount {
-  color: $text;
 }
 
 .title {
@@ -57,117 +54,112 @@
   line-height: 1.1;
 }
 
-.code {
-  display: grid;
-  grid-template-columns: auto auto;
-  grid-template-rows: auto auto;
+.publicNote {
+  margin: 6px 0 0;
+  max-width: 560px;
+  font-family: $font-book;
+  font-size: 17px;
+  color: $text-muted;
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 18px;
+  background: $background-panel;
+  box-shadow: inset 0 0 0 2px $line;
+}
+
+.cardTitle {
+  flex-shrink: 0;
+  margin: 0;
+  @include title(26px);
+  color: $yellow;
+}
+
+.sectionHead {
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.playerCount {
+  @include label;
+  color: $text;
+}
+
+.codeRow {
+  display: flex;
   align-items: center;
-  gap: 2px 14px;
-  padding: 10px 16px;
-  border: 2px solid $yellow;
-  background: rgba(220, 229, 77, 0.08);
-  cursor: pointer;
-  text-align: left;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 2px dashed rgba(220, 229, 77, 0.45);
+  background: rgba(220, 229, 77, 0.06);
+}
+
+.codeBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .codeLabel {
   @include label;
+  font-size: 13px;
 }
 
-.share {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  max-width: 340px;
-}
-
-.friendsToggle {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 8px 10px;
-  border: 2px solid $line;
-  background: rgba(10, 12, 10, 0.6);
-  cursor: pointer;
-
-  &:hover,
-  &:focus-within {
-    border-color: $line-strong;
-  }
-
-  input {
-    margin-top: 3px;
-    accent-color: $yellow;
-  }
-
-  strong {
-    display: block;
-    font-weight: 600;
-    color: $text;
-  }
-
-  small {
-    display: block;
-    font-size: 13px;
-    line-height: 1.25;
-    color: $text-muted;
-  }
+.codeValue {
+  font-family: $font-code;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: 0.22em;
+  color: $yellow;
+  user-select: all;
 }
 
 .friendsNote {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
   margin: 0;
-  font-size: 14px;
+  padding: 10px 12px;
+  border: 2px solid $line;
+  font-size: 15px;
   color: $text-muted;
 
   svg {
     flex: none;
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     color: $yellow;
   }
 }
 
-.codeValue {
-  grid-row: 2;
-  font-family: $font-code;
-  font-weight: 700;
-  font-size: 34px;
-  letter-spacing: 0.25em;
-  color: $yellow;
-}
-
-.codeIcon {
-  grid-row: 1 / span 2;
-  grid-column: 2;
-  width: 22px;
-  height: 22px;
-  color: $yellow;
-
-  svg {
-    width: 100%;
-    height: 100%;
-  }
-}
-
-.publicNote {
-  margin: 0;
-  max-width: 420px;
-  font-family: $font-book;
-  font-size: 17px;
-  color: $text-muted;
+.inviteFriends {
+  margin-top: -4px;
+  justify-content: flex-start;
+  padding-left: 4px;
 }
 
 .columns {
   flex: 0 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 350px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   grid-template-rows: minmax(0, 1fr);
-  gap: 18px;
+  gap: 20px;
 }
 
 .single {
@@ -467,30 +459,14 @@
 
 .rules {
   flex: 1 1 auto;
-  min-height: 150px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
-  background: $background-panel;
-  box-shadow: inset 0 0 0 2px $line;
-}
-
-.rulesTitle {
-  flex-shrink: 0;
-  margin: 0;
-  @include title(26px);
-  color: $yellow;
-}
-
-.rulesBody {
-  flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden auto;
 }
 
 .rulesList {
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 0;
+  overflow: hidden auto;
 }
 
 .rulesRow {
@@ -498,9 +474,13 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 3px 0;
+  padding: 4px 0;
   border-bottom: 1px solid $line;
   font-size: 16px;
+
+  &:last-child {
+    border-bottom: 0;
+  }
 
   dt {
     color: $text-muted;
@@ -511,12 +491,6 @@
     font-weight: 700;
     text-align: right;
   }
-}
-
-.rulesExtras {
-  margin: 6px 0 0;
-  @include label;
-  font-size: 12px;
 }
 
 .rulesNote {
@@ -615,29 +589,65 @@
 
 .footer {
   flex-shrink: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 2px solid $line;
+}
+
+.footerActions {
+  display: flex;
   gap: 12px;
-  flex-wrap: wrap;
 }
 
 .status {
-  flex: 1 1 180px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
   min-width: 0;
+  color: $text-muted;
+}
+
+.statusUrgent {
+  color: $yellow;
+}
+
+.statusText {
+  margin: 0;
+  font-family: $font-text;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.pips {
+  flex: none;
+  display: flex;
+  gap: 5px;
+}
+
+.pip {
+  width: 12px;
+  height: 12px;
+  box-shadow: inset 0 0 0 2px $line-strong;
+  transition:
+    background-color 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+.pipOn {
+  background: $ok;
+  box-shadow: 0 0 8px rgba(143, 211, 106, 0.55);
 }
 
 .countdown,
 .inMatch {
   @include title(26px);
   color: $yellow;
-}
-
-.needPlayers {
-  margin: 0;
-  @include label;
-  font-size: 13px;
-  text-align: right;
-  color: $text;
 }
 
 @media (max-height: 760px) {
@@ -655,10 +665,6 @@
     margin-bottom: 2px;
   }
 
-  .code {
-    padding: 6px 14px;
-  }
-
   .codeValue {
     font-size: 28px;
   }
@@ -671,6 +677,15 @@
   .main,
   .side {
     gap: 10px;
+  }
+
+  .card {
+    gap: 10px;
+    padding: 12px 16px 14px;
+  }
+
+  .footer {
+    padding-top: 12px;
   }
 
   .micHint {
@@ -695,6 +710,17 @@
 
   .rulesGroups {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1000px) {
+  .footer {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .footerActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 }
 
@@ -744,8 +770,8 @@
   @include enter(fade, 120ms);
 }
 
-.side {
-  @include enter(right, 240ms, 620ms);
+.side > * {
+  @include enter-stagger(right, 220ms, 90ms, 3);
 }
 
 .main > .micPanel {
