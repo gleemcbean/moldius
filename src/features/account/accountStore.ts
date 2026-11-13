@@ -284,7 +284,9 @@ export async function login(
 export async function register(
 	email: string,
 	password: string,
-): Promise<ApiResult<{ email: string; discord: string | null }>> {
+): Promise<
+	ApiResult<{ email: string; discord: string | null; discordFailed: boolean }>
+> {
 	const settings = settingsStore.get();
 	const bridge = await appDiscord();
 	let discordProof: string | undefined;
@@ -308,7 +310,11 @@ export async function register(
 	return result.ok
 		? {
 				ok: true,
-				value: { email: result.value.email, discord: result.value.discord },
+				value: {
+					email: result.value.email,
+					discord: result.value.discord,
+					discordFailed: bridge !== null && !result.value.discord,
+				},
 			}
 		: result;
 }
@@ -414,6 +420,11 @@ export async function startDiscord(mode: "login" | "link"): Promise<void> {
 	const outcome = DISCORD_OUTCOMES.find(
 		(candidate) => candidate === reply?.outcome,
 	);
+	if (!outcome && reply?.error === "server") {
+		openOverlay("account");
+		accountStore.set({ notice: { tone: "error", key: "appServerError" } });
+		return;
+	}
 	applyDiscordOutcome(
 		outcome ?? (reply?.error === "cancelled" ? "annule" : "erreur-discord"),
 	);

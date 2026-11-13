@@ -7,8 +7,6 @@ import { createAdminRouter } from "./accounts/adminRoutes.js";
 import { createAccountRouter } from "./accounts/routes.js";
 import type { ServerConfig } from "./config.js";
 import type { LobbyManager } from "./lobby/LobbyManager.js";
-import { sourceEntries } from "./source/sourceFiles.js";
-import { createZip } from "./source/zipArchive.js";
 
 const CONTENT_SECURITY_POLICY = [
 	"default-src 'self'",

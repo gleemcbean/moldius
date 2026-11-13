@@ -11,6 +11,7 @@ const INVITE_TIMEOUT_MS = 10_000;
 const AUTHORIZE_TIMEOUT_MS = 180_000;
 const ACCOUNT_TIMEOUT_MS = 15_000;
 const ACCOUNT_INTENTS = new Set(["login", "link", "proof"]);
+const LOG_LIMIT = 256 * 1024;
 const MAX_FRIENDS = 1000;
 const STATUSES = new Set([
 	"unavailable",
@@ -109,6 +110,25 @@ function cleanActivity(input) {
 
 function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 	const tokenFile = path.join(app.getPath("userData"), "discord-token.bin");
+	const logFile = path.join(app.getPath("userData"), "discord.log");
+	let logSize = 0;
+	try {
+		fs.writeFileSync(logFile, "");
+	} catch {}
+
+	function writeLog(level, text) {
+		const line = `${new Date().toISOString()} ${level} ${String(text).replace(/\s+/g, " ").slice(0, 600)}\n`;
+		if (!app.isPackaged) {
+			process.stdout.write(`[discord] ${line}`);
+		}
+		if (logSize + line.length > LOG_LIMIT) {
+			return;
+		}
+		logSize += line.length;
+		try {
+			fs.appendFileSync(logFile, line);
+		} catch {}
+	}
 	const state = {
 		available: false,
 		status: "unavailable",
@@ -234,9 +254,7 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 				break;
 			}
 			case "log":
-				if (!app.isPackaged) {
-					console.log(`[discord] ${message.level}: ${message.message}`);
-				}
+				writeLog(shortText(message.level, 10) ?? "info", message.message);
 				break;
 		}
 	}
@@ -364,14 +382,25 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 		});
 	}
 
-	function accountResult(reply) {
+	function accountResult(reply, intent) {
 		const json = reply.json && typeof reply.json === "object" ? reply.json : {};
+		if (reply.status !== 200) {
+			writeLog(
+				"error",
+				`compte ${intent} : réponse ${reply.status} du serveur`,
+			);
+		}
 		return {
 			ok: reply.status === 200,
 			outcome: shortText(json.outcome, 40),
 			proof: shortText(json.proof, 64),
 			discord: shortText(json.discord, 64),
-			error: reply.status === 200 ? null : String(reply.status),
+			error:
+				reply.status === 200
+					? null
+					: reply.status === 401
+						? "discord"
+						: "server",
 		};
 	}
 
@@ -387,11 +416,15 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 		if (accessToken) {
 			const reply = await postAccount(body(accessToken));
 			if (reply.status !== 401) {
-				return accountResult(reply);
+				return accountResult(reply, intent);
 			}
 		}
 		const authorized = await authorizeBridge();
 		if (!authorized.ok || !accessToken) {
+			writeLog(
+				"error",
+				`autorisation Discord refusée : ${authorized.error ?? "jeton absent"}`,
+			);
 			return {
 				ok: false,
 				error:
@@ -400,7 +433,7 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 						: "cancelled",
 			};
 		}
-		return accountResult(await postAccount(body(accessToken)));
+		return accountResult(await postAccount(body(accessToken)), intent);
 	});
 	ipcMain.on("moldius:discord-disconnect", (event) => {
 		if (fromGame(event)) {

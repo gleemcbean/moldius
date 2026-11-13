@@ -151,6 +151,7 @@ function GuestPanel() {
 		email: string;
 		kind: "register" | "forgot";
 		discord?: string | null;
+		discordFailed?: boolean;
 	} | null>(null);
 	const registering = mode === "register";
 
@@ -224,6 +225,10 @@ function GuestPanel() {
 				typeof result.value === "object" && result.value
 					? result.value.discord
 					: null,
+			discordFailed:
+				typeof result.value === "object" && result.value
+					? result.value.discordFailed
+					: false,
 		});
 	};
 
@@ -248,6 +253,8 @@ function GuestPanel() {
 							<p className={styles.hint}>
 								{t.account.registerDiscord(sentTo.discord)}
 							</p>
+						) : sentTo.discordFailed ? (
+							<p className={styles.hint}>{t.account.registerDiscordFailed}</p>
 						) : null}
 					</div>
 				</div>

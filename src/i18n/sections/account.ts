@@ -1,6 +1,9 @@
 import type { DiscordOutcome } from "@shared/protocol/account";
 
-export type AccountNoticeKey = DiscordOutcome | "emailConfirmed";
+export type AccountNoticeKey =
+	| DiscordOutcome
+	| "emailConfirmed"
+	| "appServerError";
 
 const DATE_TIME = { dateStyle: "medium", timeStyle: "short" } as const;
 const LONG_DATE = { dateStyle: "long" } as const;
@@ -21,6 +24,8 @@ export const accountFr = {
 	discordWaiting: "Autorisez Moldius dans Discord…",
 	registerDiscord: (name: string) =>
 		`Votre compte Discord ${name} sera lié à ce compte dès sa confirmation.`,
+	registerDiscordFailed:
+		"Discord n'a pas pu être associé à ce compte : vous pourrez le lier depuis « Mon compte » une fois connecté.",
 	orEmail: "ou avec une adresse e-mail",
 	forgotHint:
 		"Indiquez l'adresse de votre compte : vous recevrez un lien pour choisir un nouveau mot de passe.",
@@ -190,6 +195,8 @@ export const accountFr = {
 		"email-existant":
 			"Un compte MOLDIUS utilise déjà l'adresse e-mail de ce compte Discord : connectez-vous avec votre mot de passe, puis liez Discord depuis « Mon compte ».",
 		emailConfirmed: "Adresse confirmée : votre compte est prêt, bienvenue !",
+		appServerError:
+			"Discord a bien répondu, mais le serveur du jeu a refusé la connexion : il n'est peut-être pas à jour. Réessayez plus tard.",
 	} satisfies Record<AccountNoticeKey, string>,
 };
 
@@ -209,6 +216,8 @@ export const accountEn: typeof accountFr = {
 	discordWaiting: "Authorise Moldius in Discord…",
 	registerDiscord: (name: string) =>
 		`Your Discord account ${name} will be linked to this account once it's confirmed.`,
+	registerDiscordFailed:
+		"Discord couldn't be linked to this account: you can link it from “My account” once signed in.",
 	orEmail: "or with an email address",
 	forgotHint:
 		"Enter your account's address: you will receive a link to choose a new password.",
@@ -380,5 +389,7 @@ export const accountEn: typeof accountFr = {
 		"email-existant":
 			"A MOLDIUS account already uses this Discord account's email address: sign in with your password, then link Discord from “My account”.",
 		emailConfirmed: "Address confirmed: your account is ready, welcome!",
+		appServerError:
+			"Discord answered, but the game server refused the sign-in: it may not be up to date. Try again later.",
 	},
 };
