@@ -1,17 +1,29 @@
 import { lobbyFromJoinSecret, lobbyJoinSecret } from "@shared/protocol/friends";
 import type { LobbyErrorCode, LobbyState } from "@shared/protocol/lobby";
+import { appStore, showToast } from "../../app/appStore";
 import {
 	type DiscordActivity,
 	type DiscordBridgeState,
 	desktopApp,
 } from "../../app/desktopApp";
-import { appStore, showToast } from "../../app/appStore";
 import { currentMessages } from "../../i18n";
 import { createStore } from "../../utils/store";
 import { accountStore } from "../account/accountStore";
 import { joinFriend, syncDiscordFriends } from "../friends/friendsStore";
+import type { PresenceArt } from "../home/modeArt";
 import { lobbyStore } from "../lobby/lobbyStore";
 import { sessionStore } from "../network/sessionStore";
+import dailyArt from "./art/daily.png";
+import lobbyArt from "./art/lobby.png";
+import matchArt from "./art/match.png";
+import menuArt from "./art/menu.png";
+
+const ARTWORK: Record<PresenceArt, string> = {
+	menu: menuArt,
+	lobby: lobbyArt,
+	match: matchArt,
+	daily: dailyArt,
+};
 
 const SYNC_DELAY_MS = 2000;
 const PRESENCE_INTERVAL_MS = 4000;
@@ -109,11 +121,20 @@ function joinable(lobby: LobbyState): boolean {
 	);
 }
 
+function artwork(
+	art: PresenceArt,
+): Pick<DiscordActivity, "largeImage" | "largeText"> {
+	return {
+		largeImage: new URL(ARTWORK[art], window.location.origin).href,
+		largeText: "Moldius",
+	};
+}
+
 function activityNow(): DiscordActivity {
 	const t = currentMessages().discord.presence;
 	const lobby = lobbyStore.get().lobby;
 	if (!lobby || appStore.get().screen === "home") {
-		return { details: t.menu, largeImage: "logo", largeText: "Moldius" };
+		return { details: t.menu, ...artwork("menu") };
 	}
 	const kind = lobby.daily
 		? t.daily
@@ -138,8 +159,7 @@ function activityNow(): DiscordActivity {
 			details: kind,
 			state: t.match,
 			startedAt: matchStartedAt,
-			largeImage: "logo",
-			largeText: "Moldius",
+			...artwork(lobby.daily ? "daily" : "match"),
 			party,
 		};
 	}
@@ -147,8 +167,7 @@ function activityNow(): DiscordActivity {
 	return {
 		details: kind,
 		state: t.lobby,
-		largeImage: "logo",
-		largeText: "Moldius",
+		...artwork(lobby.daily ? "daily" : "lobby"),
 		party,
 		...(joinable(lobby) ? { joinSecret: lobbyJoinSecret(lobby.id) } : {}),
 	};

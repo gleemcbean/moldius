@@ -56,6 +56,7 @@ import {
 	HAZE_DENSITY,
 	HAZE_FAR,
 	HAZE_NEAR,
+	LANTERN_COLOR,
 	STAIR_PRELOAD_RANGE,
 } from "../../../config/feel";
 import { renderPixelRatio } from "../../../config/graphics";
@@ -107,7 +108,6 @@ import { TutorialController } from "./TutorialController";
 const HUD_INTERVAL_MS = 80;
 const DOOR_PREDICTION_MS = 900;
 const LANTERN_RECONCILE_MS = 700;
-const LANTERN_COLOR = 0xffb060;
 const JUMP_ENERGY_SETTLE_MS = 600;
 const HIDDEN_GLOW = { color: 0x7d8aa0, intensity: 0.55, range: 1.4 };
 const RADIO_GHOST_MIN_MS = 25_000;

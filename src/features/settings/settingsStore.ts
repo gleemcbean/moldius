@@ -8,6 +8,7 @@ import {
 import { DEFAULT_KEYS } from "../../config/defaultKeys";
 import {
 	COLOR_LEVELS,
+	DEFAULT_COLOR_LEVELS,
 	DEFAULT_POST_EFFECT_PRESET,
 	POST_EFFECT_PRESETS,
 } from "../../config/graphics";
@@ -54,7 +55,7 @@ export function defaultSettings(
 		renderScale: 1,
 		effects: true,
 		postEffects: { ...POST_EFFECT_PRESETS[DEFAULT_POST_EFFECT_PRESET] },
-		colorLevels: 127,
+		colorLevels: DEFAULT_COLOR_LEVELS,
 		fpsLimit: 0,
 		headBob: true,
 		reduceMotion: false,

@@ -1,3 +1,7 @@
+import {
+	LANTERN_LIGHT_INTENSITY,
+	LANTERN_LIGHT_RANGE,
+} from "@shared/config/index";
 import { DEFAULT_HAT_PATTERN, type HatPattern } from "@shared/hatPatterns";
 import { generateManor } from "@shared/manor/generateManor";
 import type { ManorLayout, Room, RoomType } from "@shared/manor/types";
@@ -9,7 +13,25 @@ import {
 	DEFAULT_PLAYER_COLOR,
 	PLAYER_COLOR_CHOICES,
 } from "@shared/playerColors";
+import { LANTERN_TINT_COLORS } from "@shared/rewards";
 import * as THREE from "three";
+import {
+	LANTERN_COLOR,
+	MANOR_AIR_COLOR,
+	MANOR_AIR_DENSITY,
+	MANOR_AMBIENT_INTENSITY,
+	MANOR_GROUND_LIGHT,
+	MANOR_SKY_LIGHT,
+} from "../../config/feel";
+import {
+	DEFAULT_COLOR_LEVELS,
+	DEFAULT_POST_EFFECT_PRESET,
+	POST_EFFECT_PRESETS,
+	QUALITY_PRESETS,
+} from "../../config/graphics";
+import { AmbientMotes } from "../engine/effects/AmbientMotes";
+import { type DynamicLight, LightPool } from "../engine/lighting/LightPool";
+import { PostEffects } from "../engine/render/PostEffects";
 import { DoorViews } from "../engine/world/DoorViews";
 import type { AnomalyModel } from "../models/anomalies/AnomalyModel";
 import { createAnomalyModel } from "../models/anomalies/createAnomalyModel";
@@ -20,12 +42,15 @@ import { MaterialLibrary } from "../world/MaterialLibrary";
 import { TextureLibrary } from "../world/textures/TextureLibrary";
 
 export type GameMode = "classic" | "daily" | "tutorial";
+export type PresenceArt = "menu" | "lobby" | "match" | "daily";
 
-const WIDTH = 168;
-const HEIGHT = 196;
-const DEFAULT_FLAME = 0xffb060;
-const LIGHT_SCALE = 4.2;
+const MODE_WIDTH = 336;
+const MODE_HEIGHT = 392;
+const PRESENCE_SIDE = 256;
+const PRESENCE_SCALE = 4;
+const FIELD_OF_VIEW = 46;
 const ART_SEED = 0x5eed42;
+const LIGHT_SETTLE_SECONDS = 0.4;
 
 type Look = { color: number; pattern: HatPattern; lantern?: number | null };
 
@@ -38,13 +63,27 @@ const BASE_LOOK: Look = {
 const COMPANIONS: Look[] = [
 	{ color: PLAYER_COLOR_CHOICES[4], pattern: "rings" },
 	{ color: PLAYER_COLOR_CHOICES[3], pattern: "swirl" },
+	{
+		color: PLAYER_COLOR_CHOICES[1],
+		pattern: "stars",
+		lantern: LANTERN_TINT_COLORS.ice,
+	},
+	{
+		color: PLAYER_COLOR_CHOICES[2],
+		pattern: "speckles",
+		lantern: LANTERN_TINT_COLORS.emerald,
+	},
 ];
 
-const ROOMS: Record<GameMode, readonly RoomType[]> = {
-	classic: ["salon", "dining", "library", "hall", "music"],
-	daily: ["gallery", "hall", "chapel", "ritual", "salon"],
-	tutorial: ["study", "library", "alchemy", "bedroom", "curiosities"],
-};
+interface Mood {
+	tension: number;
+	desaturate: number;
+}
+
+const CALM: Mood = { tension: 0, desaturate: 0 };
+const WATCHFUL: Mood = { tension: 0.2, desaturate: 0 };
+const GAZED: Mood = { tension: 0.45, desaturate: 0.15 };
+const SPOTTED: Mood = { tension: 0.8, desaturate: 0.6 };
 
 interface Manor {
 	layout: ManorLayout;
@@ -71,6 +110,15 @@ type CastMember = Actor &
 		  }
 	);
 
+interface Plate {
+	rooms: readonly RoomType[];
+	cozy?: boolean;
+	eye: number;
+	focus: number;
+	cast: readonly CastMember[];
+	mood: Mood;
+}
+
 interface Shot {
 	room: Room;
 	eye: THREE.Vector3;
@@ -78,11 +126,6 @@ interface Shot {
 	place: (actor: Actor) => { position: THREE.Vector3; yaw: number };
 }
 
-const EYE_HEIGHTS: Record<GameMode, number> = {
-	classic: 1.35,
-	daily: 2.45,
-	tutorial: 2.45,
-};
 const CANDIDATE_STEP = 0.6;
 
 function walkable(
@@ -171,10 +214,10 @@ function furnitureAhead(
 function frame(
 	manor: Manor,
 	room: Room,
-	cast: readonly Actor[],
+	plate: Plate,
 	strict: boolean,
-	eyeHeight: number,
 ): Shot | null {
+	const { cast } = plate;
 	const center = new THREE.Vector2(room.labelPoint.x, room.labelPoint.z);
 	const { minX, minZ, maxX, maxZ } = room.bounds;
 	let best: {
@@ -199,7 +242,7 @@ function frame(
 			forward.normalize();
 			const eye = new THREE.Vector3(
 				ground.x,
-				room.floorY + Math.min(eyeHeight, room.height - 0.4),
+				room.floorY + Math.min(plate.eye, room.height - 0.4),
 				ground.z,
 			);
 			const right = new THREE.Vector2(-forward.y, forward.x);
@@ -239,7 +282,7 @@ function frame(
 	const focus = cast.reduce((sum, actor) => sum + actor.depth, 0) / cast.length;
 	const target = new THREE.Vector3(
 		eye.x + forward.x * focus,
-		room.floorY + (eyeHeight > 2 ? 0.55 : 1),
+		room.floorY + plate.focus,
 		eye.z + forward.y * focus,
 	);
 	return {
@@ -247,7 +290,7 @@ function frame(
 		eye,
 		target,
 		place: (actor) => {
-			const index = cast.indexOf(actor);
+			const index = cast.indexOf(actor as CastMember);
 			const position = (placed[index] ?? placed[0]).clone();
 			const toCamera = Math.atan2(eye.x - position.x, eye.z - position.z);
 			return { position, yaw: toCamera + actor.facing + Math.PI };
@@ -270,17 +313,28 @@ function posed(model: AnomalyModel, state: "chase" | "idle"): void {
 
 class Stage {
 	readonly scene = new THREE.Scene();
-	readonly camera = new THREE.PerspectiveCamera(46, WIDTH / HEIGHT, 0.05, 40);
+	readonly camera: THREE.PerspectiveCamera;
+	private readonly lights: DynamicLight[] = [];
+	private readonly pool: LightPool;
+	private readonly motes = new AmbientMotes();
 	private readonly disposers: (() => void)[] = [];
 
 	constructor(
 		private readonly manor: Manor,
 		private readonly kit: ModelKit,
 		readonly shot: Shot,
+		aspect: number,
 	) {
-		this.scene.background = new THREE.Color(0x140c07);
-		this.scene.fog = new THREE.FogExp2(0x140c07, 0.06);
-		this.scene.add(new THREE.HemisphereLight(0xa4907c, 0x44301e, 1.5));
+		this.camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.05, 40);
+		this.scene.background = new THREE.Color(MANOR_AIR_COLOR);
+		this.scene.fog = new THREE.FogExp2(MANOR_AIR_COLOR, MANOR_AIR_DENSITY);
+		this.scene.add(
+			new THREE.HemisphereLight(
+				MANOR_SKY_LIGHT,
+				MANOR_GROUND_LIGHT,
+				MANOR_AMBIENT_INTENSITY,
+			),
+		);
 		const { layout, builder } = manor;
 		const shown = new Set([shot.room.id]);
 		for (const openingId of shot.room.openingIds) {
@@ -295,19 +349,13 @@ class Stage {
 			}
 		}
 		this.scene.add(manor.doors.group);
-		for (const light of layout.lights) {
-			if (light.roomId !== shot.room.id) {
-				continue;
-			}
-			const point = new THREE.PointLight(
-				light.color,
-				light.intensity * LIGHT_SCALE * 0.8,
-				light.radius,
-				2,
-			);
-			point.position.set(light.position.x, light.position.y, light.position.z);
-			this.scene.add(point);
-		}
+		this.pool = new LightPool(
+			this.scene,
+			QUALITY_PRESETS.high.lightPool,
+			layout.lights.filter((light) => shown.has(light.roomId)),
+			layout.rooms,
+		);
+		this.scene.add(this.motes.points);
 		this.camera.position.copy(shot.eye);
 		this.camera.lookAt(shot.target);
 	}
@@ -340,14 +388,15 @@ class Stage {
 		model.root.rotation.y = modelYaw(yaw);
 		this.scene.add(model.root);
 		model.root.updateMatrixWorld(true);
-		const light = new THREE.PointLight(
-			look.lantern ?? DEFAULT_FLAME,
-			4.5,
-			6,
-			1.6,
-		);
-		light.position.copy(model.lanternLightPosition);
-		this.scene.add(light);
+		this.lights.push({
+			id: `lantern-${this.lights.length}`,
+			position: model.lanternLightPosition.clone(),
+			color: look.lantern ?? LANTERN_COLOR,
+			intensity: LANTERN_LIGHT_INTENSITY,
+			radius: LANTERN_LIGHT_RANGE,
+			priority: 4,
+			flicker: 0.12,
+		});
 		this.disposers.push(() => model.dispose());
 		return model;
 	}
@@ -366,30 +415,32 @@ class Stage {
 		model.root.updateMatrixWorld(true);
 		const glow = model.glow;
 		if (glow) {
-			const light = new THREE.PointLight(
-				glow.color,
-				glow.intensity * 2.4,
-				glow.radius * 1.4,
-				1.6,
-			);
-			light.position
-				.copy(glow.offset)
-				.applyQuaternion(model.root.quaternion)
-				.add(model.root.position);
-			this.scene.add(light);
+			this.lights.push({
+				id: `anomaly-${this.lights.length}`,
+				position: glow.offset
+					.clone()
+					.applyQuaternion(model.root.quaternion)
+					.add(model.root.position),
+				color: glow.color,
+				intensity: glow.intensity,
+				radius: glow.radius,
+				priority: 2,
+				flicker: 0.1,
+			});
 		}
 		this.disposers.push(() => model.dispose());
 		return model;
 	}
 
-	addLight(color: number, intensity: number, at: THREE.Vector3): void {
-		const light = new THREE.PointLight(color, intensity, 7, 1.6);
-		light.position.copy(at);
-		this.scene.add(light);
+	settle(): void {
+		this.pool.update(this.camera.position, this.lights, LIGHT_SETTLE_SECONDS);
+		this.motes.update(LIGHT_SETTLE_SECONDS, this.camera.position);
 	}
 
 	dispose(): void {
 		this.scene.remove(this.manor.doors.group);
+		this.pool.dispose(this.scene);
+		this.motes.dispose();
 		for (const dispose of this.disposers) {
 			dispose();
 		}
@@ -401,19 +452,19 @@ class Stage {
 	}
 }
 
-const CLASSIC: CastMember[] = [
-	{ kind: "self", run: true, depth: 2.9, side: 0.3, facing: 0.1 },
+const CHASE: CastMember[] = [
+	{ kind: "self", run: true, depth: 2.9, side: 0.45, facing: 0.1 },
 	{
 		kind: "monster",
 		species: "veilleur",
 		state: "chase",
-		depth: 5.3,
-		side: -0.45,
+		depth: 4.8,
+		side: -0.8,
 		facing: -0.15,
 	},
 ];
 
-const DAILY: CastMember[] = [
+const STANDOFF: CastMember[] = [
 	{
 		kind: "monster",
 		species: "gorgone",
@@ -439,38 +490,99 @@ const DAILY: CastMember[] = [
 	},
 ];
 
-const TUTORIAL: CastMember[] = [
-	{ kind: "self", grimoire: true, depth: 2.9, side: 0, facing: 0.5 },
+const READING: CastMember[] = [
+	{ kind: "self", grimoire: true, depth: 2.8, side: 0, facing: -0.4 },
 ];
 
-const CASTS: Record<GameMode, CastMember[]> = {
-	classic: CLASSIC,
-	daily: DAILY,
-	tutorial: TUTORIAL,
+const LANTERN_BEARER: CastMember[] = [
+	{ kind: "self", depth: 2.2, side: 0, facing: 0.35 },
+];
+
+const GATHERING: CastMember[] = [
+	{ kind: "self", depth: 2.6, side: -0.15, facing: 0.15 },
+	{
+		kind: "mate",
+		look: COMPANIONS[2],
+		depth: 3.2,
+		side: -1.05,
+		facing: -0.5,
+	},
+	{
+		kind: "mate",
+		look: COMPANIONS[0],
+		depth: 3.3,
+		side: 0.9,
+		facing: 0.6,
+	},
+	{
+		kind: "mate",
+		look: COMPANIONS[3],
+		depth: 4.1,
+		side: 0.05,
+		facing: -0.1,
+	},
+];
+
+const MODE_PLATES: Record<GameMode, Plate> = {
+	classic: {
+		rooms: ["salon", "dining", "library", "hall", "music"],
+		eye: 1.35,
+		focus: 0.9,
+		cast: CHASE,
+		mood: SPOTTED,
+	},
+	daily: {
+		rooms: ["gallery", "hall", "chapel", "ritual", "salon"],
+		eye: 2.45,
+		focus: 0.55,
+		cast: STANDOFF,
+		mood: GAZED,
+	},
+	tutorial: {
+		rooms: ["study", "library", "alchemy", "bedroom", "curiosities"],
+		cozy: true,
+		eye: 0.85,
+		focus: 0.85,
+		cast: READING,
+		mood: CALM,
+	},
 };
 
-function stageFor(
-	manor: Manor,
-	mode: GameMode,
-	taken: Set<number>,
-): Shot | null {
+const PRESENCE_PLATES: Record<PresenceArt, Plate> = {
+	menu: {
+		rooms: ["salon", "library", "hall", "study"],
+		eye: 1.05,
+		focus: 0.85,
+		cast: LANTERN_BEARER,
+		mood: WATCHFUL,
+	},
+	lobby: {
+		rooms: ["hall", "dining", "ballroom", "salon"],
+		eye: 1.7,
+		focus: 0.7,
+		cast: GATHERING,
+		mood: CALM,
+	},
+	match: { ...MODE_PLATES.classic, rooms: ["dining", "hall", "salon"] },
+	daily: { ...MODE_PLATES.daily, rooms: ["chapel", "ritual", "gallery"] },
+};
+
+function stageFor(manor: Manor, plate: Plate, taken: Set<number>): Shot | null {
 	const rooms = manor.layout.rooms.filter(
 		(room) =>
 			room.level === 0 && room.type !== "corridor" && !taken.has(room.id),
 	);
-	const preferred = ROOMS[mode].flatMap((type) =>
+	const preferred = plate.rooms.flatMap((type) =>
 		rooms
 			.filter((room) => room.type === type)
-			.sort((a, b) =>
-				mode === "tutorial" ? a.area - b.area : b.area - a.area,
-			),
+			.sort((a, b) => (plate.cozy ? a.area - b.area : b.area - a.area)),
 	);
 	const others = rooms
 		.filter((room) => !preferred.includes(room))
 		.sort((a, b) => b.area - a.area);
 	for (const strict of [true, false]) {
 		for (const room of [...preferred, ...others]) {
-			const shot = frame(manor, room, CASTS[mode], strict, EYE_HEIGHTS[mode]);
+			const shot = frame(manor, room, plate, strict);
 			if (shot) {
 				return shot;
 			}
@@ -479,41 +591,48 @@ function stageFor(
 	return null;
 }
 
-function perform(stage: Stage, mode: GameMode): void {
-	for (const member of CASTS[mode]) {
+function perform(stage: Stage, cast: readonly CastMember[]): void {
+	for (const member of cast) {
 		if (member.kind === "monster") {
 			stage.addMonster(member.species, member, member.state);
-			if (member.species === "veilleur") {
-				const above = stage.shot.place(member).position;
-				above.y += 2.2;
-				stage.addLight(0x8fa6c8, 6, above);
-			}
-			if (member.species === "gorgone") {
-				const above = stage.shot.place(member).position;
-				above.y += 2.6;
-				stage.addLight(0xffd36a, 9, above);
-			}
 		} else {
-			const model = stage.addMushroom(
+			stage.addMushroom(
 				member.kind === "self" ? BASE_LOOK : member.look,
 				member,
 				member.kind === "self"
 					? { grimoire: member.grimoire, run: member.run }
 					: {},
 			);
-			if (member.kind === "self" && member.grimoire) {
-				const page = model.root.position.clone();
-				page.y += 1.1;
-				stage.addLight(0xb9a8ff, 1.6, page);
-			}
 		}
 	}
+	stage.settle();
 }
 
-export async function drawModeArt(): Promise<Record<GameMode, string>> {
+function enlarge(source: HTMLCanvasElement, scale: number): string {
+	if (scale === 1) {
+		return source.toDataURL("image/png");
+	}
 	const canvas = document.createElement("canvas");
-	canvas.width = WIDTH;
-	canvas.height = HEIGHT;
+	canvas.width = source.width * scale;
+	canvas.height = source.height * scale;
+	const context = canvas.getContext("2d");
+	if (!context) {
+		throw new Error("Contexte 2D indisponible");
+	}
+	context.imageSmoothingEnabled = false;
+	context.drawImage(source, 0, 0, canvas.width, canvas.height);
+	return canvas.toDataURL("image/png");
+}
+
+async function drawPlates<Name extends string>(
+	plates: Record<Name, Plate>,
+	width: number,
+	height: number,
+	scale = 1,
+): Promise<Record<Name, string>> {
+	const canvas = document.createElement("canvas");
+	canvas.width = width;
+	canvas.height = height;
 	const renderer = new THREE.WebGLRenderer({
 		canvas,
 		antialias: false,
@@ -521,11 +640,17 @@ export async function drawModeArt(): Promise<Record<GameMode, string>> {
 		preserveDrawingBuffer: true,
 	});
 	renderer.setPixelRatio(1);
-	renderer.setSize(WIDTH, HEIGHT, false);
+	renderer.setSize(width, height, false);
 	renderer.outputColorSpace = THREE.SRGBColorSpace;
 	renderer.toneMapping = THREE.ACESFilmicToneMapping;
-	renderer.toneMappingExposure = 1.2;
-	const textures = new TextureLibrary(1);
+	renderer.toneMappingExposure = 1;
+	const post = new PostEffects(renderer, 0);
+	const textures = new TextureLibrary(
+		Math.min(
+			QUALITY_PRESETS.high.textureAnisotropy,
+			renderer.capabilities.getMaxAnisotropy(),
+		),
+	);
 	const materials = new MaterialLibrary(textures);
 	const kit = new ModelKit(materials);
 	const layout = generateManor(ART_SEED, {
@@ -544,26 +669,51 @@ export async function drawModeArt(): Promise<Record<GameMode, string>> {
 		doors,
 	};
 	try {
-		const result = {} as Record<GameMode, string>;
+		const result = {} as Record<Name, string>;
 		const taken = new Set<number>();
-		for (const mode of Object.keys(CASTS) as GameMode[]) {
-			const shot = stageFor(manor, mode, taken);
+		for (const name of Object.keys(plates) as Name[]) {
+			const plate = plates[name];
+			const shot = stageFor(manor, plate, taken);
 			if (!shot) {
-				throw new Error(`Pas de salle pour l'illustration ${mode}`);
+				throw new Error(`Pas de salle pour l'illustration ${name}`);
 			}
 			taken.add(shot.room.id);
-			const stage = new Stage(manor, kit, shot);
-			perform(stage, mode);
-			renderer.render(stage.scene, stage.camera);
-			result[mode] = canvas.toDataURL("image/png");
+			const stage = new Stage(manor, kit, shot, width / height);
+			perform(stage, plate.cast);
+			post.render(
+				{
+					dt: 1,
+					effects: POST_EFFECT_PRESETS[DEFAULT_POST_EFFECT_PRESET],
+					tension: plate.mood.tension,
+					animated: false,
+					colorLevels: DEFAULT_COLOR_LEVELS,
+					desaturate: plate.mood.desaturate,
+				},
+				() => renderer.render(stage.scene, stage.camera),
+			);
+			result[name] = enlarge(canvas, scale);
 			stage.dispose();
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		}
 		return result;
 	} finally {
+		post.dispose();
 		materials.dispose();
 		textures.dispose();
 		renderer.dispose();
 		renderer.forceContextLoss();
 	}
+}
+
+export function drawModeArt(): Promise<Record<GameMode, string>> {
+	return drawPlates(MODE_PLATES, MODE_WIDTH, MODE_HEIGHT);
+}
+
+export function drawPresenceArt(): Promise<Record<PresenceArt, string>> {
+	return drawPlates(
+		PRESENCE_PLATES,
+		PRESENCE_SIDE,
+		PRESENCE_SIDE,
+		PRESENCE_SCALE,
+	);
 }

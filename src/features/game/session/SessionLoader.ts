@@ -12,6 +12,14 @@ import { CollisionWorld } from "@shared/physics/collisionWorld";
 import type { MatchInit } from "@shared/protocol/game";
 import { DEFAULT_LANTERN_TINT, LANTERN_TINT_COLORS } from "@shared/rewards";
 import * as THREE from "three";
+import {
+	LANTERN_COLOR,
+	MANOR_AIR_COLOR,
+	MANOR_AIR_DENSITY,
+	MANOR_AMBIENT_INTENSITY,
+	MANOR_GROUND_LIGHT,
+	MANOR_SKY_LIGHT,
+} from "../../../config/feel";
 import { QUALITY_PRESETS } from "../../../config/graphics";
 import { currentMessages } from "../../../i18n";
 import type { LoadStepId } from "../../../i18n/sections/game";
@@ -201,14 +209,18 @@ export async function loadSession(
 	renderer.autoClear = false;
 	const post = new PostEffects(renderer, preset.antialias ? 4 : 0);
 	const scene = new THREE.Scene();
-	scene.background = new THREE.Color(0x0b0b0c);
-	scene.fog = new THREE.FogExp2(0x0b0b0c, 0.062);
+	scene.background = new THREE.Color(MANOR_AIR_COLOR);
+	scene.fog = new THREE.FogExp2(MANOR_AIR_COLOR, MANOR_AIR_DENSITY);
 	const camera = new THREE.PerspectiveCamera(settings.fov, 16 / 9, 0.03, 90);
 	scene.add(camera);
-	const ambient = new THREE.HemisphereLight(0x84868c, 0x2c2c2e, 0.72);
+	const ambient = new THREE.HemisphereLight(
+		MANOR_SKY_LIGHT,
+		MANOR_GROUND_LIGHT,
+		MANOR_AMBIENT_INTENSITY,
+	);
 	scene.add(ambient);
 	const worldLantern = new THREE.PointLight(
-		0xffb060,
+		LANTERN_COLOR,
 		0,
 		LANTERN_LIGHT_RANGE,
 		2,

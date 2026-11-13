@@ -2,7 +2,7 @@
 <html lang="fr">
 	<head>
 		<meta charset="UTF-8" />
-		<title>Illustrations des modes</title>
+		<title>Illustrations du jeu</title>
 		<style>
 			body {
 				margin: 24px;
@@ -24,6 +24,10 @@
 				width: 336px;
 				image-rendering: pixelated;
 			}
+			h2 {
+				font-size: 16px;
+				font-weight: 600;
+			}
 			a {
 				color: #ffb060;
 			}
@@ -31,29 +35,37 @@
 	</head>
 	<body>
 		<p id="status">Rendu en cours…</p>
-		<main id="art"></main>
+		<h2>Choix du mode : src/features/home/art/</h2>
+		<main id="modes"></main>
+		<h2>Présence Discord : src/features/discord/art/</h2>
+		<main id="presence"></main>
 		<script type="module">
-			import { drawModeArt } from "/src/features/home/modeArt.ts";
+			import { drawModeArt, drawPresenceArt } from "/src/features/home/modeArt.ts";
 
 			const status = document.getElementById("status");
-			try {
-				const art = await drawModeArt();
-				for (const [mode, url] of Object.entries(art)) {
+
+			function show(target, art) {
+				for (const [name, url] of Object.entries(art)) {
 					const figure = document.createElement("figure");
 					const image = document.createElement("img");
 					image.src = url;
-					image.alt = mode;
+					image.alt = name;
 					const link = document.createElement("a");
 					link.href = url;
-					link.download = `${mode}.png`;
-					link.textContent = `${mode}.png`;
+					link.download = `${name}.png`;
+					link.textContent = `${name}.png`;
 					const caption = document.createElement("figcaption");
 					caption.append(link);
 					figure.append(image, caption);
-					document.getElementById("art").append(figure);
+					document.getElementById(target).append(figure);
 				}
+			}
+
+			try {
+				show("modes", await drawModeArt());
+				show("presence", await drawPresenceArt());
 				status.textContent =
-					"Téléchargez les trois images et remplacez celles de src/features/home/art/.";
+					"Téléchargez les images et remplacez celles des dossiers indiqués.";
 			} catch (error) {
 				status.textContent = `Échec : ${error}`;
 				throw error;

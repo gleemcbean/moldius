@@ -22,8 +22,13 @@ connexion Discord du site) :
 1. **Discord Social SDK → Getting Started** : activer le Social SDK.
 2. **OAuth2** : activer **Public Client** (le pont échange le code sans secret)
    et ajouter la redirection `http://127.0.0.1/callback`.
-3. **Rich Presence → Art Assets** : téléverser l'image `logo` (facultatif).
-4. **Discord Social SDK → Downloads** : télécharger le SDK C++.
+3. **Discord Social SDK → Downloads** : télécharger le SDK C++.
+
+Rien à téléverser dans **Rich Presence → Art Assets** : la présence donne
+directement l'adresse des images de `src/features/discord/art/`, servies par le
+jeu, et Discord les récupère tant que le jeu est joignable en `https`. Elles se
+régénèrent avec `scripts/mode-art.html` (`npm run dev:client`, puis
+`/scripts/mode-art.html`).
 
 ## Compiler (Windows)
 
