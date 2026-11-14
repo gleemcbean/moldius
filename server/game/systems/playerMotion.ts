@@ -22,6 +22,7 @@ import type { ClientStateMessage } from '../../../shared/protocol/game.js';
 import type { Match } from '../Match.js';
 import type { MatchPlayer } from '../MatchPlayer.js';
 import { drainEnergy, isSprintDraining, pauseEnergyRegen } from './energy.js';
+import { isGhost, moveGhost } from './ghosts.js';
 
 export type StateOutcome = 'accepted' | 'look-only' | 'stale' | 'rejected';
 
@@ -39,7 +40,8 @@ export function applyClientState(
   const now = match.now;
   const elapsedMs = Math.min(1000, Math.max(16, now - player.lastStateAt));
   player.lastStateAt = now;
-  if (player.alive) {
+  const ghost = isGhost(match, player);
+  if (player.alive || ghost) {
     player.yaw = message.yaw;
     player.pitch = message.pitch;
   }
@@ -50,6 +52,10 @@ export function applyClientState(
     level: message.voiceLevel,
     activeMs: Math.min(message.voicePeakMs, elapsedMs + 60),
   });
+
+  if (ghost && message.moveAck >= player.lastForcedMoveId) {
+    return moveGhost(match, player, message, elapsedMs);
+  }
 
   if (
     !player.alive ||

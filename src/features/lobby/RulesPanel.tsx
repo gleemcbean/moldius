@@ -11,6 +11,7 @@ import {
 	SANCTUARY_DURATION_MS,
 } from "@shared/config/index";
 import { ENABLED_SPECIES_IDS } from "@shared/config/monsters";
+import { MUTATOR_IDS, type MutatorId } from "@shared/config/party";
 import type { SpeciesId } from "@shared/config/species";
 import { OPTIONAL_ROOM_TYPES } from "@shared/manor/roomCatalog";
 import type { RoomType } from "@shared/manor/types";
@@ -64,6 +65,30 @@ export function RulesSummary({
 			label: labels.walkies,
 			value: config.walkies ? t.common.yes : t.common.no,
 		},
+		{
+			label: t.party.rules.events,
+			value: config.events ? t.common.yes : t.common.no,
+		},
+		...(config.mode === "possessed"
+			? [
+					{
+						label: t.party.rules.mode,
+						value: t.party.possessed.modeName,
+					},
+				]
+			: [
+					{
+						label: t.party.rules.bounty,
+						value: config.bounty ? t.common.yes : t.common.no,
+					},
+				]),
+		{
+			label: t.party.rules.mutators,
+			value:
+				config.mutators.length === 0
+					? t.party.rules.mutatorCount(0)
+					: config.mutators.map((id) => t.party.mutators.names[id]).join(", "),
+		},
 	];
 	return (
 		<section className={[styles.card, styles.rules].join(" ")}>
@@ -112,6 +137,17 @@ export function RulesModal({
 				: [...config.roomTypes, type],
 		});
 	};
+	const toggleMutator = (id: MutatorId) => {
+		const enabled = config.mutators.includes(id);
+		update({
+			mutators: enabled
+				? config.mutators.filter((entry) => entry !== id)
+				: MUTATOR_IDS.filter(
+						(entry) => entry === id || config.mutators.includes(entry),
+					),
+		});
+	};
+	const possessed = config.mode === "possessed";
 	const toggleSpecies = (id: SpeciesId) => {
 		const enabled = config.species.includes(id);
 		if (enabled && config.species.length === 1) {
@@ -134,6 +170,9 @@ export function RulesModal({
 						? labels.hostNote
 						: labels.guestNote}
 			</p>
+			{possessed ? (
+				<p className={styles.rulesNote}>{t.party.rules.possessedNote}</p>
+			) : null}
 			<div className={styles.rulesGroups}>
 				<section>
 					<h3 className={styles.rulesGroupTitle}>{labels.groupMatch}</h3>
@@ -170,17 +209,19 @@ export function RulesModal({
 							onChange={(durationMinutes) => update({ durationMinutes })}
 						/>
 					</Field>
-					<Field label={labels.teams}>
-						<Segmented<number>
-							value={config.teamCount}
-							options={TEAM_COUNT_CHOICES.map((count) => ({
-								value: count,
-								label: count === 0 ? labels.noTeams : String(count),
-							}))}
-							disabled={!editable}
-							onChange={(teamCount) => update({ teamCount })}
-						/>
-					</Field>
+					{possessed ? null : (
+						<Field label={labels.teams}>
+							<Segmented<number>
+								value={config.teamCount}
+								options={TEAM_COUNT_CHOICES.map((count) => ({
+									value: count,
+									label: count === 0 ? labels.noTeams : String(count),
+								}))}
+								disabled={!editable}
+								onChange={(teamCount) => update({ teamCount })}
+							/>
+						</Field>
+					)}
 					<Field label={labels.walkies} hint={labels.walkiesHint}>
 						<Toggle
 							checked={config.walkies}
@@ -259,6 +300,38 @@ export function RulesModal({
 							enabled: config.roomTypes.includes(type),
 							hint: stakeHint(type, labels.stakeHints),
 							toggle: () => toggleRoom(type),
+						}))}
+					/>
+				</section>
+				<section>
+					<h3 className={styles.rulesGroupTitle}>{t.party.rules.group}</h3>
+					<Field label={t.party.rules.events} hint={t.party.rules.eventsHint}>
+						<Toggle
+							checked={config.events}
+							disabled={!editable}
+							onChange={(events) => update({ events })}
+						/>
+					</Field>
+					{possessed ? null : (
+						<Field label={t.party.rules.bounty} hint={t.party.rules.bountyHint}>
+							<Toggle
+								checked={config.bounty}
+								disabled={!editable || config.teamCount > 0}
+								onChange={(bounty) => update({ bounty })}
+							/>
+						</Field>
+					)}
+					<ChipSection
+						title={t.party.rules.mutators}
+						count={config.mutators.length}
+						total={MUTATOR_IDS.length}
+						editable={editable}
+						chips={MUTATOR_IDS.map((id) => ({
+							key: id,
+							label: t.party.mutators.names[id],
+							enabled: config.mutators.includes(id),
+							hint: t.party.mutators.hints[id],
+							toggle: () => toggleMutator(id),
 						}))}
 					/>
 				</section>

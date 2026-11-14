@@ -26,6 +26,11 @@ import {
 	type PlayerSettings,
 	type PostEffectLevels,
 	type PostEffectPreset,
+	STATS_METRICS,
+	type StatsCorner,
+	type StatsMetric,
+	type StatsOverlaySettings,
+	type StatsPreset,
 } from "../../types/settings";
 import { readJson, writeJson } from "../../utils/storage";
 import { createStore } from "../../utils/store";
@@ -33,7 +38,76 @@ import { createStore } from "../../utils/store";
 const STORAGE_KEY = "mycelium.settings.v1";
 const DEFAULT_FOV = 86;
 const PREVIOUS_DEFAULT_FOV = 78;
-const KEYS_REVISION = 2;
+const KEYS_REVISION = 3;
+const CAMERA_CLICKS_REVISION = 2;
+const MIDDLE_PING_REVISION = 3;
+const PREVIOUS_PING_KEY = "KeyQ";
+const STATS_CORNERS: readonly StatsCorner[] = [
+	"topLeft",
+	"topRight",
+	"bottomLeft",
+	"bottomRight",
+];
+const FREE_KEY_CODES = [
+	"MouseMiddle",
+	"KeyQ",
+	"KeyB",
+	"KeyT",
+	"KeyZ",
+	"KeyH",
+	"KeyJ",
+	"KeyK",
+	"KeyL",
+	"KeyN",
+	"KeyU",
+	"KeyY",
+	"KeyI",
+	"KeyO",
+	"KeyP",
+];
+
+export const STATS_PRESETS: Record<
+	Exclude<StatsPreset, "off">,
+	readonly StatsMetric[]
+> = {
+	minimal: ["fps", "ping"],
+	network: ["fps", "ping", "jitter", "snapshots", "loss", "interpolation"],
+	full: STATS_METRICS,
+};
+
+export function statsMetrics(
+	enabled: readonly StatsMetric[],
+): Record<StatsMetric, boolean> {
+	return Object.fromEntries(
+		STATS_METRICS.map((metric) => [metric, enabled.includes(metric)]),
+	) as Record<StatsMetric, boolean>;
+}
+
+export function defaultStats(): StatsOverlaySettings {
+	return {
+		metrics: statsMetrics([]),
+		corner: "bottomRight",
+		graph: false,
+		opacity: 0.85,
+	};
+}
+
+export function matchingStatsPreset(
+	stats: StatsOverlaySettings,
+): StatsPreset | null {
+	const enabled = STATS_METRICS.filter((metric) => stats.metrics[metric]);
+	if (enabled.length === 0) {
+		return "off";
+	}
+	const presets = Object.keys(STATS_PRESETS) as Exclude<StatsPreset, "off">[];
+	return (
+		presets.find(
+			(preset) =>
+				STATS_PRESETS[preset].length === enabled.length &&
+				STATS_PRESETS[preset].every((metric) => stats.metrics[metric]),
+		) ?? null
+	);
+}
 
 export function defaultSettings(
 	language: Language = browserLanguage(),
@@ -61,7 +135,7 @@ export function defaultSettings(
 		fpsLimit: 0,
 		headBob: true,
 		reduceMotion: false,
-		showFps: false,
+		stats: defaultStats(),
 		volumes: {
 			master: 0.85,
 			ambience: 0.7,
@@ -95,7 +169,10 @@ export function migrateAimKey(
 	}
 	const usedBy = (code: string, except: ActionId) =>
 		(Object.keys(keys) as ActionId[]).some(
-			(action) => action !== except && keys[action] === code,
+			(action) =>
+				action !== except &&
+				typeof saved[action] === "string" &&
+				keys[action] === code,
 		);
 	if (usedBy(keys.aim, "aim")) {
 		const free = [
@@ -113,7 +190,7 @@ export function migrateCameraClicks(
 	keys: Record<ActionId, string>,
 	revision: unknown,
 ): void {
-	if (typeof revision === "number" && revision >= KEYS_REVISION) {
+	if (typeof revision === "number" && revision >= CAMERA_CLICKS_REVISION) {
 		return;
 	}
 	if (keys.aim === "MouseLeft" && keys.photo === "MouseRight") {
@@ -122,7 +199,77 @@ export function migrateCameraClicks(
 	}
 }
 
-type StoredSettings = Partial<PlayerSettings> & { ambiance?: unknown };
+export function migratePingKey(
+	keys: Record<ActionId, string>,
+	revision: unknown,
+): void {
+	if (
+		(typeof revision === "number" && revision >= MIDDLE_PING_REVISION) ||
+		keys.ping !== PREVIOUS_PING_KEY
+	) {
+		return;
+	}
+	const middleTaken = ACTION_IDS.some(
+		(action) => action !== "ping" && keys[action] === "MouseMiddle",
+	);
+	if (!middleTaken) {
+		keys.ping = "MouseMiddle";
+	}
+}
+
+export function assignFreshKeys(
+	keys: Record<ActionId, string>,
+	saved: Partial<Record<ActionId, string>> | undefined,
+): void {
+	if (!saved) {
+		return;
+	}
+	ACTION_IDS.forEach((action, index) => {
+		if (typeof saved[action] === "string") {
+			return;
+		}
+		const used = (code: string) =>
+			ACTION_IDS.some((other) => other !== action && keys[other] === code);
+		const settled = ACTION_IDS.some(
+			(other, otherIndex) =>
+				other !== action &&
+				keys[other] === keys[action] &&
+				(typeof saved[other] === "string" || otherIndex < index),
+		);
+		if (settled) {
+			keys[action] = FREE_KEY_CODES.find((code) => !used(code)) ?? keys[action];
+		}
+	});
+}
+
+type StoredSettings = Partial<PlayerSettings> & {
+	ambiance?: unknown;
+	showFps?: unknown;
+};
+
+function sanitizeStats(raw: StoredSettings): StatsOverlaySettings {
+	const base = defaultStats();
+	const saved = raw.stats;
+	if (!saved || typeof saved !== "object") {
+		return raw.showFps === true
+			? { ...base, metrics: statsMetrics(["fps"]) }
+			: base;
+	}
+	const metrics = saved.metrics as Partial<Record<StatsMetric, unknown>>;
+	return {
+		metrics: Object.fromEntries(
+			STATS_METRICS.map((metric) => [
+				metric,
+				typeof metrics?.[metric] === "boolean"
+					? metrics[metric]
+					: base.metrics[metric],
+			]),
+		) as Record<StatsMetric, boolean>,
+		corner: STATS_CORNERS.includes(saved.corner) ? saved.corner : base.corner,
+		graph: typeof saved.graph === "boolean" ? saved.graph : base.graph,
+		opacity: clampNumber(saved.opacity, 0.3, 1, base.opacity),
+	};
+}
 
 function sanitizePostEffects(
 	raw: StoredSettings,
@@ -156,6 +303,8 @@ function sanitize(raw: StoredSettings | null): PlayerSettings {
 	}
 	migrateAimKey(keys, raw.keys);
 	migrateCameraClicks(keys, raw.keysRevision);
+	migratePingKey(keys, raw.keysRevision);
+	assignFreshKeys(keys, raw.keys);
 	return {
 		version: 1,
 		keysRevision: KEYS_REVISION,
@@ -208,7 +357,7 @@ function sanitize(raw: StoredSettings | null): PlayerSettings {
 			typeof raw.reduceMotion === "boolean"
 				? raw.reduceMotion
 				: base.reduceMotion,
-		showFps: typeof raw.showFps === "boolean" ? raw.showFps : base.showFps,
+		stats: sanitizeStats(raw),
 		volumes: {
 			master: clampNumber(raw.volumes?.master, 0, 1, base.volumes.master),
 			ambience: clampNumber(raw.volumes?.ambience, 0, 1, base.volumes.ambience),
@@ -262,6 +411,21 @@ export function setLanguage(language: Language, renameDefault: boolean): void {
 			? { language, playerName: randomDefaultName(language) }
 			: { language },
 	);
+}
+
+export function updateStats(patch: Partial<StatsOverlaySettings>): void {
+	settingsStore.set({ stats: { ...settingsStore.get().stats, ...patch } });
+}
+
+export function setStatsMetric(metric: StatsMetric, enabled: boolean): void {
+	const stats = settingsStore.get().stats;
+	updateStats({ metrics: { ...stats.metrics, [metric]: enabled } });
+}
+
+export function applyStatsPreset(preset: StatsPreset): void {
+	updateStats({
+		metrics: statsMetrics(preset === "off" ? [] : STATS_PRESETS[preset]),
+	});
 }
 
 export function resetControls(): void {

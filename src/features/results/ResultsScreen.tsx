@@ -215,6 +215,73 @@ function Standings({
 	);
 }
 
+function PossessedReveal({ results }: { results: MatchResults }) {
+	const t = useT();
+	const labels = t.party.possessed.results;
+	const outcome = results.possessed;
+	if (!outcome) {
+		return null;
+	}
+	const nameOf = (id: string) =>
+		results.entries.find((entry) => entry.playerId === id)?.name ?? "?";
+	const possessed = results.entries.find(
+		(entry) => entry.playerId === outcome.possessedId,
+	);
+	return (
+		<section
+			className={[
+				styles.card,
+				styles.reveal,
+				outcome.winner === "possessed" ? styles.revealDark : "",
+			].join(" ")}
+			style={reveal(1)}
+		>
+			<h2 className={styles.heading}>
+				{outcome.winner === "hunters" ? labels.huntersWin : labels.possessedWin}
+			</h2>
+			<p className={styles.revealWho}>
+				<i
+					className={styles.swatch}
+					style={{ background: hexColor(possessed?.color ?? 0xffffff) }}
+				/>
+				{labels.was(possessed?.name ?? "?")}
+			</p>
+			<p className={styles.note}>
+				{outcome.quotaReached
+					? labels.ritualDone(outcome.captures, outcome.quota)
+					: labels.ritualFailed(outcome.captures, outcome.quota)}
+				{outcome.quotaReached
+					? ` · ${outcome.unmasked ? labels.unmasked : labels.notUnmasked}`
+					: ""}
+			</p>
+			{Object.keys(outcome.votes).length > 0 ? (
+				<>
+					<h3 className={styles.revealTitle}>{labels.votes}</h3>
+					<ul className={styles.revealVotes}>
+						{results.entries.map((entry) => {
+							const target = outcome.votes[entry.playerId];
+							return (
+								<li key={entry.playerId}>
+									<span>{entry.name}</span>
+									<span
+										className={
+											target === outcome.possessedId
+												? styles.revealRight
+												: styles.revealWrong
+										}
+									>
+										{target ? nameOf(target) : labels.noVote}
+									</span>
+								</li>
+							);
+						})}
+					</ul>
+				</>
+			) : null}
+		</section>
+	);
+}
+
 function AwardList({
 	results,
 	selfId,
@@ -309,6 +376,7 @@ export function ResultsScreen() {
 		),
 	);
 	const teamMode = results.teams.length > 0;
+	const possessedOutcome = results.possessed ?? null;
 	const placeCount = teamMode ? results.teams.length : results.entries.length;
 	const minutes = Math.max(1, Math.round(results.durationMs / 60_000));
 	const hasNews = completed.length > 0 || unlocked.length > 0;
@@ -327,22 +395,29 @@ export function ResultsScreen() {
 						<h1 className={styles.title}>{labels.title}</h1>
 					</div>
 					<p className={styles.winner}>
-						{winningTeam || winner ? <Icon name="crown" /> : null}
+						{winningTeam || winner || possessedOutcome ? (
+							<Icon name="crown" />
+						) : null}
 						<span>
-							{winningTeam
-								? labels.teamWinner(
-										t.common.teams[winningTeam.team],
-										t.common.number(winningTeam.score),
-									)
-								: winner
-									? labels.winner(winner.name, t.common.number(winner.score))
-									: labels.noWinner}
+							{possessedOutcome
+								? possessedOutcome.winner === "hunters"
+									? t.party.possessed.results.huntersWin
+									: t.party.possessed.results.possessedWin
+								: winningTeam
+									? labels.teamWinner(
+											t.common.teams[winningTeam.team],
+											t.common.number(winningTeam.score),
+										)
+									: winner
+										? labels.winner(winner.name, t.common.number(winner.score))
+										: labels.noWinner}
 						</span>
 					</p>
 				</header>
 
 				<div className={styles.columns}>
 					<div className={styles.main}>
+						<PossessedReveal results={results} />
 						{teamMode ? (
 							<TeamBanner results={results} />
 						) : results.entries.length > 1 ? (

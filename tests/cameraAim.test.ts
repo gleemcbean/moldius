@@ -8,16 +8,19 @@ const { DEFAULT_KEYS } = (await import(
 )) as {
 	DEFAULT_KEYS: Keys;
 };
-const { migrateAimKey, migrateCameraClicks } = (await import(
+const { assignFreshKeys, migrateAimKey, migrateCameraClicks } = (await import(
 	`${clientRoot}/features/settings/settingsStore.ts`
 )) as {
+	assignFreshKeys: (keys: Keys, saved: Partial<Keys> | undefined) => void;
 	migrateAimKey: (keys: Keys, saved: Partial<Keys> | undefined) => void;
 	migrateCameraClicks: (keys: Keys, revision: unknown) => void;
 };
 
 function savedBeforeAim(overrides: Keys = {}): Keys {
 	const saved: Keys = { ...DEFAULT_KEYS, photo: "MouseLeft", ...overrides };
-	delete saved.aim;
+	for (const later of ["aim", "ping", "emote", "power"]) {
+		delete saved[later];
+	}
 	return saved;
 }
 
@@ -54,6 +57,7 @@ describe("visée avec l'appareil photo", () => {
 		const saved = savedBeforeAim({ interact: "MouseRight" });
 		const keys: Keys = { ...DEFAULT_KEYS, ...saved };
 		migrateAimKey(keys, saved);
+		assignFreshKeys(keys, saved);
 		expect(keys.photo).toBe("MouseLeft");
 		expect(keys.aim).toBe("MouseMiddle");
 		expect(duplicates(keys)).toEqual([]);

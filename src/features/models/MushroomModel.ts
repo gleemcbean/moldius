@@ -1,4 +1,5 @@
 import type { OccultId } from "@shared/config/occult";
+import type { EmoteId } from "@shared/config/party";
 import {
 	DEFAULT_HAT_PATTERN,
 	type HatPattern,
@@ -34,7 +35,17 @@ export interface MushroomPose {
 	camera?: 0 | 1 | 2;
 	walkie?: boolean;
 	heldObject?: OccultId | null;
+	emote?: EmoteId | null;
+	emoteTime?: number;
 }
+
+export const GHOST_MATERIAL = new THREE.MeshBasicMaterial({
+	color: 0xa9dcff,
+	transparent: true,
+	opacity: 0.3,
+	depthWrite: false,
+	blending: THREE.AdditiveBlending,
+});
 
 const WALKIE_SCALE = 1.25;
 const WALKIE_WORN = new THREE.Vector3(-0.17, 0.08, 0.3);
@@ -177,6 +188,13 @@ export class MushroomModel {
 	private turnRate = 0;
 	private swing = 0;
 	private swingVelocity = 0;
+	private emoteBlend = 0;
+	private lastEmote: EmoteId | null = null;
+	private ghostly = false;
+	private readonly originalMaterials = new Map<
+		THREE.Mesh,
+		THREE.Material | THREE.Material[]
+	>();
 
 	constructor(
 		kit: ModelKit,
@@ -491,9 +509,16 @@ export class MushroomModel {
 			9,
 		);
 
+		const emote = pose.dead ? null : (pose.emote ?? null);
+		if (emote) {
+			this.lastEmote = emote;
+		}
+		this.emoteBlend = ease(this.emoteBlend, emote ? 1 : 0, 7);
+
 		this.updateLegs(speedFactor);
 		this.updateBody(speedFactor, pose);
 		this.updateArms(speedFactor, pose);
+		this.applyEmote(pose.emoteTime ?? 0);
 
 		this.lantern.update(dt, pose.lanternOpen && !pose.dead);
 		this.updateSwing(dt);
@@ -583,6 +608,131 @@ export class MushroomModel {
 			this.stowedBook.visible = !this.book.visible;
 		}
 		this.book.scale.setScalar(Math.max(0.01, read));
+	}
+
+	private applyEmote(time: number): void {
+		const blend = this.emoteBlend;
+		this.figure.rotation.y = 0;
+		if (blend < 0.01 || !this.lastEmote) {
+			return;
+		}
+		const mix = (current: number, target: number) =>
+			current + (target - current) * blend;
+		const [left, right] = this.arms;
+		switch (this.lastEmote) {
+			case "wave": {
+				const wave = Math.sin(time * 9);
+				right.shoulder.rotation.set(
+					mix(right.shoulder.rotation.x, -2.7),
+					0,
+					mix(right.shoulder.rotation.z, 0.35 + wave * 0.35),
+				);
+				right.elbow.rotation.x = mix(
+					right.elbow.rotation.x,
+					-0.45 + wave * 0.25,
+				);
+				break;
+			}
+			case "dance": {
+				const beat = Math.sin(time * 6.5);
+				this.hips.position.y += Math.abs(beat) * 0.06 * blend;
+				this.body.rotation.z = mix(this.body.rotation.z, beat * 0.2);
+				this.figure.rotation.y = Math.sin(time * 3.2) * 0.6 * blend;
+				this.capPivot.rotation.z = mix(this.capPivot.rotation.z, -beat * 0.12);
+				for (const [index, arm] of this.arms.entries()) {
+					const swing = Math.sin(time * 6.5 + index * Math.PI);
+					arm.shoulder.rotation.x = mix(
+						arm.shoulder.rotation.x,
+						-2.1 + swing * 0.5,
+					);
+					arm.shoulder.rotation.z = mix(
+						arm.shoulder.rotation.z,
+						(index === 0 ? -1 : 1) * (0.5 + swing * 0.2),
+					);
+					arm.elbow.rotation.x = mix(arm.elbow.rotation.x, -0.9);
+				}
+				break;
+			}
+			case "bow": {
+				const depth = Math.min(1, time * 2.2) * Math.min(1, (2.2 - time) * 2.5);
+				this.body.rotation.x = mix(
+					this.body.rotation.x,
+					0.85 * Math.max(0, depth),
+				);
+				this.capPivot.rotation.x = mix(this.capPivot.rotation.x, 0.2 * depth);
+				right.shoulder.rotation.x = mix(right.shoulder.rotation.x, -0.9);
+				right.shoulder.rotation.z = mix(right.shoulder.rotation.z, -0.2);
+				right.elbow.rotation.x = mix(right.elbow.rotation.x, -1.4);
+				break;
+			}
+			case "point": {
+				right.shoulder.rotation.set(
+					mix(right.shoulder.rotation.x, -1.55),
+					0,
+					mix(right.shoulder.rotation.z, 0.05),
+				);
+				right.elbow.rotation.x = mix(right.elbow.rotation.x, -0.05);
+				right.hand.setPose(GRIP_HAND);
+				break;
+			}
+			case "laugh": {
+				const shake = Math.sin(time * 20);
+				this.body.rotation.x = mix(this.body.rotation.x, -0.22 + shake * 0.05);
+				this.capPivot.rotation.x = mix(
+					this.capPivot.rotation.x,
+					-0.1 + shake * 0.06,
+				);
+				this.hips.position.y += Math.abs(shake) * 0.02 * blend;
+				for (const arm of this.arms) {
+					arm.shoulder.rotation.x = mix(arm.shoulder.rotation.x, -0.5);
+					arm.elbow.rotation.x = mix(arm.elbow.rotation.x, -1.5);
+				}
+				break;
+			}
+			case "panic": {
+				const shiver = Math.sin(time * 34);
+				this.body.rotation.z = mix(this.body.rotation.z, shiver * 0.07);
+				this.capPivot.rotation.z = mix(
+					this.capPivot.rotation.z,
+					-shiver * 0.08,
+				);
+				for (const [index, arm] of [left, right].entries()) {
+					arm.shoulder.rotation.x = mix(
+						arm.shoulder.rotation.x,
+						-2.9 + shiver * 0.12,
+					);
+					arm.shoulder.rotation.z = mix(
+						arm.shoulder.rotation.z,
+						(index === 0 ? -1 : 1) * 0.25,
+					);
+					arm.elbow.rotation.x = mix(arm.elbow.rotation.x, -0.7);
+				}
+				break;
+			}
+		}
+	}
+
+	setGhost(ghostly: boolean): void {
+		if (ghostly === this.ghostly) {
+			return;
+		}
+		this.ghostly = ghostly;
+		this.root.traverse((object) => {
+			if (!(object instanceof THREE.Mesh)) {
+				return;
+			}
+			if (ghostly) {
+				if (!this.originalMaterials.has(object)) {
+					this.originalMaterials.set(object, object.material);
+				}
+				object.material = GHOST_MATERIAL;
+			} else {
+				const original = this.originalMaterials.get(object);
+				if (original) {
+					object.material = original;
+				}
+			}
+		});
 	}
 
 	private updateSwing(dt: number): void {

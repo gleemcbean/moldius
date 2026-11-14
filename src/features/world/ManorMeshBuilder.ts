@@ -213,6 +213,8 @@ export class ManorMeshBuilder {
 			}
 		}
 		group.name = `room-${room.id}`;
+		group.matrixAutoUpdate = false;
+		group.updateMatrix();
 		for (const mesh of bucket.toMeshes()) {
 			group.add(mesh);
 		}

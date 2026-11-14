@@ -2,10 +2,7 @@ import {
   CAST_INTERRUPT_MS,
   PLAYER_RADIUS,
   PUSH_CONE_RAD,
-  PUSH_COOLDOWN_MS,
-  PUSH_DISTANCE,
   PUSH_DURATION_MS,
-  PUSH_ENERGY_COST,
   PUSH_RANGE,
   SABOTAGE_PROTECTION_MS,
   SHOUT_COOLDOWN_MS,
@@ -53,7 +50,8 @@ export function interruptCast(
 
 export function tryPush(match: Match, player: MatchPlayer, yaw: number): boolean {
   const now = match.now;
-  if (!player.active || player.pushCooldownUntil > now || player.energy < PUSH_ENERGY_COST) {
+  const tuning = match.pushTuning();
+  if (!player.active || player.pushCooldownUntil > now || player.energy < tuning.energy) {
     return false;
   }
   let best: MatchPlayer | null = null;
@@ -83,18 +81,24 @@ export function tryPush(match: Match, player: MatchPlayer, yaw: number): boolean
       best = other;
     }
   }
-  if (!best || !spendEnergy(player, PUSH_ENERGY_COST)) {
+  if (!best || !spendEnergy(player, tuning.energy)) {
     return false;
   }
-  player.pushCooldownUntil = now + PUSH_COOLDOWN_MS;
-  const destination = pushDestination(match, player, best);
+  player.pushCooldownUntil = now + tuning.cooldownMs;
+  const destination = pushDestination(match, player, best, tuning.distance);
   match.forcedMove(best, 'push', destination, null, PUSH_DURATION_MS);
   match.emit({ type: 'push', fromId: player.id, targetId: best.id });
   interruptCast(match, best, player.id, 'push');
+  match.bounty.onPush(match, player, best);
   return true;
 }
 
-function pushDestination(match: Match, pusher: MatchPlayer, target: MatchPlayer): Vec3 {
+function pushDestination(
+  match: Match,
+  pusher: MatchPlayer,
+  target: MatchPlayer,
+  pushDistance: number,
+): Vec3 {
   const dx = target.position.x - pusher.position.x;
   const dz = target.position.z - pusher.position.z;
   const length = Math.hypot(dx, dz) || 1;
@@ -104,8 +108,8 @@ function pushDestination(match: Match, pusher: MatchPlayer, target: MatchPlayer)
   const steps = 12;
   for (let step = 0; step < steps; step += 1) {
     const before = { x: state.x, y: state.y, z: state.z };
-    state.x += (direction.x * PUSH_DISTANCE) / steps;
-    state.z += (direction.z * PUSH_DISTANCE) / steps;
+    state.x += (direction.x * pushDistance) / steps;
+    state.z += (direction.z * pushDistance) / steps;
     resolveHorizontal(match.world, state, 1 / 60);
     const after = { x: state.x, y: state.y, z: state.z };
     if (

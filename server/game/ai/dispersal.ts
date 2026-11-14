@@ -88,7 +88,10 @@ export function canEngage(
 	entity: AnomalyEntity,
 	player: MatchPlayer,
 ): boolean {
-	if ((entity.ignoredUntil.get(player.id) ?? 0) > match.now) {
+	if (
+		match.ignoredByAnomalies(player) ||
+		(entity.ignoredUntil.get(player.id) ?? 0) > match.now
+	) {
 		return false;
 	}
 	if (!isRoaming(entity) || engagedPlayer(entity) === player.id) {

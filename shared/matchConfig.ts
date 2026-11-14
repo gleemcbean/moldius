@@ -15,12 +15,24 @@ import {
 } from "./config/index.js";
 import { STAKE_KINDS } from "./config/items.js";
 import { ENABLED_SPECIES_IDS } from "./config/monsters.js";
+import { MUTATOR_IDS, type MutatorId } from "./config/party.js";
 import type { SpeciesId } from "./config/species.js";
 import { OPTIONAL_ROOM_TYPES } from "./manor/roomCatalog.js";
 import type { RoomType } from "./manor/types.js";
 import { isTeamCount } from "./teams.js";
 
 export type ManorSize = "small" | "medium" | "large";
+
+export const GAME_MODES = ["classic", "possessed"] as const;
+
+export type GameModeId = (typeof GAME_MODES)[number];
+
+export function isGameMode(value: unknown): value is GameModeId {
+	return (
+		typeof value === "string" &&
+		(GAME_MODES as readonly string[]).includes(value)
+	);
+}
 
 export interface MatchConfig {
 	simultaneousAnomalies: number;
@@ -34,6 +46,10 @@ export interface MatchConfig {
 	teamCount: number;
 	itemsPerPlayer: number;
 	walkies: boolean;
+	mode: GameModeId;
+	mutators: MutatorId[];
+	events: boolean;
+	bounty: boolean;
 }
 
 export const MANOR_SIZES: readonly ManorSize[] = ["small", "medium", "large"];
@@ -50,6 +66,10 @@ export const PUBLIC_MATCH_CONFIG: MatchConfig = Object.freeze({
 	teamCount: 0,
 	itemsPerPlayer: DEFAULT_ITEMS_PER_PLAYER,
 	walkies: true,
+	mode: "classic",
+	mutators: [],
+	events: true,
+	bounty: true,
 }) as MatchConfig;
 
 export const TUTORIAL_SEED = 2024;
@@ -71,6 +91,10 @@ export const TUTORIAL_MATCH_CONFIG: MatchConfig = Object.freeze({
 	teamCount: 0,
 	itemsPerPlayer: 10,
 	walkies: false,
+	mode: "classic",
+	mutators: [],
+	events: false,
+	bounty: false,
 }) as MatchConfig;
 
 export function defaultPrivateConfig(): MatchConfig {
@@ -78,7 +102,25 @@ export function defaultPrivateConfig(): MatchConfig {
 		...PUBLIC_MATCH_CONFIG,
 		roomTypes: [...OPTIONAL_ROOM_TYPES],
 		species: [...ENABLED_SPECIES_IDS],
+		mutators: [],
 	};
+}
+
+export function possessedConfig(): MatchConfig {
+	return {
+		...defaultPrivateConfig(),
+		mode: "possessed",
+		teamCount: 0,
+		bounty: false,
+	};
+}
+
+export function hasMutator(config: MatchConfig, mutator: MutatorId): boolean {
+	return config.mutators.includes(mutator);
+}
+
+export function bountyEnabled(config: MatchConfig): boolean {
+	return config.bounty && config.mode === "classic" && config.teamCount === 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -137,6 +179,11 @@ export function sanitizeMatchConfig(
 				(input.species as unknown[]).includes(id),
 			)
 		: [];
+	const mutators = Array.isArray(input.mutators)
+		? MUTATOR_IDS.filter((id) => (input.mutators as unknown[]).includes(id))
+		: [...(fallback.mutators ?? [])];
+	const mode = isGameMode(fallback.mode) ? fallback.mode : "classic";
+	const possessed = mode === "possessed";
 	return {
 		simultaneousAnomalies: Math.min(
 			MAX_SIMULTANEOUS_ANOMALIES,
@@ -173,11 +220,24 @@ export function sanitizeMatchConfig(
 						Math.max(MIN_MATCH_MINUTES, Math.round(input.durationMinutes)),
 					)
 				: fallback.durationMinutes,
-		teamCount: isTeamCount(input.teamCount)
-			? input.teamCount
-			: fallback.teamCount,
+		teamCount: possessed
+			? 0
+			: isTeamCount(input.teamCount)
+				? input.teamCount
+				: fallback.teamCount,
 		walkies:
 			typeof input.walkies === "boolean" ? input.walkies : fallback.walkies,
+		mode,
+		mutators,
+		events:
+			typeof input.events === "boolean"
+				? input.events
+				: (fallback.events ?? true),
+		bounty: possessed
+			? false
+			: typeof input.bounty === "boolean"
+				? input.bounty
+				: (fallback.bounty ?? true),
 	};
 }
 

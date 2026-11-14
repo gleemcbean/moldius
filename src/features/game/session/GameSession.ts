@@ -4,7 +4,13 @@ import {
 	CAPTURE_VOICE_ACTIVITY_LEVEL,
 	CLIENT_INTERPOLATION_DELAY_MS,
 	CLIENT_STATE_INTERVAL_MS,
+	EMOTE_COOLDOWN_MS,
+	EMOTE_DURATION_MS,
+	EMOTE_IDS,
+	type EmoteId,
 	ENERGY_MAX,
+	GHOST_DOOR_COOLDOWN_MS,
+	GHOST_KNOCK_COOLDOWN_MS,
 	GORGON_GAZE_DECAY,
 	GORGON_GAZE_LIMIT_MS,
 	JUMP_ENERGY_COST,
@@ -13,17 +19,31 @@ import {
 	LANTERN_LIGHT_RANGE,
 	LANTERN_MIN_ENERGY_TO_OPEN,
 	LEVEL_HEIGHT,
+	MATERIAL_IDS,
 	MAX_PHOTOS_PER_MATCH,
 	type MaterialId,
 	OCCULT_IDS,
 	OCCULT_RECIPES,
 	type OccultId,
+	PING_BURST,
+	PING_BURST_WINDOW_MS,
+	PING_COLORS,
+	PING_COOLDOWN_MS,
+	PING_HOLD_MS,
+	PING_MAX_DISTANCE,
+	PING_WHEEL,
+	type PingKind,
+	POSSESSED_CALL_RANGE,
+	POSSESSED_POWER_COOLDOWN_MS,
 	PUSH_COOLDOWN_MS,
 	SHOUT_COOLDOWN_MS,
+	SNAPSHOT_INTERVAL_TICKS,
+	STRONG_PUSH_COOLDOWN_FACTOR,
 	SLIME_SPEED_FACTOR,
 	WATER_SPEED_FACTOR,
 } from "@shared/config/index";
 import { PlayerMarkerBlender } from "@shared/doubleDisguise";
+import { type GhostBounds, ghostBounds } from "@shared/ghost";
 import {
 	BREW_DURATION_MS,
 	BREW_GRAVITY_FACTOR,
@@ -31,6 +51,7 @@ import {
 	type BrewEffect,
 } from "@shared/manor/brews";
 import { levelForHeight } from "@shared/manor/levels";
+import { hasMutator } from "@shared/matchConfig";
 
 import { type LiquidVolume, liquidAt } from "@shared/manor/liquids";
 import type { Level } from "@shared/manor/types";
@@ -44,6 +65,7 @@ import {
 	type MatchInit,
 	PLAYER_FLAG,
 	type PlayerInventory,
+	type RoleInfo,
 	type WorldSnapshot,
 } from "@shared/protocol/game";
 import { DEFAULT_LANTERN_TINT, LANTERN_TINT_COLORS } from "@shared/rewards";
@@ -67,8 +89,12 @@ import { audioEngine } from "../../audio/audioEngine";
 import { soundBank } from "../../audio/soundBank";
 import { type FrameInput, InputManager } from "../../engine/input/InputManager";
 import type { DynamicLight } from "../../engine/lighting/LightPool";
+import type { PingClientState } from "../../engine/state/ClientWorldState";
+import { PingViews } from "../../engine/world/PingViews";
+import { RoomVisibility } from "../../engine/world/RoomVisibility";
 import { FIRST_PERSON_LAYER } from "../../engine/player/FirstPersonRig";
 import {
+	type GiftCandidate,
 	InteractionFinder,
 	type InteractionTarget,
 } from "../../engine/player/Interaction";
@@ -78,13 +104,20 @@ import {
 	LocalPlayer,
 } from "../../engine/player/LocalPlayer";
 import { SpottedDetector } from "../../engine/player/SpottedDetector";
-import { MINIMAP_SIZE } from "../../hud/HudCanvas";
+import { type HudMarker, MINIMAP_SIZE } from "../../hud/HudCanvas";
 import {
 	hudStore,
 	type LeaderboardRow,
 	pushFeedback,
+	type StatsHud,
+	type StatsLine,
 } from "../../hud/hudStore";
-import { type MapMarker, MapRenderer, roomLabel } from "../../map/MapRenderer";
+import {
+	type MapMarker,
+	type MapPoint,
+	MapRenderer,
+	roomLabel,
+} from "../../map/MapRenderer";
 import { mapStore, panMap, resetMap, zoomMap } from "../../map/mapStore";
 import { clockSync } from "../../network/clockSync";
 import { type GameSocket, getSocket } from "../../network/socket";
@@ -94,9 +127,11 @@ import { settingsStore } from "../../settings/settingsStore";
 import { doubleVoices, speakRadioClip } from "../../voice/doubleVoices";
 import { micManager } from "../../voice/micManager";
 import { momentVoices } from "../../voice/momentVoices";
-import { voiceChat } from "../../voice/voiceChat";
+import type { ActionId } from "../../../types/settings";
+import { voiceChat, voiceStore } from "../../voice/voiceChat";
 import { CastController } from "../CastController";
 import { replayStore } from "../replayStore";
+import { resetVote, voteStore } from "../voteStore";
 import { ReplayDirector } from "./ReplayDirector";
 import {
 	type LoadedWorld,
@@ -120,6 +155,45 @@ function wrapIndex(index: number, length: number): number {
 }
 
 const RADIO_TALKING_LEVEL = 0.12;
+const WHEEL_DEADZONE = 28;
+const THIRD_PERSON_DISTANCE = 2.7;
+const THIRD_PERSON_PIVOT = 1.15;
+const THIRD_PERSON_SHOWN = 0.2;
+const EMOTE_BREAKING_HOLDS: readonly ActionId[] = [
+	"moveForward",
+	"moveBackward",
+	"moveLeft",
+	"moveRight",
+	"jump",
+	"crouch",
+	"sprint",
+];
+const EMOTE_BREAKING_PRESSES: readonly ActionId[] = [
+	"interact",
+	"lantern",
+	"push",
+	"shout",
+	"grimoire",
+	"camera",
+	"aim",
+	"photo",
+	"radio",
+	"power",
+	"ping",
+	"map",
+];
+const STATS_FRAMES = 90;
+
+interface WheelState {
+	kind: "ping" | "emote";
+	x: number;
+	y: number;
+	selected: number | null;
+}
+
+function hex(color: number): string {
+	return `#${color.toString(16).padStart(6, "0")}`;
+}
 
 export class GameSession {
 	private loadedWorld: LoadedWorld | null = null;
@@ -128,6 +202,7 @@ export class GameSession {
 	private finder: InteractionFinder | null = null;
 	private spotted: SpottedDetector | null = null;
 	private mapRenderer: MapRenderer | null = null;
+	private minimapKey = "";
 	private readonly cast: CastController;
 	private stopDevModes: () => void = () => {};
 	private readonly hazeColor = new THREE.Color(HAZE_COLOR);
@@ -164,6 +239,8 @@ export class GameSession {
 	private mapOpen = false;
 	private mapScale = 1;
 	private mezzanineNeighbors: Set<number> | null = null;
+	private roomVisibility: RoomVisibility | null = null;
+	private roomsShown: Uint8Array | null = null;
 	private mapDrag: { x: number; y: number } | null = null;
 	private pointerEverLocked = false;
 	private intentionalUnlock = false;
@@ -189,6 +266,34 @@ export class GameSession {
 	private radioGhostUntil = 0;
 	private replay: ReplayDirector | null = null;
 	private onReplayDone: (() => void) | null = null;
+	private ghostLimits: GhostBounds | null = null;
+	private wasGhost = false;
+	private ghostDoorReadyAt = 0;
+	private ghostKnockReadyAt = 0;
+	private wheel: WheelState | null = null;
+	private pingPressedAt: number | null = null;
+	private gift: { playerId: string; name: string; selected: number } | null =
+		null;
+	private powerReadyAt = 0;
+	private powerPendingUntil = 0;
+	private roleShownAt = 0;
+	private voting = false;
+	private readonly frameTimes: number[] = [];
+	private pingViews: PingViews | null = null;
+	private readonly arrowAngles = new Map<number, number>();
+	private readonly pingTimes: number[] = [];
+	private soloPingNoted = false;
+	private localEmote: {
+		emote: EmoteId;
+		startedAt: number;
+		until: number;
+		yaw: number;
+	} | null = null;
+	private emoteReadyAt = 0;
+	private thirdPerson = 0;
+	private readonly snapshotArrivals: { at: number; tick: number }[] = [];
+	private statsPublishedAt = 0;
+	private stats: StatsHud | null = null;
 
 	constructor(
 		readonly init: MatchInit,
@@ -264,6 +369,15 @@ export class GameSession {
 		}
 		this.spotted = new SpottedDetector(loaded.world);
 		this.mapRenderer = new MapRenderer(loaded.layout);
+		this.minimapKey = "";
+		this.ghostLimits = this.init.tutorial ? null : ghostBounds(loaded.layout);
+		this.pingViews = new PingViews();
+		loaded.scene.add(this.pingViews.group);
+		loaded.renderer.info.autoReset = false;
+		if (this.pendingRole) {
+			this.handleRole(this.pendingRole);
+			this.pendingRole = null;
+		}
 		loaded.state.listeners.add((event) => this.onEvent(event));
 		hudStore.set({
 			remainingMs: this.init.durationMs,
@@ -348,6 +462,7 @@ export class GameSession {
 			!input ||
 			input.pointerLocked ||
 			this.mapOpen ||
+			this.voting ||
 			hudStore.get().paused ||
 			(event instanceof KeyboardEvent &&
 				(event.code === "Escape" || event.repeat))
@@ -363,7 +478,7 @@ export class GameSession {
 			hudStore.set({ paused: false });
 			return;
 		}
-		if (this.intentionalUnlock || this.mapOpen) {
+		if (this.intentionalUnlock || this.mapOpen || this.voting) {
 			this.intentionalUnlock = false;
 			return;
 		}
@@ -382,7 +497,8 @@ export class GameSession {
 		if (input.pointerLocked && paused) {
 			hudStore.set({ paused: false });
 		}
-		input.freePlay = !input.pointerLocked && !this.mapOpen && !paused;
+		input.freePlay =
+			!input.pointerLocked && !this.mapOpen && !paused && !this.voting;
 	}
 
 	private readonly onMapPointerDown = (event: PointerEvent) => {
@@ -487,6 +603,10 @@ export class GameSession {
 			),
 		);
 		this.interpolationDelay += (target - this.interpolationDelay) * 0.1;
+		this.snapshotArrivals.push({ at: performance.now(), tick: snapshot.tick });
+		if (this.snapshotArrivals.length > 120) {
+			this.snapshotArrivals.shift();
+		}
 		loaded.state.applySnapshot(snapshot);
 	}
 
@@ -497,6 +617,9 @@ export class GameSession {
 	handleForcedMove(move: ForcedMove): void {
 		if (move.playerId !== this.selfId || !this.player) {
 			return;
+		}
+		if (move.kind !== "correction") {
+			this.cancelEmote(true);
 		}
 		this.player.applyForcedMove(move);
 		if (move.kind === "hide") {
@@ -601,6 +724,24 @@ export class GameSession {
 	private handleWheelAndDigits(frame: FrameInput): void {
 		const loaded = this.loadedWorld as LoadedWorld;
 		const step = Math.sign(frame.wheel);
+		if (this.gift) {
+			if (step !== 0) {
+				this.gift.selected = wrapIndex(
+					this.gift.selected + step,
+					MATERIAL_IDS.length,
+				);
+			}
+			for (const digit of frame.digits) {
+				if (MATERIAL_IDS[digit - 1]) {
+					this.gift.selected = digit - 1;
+					this.giveSelected();
+				}
+			}
+			return;
+		}
+		if (this.wheel) {
+			return;
+		}
 		if (this.altarId !== null) {
 			if (step !== 0 && !loaded.grimoire.isOpen) {
 				this.selectAltarRow(this.altarSelected + step);
@@ -658,6 +799,10 @@ export class GameSession {
 		const dt = Math.min(0.1, Math.max(0.001, (time - this.lastFrame) / 1000));
 		this.lastFrame = time;
 		this.trackFps(dt);
+		this.frameTimes.push(dt * 1000);
+		if (this.frameTimes.length > STATS_FRAMES) {
+			this.frameTimes.shift();
+		}
 		this.syncPointer();
 		this.step(dt);
 	};
@@ -694,14 +839,26 @@ export class GameSession {
 		}
 		momentVoices.update(loaded.state.players.keys(), this.selfId);
 		const renderTime = serverNow - this.interpolationDelay;
+		loaded.renderer.info.reset();
 		const frame = input.frame();
 		const self = loaded.state.self?.latest ?? null;
 		const flags = self?.flags ?? 0;
 		const alive = (flags & PLAYER_FLAG.dead) === 0;
+		const ghost = !alive && this.ghostLimits !== null;
+		if (ghost !== this.wasGhost) {
+			this.wasGhost = ghost;
+			if (ghost) {
+				soundBank.play("ghost-whoosh", { volume: 0.7 });
+			}
+			this.closeWheel();
+			this.gift = null;
+		}
 		const restrained =
 			this.carriedBy !== null || (flags & PLAYER_FLAG.carried) !== 0;
 		this.reconcileLantern(flags, serverNow);
 		this.handleActions(frame, alive, restrained, serverNow);
+		this.handleSocial(frame, alive, ghost, restrained, serverNow);
+		this.checkEmote(frame, alive, ghost, restrained, serverNow);
 
 		const context = this.localContext(settings, flags, alive, renderTime);
 		const petrified = (flags & PLAYER_FLAG.petrified) !== 0;
@@ -709,10 +866,19 @@ export class GameSession {
 			pushFeedback(currentMessages().game.hud.petrified, "error");
 		}
 		this.wasPetrified = petrified;
-		const controls = this.controls(frame, alive && !petrified);
+		const controls = this.controls(
+			frame,
+			(alive || ghost) && !petrified && !this.voting,
+		);
+		if (this.wheel) {
+			controls.lookX = 0;
+			controls.lookY = 0;
+		}
 		player.update(dt, controls, context);
 		for (const event of player.events.splice(0)) {
-			if (event.kind === "jump") {
+			if (event.kind === "bounds") {
+				pushFeedback(currentMessages().party.ghost.bounds, "info");
+			} else if (event.kind === "jump") {
 				this.jumpSpentAt.push(performance.now());
 				soundBank.play("jump", {
 					volume: 0.32,
@@ -783,7 +949,18 @@ export class GameSession {
 		}
 		loaded.lights.update(eye, this.dynamicLights, dt);
 		this.cullRooms(eye);
-		this.updateTargets(eye, forward, serverNow, player, restrained || !alive);
+		if (ghost) {
+			this.interaction = (this.finder as InteractionFinder).findGhostDoor(
+				eye,
+				forward,
+			);
+		} else {
+			this.updateTargets(eye, forward, serverNow, player, restrained || !alive);
+		}
+		if (this.thirdPerson > 0.05) {
+			this.interaction = null;
+		}
+		this.updateMarkers(dt, eye, forward, serverNow);
 		const spotted = (this.spotted as SpottedDetector).update(
 			dt,
 			loaded.camera,
@@ -792,11 +969,15 @@ export class GameSession {
 			serverNow - loaded.state.latestSnapshotTime,
 			performance.now(),
 		);
-		this.gaze = this.updateGorgonGaze(dt, eye, player);
+		this.gaze = ghost ? 0 : this.updateGorgonGaze(dt, eye, player);
 		this.updateHaze(dt, eye);
 		this.updateAudio(dt, eye, forward, player, spotted, serverNow, flags);
 		this.cast.update(
-			this.beginInfo !== null && alive && !restrained && this.hideSpot < 0,
+			this.beginInfo !== null &&
+				alive &&
+				!restrained &&
+				this.hideSpot < 0 &&
+				!this.voting,
 		);
 		this.sampleVoice(dt);
 		this.sendState(serverNow, player);
@@ -815,6 +996,11 @@ export class GameSession {
 				this.drawBigMap(player, loaded.hud);
 			}
 			loaded.hud.paint(now);
+			loaded.post.setMinimap(
+				loaded.hud.minimapShown ? loaded.hud.minimapTexture : null,
+				loaded.hud.minimapRect,
+				loaded.hud.minimapPixels,
+			);
 		}
 		const wounded = alive && (self?.hp ?? 100) < 30 ? 0.5 : 0;
 		this.renderCamera(loaded);
@@ -830,6 +1016,7 @@ export class GameSession {
 			},
 			() => this.render(loaded),
 		);
+		this.updateStats(loaded, settings);
 	}
 
 	private updateClock(serverNow: number): void {
@@ -951,6 +1138,7 @@ export class GameSession {
 			hideInterior: spot ? spot.interior : null,
 			hideFacing: spot?.facing ?? 0,
 			devModes: activeDevModes(this.init.dev),
+			ghost: alive ? null : this.ghostLimits,
 		};
 	}
 
@@ -1031,6 +1219,7 @@ export class GameSession {
 		const radioOn =
 			alive &&
 			!restrained &&
+			!this.voting &&
 			loaded.state.selfHasWalkie &&
 			frame.held.has("radio");
 		if (radioOn !== this.radioOn) {
@@ -1038,10 +1227,18 @@ export class GameSession {
 			socket.emit("game:radio", { on: radioOn });
 			soundBank.play("radio-squelch", { volume: 0.4 });
 		}
-		this.handleCamera(frame, alive && !restrained);
+		this.handleCamera(frame, alive && !restrained && !this.voting);
+		if (this.voting) {
+			return;
+		}
 		let escapeConsumed = false;
 		if (frame.escape && this.mapOpen) {
 			this.closeMap();
+			escapeConsumed = true;
+		}
+		if (frame.escape && !escapeConsumed && (this.gift || this.wheel)) {
+			this.gift = null;
+			this.closeWheel();
 			escapeConsumed = true;
 		}
 		if (
@@ -1052,7 +1249,9 @@ export class GameSession {
 		) {
 			hudStore.set({ paused: true });
 		}
-		if (frame.pressed.has("map") && !escapeConsumed) {
+		if (frame.pressed.has("map") && !escapeConsumed && this.noMap) {
+			pushFeedback(currentMessages().party.mutators.noMap, "info");
+		} else if (frame.pressed.has("map") && !escapeConsumed) {
 			if (this.mapOpen) {
 				this.closeMap();
 			} else {
@@ -1098,7 +1297,9 @@ export class GameSession {
 		}
 		const lanternEnergy =
 			this.loadedWorld?.state.self?.latest?.en ?? ENERGY_MAX;
-		if (
+		if (frame.pressed.has("lantern") && this.darkness && this.hideSpot < 0) {
+			pushFeedback(currentMessages().party.mutators.darkness, "info");
+		} else if (
 			frame.pressed.has("lantern") &&
 			this.hideSpot < 0 &&
 			!this.lanternIntent &&
@@ -1115,9 +1316,12 @@ export class GameSession {
 			socket.emit("game:lantern", { open: this.lanternIntent });
 		}
 		this.updateAltar(frame, this.player as LocalPlayer);
+		this.updateGift(frame);
 		this.handleWheelAndDigits(frame);
 		if (frame.pressed.has("interact")) {
-			if (this.altarId !== null) {
+			if (this.gift) {
+				this.giveSelected();
+			} else if (this.altarId !== null) {
 				if (this.canCraft(OCCULT_IDS[this.altarSelected])) {
 					this.craftSelected();
 				} else {
@@ -1131,7 +1335,7 @@ export class GameSession {
 			(socket as GameSocket).emit("game:push", {
 				yaw: (this.player as LocalPlayer).yaw,
 			});
-			this.pushReadyAt = serverNow + PUSH_COOLDOWN_MS;
+			this.pushReadyAt = serverNow + this.pushCooldownMs;
 			soundBank.play("push", { volume: 0.5 });
 		}
 		if (frame.pressed.has("shout") && serverNow >= this.shoutReadyAt) {
@@ -1163,7 +1367,23 @@ export class GameSession {
 	private interact(target: InteractionTarget, serverNow: number): void {
 		const loaded = this.loadedWorld as LoadedWorld;
 		if (target.kind === "altar") {
+			if (loaded.state.altarCursed(target.id, serverNow)) {
+				pushFeedback(currentMessages().party.possessed.altarCursed, "warning");
+				return;
+			}
 			this.setAltar(target.id);
+			return;
+		}
+		if (target.kind === "gift") {
+			this.openGift(target);
+			return;
+		}
+		if (target.kind === "ghostDoor") {
+			return;
+		}
+		if (target.kind === "door" && this.doorsLocked) {
+			pushFeedback(currentMessages().party.events.locked, "warning");
+			soundBank.play("door-shut", { volume: 0.4, rate: 1.3 });
 			return;
 		}
 		getSocket().emit("game:interact", { kind: target.kind, id: target.id });
@@ -1230,7 +1450,25 @@ export class GameSession {
 			roll += Math.sin(time * 0.8) * 0.07 * this.nausea;
 			camera.position.x += Math.sin(time * 0.53) * 0.03 * this.nausea;
 		}
-		camera.rotation.set(player.pitch, player.yaw, roll, "YXZ");
+		this.thirdPerson +=
+			((this.localEmote ? 1 : 0) - this.thirdPerson) * Math.min(1, dt * 5);
+		if (this.thirdPerson < 0.002) {
+			this.thirdPerson = 0;
+		}
+		if (this.thirdPerson > 0) {
+			const blend = THREE.MathUtils.smootherstep(this.thirdPerson, 0, 1);
+			const pitch = THREE.MathUtils.lerp(
+				player.pitch,
+				THREE.MathUtils.clamp(player.pitch, -0.85, 0.3),
+				blend,
+			);
+			const shot = this.thirdPersonEye(player, pitch);
+			camera.position.lerp(shot, blend);
+			camera.rotation.set(pitch, player.yaw, roll * (1 - blend), "YXZ");
+		} else {
+			camera.rotation.set(player.pitch, player.yaw, roll, "YXZ");
+		}
+		this.showSelfModel(player);
 		if (camera.fov !== settings.fov) {
 			camera.fov = settings.fov;
 			camera.updateProjectionMatrix();
@@ -1241,6 +1479,99 @@ export class GameSession {
 			renderPixelRatio(settings.quality, settings.renderScale)
 		) {
 			this.resize();
+		}
+	}
+
+	private thirdPersonEye(player: LocalPlayer, pitch: number): THREE.Vector3 {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const feet = player.position;
+		const pivot = new THREE.Vector3(
+			feet.x,
+			feet.y + THIRD_PERSON_PIVOT,
+			feet.z,
+		);
+		const direction = new THREE.Vector3(
+			-Math.sin(player.yaw) * Math.cos(pitch),
+			Math.sin(pitch),
+			-Math.cos(player.yaw) * Math.cos(pitch),
+		);
+		const wanted = pivot
+			.clone()
+			.addScaledVector(direction, -THIRD_PERSON_DISTANCE);
+		const room = loaded.world.roomAt({ x: feet.x, z: feet.z }, feet.y + 0.1);
+		if (room) {
+			wanted.y = THREE.MathUtils.clamp(
+				wanted.y,
+				room.floorY + 0.35,
+				room.ceilingY - 0.25,
+			);
+		}
+		const clear = pullBackToSight(loaded.world, pivot, wanted, 0.2);
+		const shot = new THREE.Vector3(clear.x, clear.y, clear.z);
+		if (shot.distanceTo(pivot) < THIRD_PERSON_DISTANCE - 0.05) {
+			shot.lerp(pivot, 0.12);
+		}
+		return shot;
+	}
+
+	private showSelfModel(player: LocalPlayer): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		if (this.thirdPerson < THIRD_PERSON_SHOWN) {
+			loaded.remotePlayers.showSelf(null);
+			return;
+		}
+		const emote = this.localEmote;
+		const serverNow = clockSync.serverNow();
+		const flags = loaded.state.self?.latest?.flags ?? 0;
+		loaded.remotePlayers.showSelf({
+			...player.position,
+			yaw: emote?.yaw ?? player.yaw,
+			emote: emote?.emote ?? null,
+			emoteTime: emote ? Math.max(0, (serverNow - emote.startedAt) / 1000) : 0,
+			lanternOpen: this.lanternIntent && this.hideSpot < 0,
+			ghost: (flags & PLAYER_FLAG.dead) !== 0 && this.ghostLimits !== null,
+			talking: micManager.voiceActive() ? micManager.measure() : 0,
+			walkie: loaded.state.selfHasWalkie,
+			heldObject: this.heldObject(),
+		});
+	}
+
+	private checkEmote(
+		frame: FrameInput,
+		alive: boolean,
+		ghost: boolean,
+		restrained: boolean,
+		serverNow: number,
+	): void {
+		const emote = this.localEmote;
+		if (!emote) {
+			return;
+		}
+		if (serverNow >= emote.until) {
+			this.localEmote = null;
+			return;
+		}
+		const moving =
+			EMOTE_BREAKING_HOLDS.some((action) => frame.held.has(action)) ||
+			EMOTE_BREAKING_PRESSES.some((action) => frame.pressed.has(action));
+		if (
+			moving ||
+			restrained ||
+			this.voting ||
+			this.hideSpot >= 0 ||
+			(!alive && !ghost)
+		) {
+			this.cancelEmote(true);
+		}
+	}
+
+	private cancelEmote(notify: boolean): void {
+		if (!this.localEmote) {
+			return;
+		}
+		this.localEmote = null;
+		if (notify) {
+			getSocket().emit("game:emote", { emote: null });
 		}
 	}
 
@@ -1341,7 +1672,11 @@ export class GameSession {
 			swing: settings.reduceMotion ? 0.35 : 1,
 			headBob: settings.headBob && !settings.reduceMotion,
 			reduceMotion: settings.reduceMotion,
-			visible: alive && this.carriedBy === null && this.hideSpot < 0,
+			visible:
+				alive &&
+				this.carriedBy === null &&
+				this.hideSpot < 0 &&
+				this.thirdPerson < THIRD_PERSON_SHOWN,
 			fov: settings.fov,
 			aspect: loaded.camera.aspect,
 		});
@@ -1353,7 +1688,11 @@ export class GameSession {
 			speed: player.speed,
 			crouch: player.character.crouch,
 			grounded: player.character.grounded,
-			visible: alive && this.carriedBy === null && this.hideSpot < 0,
+			visible:
+				alive &&
+				this.carriedBy === null &&
+				this.hideSpot < 0 &&
+				this.thirdPerson < THIRD_PERSON_SHOWN,
 		});
 		const lantern = loaded.worldLantern;
 		if (this.hideSpot >= 0) {
@@ -1365,7 +1704,13 @@ export class GameSession {
 		}
 		const local = loaded.rig.lanternLocalPosition();
 		const held = loaded.camera.localToWorld(local.clone());
-		lantern.position.copy(pullBackToSight(loaded.world, eye, held, 0.06));
+		const worn =
+			this.thirdPerson >= THIRD_PERSON_SHOWN
+				? loaded.remotePlayers.selfLanternPosition()
+				: null;
+		lantern.position.copy(
+			worn ?? pullBackToSight(loaded.world, eye, held, 0.06),
+		);
 		const tint = loaded.state.self?.lantern ?? DEFAULT_LANTERN_TINT;
 		lantern.color.setHex(
 			tint === DEFAULT_LANTERN_TINT ? LANTERN_COLOR : LANTERN_TINT_COLORS[tint],
@@ -1389,8 +1734,18 @@ export class GameSession {
 	}
 
 	private cullRooms(eye: THREE.Vector3): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		if (!this.roomVisibility || !this.roomsShown) {
+			this.roomVisibility = new RoomVisibility(loaded.layout);
+			this.roomsShown = new Uint8Array(loaded.layout.rooms.length);
+		}
+		const shown = this.roomsShown;
+		const portals = this.roomVisibility.update(loaded.camera, eye, (doorId) =>
+			loaded.doors.isShut(doorId),
+		);
+		const seen = this.roomVisibility.visible;
 		const aroundMezzanines = this.roomsAroundMezzanines();
-		for (const room of (this.loadedWorld as LoadedWorld).rooms) {
+		for (const room of loaded.rooms) {
 			const dx = Math.max(
 				room.room.bounds.minX - eye.x,
 				0,
@@ -1401,16 +1756,25 @@ export class GameSession {
 				0,
 				eye.z - room.room.bounds.maxZ,
 			);
-			const verticalGap =
-				room.room.type === "stairwell" || aroundMezzanines.has(room.room.id)
-					? 0
-					: Math.max(0, Math.abs(room.room.floorY + 1.5 - eye.y) - 3.2);
 			const distance = Math.hypot(dx, dz);
-			room.group.visible =
-				distance < 42 &&
-				(verticalGap < 0.1 ||
-					(distance < STAIR_PRELOAD_RANGE && verticalGap < LEVEL_HEIGHT));
+			let visible: boolean;
+			if (portals) {
+				visible = distance < 42 && seen[room.room.id] === 1;
+			} else {
+				const verticalGap =
+					room.room.type === "stairwell" || aroundMezzanines.has(room.room.id)
+						? 0
+						: Math.max(0, Math.abs(room.room.floorY + 1.5 - eye.y) - 3.2);
+				visible =
+					distance < 42 &&
+					(verticalGap < 0.1 ||
+						(distance < STAIR_PRELOAD_RANGE && verticalGap < LEVEL_HEIGHT));
+			}
+			room.group.visible = visible;
+			shown[room.room.id] = visible ? 1 : 0;
 		}
+		loaded.doors.cull(shown);
+		loaded.pickups.cull(shown);
 	}
 
 	private updateTargets(
@@ -1438,8 +1802,631 @@ export class GameSession {
 			feet,
 			this.hideSpot,
 			serverNow,
+			this.giftCandidates(),
+			this.doorsLocked,
 		);
 		loaded.grimoire.refresh();
+	}
+
+	private giftCandidates(): GiftCandidate[] {
+		const loaded = this.loadedWorld as LoadedWorld;
+		if (this.init.tutorial) {
+			return [];
+		}
+		const people: GiftCandidate[] = [];
+		for (const player of loaded.state.players.values()) {
+			const flags = player.latest?.flags ?? PLAYER_FLAG.dead;
+			if (
+				player.id === this.selfId ||
+				(flags &
+					(PLAYER_FLAG.dead | PLAYER_FLAG.hidden | PLAYER_FLAG.carried)) !==
+					0
+			) {
+				continue;
+			}
+			const position = loaded.remotePlayers.positionOf(player.id);
+			if (position) {
+				people.push({
+					id: player.id,
+					name: player.name,
+					chest: new THREE.Vector3(
+						position.x,
+						position.y + 1.05 - (player.latest?.crouch ?? 0) * 0.35,
+						position.z,
+					),
+				});
+			}
+		}
+		return people;
+	}
+
+	private get noMap(): boolean {
+		return hasMutator(this.init.config, "noMap");
+	}
+
+	private get darkness(): boolean {
+		return hasMutator(this.init.config, "darkness");
+	}
+
+	private get pushCooldownMs(): number {
+		return hasMutator(this.init.config, "strongPush")
+			? PUSH_COOLDOWN_MS * STRONG_PUSH_COOLDOWN_FACTOR
+			: PUSH_COOLDOWN_MS;
+	}
+
+	private get doorsLocked(): boolean {
+		const event = this.loadedWorld?.state.manorEvent;
+		const now = clockSync.serverNow();
+		return (
+			event?.kind === "lockdown" &&
+			event.phase === "start" &&
+			now >= event.startsAt &&
+			now < event.endsAt
+		);
+	}
+
+	private openGift(target: InteractionTarget): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const materials = this.inventory?.materials;
+		if (!target.playerId || !materials) {
+			return;
+		}
+		const owned = MATERIAL_IDS.findIndex((id) => materials[id] > 0);
+		if (owned < 0) {
+			pushFeedback(currentMessages().party.gift.none, "info");
+			return;
+		}
+		this.gift = {
+			playerId: target.playerId,
+			name: loaded.state.players.get(target.playerId)?.name ?? "",
+			selected: owned,
+		};
+	}
+
+	private updateGift(frame: FrameInput): void {
+		const gift = this.gift;
+		if (!gift) {
+			return;
+		}
+		const loaded = this.loadedWorld as LoadedWorld;
+		const position = loaded.remotePlayers.positionOf(gift.playerId);
+		const target = loaded.state.players.get(gift.playerId)?.latest;
+		const player = this.player as LocalPlayer;
+		if (
+			frame.escape ||
+			!position ||
+			!target ||
+			(target.flags & PLAYER_FLAG.dead) !== 0 ||
+			Math.hypot(
+				position.x - player.character.x,
+				position.z - player.character.z,
+			) > 3.6
+		) {
+			this.gift = null;
+		}
+	}
+
+	private giveSelected(): void {
+		const gift = this.gift;
+		const material = gift ? MATERIAL_IDS[gift.selected] : undefined;
+		if (!gift || !material) {
+			return;
+		}
+		if ((this.inventory?.materials[material] ?? 0) < 1) {
+			soundBank.play("capture-fail", { volume: 0.3 });
+			return;
+		}
+		getSocket().emit("game:gift", { targetId: gift.playerId, material });
+	}
+
+	private handleSocial(
+		frame: FrameInput,
+		alive: boolean,
+		ghost: boolean,
+		restrained: boolean,
+		serverNow: number,
+	): void {
+		if (this.voting || this.init.tutorial) {
+			this.closeWheel();
+			this.pingPressedAt = null;
+			return;
+		}
+		const able = (alive && !restrained) || ghost;
+		const now = performance.now();
+		if (this.wheel) {
+			this.wheel.x += frame.mouseX;
+			this.wheel.y += frame.mouseY;
+			const count =
+				this.wheel.kind === "ping" ? PING_WHEEL.length : EMOTE_IDS.length;
+			if (Math.hypot(this.wheel.x, this.wheel.y) > WHEEL_DEADZONE) {
+				const step = (Math.PI * 2) / count;
+				const angle = Math.atan2(this.wheel.y, this.wheel.x) + Math.PI / 2;
+				this.wheel.selected = wrapIndex(Math.round(angle / step), count);
+			}
+		}
+		if (!able || this.mapOpen) {
+			this.closeWheel();
+			this.pingPressedAt = null;
+		} else {
+			if (frame.pressed.has("ping")) {
+				this.pingPressedAt = now;
+			}
+			if (
+				this.pingPressedAt !== null &&
+				!this.wheel &&
+				frame.held.has("ping") &&
+				now - this.pingPressedAt > PING_HOLD_MS
+			) {
+				this.openWheel("ping");
+			}
+			if (frame.released.has("ping") && this.pingPressedAt !== null) {
+				const wheel = this.wheel?.kind === "ping" ? this.wheel : null;
+				this.pingPressedAt = null;
+				if (wheel) {
+					const kind =
+						wheel.selected === null ? null : PING_WHEEL[wheel.selected];
+					this.closeWheel();
+					if (kind) {
+						this.sendPing(kind);
+					}
+				} else {
+					this.sendPing(null);
+				}
+			}
+			if (frame.pressed.has("emote") && !this.wheel) {
+				this.openWheel("emote");
+			}
+			if (frame.released.has("emote") && this.wheel?.kind === "emote") {
+				const emote =
+					this.wheel.selected === null ? null : EMOTE_IDS[this.wheel.selected];
+				this.closeWheel();
+				if (emote) {
+					this.sendEmote(emote);
+				}
+			}
+		}
+		if (ghost) {
+			if (
+				frame.pressed.has("interact") &&
+				this.interaction?.kind === "ghostDoor" &&
+				serverNow >= this.ghostDoorReadyAt
+			) {
+				getSocket().emit("game:ghost", {
+					kind: "door",
+					id: this.interaction.id,
+				});
+				this.ghostDoorReadyAt = serverNow + GHOST_DOOR_COOLDOWN_MS;
+			}
+			if (frame.pressed.has("shout") && serverNow >= this.ghostKnockReadyAt) {
+				getSocket().emit("game:ghost", { kind: "knock", id: -1 });
+				this.ghostKnockReadyAt = serverNow + GHOST_KNOCK_COOLDOWN_MS;
+			}
+		}
+		if (
+			alive &&
+			!restrained &&
+			this.hideSpot < 0 &&
+			frame.pressed.has("power") &&
+			this.loadedWorld?.state.role?.role === "possessed"
+		) {
+			this.castPower(serverNow);
+		}
+	}
+
+	private openWheel(kind: "ping" | "emote"): void {
+		this.wheel = { kind, x: 0, y: 0, selected: null };
+	}
+
+	private closeWheel(): void {
+		this.wheel = null;
+	}
+
+	private aimPoint(
+		eye: THREE.Vector3,
+		forward: THREE.Vector3,
+		range: number,
+	): THREE.Vector3 {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const far = eye.clone().addScaledVector(forward, range);
+		const clear = pullBackToSight(loaded.world, eye, far, 0.05);
+		const end = new THREE.Vector3(clear.x, clear.y, clear.z);
+		const length = end.distanceTo(eye);
+		const probe = new THREE.Vector3();
+		for (let distance = 0.3; distance <= length; distance += 0.2) {
+			probe.copy(eye).addScaledVector(forward, distance);
+			const room = loaded.world.roomAt({ x: probe.x, z: probe.z }, probe.y);
+			if (!room) {
+				continue;
+			}
+			if (probe.y <= room.floorY + 0.02) {
+				return new THREE.Vector3(probe.x, room.floorY, probe.z);
+			}
+			if (probe.y >= room.ceilingY - 0.02) {
+				return probe.clone();
+			}
+		}
+		return end;
+	}
+
+	private aimedAnomaly(
+		eye: THREE.Vector3,
+		forward: THREE.Vector3,
+		limit: number,
+	): number | null {
+		const loaded = this.loadedWorld as LoadedWorld;
+		let best: { id: number; angle: number } | null = null;
+		for (const info of loaded.anomalies.infos()) {
+			const offset = info.center.clone().sub(eye);
+			const distance = offset.length();
+			if (distance > limit + 0.5 || distance > PING_MAX_DISTANCE) {
+				continue;
+			}
+			const angle = offset.normalize().angleTo(forward);
+			const tolerance = Math.max(0.06, Math.atan2(info.radius, distance));
+			if (angle < tolerance && (!best || angle < best.angle)) {
+				best = { id: info.id, angle };
+			}
+		}
+		return best?.id ?? null;
+	}
+
+	private contextualPing(point: THREE.Vector3): PingKind {
+		const layout = (this.loadedWorld as LoadedWorld).layout;
+		const near = (x: number, y: number, z: number, range: number) =>
+			Math.hypot(point.x - x, point.y - y, point.z - z) < range;
+		if (
+			layout.altars.some((altar) => near(altar.x, altar.y + 0.8, altar.z, 2))
+		) {
+			return "altar";
+		}
+		const pickups = (this.loadedWorld as LoadedWorld).pickups;
+		if (
+			layout.pickups.some(
+				(pickup) =>
+					pickups.isAvailable(pickup.id) &&
+					near(pickup.x, pickup.y, pickup.z, 1.4),
+			)
+		) {
+			return "material";
+		}
+		if (
+			layout.hideSpots.some((spot) => {
+				const furniture = layout.furniture[spot.furnitureId];
+				return (
+					furniture &&
+					near(
+						furniture.x,
+						furniture.y + furniture.height * 0.5,
+						furniture.z,
+						1.4,
+					)
+				);
+			})
+		) {
+			return "hide";
+		}
+		return "here";
+	}
+
+	private sendPing(kind: PingKind | null): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		if (!this.pingAllowed()) {
+			return;
+		}
+		if (!this.hasAllies && !this.soloPingNoted) {
+			this.soloPingNoted = true;
+			pushFeedback(currentMessages().party.ping.solo, "info");
+		}
+		loaded.camera.updateMatrixWorld(true);
+		const eye = loaded.camera.getWorldPosition(new THREE.Vector3());
+		const forward = loaded.camera.getWorldDirection(new THREE.Vector3());
+		const point = this.aimPoint(eye, forward, PING_MAX_DISTANCE);
+		const anomalyId = this.aimedAnomaly(eye, forward, point.distanceTo(eye));
+		const anomaly =
+			anomalyId === null ? null : loaded.anomalies.info(anomalyId);
+		const target = anomaly ? anomaly.position : point;
+		getSocket().emit("game:ping", {
+			kind: kind ?? (anomaly ? "monster" : this.contextualPing(point)),
+			x: target.x,
+			y: target.y,
+			z: target.z,
+			anomalyId,
+		});
+	}
+
+	private sendEmote(emote: EmoteId): void {
+		const serverNow = clockSync.serverNow();
+		const player = this.player;
+		if (!player || serverNow < this.emoteReadyAt || this.hideSpot >= 0) {
+			return;
+		}
+		this.emoteReadyAt = serverNow + EMOTE_COOLDOWN_MS;
+		this.localEmote = {
+			emote,
+			startedAt: serverNow,
+			until: serverNow + EMOTE_DURATION_MS[emote],
+			yaw: player.yaw,
+		};
+		getSocket().emit("game:emote", { emote });
+	}
+
+	private pingAllowed(): boolean {
+		const now = performance.now();
+		while (
+			this.pingTimes.length > 0 &&
+			now - this.pingTimes[0] >= PING_BURST_WINDOW_MS
+		) {
+			this.pingTimes.shift();
+		}
+		const last = this.pingTimes[this.pingTimes.length - 1] ?? -Infinity;
+		if (this.pingTimes.length >= PING_BURST || now - last < PING_COOLDOWN_MS) {
+			pushFeedback(currentMessages().party.ping.wait, "info");
+			soundBank.play("capture-fail", { volume: 0.25 });
+			return false;
+		}
+		this.pingTimes.push(now);
+		return true;
+	}
+
+	private get hasAllies(): boolean {
+		if (this.init.config.mode === "possessed") {
+			return true;
+		}
+		const self = this.init.players.find((entry) => entry.id === this.selfId);
+		return (
+			self?.team !== null &&
+			self?.team !== undefined &&
+			this.init.players.some(
+				(entry) => entry.id !== this.selfId && entry.team === self.team,
+			)
+		);
+	}
+
+	private castPower(serverNow: number): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		if (serverNow < this.powerReadyAt) {
+			soundBank.play("capture-fail", { volume: 0.3 });
+			return;
+		}
+		loaded.camera.updateMatrixWorld(true);
+		const eye = loaded.camera.getWorldPosition(new THREE.Vector3());
+		const forward = loaded.camera.getWorldDirection(new THREE.Vector3());
+		const altar = loaded.layout.altars.find(
+			(candidate) =>
+				Math.hypot(
+					candidate.x - eye.x,
+					candidate.y + 0.8 - eye.y,
+					candidate.z - eye.z,
+				) <=
+				ALTAR_INTERACT_RANGE + 0.3,
+		);
+		const point = altar
+			? new THREE.Vector3(altar.x, altar.y, altar.z)
+			: this.aimPoint(eye, forward, POSSESSED_CALL_RANGE);
+		const room = loaded.world.roomAt({ x: point.x, z: point.z }, point.y + 0.1);
+		if (!altar && room) {
+			point.y = room.floorY;
+		}
+		getSocket().emit("game:power", {
+			altarId: altar?.id ?? -1,
+			x: point.x,
+			y: point.y,
+			z: point.z,
+		});
+		this.powerReadyAt = serverNow + POSSESSED_POWER_COOLDOWN_MS;
+		this.powerPendingUntil = serverNow + 2000;
+	}
+
+	private pendingRole: RoleInfo | null = null;
+
+	handleRole(role: RoleInfo): void {
+		const loaded = this.loadedWorld;
+		if (!loaded) {
+			this.pendingRole = role;
+			return;
+		}
+		const fresh = loaded.state.role?.role !== role.role;
+		loaded.state.role = role;
+		if (fresh) {
+			this.roleShownAt = performance.now();
+			soundBank.play(role.role === "possessed" ? "dark-call" : "event-gong", {
+				volume: 0.6,
+			});
+		}
+	}
+
+	private updateMarkers(
+		dt: number,
+		eye: THREE.Vector3,
+		forward: THREE.Vector3,
+		serverNow: number,
+	): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const camera = loaded.camera;
+		const party = currentMessages().party;
+		const pings = loaded.state.activePings(serverNow);
+		const look = (ping: PingClientState) => {
+			const owner =
+				ping.playerId === this.selfId
+					? party.possessed.you
+					: (loaded.state.players.get(ping.playerId)?.name ?? "");
+			const distance = Math.round(
+				eye.distanceTo(new THREE.Vector3(ping.x, ping.y, ping.z)),
+			);
+			return {
+				label: party.ping.kinds[ping.kind],
+				detail: `${owner} · ${party.ping.distance(distance)}`,
+				color: hex(PING_COLORS[ping.kind]),
+			};
+		};
+		this.pingViews?.update(dt, pings, serverNow, camera.fov, look);
+		const markers: HudMarker[] = [];
+		const projected = new THREE.Vector3();
+		const live = new Set<number>();
+		for (const ping of pings) {
+			const point = new THREE.Vector3(ping.x, ping.y + 0.5, ping.z);
+			const ahead = point.clone().sub(eye).normalize().dot(forward) > 0.05;
+			projected.copy(point).project(camera);
+			if (
+				ahead &&
+				Math.abs(projected.x) < 0.96 &&
+				Math.abs(projected.y) < 0.94
+			) {
+				this.arrowAngles.delete(ping.id);
+				continue;
+			}
+			live.add(ping.id);
+			const sx = ahead ? projected.x : -projected.x;
+			const sy = ahead ? projected.y : -projected.y;
+			const target = Math.atan2(-sy, sx);
+			const previous = this.arrowAngles.get(ping.id);
+			const angle =
+				previous === undefined
+					? target
+					: previous +
+						Math.atan2(
+							Math.sin(target - previous),
+							Math.cos(target - previous),
+						) *
+							Math.min(1, dt * 16);
+			this.arrowAngles.set(ping.id, angle);
+			const details = look(ping);
+			markers.push({
+				x: 0,
+				y: 0,
+				onScreen: false,
+				angle,
+				label: details.label,
+				detail: details.detail,
+				color: details.color,
+				fresh: (serverNow - ping.createdAt) / 700,
+			});
+		}
+		for (const id of this.arrowAngles.keys()) {
+			if (!live.has(id)) {
+				this.arrowAngles.delete(id);
+			}
+		}
+		loaded.hud.markers = markers;
+	}
+
+	private mapPings(): MapPoint[] {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const top = Math.max(...loaded.layout.levels);
+		return loaded.state.activePings(clockSync.serverNow()).map((ping) => ({
+			x: ping.x,
+			z: ping.z,
+			level: levelForHeight(ping.y + 0.1, top, 1.8),
+			color: hex(PING_COLORS[ping.kind]),
+		}));
+	}
+
+	private mapThreats(): MapPoint[] {
+		const loaded = this.loadedWorld as LoadedWorld;
+		if (loaded.state.role?.role !== "possessed") {
+			return [];
+		}
+		const top = Math.max(...loaded.layout.levels);
+		return loaded.anomalies.infos().map((info) => ({
+			x: info.position.x,
+			z: info.position.z,
+			level: levelForHeight(info.position.y + 0.1, top, 1.8),
+			color: "#e5533d",
+		}));
+	}
+
+	private updateStats(
+		loaded: LoadedWorld,
+		settings: ReturnType<typeof settingsStore.get>,
+	): void {
+		const now = performance.now();
+		if (now - this.statsPublishedAt < 250) {
+			return;
+		}
+		this.statsPublishedAt = now;
+		const config = settings.stats;
+		const enabled = Object.values(config.metrics).some(Boolean);
+		if (!enabled && !config.graph) {
+			this.stats = null;
+			return;
+		}
+		const labels = currentMessages().party.stats;
+		const lines: StatsLine[] = [];
+		const add = (
+			metric: keyof typeof config.metrics,
+			value: string,
+			warn = false,
+		) => {
+			if (config.metrics[metric]) {
+				lines.push({ label: labels.short[metric], value, warn });
+			}
+		};
+		const frames = this.frameTimes;
+		const average =
+			frames.reduce((sum, value) => sum + value, 0) /
+			Math.max(1, frames.length);
+		const worst = frames.length > 0 ? Math.max(...frames) : 0;
+		add("fps", String(this.fps), this.fps > 0 && this.fps < 30);
+		add("frameTime", labels.frameTime(average, worst), worst > 50);
+		add(
+			"ping",
+			labels.milliseconds(Math.round(clockSync.roundTrip)),
+			clockSync.roundTrip > 150,
+		);
+		add(
+			"jitter",
+			labels.milliseconds(Math.round(clockSync.jitter)),
+			clockSync.jitter > 30,
+		);
+		const recent = this.snapshotArrivals.filter(
+			(arrival) => now - arrival.at <= 1000,
+		);
+		add("snapshots", labels.perSecond(recent.length));
+		const window = this.snapshotArrivals.filter(
+			(arrival) => now - arrival.at <= 3000,
+		);
+		let loss = 0;
+		if (window.length > 1) {
+			const span =
+				(window[window.length - 1].tick - window[0].tick) /
+					SNAPSHOT_INTERVAL_TICKS +
+				1;
+			loss = Math.max(0, Math.round((1 - window.length / span) * 100));
+		}
+		add("loss", labels.percent(loss), loss >= 5);
+		add(
+			"interpolation",
+			labels.milliseconds(Math.round(this.interpolationDelay)),
+		);
+		const info = loaded.renderer.info.render;
+		add("drawCalls", labels.thousands(info.calls));
+		add("triangles", labels.thousands(info.triangles));
+		const memory = (
+			performance as Performance & { memory?: { usedJSHeapSize: number } }
+		).memory;
+		add(
+			"memory",
+			memory
+				? labels.megabytes(Math.round(memory.usedJSHeapSize / 1048576))
+				: labels.unavailable,
+		);
+		const peers = Object.values(voiceStore.get().peers);
+		const connected = peers.filter(
+			(peer) => peer.state === "connected" || peer.relayed,
+		).length;
+		add(
+			"voice",
+			labels.voice(
+				connected,
+				peers.length,
+				peers.filter((peer) => peer.relayed).length,
+			),
+			connected < peers.length,
+		);
+		this.stats = {
+			lines,
+			frames: config.graph ? [...frames] : [],
+		};
 	}
 
 	private updateAudio(
@@ -1472,7 +2459,11 @@ export class GameSession {
 		const self = loaded.state.self?.latest;
 		loaded.ambientAudio.update(dt, eye, room, {
 			stepSpeed:
-				this.hideSpot >= 0 || this.carriedBy !== null ? 0 : player.speed,
+				this.hideSpot >= 0 ||
+				this.carriedBy !== null ||
+				(flags & PLAYER_FLAG.dead) !== 0
+					? 0
+					: player.speed,
 			grounded: player.character.grounded,
 			crouching: player.character.crouch > 0.5,
 			slimed: (flags & PLAYER_FLAG.slimed) !== 0,
@@ -1505,7 +2496,7 @@ export class GameSession {
 			x: character.x,
 			y: character.y,
 			z: character.z,
-			yaw: player.yaw,
+			yaw: this.localEmote?.yaw ?? player.yaw,
 			pitch: player.pitch,
 			vx: character.vx,
 			vy: character.vy,
@@ -1558,6 +2549,16 @@ export class GameSession {
 					HAZE_FAR,
 				);
 			wanted = Math.max(wanted, info.extra * near);
+		}
+		const event = (this.loadedWorld as LoadedWorld).state.manorEvent;
+		const serverNow = clockSync.serverNow();
+		if (
+			event?.kind === "thickFog" &&
+			event.phase === "start" &&
+			serverNow >= event.startsAt &&
+			serverNow < event.endsAt
+		) {
+			wanted = Math.max(wanted, 0.85);
 		}
 		const rate = (wanted > this.haze ? 0.9 : 0.45) * dt;
 		this.haze += THREE.MathUtils.clamp(wanted - this.haze, -rate, rate);
@@ -1668,6 +2669,8 @@ export class GameSession {
 				walkie: holders.has(player.id),
 				radio: this.isOnRadio(player.id, player.latest?.flags ?? 0),
 				tagline: taglines.get(player.id) ?? null,
+				bounty: loaded.state.bounty.playerId === player.id,
+				voted: loaded.state.voters.has(player.id),
 			}))
 			.sort((first, second) => second.score - first.score);
 	}
@@ -1732,7 +2735,59 @@ export class GameSession {
 			...this.brewHud((flags & PLAYER_FLAG.dead) === 0),
 			level: this.currentLevel(),
 			serverNow,
+			...this.partyHud(flags),
 		});
+	}
+
+	private partyHud(flags: number) {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const state = loaded.state;
+		const party = currentMessages().party;
+		const wheel = this.wheel;
+		const bountyHolder = state.bounty.playerId
+			? state.players.get(state.bounty.playerId)
+			: undefined;
+		return {
+			ghost: (flags & PLAYER_FLAG.dead) !== 0 && this.ghostLimits !== null,
+			oneLife: hasMutator(this.init.config, "oneLife"),
+			ghostDoorReadyAt: this.ghostDoorReadyAt,
+			ghostKnockReadyAt: this.ghostKnockReadyAt,
+			wheel: wheel
+				? wheel.kind === "ping"
+					? {
+							title: party.ping.wheel,
+							labels: PING_WHEEL.map((kind) => party.ping.kinds[kind]),
+							colors: PING_WHEEL.map((kind) => hex(PING_COLORS[kind])),
+							selected: wheel.selected,
+						}
+					: {
+							title: party.emote.wheel,
+							labels: EMOTE_IDS.map((emote) => party.emote.names[emote]),
+							colors: EMOTE_IDS.map(() => "#dce54d"),
+							selected: wheel.selected,
+						}
+				: null,
+			gift: this.gift
+				? { name: this.gift.name, selected: this.gift.selected }
+				: null,
+			manorEvent: state.manorEvent,
+			bounty:
+				bountyHolder && state.bounty.value > 0
+					? {
+							name: bountyHolder.name,
+							value: state.bounty.value,
+							self: bountyHolder.id === this.selfId,
+						}
+					: null,
+			ritual: state.ritual,
+			role: state.role?.role ?? null,
+			roleShownAt: this.roleShownAt,
+			powerReadyAt: this.powerReadyAt,
+			noMap: this.noMap,
+			voting: this.voting,
+			stats: this.stats,
+			pushCooldownMs: this.pushCooldownMs,
+		};
 	}
 
 	private respawnAt = 0;
@@ -1765,39 +2820,46 @@ export class GameSession {
 		hud.minimapLabel = currentMessages().game.map.levelName(
 			this.currentLevel(),
 		);
-		if (!context || !renderer) {
+		if (!context || !renderer || this.noMap) {
 			return;
 		}
-		renderer.draw(
-			context,
-			{
-				centerX: player.character.x,
-				centerZ: player.character.z,
-				scale: 8,
-				width: MINIMAP_SIZE,
-				height: MINIMAP_SIZE,
-				level: this.currentLevel(),
+		const view = {
+			centerX: player.character.x,
+			centerZ: player.character.z,
+			scale: 8,
+			width: MINIMAP_SIZE,
+			height: MINIMAP_SIZE,
+			level: this.currentLevel(),
+		};
+		const options = {
+			labels: false,
+			labelSize: 0,
+			grid: false,
+			compass: false,
+			scaleBar: false,
+			player: {
+				x: player.character.x,
+				z: player.character.z,
+				yaw: player.yaw,
 			},
-			{
-				labels: false,
-				labelSize: 0,
-				grid: false,
-				compass: false,
-				scaleBar: false,
-				player: {
-					x: player.character.x,
-					z: player.character.z,
-					yaw: player.yaw,
-				},
-				others: this.mapMarkers(),
-				names: false,
-				pinToEdge: true,
-				currentRoomId: this.currentRoomId(player),
-				levelBadge: null,
-				pixelRatio: hud.minimapRatio(),
-				silhouette: true,
-			},
-		);
+			others: this.mapMarkers(),
+			names: false,
+			pinToEdge: true,
+			currentRoomId: roomId,
+			levelBadge: null,
+			pixelRatio: hud.minimapRatio(),
+			silhouette: true,
+			pings: this.mapPings(),
+			threats: this.mapThreats(),
+			cached: true,
+		};
+		const key = JSON.stringify([view, options]);
+		if (key === this.minimapKey) {
+			return;
+		}
+		this.minimapKey = key;
+		renderer.draw(context, view, options);
+		hud.markMinimap();
 	}
 
 	private mapMarkers(): MapMarker[] {
@@ -1816,16 +2878,22 @@ export class GameSession {
 				continue;
 			}
 			const dead = (latest.flags & PLAYER_FLAG.dead) !== 0;
-			const body = viewer
-				? this.markerBlender.place(
-						player.id,
-						viewer,
-						latest,
-						disguises,
-						now,
-						dead,
-					)
-				: latest;
+			const corpse =
+				dead && !(this.ghostLimits !== null && loaded.state.selfDead)
+					? loaded.remotePlayers.corpseOf(player.id)
+					: null;
+			const body = corpse
+				? { x: corpse.x, y: corpse.y, z: corpse.z, yaw: latest.yaw }
+				: viewer
+					? this.markerBlender.place(
+							player.id,
+							viewer,
+							latest,
+							disguises,
+							now,
+							dead,
+						)
+					: latest;
 			const color =
 				player.team === null ? player.color : TEAM_COLORS[player.team];
 			markers.push({
@@ -1887,24 +2955,23 @@ export class GameSession {
 			levelBadge: null,
 			pixelRatio: area.ratio,
 			silhouette: false,
+			pings: this.mapPings(),
+			threats: this.mapThreats(),
 		});
 	}
 
 	private render(loaded: LoadedWorld): void {
-		const { renderer, scene, camera } = loaded;
+		const { renderer, scene, camera, rig } = loaded;
 		renderer.clear();
 		camera.layers.set(0);
 		renderer.render(scene, camera);
+		if (!rig.root.visible) {
+			return;
+		}
 		renderer.clearDepth();
-		const background = scene.background;
-		const fog = scene.fog;
-		scene.background = null;
-		scene.fog = null;
 		camera.layers.set(FIRST_PERSON_LAYER);
-		renderer.render(scene, camera);
+		renderer.render(rig.root, camera);
 		camera.layers.set(0);
-		scene.background = background;
-		scene.fog = fog;
 	}
 
 	private updateRadioGhost(): void {
@@ -1943,6 +3010,8 @@ export class GameSession {
 		loaded.anomalies.silenceVoices();
 		momentVoices.stopCapture();
 		loaded.remotePlayers.spectate();
+		this.pingViews?.clear();
+		loaded.hud.markers = [];
 		voiceChat.clearRadio();
 		voiceChat.setMode("lobby");
 		this.cast.cancel();
@@ -2038,8 +3107,189 @@ export class GameSession {
 		);
 	}
 
+	private bountySeen: string | null = null;
+
+	private startVote(endsAt: number, reason: "ritual" | "timeout"): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		if (this.voting) {
+			voteStore.set({ endsAt, reason });
+			return;
+		}
+		this.voting = true;
+		this.closeMap();
+		loaded.grimoire.setOpen(false);
+		this.cast.cancel();
+		this.closeWheel();
+		this.gift = null;
+		this.setAltar(null);
+		if (this.radioOn) {
+			this.radioOn = false;
+			getSocket().emit("game:radio", { on: false });
+		}
+		voiceChat.clearRadio();
+		voiceChat.setMode("lobby");
+		loaded.remotePlayers.voiceOpen = true;
+		this.intentionalUnlock = true;
+		this.input?.releasePointerLock();
+		hudStore.set({ paused: false, showMap: false, showLeaderboard: false });
+		voteStore.set({
+			open: true,
+			endsAt,
+			reason,
+			choice: null,
+			candidates: [...loaded.state.players.values()].map((player) => ({
+				id: player.id,
+				name: player.name,
+				color: player.color,
+				self: player.id === this.selfId,
+				voted: loaded.state.voters.has(player.id),
+			})),
+		});
+		soundBank.play("event-gong", { volume: 0.8 });
+		if (reason === "ritual") {
+			pushFeedback(currentMessages().party.possessed.quotaReached, "success");
+		}
+	}
+
+	private onPartyEvent(event: GameEvent): void {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const party = currentMessages().party;
+		const nameOf = (id: string) => loaded.state.players.get(id)?.name ?? "?";
+		const serverNow = clockSync.serverNow();
+		switch (event.type) {
+			case "ping":
+				soundBank.play(
+					event.kind === "danger" || event.kind === "monster"
+						? "ping-danger"
+						: "ping",
+					{ volume: 0.45 },
+				);
+				break;
+			case "gift": {
+				const material = currentMessages().grimoire.materials[event.material];
+				if (event.toId === this.selfId) {
+					soundBank.play("gift", { volume: 0.7 });
+					pushFeedback(
+						party.gift.received(material, nameOf(event.fromId)),
+						"success",
+					);
+				} else if (event.fromId === this.selfId) {
+					soundBank.play("gift", { volume: 0.4, rate: 0.8 });
+					pushFeedback(party.gift.given(material, nameOf(event.toId)), "info");
+				}
+				break;
+			}
+			case "poltergeist":
+				soundBank.play("poltergeist", {
+					position: { x: event.x, y: event.y + 1, z: event.z },
+					volume: 1,
+					refDistance: 3,
+					maxDistance: 32,
+				});
+				break;
+			case "manorEvent": {
+				const name = party.events.names[event.kind];
+				if (event.phase === "warning") {
+					soundBank.play("event-gong", { volume: 0.35, rate: 1.4 });
+				} else if (event.phase === "start") {
+					soundBank.play("event-gong", { volume: 0.9 });
+					pushFeedback(
+						party.events.started(name, party.events.descriptions[event.kind]),
+						"warning",
+					);
+				} else {
+					pushFeedback(party.events.ended(name), "info");
+				}
+				break;
+			}
+			case "bounty":
+				if (event.playerId !== this.bountySeen) {
+					this.bountySeen = event.playerId;
+					if (event.playerId === this.selfId) {
+						soundBank.play("bounty", { volume: 0.6 });
+						pushFeedback(party.bounty.you(event.value), "warning");
+					} else if (event.playerId) {
+						pushFeedback(
+							party.bounty.other(nameOf(event.playerId), event.value),
+							"info",
+						);
+					}
+				}
+				break;
+			case "bountyReward":
+				if (event.playerId === this.selfId) {
+					soundBank.play("bounty", { volume: 0.8 });
+					pushFeedback(
+						event.reason === "push"
+							? party.bounty.pushReward(event.points, nameOf(event.targetId))
+							: party.bounty.claimed(
+									nameOf(event.playerId),
+									event.points,
+									nameOf(event.targetId),
+								),
+						"success",
+					);
+				} else if (event.reason === "claim") {
+					pushFeedback(
+						party.bounty.claimed(
+							nameOf(event.playerId),
+							event.points,
+							nameOf(event.targetId),
+						),
+						"info",
+					);
+				}
+				break;
+			case "altarCurse": {
+				const altar = loaded.layout.altars[event.altarId];
+				if (altar) {
+					soundBank.play("dark-call", {
+						position: { x: altar.x, y: altar.y + 1, z: altar.z },
+						volume: 0.8,
+						refDistance: 3,
+						maxDistance: 24,
+					});
+				}
+				if (serverNow < this.powerPendingUntil) {
+					this.powerPendingUntil = 0;
+					pushFeedback(party.possessed.curseDone, "success");
+				}
+				break;
+			}
+			case "darkCall":
+				soundBank.play("dark-call", {
+					position: { x: event.x, y: event.y + 1, z: event.z },
+					volume: 1,
+					refDistance: 4,
+					maxDistance: 45,
+				});
+				if (serverNow < this.powerPendingUntil) {
+					this.powerPendingUntil = 0;
+					pushFeedback(party.possessed.callDone, "success");
+				}
+				break;
+			case "vote":
+				if (event.phase === "start") {
+					this.startVote(event.endsAt, event.reason);
+				}
+				break;
+			case "voteCast":
+				voteStore.set((state) => ({
+					candidates: state.candidates.map((candidate) =>
+						candidate.id === event.voterId
+							? { ...candidate, voted: true }
+							: candidate,
+					),
+				}));
+				break;
+			default:
+				break;
+		}
+	}
+
 	private onEvent(event: GameEvent): void {
 		const loaded = this.loadedWorld as LoadedWorld;
+		this.onPartyEvent(event);
 		switch (event.type) {
 			case "voiceWindows":
 				momentVoices.setWindows(event.windows);
@@ -2157,6 +3407,7 @@ export class GameSession {
 				break;
 			case "death":
 				if (event.playerId === this.selfId) {
+					this.cancelEmote(false);
 					this.respawnAt = event.respawnAt;
 					this.cast.cancel();
 					loaded.grimoire.setOpen(false);
@@ -2231,6 +3482,7 @@ export class GameSession {
 		releaseKeyboardLock();
 		this.detach();
 		this.cast.dispose();
+		resetVote();
 		doubleVoices.clear();
 		this.replay?.stop();
 		this.replay = null;
@@ -2245,6 +3497,8 @@ export class GameSession {
 	}
 
 	private disposeWorld(loaded: LoadedWorld): void {
+		this.pingViews?.dispose();
+		this.pingViews = null;
 		loaded.ambientAudio.dispose();
 		loaded.anomalies.dispose();
 		loaded.remotePlayers.dispose();
@@ -2268,6 +3522,7 @@ export class GameSession {
 			}
 		});
 		loaded.materials.dispose();
+		loaded.rigMaterials.dispose();
 		loaded.textures.dispose();
 		loaded.post.dispose();
 		loaded.renderer.dispose();

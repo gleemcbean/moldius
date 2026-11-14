@@ -20,9 +20,11 @@ export function LobbyHeader({
 						? t.home.daily(
 								t.daily.themes[dailyChallenge(lobby.daily).theme].name,
 							)
-						: lobby.visibility === "private"
-							? t.lobby.kickerPrivate
-							: t.lobby.kickerPublic}
+						: lobby.config.mode === "possessed"
+							? t.party.possessed.lobbyBadge
+							: lobby.visibility === "private"
+								? t.lobby.kickerPrivate
+								: t.lobby.kickerPublic}
 				</p>
 				<h1 className={styles.title}>{t.lobby.title}</h1>
 				{lobby.code ? null : (

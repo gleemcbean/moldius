@@ -1,6 +1,10 @@
 import {
+	GHOST_DOOR_COOLDOWN_MS,
+	GHOST_KNOCK_COOLDOWN_MS,
 	MAX_PHOTOS_PER_MATCH,
+	POSSESSED_POWER_COOLDOWN_MS,
 	PUSH_COOLDOWN_MS,
+	ROLE_REVEAL_MS,
 	SHOUT_COOLDOWN_MS,
 	VOICE_AUDIBLE_LEVEL,
 } from "@shared/config/index";
@@ -22,6 +26,7 @@ import { HUD_BEND, POST_BULGE } from "../engine/render/PostEffects";
 import type { ObjectArt, ObjectArtId } from "../grimoire/objectArt";
 import { MAP_MAX_ZOOM, mapStore, resetMap, zoomMap } from "../map/mapStore";
 import { settingsStore } from "../settings/settingsStore";
+import { HudRecorder } from "./HudRecorder";
 import { hazeFilter } from "./hazeFilter";
 import { type HudState, hudStore, type LeaderboardRow } from "./hudStore";
 
@@ -52,6 +57,7 @@ const MAP_HOVER = "#2c342d";
 const MAP_ALLY = "#3fb8a4";
 const MAP_WINDOW = "#8fd3e6";
 const MAP_STAIRS = "#aabeff";
+const GAUGE_SNAP = 0.002;
 
 const YELLOW = "#dce54d";
 const YELLOW_DEEP = "#b9c22f";
@@ -105,6 +111,17 @@ export interface HudPoint {
 	y: number;
 }
 
+export interface HudMarker {
+	x: number;
+	y: number;
+	onScreen: boolean;
+	angle: number;
+	label: string;
+	detail: string;
+	color: string;
+	fresh: number;
+}
+
 export interface MapArea {
 	x: number;
 	y: number;
@@ -137,18 +154,37 @@ export function ensureHudFonts(): Promise<unknown> {
 	);
 }
 
+function layerTexture(canvas: HTMLCanvasElement): THREE.CanvasTexture {
+	const texture = new THREE.CanvasTexture(canvas);
+	texture.colorSpace = THREE.NoColorSpace;
+	texture.premultiplyAlpha = true;
+	texture.generateMipmaps = false;
+	texture.minFilter = THREE.LinearFilter;
+	texture.magFilter = THREE.LinearFilter;
+	return texture;
+}
+
 export class HudCanvas {
 	readonly texture: THREE.CanvasTexture;
 	readonly minimap = document.createElement("canvas");
+	readonly minimapTexture: THREE.CanvasTexture;
+	readonly minimapRect = new THREE.Vector4();
+	readonly minimapPixels = new THREE.Vector2(1, 1);
+	minimapShown = false;
 	readonly bigMap = document.createElement("canvas");
 	minimapLabel = "";
 	minimapRoom = "";
 	mapLevels: readonly Level[] = [0];
+	markers: HudMarker[] = [];
 	onMapClose: (() => void) | null = null;
 	private mapHover: string | null = null;
 	private mapButtons: MapButton[] = [];
 	private readonly canvas = document.createElement("canvas");
-	private readonly context: CanvasRenderingContext2D;
+	private readonly context: HudRecorder;
+	private readonly hazedMinimap = document.createElement("canvas");
+	private minimapDirty = true;
+	private minimapHaze = -1;
+	private minimapUploaded = 0;
 	private width = 1;
 	private height = 1;
 	private curvature = 0;
@@ -165,13 +201,11 @@ export class HudCanvas {
 	private readonly wrapCache = new Map<string, string[]>();
 
 	constructor(private readonly art: ObjectArt) {
-		this.context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
-		this.texture = new THREE.CanvasTexture(this.canvas);
-		this.texture.colorSpace = THREE.NoColorSpace;
-		this.texture.premultiplyAlpha = true;
-		this.texture.generateMipmaps = false;
-		this.texture.minFilter = THREE.LinearFilter;
-		this.texture.magFilter = THREE.LinearFilter;
+		this.context = new HudRecorder(
+			this.canvas.getContext("2d") as CanvasRenderingContext2D,
+		);
+		this.texture = layerTexture(this.canvas);
+		this.minimapTexture = layerTexture(this.minimap);
 	}
 
 	get pixelWidth(): number {
@@ -203,8 +237,14 @@ export class HudCanvas {
 			this.canvas.height = pixelHeight;
 			this.texture.dispose();
 			this.wrapCache.clear();
+			this.context.forgetMeasures();
 		}
+		this.context.invalidate();
 		this.paintedAt = -Infinity;
+	}
+
+	markMinimap(): void {
+		this.minimapDirty = true;
 	}
 
 	due(now: number): boolean {
@@ -218,49 +258,56 @@ export class HudCanvas {
 		this.curvature = settings.postEffects.curvature;
 		const hud = hudStore.get();
 		const context = this.context;
+		context.begin();
+		this.minimapShown = false;
 		context.setTransform(1, 0, 0, 1, 0, 0);
 		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		context.setTransform(this.drawScale, 0, 0, this.drawScale, 0, 0);
 		context.textBaseline = "middle";
 		context.lineJoin = "round";
 		this.paintVeils(hud, now);
-		this.paintMinimap(hud);
+		if (hud.noMap) {
+			this.minimapBottom = 20;
+		} else {
+			this.paintMinimap(hud);
+		}
 		this.paintTopBar(hud, now);
 		this.paintMaterials(hud);
-		this.paintStatus(hud, now, dt);
+		if (!hud.ghost) {
+			this.paintStatus(hud, now, dt);
+		}
 		this.paintBrew(hud, now);
 		this.paintWalkie(hud, now);
 		this.paintCamera(hud);
 		this.paintAbilities(hud);
-		this.paintHotbar(hud);
+		if (!hud.ghost) {
+			this.paintHotbar(hud);
+		}
+		this.paintMarkers(hud);
 		this.paintPrompt(hud);
 		this.paintCast(hud, now);
 		this.paintFeedback(hud, now);
 		this.paintAltar(hud);
+		this.paintGift(hud);
 		this.paintTutorial(hud);
 		this.paintNoise(hud, dt);
 		this.paintDev(hud);
-		if (settings.showFps) {
-			const at = this.place(
-				this.width - 14,
-				this.height - 60,
-				80,
-				18,
-				"right",
-				"bottom",
-			);
-			this.text(currentMessages().game.hud.fps(hud.fps), at.x + 80, at.y + 9, {
-				font: `500 16px ${UI}`,
-				color: TEXT_DIM,
-				align: "right",
-			});
+		this.paintStats(hud, settings.stats);
+		if (hud.ghost) {
+			this.paintGhost(hud);
+		} else {
+			this.paintDeath(hud);
 		}
-		this.paintDeath(hud);
+		this.paintWheel(hud);
+		this.paintRole(hud, now);
 		this.paintLeaderboard(hud, now);
-		if (hud.showMap) {
+		if (hud.showMap && !hud.noMap) {
 			this.paintBigMap(hud);
+			context.invalidate();
 		}
-		this.texture.needsUpdate = true;
+		if (context.commit()) {
+			this.texture.needsUpdate = true;
+		}
 	}
 
 	pointer(
@@ -286,8 +333,46 @@ export class HudCanvas {
 		if (this.minimap.width !== pixels) {
 			this.minimap.width = pixels;
 			this.minimap.height = pixels;
+			this.minimapDirty = true;
 		}
 		return pixels / MINIMAP_SIZE;
+	}
+
+	private refreshMinimap(haze: number): void {
+		if (!this.minimapDirty && haze === this.minimapHaze) {
+			return;
+		}
+		this.minimapDirty = false;
+		this.minimapHaze = haze;
+		const filter = hazeFilter(haze);
+		let source = this.minimap;
+		if (filter) {
+			const hazed = this.hazedMinimap;
+			if (
+				hazed.width !== this.minimap.width ||
+				hazed.height !== this.minimap.height
+			) {
+				hazed.width = this.minimap.width;
+				hazed.height = this.minimap.height;
+			}
+			const context = hazed.getContext("2d");
+			if (context) {
+				context.setTransform(1, 0, 0, 1, 0, 0);
+				context.filter = "none";
+				context.fillStyle = YELLOW;
+				context.fillRect(0, 0, hazed.width, hazed.height);
+				context.filter = filter;
+				context.drawImage(this.minimap, 0, 0);
+				context.filter = "none";
+				source = hazed;
+			}
+		}
+		if (this.minimapUploaded !== source.width) {
+			this.minimapTexture.dispose();
+			this.minimapUploaded = source.width;
+		}
+		this.minimapTexture.image = source;
+		this.minimapTexture.needsUpdate = true;
 	}
 
 	mapArea(): MapArea {
@@ -598,6 +683,18 @@ export class HudCanvas {
 				],
 			);
 		}
+		if (
+			hud.manorEvent?.kind === "bloodMoon" &&
+			hud.manorEvent.phase === "start"
+		) {
+			this.centerVeil(
+				[
+					{ at: 0.5, color: "rgba(120, 0, 10, 0)" },
+					{ at: 1, color: "rgba(150, 10, 20, 0.42)" },
+				],
+				0.85 + Math.sin(now / 700) * 0.15,
+			);
+		}
 		if (hud.hidden) {
 			this.centerVeil([
 				{ at: 0.25, color: "rgba(0, 0, 0, 0)" },
@@ -629,12 +726,25 @@ export class HudCanvas {
 		context.fillRect(x - 5, y - 5, size + 10, size + 10);
 		context.fillStyle = YELLOW;
 		context.fillRect(x - 2, y - 2, size + 4, size + 4);
-		const filter = hazeFilter(hud.haze);
-		if (filter) {
-			context.filter = filter;
-		}
-		context.drawImage(this.minimap, x, y, size, size);
-		context.filter = "none";
+		this.minimapRatio();
+		const pixels = this.minimap.width;
+		const left = Math.round(x * this.drawScale);
+		const top = Math.round(y * this.drawScale);
+		context.save();
+		context.setTransform(1, 0, 0, 1, 0, 0);
+		context.clearRect(left, top, pixels, pixels);
+		context.restore();
+		const width = this.canvas.width;
+		const height = this.canvas.height;
+		this.minimapRect.set(
+			left / width,
+			1 - (top + pixels) / height,
+			pixels / width,
+			pixels / height,
+		);
+		this.minimapPixels.set(pixels, pixels);
+		this.minimapShown = true;
+		this.refreshMinimap(hud.haze);
 		if (this.minimapRoom) {
 			this.text(this.minimapRoom, x + 8, y + 15, {
 				font: `700 16px ${UI}`,
@@ -898,14 +1008,73 @@ export class HudCanvas {
 			outline: false,
 		});
 		this.context.globalAlpha = 1;
+		let below = y + 66;
 		if (hud.anomaliesInMs > 0) {
 			this.text(
 				messages.hud.awakening(Math.ceil(hud.anomaliesInMs / 1000)),
 				x,
-				y + 66,
+				below,
 				{ font: `700 18px ${UI}`, color: TEXT_MUTED, align: "center" },
 			);
+			below += 26;
 		}
+		const party = currentMessages().party;
+		if (hud.ritual) {
+			const done = hud.ritual.captures >= hud.ritual.quota;
+			this.badge(
+				party.possessed.ritual(hud.ritual.captures, hud.ritual.quota),
+				x,
+				below,
+				done ? OK : "#c39bff",
+			);
+			below += 34;
+		}
+		if (hud.manorEvent) {
+			const event = hud.manorEvent;
+			const name = party.events.names[event.kind];
+			const warning = event.phase === "warning";
+			const seconds = Math.max(
+				0,
+				Math.ceil(
+					((warning ? event.startsAt : event.endsAt) - hud.serverNow) / 1000,
+				),
+			);
+			this.context.globalAlpha =
+				warning && Math.floor(now / 400) % 2 === 1 ? 0.6 : 1;
+			this.badge(
+				warning
+					? party.events.warning(name, seconds)
+					: party.events.active(name, seconds),
+				x,
+				below,
+				event.kind === "bloodMoon" ? DANGER : warning ? YELLOW : ALTAR,
+			);
+			this.context.globalAlpha = 1;
+			below += 34;
+		}
+		if (hud.bounty) {
+			this.badge(
+				hud.bounty.self
+					? party.bounty.hudSelf(hud.bounty.value)
+					: party.bounty.hud(hud.bounty.name, hud.bounty.value),
+				x,
+				below,
+				"#ffc857",
+			);
+		}
+	}
+
+	private badge(value: string, x: number, y: number, color: string): void {
+		const font = `700 17px ${UI}`;
+		this.context.font = font;
+		const width = this.context.measureText(value).width + 26;
+		this.panel(x - width / 2, y - 13, width, 28, DARK_PANEL, color);
+		this.text(value, x, y + 1, {
+			font,
+			color,
+			align: "center",
+			outline: false,
+		});
 	}
 
 	private paintMaterials(hud: HudState): void {
@@ -1379,6 +1548,25 @@ export class HudCanvas {
 				);
 				cursor += size + (row.radio ? size * 0.9 : 8);
 			}
+			if (row.bounty) {
+				const bountyFont = `700 14px ${UI}`;
+				const bountyLabel = messages.party.bounty.tag;
+				context.font = bountyFont;
+				const bountyWidth = context.measureText(bountyLabel).width + 12;
+				this.panel(
+					cursor,
+					y + (rowHeight - 20) / 2,
+					bountyWidth,
+					20,
+					"#ffc857",
+				);
+				this.text(bountyLabel, cursor + 6, middle(), {
+					font: bountyFont,
+					color: BACKGROUND,
+					outline: false,
+				});
+				cursor += bountyWidth + 8;
+			}
 			const tag = !row.alive ? labels.down : row.self ? labels.you : null;
 			if (tag) {
 				const tagFont = `700 14px ${UI}`;
@@ -1488,27 +1676,65 @@ export class HudCanvas {
 
 	private paintAbilities(hud: HudState): void {
 		const messages = currentMessages().game.hud;
+		const party = currentMessages().party;
 		const keys = settingsStore.get().keys;
-		const entries = [
+		const ghostEntries = [
 			{
-				label: messages.push,
-				key: keys.push,
-				readyAt: hud.pushReadyAt,
-				duration: PUSH_COOLDOWN_MS,
-			},
-			{
-				label: messages.shout,
+				label: party.ghost.knock,
 				key: keys.shout,
-				readyAt: hud.shoutReadyAt,
-				duration: SHOUT_COOLDOWN_MS,
+				readyAt: hud.ghostKnockReadyAt,
+				duration: GHOST_KNOCK_COOLDOWN_MS,
 			},
 			{
-				label: messages.grimoire,
-				key: keys.grimoire,
+				label: party.ghost.slam,
+				key: keys.interact,
+				readyAt: hud.ghostDoorReadyAt,
+				duration: GHOST_DOOR_COOLDOWN_MS,
+			},
+			{
+				label: party.ping.label,
+				key: keys.ping,
 				readyAt: 0,
 				duration: 1,
 			},
 		];
+		const powerEntries =
+			hud.role === "possessed"
+				? [
+						{
+							label: party.possessed.power,
+							key: keys.power,
+							readyAt: hud.powerReadyAt,
+							duration: POSSESSED_POWER_COOLDOWN_MS,
+						},
+					]
+				: [];
+		const entries = hud.ghost
+			? ghostEntries
+			: [
+					...powerEntries,
+					{
+						label: messages.push,
+						key: keys.push,
+						readyAt: hud.pushReadyAt,
+						duration: hud.pushCooldownMs || PUSH_COOLDOWN_MS,
+					},
+					{
+						label: messages.shout,
+						key: keys.shout,
+						readyAt: hud.shoutReadyAt,
+						duration: SHOUT_COOLDOWN_MS,
+					},
+					{
+						label: messages.grimoire,
+						key: keys.grimoire,
+						readyAt: 0,
+						duration: 1,
+					},
+				];
+		if (hud.voting) {
+			return;
+		}
 		const context = this.context;
 		const font = `700 18px ${UI}`;
 		context.font = font;
@@ -1922,8 +2148,11 @@ export class HudCanvas {
 			!hud.dead &&
 			!hud.carried &&
 			(hud.hidden || (hud.crouching && !hud.lanternOpen));
-		this.gaugeShown +=
-			((shown ? 1 : 0) - this.gaugeShown) * Math.min(1, dt * 9);
+		const target = shown ? 1 : 0;
+		this.gaugeShown += (target - this.gaugeShown) * Math.min(1, dt * 9);
+		if (Math.abs(target - this.gaugeShown) < GAUGE_SNAP) {
+			this.gaugeShown = target;
+		}
 		if (this.gaugeShown < 0.02) {
 			return;
 		}
@@ -2080,7 +2309,358 @@ export class HudCanvas {
 		);
 	}
 
+	private paintMarkers(hud: HudState): void {
+		if (hud.showMap || hud.paused || this.markers.length === 0) {
+			return;
+		}
+		const context = this.context;
+		const margin = 46;
+		const centerX = this.width / 2;
+		const centerY = this.height / 2;
+		for (const marker of this.markers) {
+			const dx = Math.cos(marker.angle);
+			const dy = Math.sin(marker.angle);
+			const reach = Math.min(
+				(centerX - margin) / Math.max(Math.abs(dx), 1e-6),
+				(centerY - margin) / Math.max(Math.abs(dy), 1e-6),
+			);
+			const at = this.at(centerX + dx * reach, centerY + dy * reach);
+			const pulse = Math.max(0, 1 - marker.fresh);
+			context.save();
+			context.translate(at.x, at.y);
+			context.rotate(marker.angle);
+			context.scale(1 + pulse * 0.35, 1 + pulse * 0.35);
+			context.fillStyle = marker.color;
+			context.strokeStyle = "rgba(0, 0, 0, 0.85)";
+			context.lineWidth = 2.5;
+			context.beginPath();
+			context.moveTo(16, 0);
+			context.lineTo(-8, 11);
+			context.lineTo(-3, 0);
+			context.lineTo(-8, -11);
+			context.closePath();
+			context.fill();
+			context.stroke();
+			context.restore();
+			this.text(marker.label, at.x - dx * 30, at.y - dy * 30 - 9, {
+				font: `700 15px ${UI}`,
+				color: marker.color,
+				align: "center",
+			});
+			this.text(marker.detail, at.x - dx * 30, at.y - dy * 30 + 9, {
+				font: `500 13px ${UI}`,
+				color: TEXT,
+				align: "center",
+			});
+		}
+	}
+
+	private paintWheel(hud: HudState): void {
+		const wheel = hud.wheel;
+		if (!wheel || hud.paused || hud.showMap) {
+			return;
+		}
+		const context = this.context;
+		const centerX = this.width / 2;
+		const centerY = this.height / 2;
+		const inner = 46;
+		const outer = 150;
+		const count = wheel.labels.length;
+		const step = (Math.PI * 2) / count;
+		context.save();
+		context.fillStyle = "rgba(5, 6, 5, 0.35)";
+		context.fillRect(0, 0, this.width, this.height);
+		wheel.labels.forEach((label, index) => {
+			const start = -Math.PI / 2 + index * step - step / 2;
+			const selected = index === wheel.selected;
+			context.beginPath();
+			context.arc(centerX, centerY, outer, start + 0.02, start + step - 0.02);
+			context.arc(
+				centerX,
+				centerY,
+				inner,
+				start + step - 0.02,
+				start + 0.02,
+				true,
+			);
+			context.closePath();
+			context.fillStyle = selected
+				? "rgba(46, 52, 46, 0.96)"
+				: "rgba(16, 19, 16, 0.86)";
+			context.fill();
+			context.strokeStyle = selected ? wheel.colors[index] : LINE_STRONG;
+			context.lineWidth = selected ? 3 : 1.5;
+			context.stroke();
+			const middle = start + step / 2;
+			const radius = (inner + outer) / 2 + 6;
+			this.text(
+				label,
+				centerX + Math.cos(middle) * radius,
+				centerY + Math.sin(middle) * radius,
+				{
+					font: `700 ${selected ? 19 : 17}px ${UI}`,
+					color: selected ? wheel.colors[index] : TEXT,
+					align: "center",
+				},
+			);
+		});
+		context.restore();
+		this.text(wheel.title, centerX, centerY - 6, {
+			font: `400 22px ${TITLE}`,
+			color: YELLOW,
+			align: "center",
+		});
+		this.text(
+			currentMessages().party.wheel.hint,
+			centerX,
+			centerY + outer + 28,
+			{ font: `500 16px ${UI}`, color: TEXT_MUTED, align: "center" },
+		);
+	}
+
+	private paintGift(hud: HudState): void {
+		const gift = hud.gift;
+		if (!gift) {
+			return;
+		}
+		const messages = currentMessages();
+		const labels = messages.party.gift;
+		const width = 460;
+		const rowHeight = 32;
+		const height = MATERIAL_IDS.length * rowHeight + 70;
+		const placed = this.place(
+			this.width / 2,
+			this.height * 0.86,
+			width,
+			height,
+			"center",
+			"bottom",
+		);
+		const x = placed.x;
+		const y = placed.y;
+		this.panel(x, y, width, height, "rgba(10, 14, 10, 0.92)", OK);
+		this.text(labels.title(gift.name), x + 16, y + 18, {
+			font: `700 17px ${UI}`,
+			color: OK,
+			outline: false,
+		});
+		MATERIAL_IDS.forEach((id, index) => {
+			const rowY = y + 34 + index * rowHeight;
+			const owned = hud.inventory?.materials[id] ?? 0;
+			const selected = index === gift.selected;
+			if (selected) {
+				this.panel(
+					x + 8,
+					rowY,
+					width - 16,
+					rowHeight - 2,
+					"rgba(143, 211, 106, 0.16)",
+					OK,
+				);
+			}
+			this.context.globalAlpha = owned > 0 || selected ? 1 : 0.45;
+			this.panel(x + 16, rowY + 4, 22, 22, YELLOW);
+			this.text(String(index + 1), x + 27, rowY + 16, {
+				font: `700 15px ${UI}`,
+				color: BACKGROUND,
+				align: "center",
+				outline: false,
+			});
+			this.drawArt(id, x + 46, rowY + 1, 28, owned > 0 ? 1 : 0.4);
+			const name = messages.grimoire.materials[id];
+			this.text(
+				name.charAt(0).toUpperCase() + name.slice(1),
+				x + 84,
+				rowY + 16,
+				{
+					font: `700 17px ${UI}`,
+					outline: false,
+				},
+			);
+			this.text(labels.owned(owned), x + width - 18, rowY + 16, {
+				font: `700 17px ${FIGURES}`,
+				color: owned > 0 ? YELLOW : TEXT_DIM,
+				align: "right",
+				outline: false,
+			});
+			this.context.globalAlpha = 1;
+		});
+		this.text(labels.hint, x + 16, y + height - 16, {
+			font: `500 15px ${BODY}`,
+			color: TEXT_MUTED,
+			outline: false,
+		});
+	}
+
+	private paintGhost(hud: HudState): void {
+		const party = currentMessages().party.ghost;
+		this.centerVeil([
+			{ at: 0.35, color: "rgba(40, 70, 110, 0)" },
+			{ at: 1, color: "rgba(40, 70, 110, 0.55)" },
+		]);
+		const x = this.width / 2;
+		const top = this.at(x, this.height * 0.2);
+		this.text(party.title, top.x, top.y, {
+			font: `400 40px ${TITLE}`,
+			color: "#bfe6ff",
+			align: "center",
+		});
+		const seconds = Math.ceil((hud.respawnAt - hud.serverNow) / 1000);
+		this.text(
+			hud.oneLife || !Number.isFinite(hud.respawnAt) || hud.respawnAt <= 0
+				? party.oneLife
+				: party.respawn(Math.max(0, seconds)),
+			top.x,
+			top.y + 36,
+			{ font: `700 20px ${UI}`, align: "center" },
+		);
+		const keys = settingsStore.get().keys;
+		this.text(
+			party.hint(
+				keyLabel(keys.jump),
+				keyLabel(keys.crouch),
+				keyLabel(keys.sprint),
+			),
+			top.x,
+			top.y + 64,
+			{ font: `500 17px ${BODY}`, color: TEXT_MUTED, align: "center" },
+		);
+		this.text(party.voice, top.x, top.y + 88, {
+			font: `500 16px ${UI}`,
+			color: VOICE,
+			align: "center",
+		});
+	}
+
+	private paintRole(hud: HudState, now: number): void {
+		if (!hud.role || hud.roleShownAt <= 0) {
+			return;
+		}
+		const elapsed = now - hud.roleShownAt;
+		if (elapsed > ROLE_REVEAL_MS) {
+			return;
+		}
+		const alpha = Math.min(1, elapsed / 300, (ROLE_REVEAL_MS - elapsed) / 600);
+		const labels = currentMessages().party.possessed;
+		const possessed = hud.role === "possessed";
+		const width = 620;
+		const bodyFont = `500 19px ${BODY}`;
+		const body = possessed
+			? labels.rolePossessedText(keyLabel(settingsStore.get().keys.power))
+			: labels.roleHunterText(hud.ritual?.quota ?? 0);
+		const lines = this.wrap(body, bodyFont, width - 48);
+		const height = 86 + lines.length * 25;
+		const x = (this.width - width) / 2;
+		const y = this.height * 0.3 - height / 2;
+		const color = possessed ? DANGER : "#c39bff";
+		this.context.globalAlpha = Math.max(0, alpha);
+		this.panel(x, y, width, height, "rgba(12, 8, 16, 0.94)", color, 3);
+		this.text(
+			possessed ? labels.rolePossessed : labels.roleHunter,
+			x + width / 2,
+			y + 36,
+			{
+				font: `400 36px ${TITLE}`,
+				color,
+				align: "center",
+			},
+		);
+		lines.forEach((line, index) => {
+			this.text(line, x + width / 2, y + 76 + index * 25, {
+				font: bodyFont,
+				align: "center",
+				outline: false,
+			});
+		});
+		this.context.globalAlpha = 1;
+	}
+
+	private paintStats(
+		hud: HudState,
+		settings: { corner: string; graph: boolean; opacity: number },
+	): void {
+		const stats = hud.stats;
+		if (!stats || (stats.lines.length === 0 && !settings.graph)) {
+			return;
+		}
+		const font = `600 15px ${FIGURES}`;
+		const rowHeight = 19;
+		const graphHeight = settings.graph ? 46 : 0;
+		const width = 196;
+		const height =
+			12 +
+			stats.lines.length * rowHeight +
+			graphHeight +
+			(settings.graph ? 8 : 0);
+		const right = settings.corner.endsWith("Right");
+		const bottom = settings.corner.startsWith("bottom");
+		const anchorY = bottom ? this.height - 74 : this.minimapBottom + 16;
+		const placed = this.place(
+			right ? this.width - 20 : 20,
+			bottom
+				? anchorY
+				: Math.max(anchorY, right ? this.materialsBottom + 12 : anchorY),
+			width,
+			height,
+			right ? "right" : "left",
+			bottom ? "bottom" : "top",
+		);
+		const context = this.context;
+		context.globalAlpha = settings.opacity;
+		this.panel(
+			placed.x,
+			placed.y,
+			width,
+			height,
+			"rgba(8, 10, 8, 0.82)",
+			LINE_STRONG,
+			1,
+		);
+		stats.lines.forEach((line, index) => {
+			const rowY = placed.y + 15 + index * rowHeight;
+			this.text(line.label, placed.x + 10, rowY, {
+				font,
+				color: TEXT_MUTED,
+				outline: false,
+			});
+			this.text(line.value, placed.x + width - 10, rowY, {
+				font,
+				color: line.warn ? DANGER : TEXT,
+				align: "right",
+				outline: false,
+			});
+		});
+		if (settings.graph && stats.frames.length > 1) {
+			const graphX = placed.x + 10;
+			const graphY = placed.y + 12 + stats.lines.length * rowHeight;
+			const graphWidth = width - 20;
+			context.fillStyle = "rgba(255, 255, 255, 0.05)";
+			context.fillRect(graphX, graphY, graphWidth, graphHeight);
+			const ceiling = 50;
+			const budget = graphY + graphHeight - (graphHeight * 16.7) / ceiling;
+			context.strokeStyle = "rgba(220, 229, 77, 0.35)";
+			context.lineWidth = 1;
+			context.beginPath();
+			context.moveTo(graphX, budget);
+			context.lineTo(graphX + graphWidth, budget);
+			context.stroke();
+			const barWidth = graphWidth / stats.frames.length;
+			stats.frames.forEach((frame, index) => {
+				const size = Math.min(1, frame / ceiling) * graphHeight;
+				context.fillStyle = frame > 33 ? DANGER : frame > 17.5 ? YELLOW : OK;
+				context.fillRect(
+					graphX + index * barWidth,
+					graphY + graphHeight - size,
+					Math.max(1, barWidth - 0.5),
+					size,
+				);
+			});
+		}
+		context.globalAlpha = 1;
+	}
+
 	dispose(): void {
 		this.texture.dispose();
+		this.minimapTexture.dispose();
 	}
 }

@@ -1,10 +1,14 @@
 import { randomBytes } from "node:crypto";
 import type { Server } from "socket.io";
 import { withMatchMetrics } from "../../shared/challenges.js";
-import { PUBLIC_LOBBY_CAPACITY } from "../../shared/config/index.js";
+import {
+	POSSESSED_MIN_PLAYERS,
+	PUBLIC_LOBBY_CAPACITY,
+} from "../../shared/config/index.js";
 import { dailyChallenge, dailyDateKey } from "../../shared/dailyChallenge.js";
 import {
 	type MatchConfig,
+	possessedConfig,
 	TUTORIAL_MATCH_CONFIG,
 	TUTORIAL_SEED,
 } from "../../shared/matchConfig.js";
@@ -124,6 +128,25 @@ export class LobbyManager {
 		}
 		this.leave(session);
 		return this.join(session, this.createLobby("private"), name, look);
+	}
+
+	createPossessed(
+		session: Session,
+		name: string,
+		look: LookPreference = {},
+	): LobbyResult {
+		if (this.accountBusy(session)) {
+			return { ok: false, error: ALREADY_PLAYING };
+		}
+		this.leave(session);
+		const lobby = this.createLobby(
+			"private",
+			this.options.dev
+				? this.options.minPlayers
+				: Math.max(this.options.minPlayers, POSSESSED_MIN_PLAYERS),
+		);
+		lobby.config = possessedConfig();
+		return this.join(session, lobby, name, look);
 	}
 
 	joinPrivate(

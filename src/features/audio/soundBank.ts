@@ -2,6 +2,7 @@ import { hashString } from "@shared/random";
 import { type AudioBus, audioEngine, setPannerPosition } from "./audioEngine";
 import { AMBIENCE_SOUNDS } from "./recipes/ambienceSounds";
 import { ANOMALY_SOUNDS } from "./recipes/anomalySounds";
+import { PARTY_SOUNDS } from "./recipes/partySounds";
 import { PLAYER_SOUNDS } from "./recipes/playerSounds";
 import type { SoundRecipe } from "./recipes/types";
 import { SynthKit } from "./synthKit";
@@ -10,6 +11,7 @@ export const ALL_RECIPES: SoundRecipe[] = [
 	...PLAYER_SOUNDS,
 	...ANOMALY_SOUNDS,
 	...AMBIENCE_SOUNDS,
+	...PARTY_SOUNDS,
 ];
 
 export interface PlayOptions {

@@ -10,6 +10,7 @@ export const settingsFr = {
 		controls: "Commandes",
 		display: "Affichage",
 		audio: "Audio et micro",
+		stats: "Statistiques",
 		dev: "Dev",
 	},
 	language: {
@@ -30,6 +31,7 @@ export const settingsFr = {
 			movement: "Déplacements",
 			objects: "Objets et interactions",
 			sabotage: "Sabotage",
+			social: "Entre amis",
 			interface: "Interface",
 		},
 		actions: {
@@ -53,6 +55,9 @@ export const settingsFr = {
 			leaderboard: "Classement (maintenir)",
 			pagePrevious: "Page précédente",
 			pageNext: "Page suivante",
+			ping: "Signaler (maintenir : roue des signaux)",
+			emote: "Émotes (maintenir : roue)",
+			power: "Maléfice (mode Le Possédé)",
 		} satisfies Record<ActionId, string>,
 		keys: {
 			Space: "Espace",
@@ -154,7 +159,6 @@ export const settingsFr = {
 		effects: "Particules et poussière",
 		fpsLimit: "Limite d'images par seconde",
 		unlimited: "Libre",
-		showFps: "Afficher les images par seconde",
 		resetAll: "Tout réinitialiser",
 	},
 	dev: {
@@ -215,6 +219,7 @@ export const settingsEn: typeof settingsFr = {
 		controls: "Controls",
 		display: "Display",
 		audio: "Audio & mic",
+		stats: "Statistics",
 		dev: "Dev",
 	},
 	language: {
@@ -235,6 +240,7 @@ export const settingsEn: typeof settingsFr = {
 			movement: "Movement",
 			objects: "Items and interactions",
 			sabotage: "Sabotage",
+			social: "With friends",
 			interface: "Interface",
 		},
 		actions: {
@@ -258,6 +264,9 @@ export const settingsEn: typeof settingsFr = {
 			leaderboard: "Leaderboard (hold)",
 			pagePrevious: "Previous page",
 			pageNext: "Next page",
+			ping: "Ping (hold: ping wheel)",
+			emote: "Emotes (hold: wheel)",
+			power: "Hex (The Possessed mode)",
 		},
 		keys: {
 			Space: "Space",
@@ -358,7 +367,6 @@ export const settingsEn: typeof settingsFr = {
 		effects: "Particles and dust",
 		fpsLimit: "Frame rate limit",
 		unlimited: "None",
-		showFps: "Show frames per second",
 		resetAll: "Reset everything",
 	},
 	dev: {

@@ -1,20 +1,27 @@
 import { entryWon, type MatchMetrics } from "../../shared/challenges.js";
 import {
+	ALTAR_INTERACT_RANGE,
 	ANOMALY_FIRST_SPAWN_DELAY_MS,
 	ANOMALY_NEXT_DELAY_MS,
 	ANOMALY_RETURN_DELAY_MS,
 	ANOMALY_SPAWN_RETRY_MS,
 	anomalyRosterSize,
 	anomalyTierCaps,
+	BLOOD_MOON_POINTS_FACTOR,
+	CHAOS_BREW_INTERVAL_MS,
 	cameraCount,
 	DOOR_INTERACT_RANGE,
 	ENERGY_MAX,
 	ENERGY_USE_REGEN_PAUSE_SECONDS,
+	type EmoteId,
+	FOG_VISION_FACTOR,
+	FRENZY_SPEED_FACTOR,
 	HEALTH_MAX,
 	HIDE_INTERACT_RANGE,
 	LANTERN_MIN_ENERGY_TO_OPEN,
 	LANTERN_OPEN_ENERGY_COST,
 	MATCH_LOADING_TIMEOUT_MS,
+	type MaterialId,
 	OCCULT_CONSUMED_ON_CAPTURE,
 	OCCULT_RECIPES,
 	type OccultId,
@@ -22,22 +29,29 @@ import {
 	PLAYER_RESPAWN_DELAY_MS,
 	PLAYER_RESPAWN_PROTECTION_MS,
 	PLAYER_SPAWN_PROTECTION_MS,
+	PUSH_COOLDOWN_MS,
+	PUSH_DISTANCE,
+	PUSH_ENERGY_COST,
 	RECONNECT_GRACE_MS,
 	SERVER_TICK_MS,
 	SLIME_PUDDLE_DAMAGE,
 	SLIME_PUDDLE_DAMAGE_INTERVAL_MS,
 	SNAPSHOT_INTERVAL_TICKS,
+	STRONG_PUSH_COOLDOWN_FACTOR,
+	STRONG_PUSH_DISTANCE_FACTOR,
+	STRONG_PUSH_ENERGY_FACTOR,
 	VALVE_INTERACT_RANGE,
 	VOICE_AUDIBLE_LEVEL,
 	walkieCount,
 } from "../../shared/config/index.js";
 import type { SpeciesId } from "../../shared/config/species.js";
 import type { DevModes } from "../../shared/devModes.js";
+import { type GhostBounds, ghostBounds } from "../../shared/ghost.js";
 import {
 	DEFAULT_HAT_PATTERN,
 	type HatPattern,
 } from "../../shared/hatPatterns.js";
-import { BREW_DURATION_MS } from "../../shared/manor/brews.js";
+import { BREW_DURATION_MS, BREW_EFFECTS } from "../../shared/manor/brews.js";
 import {
 	assignRecipeMaterials,
 	recipeDeck,
@@ -53,6 +67,8 @@ import {
 } from "../../shared/manor/liquids.js";
 import type { Level, ManorLayout } from "../../shared/manor/types.js";
 import {
+	bountyEnabled,
+	hasMutator,
 	type MatchConfig,
 	matchDurationMs,
 	pickupTotal,
@@ -74,9 +90,12 @@ import type {
 	DamageCause,
 	ForcedMoveKind,
 	GameEvent,
+	GhostActionKind,
 	InteractRequest,
 	MatchInit,
 	MatchResults,
+	PingRequest,
+	PowerRequest,
 	ProjectileKind,
 	WorldSnapshot,
 } from "../../shared/protocol/game.js";
@@ -97,6 +116,16 @@ import { separateAnomalies } from "./ai/separation.js";
 import { anomalyExtra, updateAnomaly } from "./ai/updateAnomaly.js";
 import { AwardTracker, liveChallengeMetrics, pickAwards } from "./awards.js";
 import { HighlightRecorder } from "./highlights.js";
+import { BountySystem } from "./systems/bounty.js";
+import { ghostAction, isGhost } from "./systems/ghosts.js";
+import { ManorEventSystem } from "./systems/manorEvents.js";
+import { PossessedSystem } from "./systems/possessed.js";
+import {
+	giveFragment,
+	playEmote,
+	sendPing,
+	stopEmote,
+} from "./systems/social.js";
 import { MatchPlayer } from "./MatchPlayer.js";
 import { formulaWords, planRoster, type RosterPlan } from "./roster.js";
 import { CameraSystem } from "./systems/cameras.js";
@@ -166,7 +195,7 @@ export interface MatchOptions {
 const TUTORIAL_MONSTER_LEASH = 3.8;
 const TUTORIAL_CALM_STATES = new Set(["idle", "patrol", "travel", "search"]);
 
-export type MatchPhase = "loading" | "playing" | "ended";
+export type MatchPhase = "loading" | "playing" | "voting" | "ended";
 
 const CHALLENGE_SYNC_TICKS = Math.round(2000 / SERVER_TICK_MS);
 
@@ -197,6 +226,13 @@ export class Match {
 	readonly daily: string | null;
 	readonly tutorial: boolean;
 	readonly pickupTotal: number;
+	readonly ghostBounds: GhostBounds;
+	readonly ghostsAllowed: boolean;
+	readonly manorEvents: ManorEventSystem;
+	readonly bounty: BountySystem;
+	readonly possessed: PossessedSystem | null;
+	private nextChaosBrewAt = Infinity;
+	private chaosRng: SeededRandom | null = null;
 	private tutorialLured = false;
 	private tutorialFollowAt = 0;
 	readonly players = new Map<string, MatchPlayer>();
@@ -328,6 +364,20 @@ export class Match {
 			this.players.set(participant.id, player);
 			this.awards.addPlayer(participant.id);
 		});
+		this.ghostBounds = ghostBounds(this.layout);
+		this.ghostsAllowed = !this.tutorial;
+		this.manorEvents = new ManorEventSystem(
+			this.config.events && !this.tutorial,
+		);
+		this.bounty = new BountySystem(
+			bountyEnabled(this.config) &&
+				!this.tutorial &&
+				options.participants.length >= 2,
+		);
+		this.possessed =
+			this.config.mode === "possessed" && !this.tutorial
+				? new PossessedSystem(this)
+				: null;
 		if (options.autoStart !== false) {
 			this.startLoop();
 		}
@@ -375,6 +425,7 @@ export class Match {
 			pickupTotal: this.pickupTotal,
 			walkieTotal: this.walkieTotal,
 			cameraTotal: this.cameraTotal,
+			ritualQuota: this.possessed?.quota ?? null,
 		};
 	}
 
@@ -414,6 +465,10 @@ export class Match {
 			this.flushEvents();
 			return;
 		}
+		if (this.phase === "voting") {
+			this.stepVoting();
+			return;
+		}
 		if (this.phase !== "playing") {
 			return;
 		}
@@ -425,9 +480,12 @@ export class Match {
 		this.walkies.update(this);
 		this.cameras.update(this);
 		this.stakes.update(this, dt);
+		this.manorEvents.update(this);
+		this.updateChaosBrews();
 		this.updateAnomalies(dt);
 		checkVoiceSabotage(this);
 		this.updateCasting();
+		this.bounty.update(this);
 		this.trackAwards();
 		if (this.tick % CHALLENGE_SYNC_TICKS === 0) {
 			this.syncChallenges();
@@ -438,8 +496,147 @@ export class Match {
 			this.highlights?.frame(snapshot, this);
 		}
 		this.flushEvents();
-		if (this.now >= this.endsAt) {
+		if (
+			this.phase === "playing" &&
+			(this.now >= this.endsAt || this.allFallen())
+		) {
 			this.finish();
+		}
+	}
+
+	private stepVoting(): void {
+		if (this.tick % SNAPSHOT_INTERVAL_TICKS === 0) {
+			this.transport.broadcastVolatile("game:snapshot", this.snapshot());
+		}
+		this.flushEvents();
+		if (this.possessed?.voteFinished(this)) {
+			this.finish();
+		}
+	}
+
+	enterVoting(): void {
+		if (this.phase !== "playing") {
+			return;
+		}
+		this.phase = "voting";
+		for (const player of this.players.values()) {
+			player.casting = null;
+			player.radioOn = false;
+		}
+	}
+
+	private allFallen(): boolean {
+		if (!hasMutator(this.config, "oneLife") || this.tutorial) {
+			return false;
+		}
+		const connected = [...this.players.values()].filter(
+			(player) => player.connected,
+		);
+		return connected.length > 0 && connected.every((player) => !player.alive);
+	}
+
+	private updateChaosBrews(): void {
+		if (this.now < this.nextChaosBrewAt) {
+			return;
+		}
+		this.nextChaosBrewAt = this.now + CHAOS_BREW_INTERVAL_MS;
+		this.chaosRng ??= this.rng.fork("chaos-brews");
+		for (const player of this.players.values()) {
+			if (!player.active) {
+				continue;
+			}
+			const effect = this.chaosRng.pick(BREW_EFFECTS);
+			player.brew = effect;
+			player.brewUntil = this.now + BREW_DURATION_MS[effect];
+			if (effect === "vigor") {
+				player.energy = ENERGY_MAX;
+				player.sprintLocked = false;
+			}
+			this.emit({
+				type: "brew",
+				playerId: player.id,
+				effect,
+				until: player.brewUntil,
+			});
+		}
+	}
+
+	emitTo(recipients: Iterable<MatchPlayer>, event: GameEvent): void {
+		for (const player of recipients) {
+			this.transport.toPlayer(player.id, "game:events", {
+				t: this.now,
+				events: [event],
+			});
+		}
+	}
+
+	sendTo<E extends keyof ServerToClientEvents>(
+		playerId: string,
+		event: E,
+		...args: Parameters<ServerToClientEvents[E]>
+	): void {
+		this.transport.toPlayer(playerId, event, ...args);
+	}
+
+	pointsFactor(): number {
+		return this.manorEvents.active("bloodMoon", this.now)
+			? BLOOD_MOON_POINTS_FACTOR
+			: 1;
+	}
+
+	anomalySpeedFactor(): number {
+		return this.manorEvents.active("frenzy", this.now)
+			? FRENZY_SPEED_FACTOR
+			: 1;
+	}
+
+	visionFactor(): number {
+		return this.manorEvents.active("thickFog", this.now)
+			? FOG_VISION_FACTOR
+			: 1;
+	}
+
+	senseFactor(player: MatchPlayer): number {
+		return this.bounty.senseFactor(player);
+	}
+
+	ignoredByAnomalies(player: MatchPlayer): boolean {
+		return player.possessed;
+	}
+
+	doorsLocked(): boolean {
+		return this.manorEvents.active("lockdown", this.now);
+	}
+
+	pushTuning(): { distance: number; cooldownMs: number; energy: number } {
+		const strong = hasMutator(this.config, "strongPush");
+		return {
+			distance: PUSH_DISTANCE * (strong ? STRONG_PUSH_DISTANCE_FACTOR : 1),
+			cooldownMs: PUSH_COOLDOWN_MS * (strong ? STRONG_PUSH_COOLDOWN_FACTOR : 1),
+			energy: PUSH_ENERGY_COST * (strong ? STRONG_PUSH_ENERGY_FACTOR : 1),
+		};
+	}
+
+	altarCursed(altarId: number): boolean {
+		return this.possessed?.altarCursed(altarId, this.now) ?? false;
+	}
+
+	slamAllDoors(): void {
+		for (const door of this.doors.doors) {
+			if (!door?.open) {
+				continue;
+			}
+			const blocked = [...this.players.values()].some(
+				(player) =>
+					player.alive &&
+					Math.hypot(
+						player.position.x - door.center.x,
+						player.position.z - door.center.z,
+					) < 1.05,
+			);
+			if (!blocked) {
+				this.setDoor(door.id, false, null);
+			}
 		}
 	}
 
@@ -477,12 +674,26 @@ export class Match {
 			player.lastStateAt = this.now;
 			player.protectedUntil = this.now + PLAYER_SPAWN_PROTECTION_MS;
 		}
+		this.manorEvents.start(this);
+		if (hasMutator(this.config, "chaosBrews") && !this.tutorial) {
+			this.nextChaosBrewAt = this.now + CHAOS_BREW_INTERVAL_MS;
+		}
 		this.transport.broadcast("game:begin", {
 			matchId: this.id,
 			serverTime: this.clock(),
 			startedAt: this.startedAt,
 			endsAt: this.endsAt,
 		});
+		if (this.possessed) {
+			for (const player of this.players.values()) {
+				this.possessed.sendRole(this, player);
+			}
+			this.emit({
+				type: "ritual",
+				captures: 0,
+				quota: this.possessed.quota,
+			});
+		}
 	}
 
 	emit(event: GameEvent): void {
@@ -583,7 +794,9 @@ export class Match {
 			layout: this.layout,
 			grid: this.grid,
 			rng: this.rng,
-			players: [...this.players.values()],
+			players: [...this.players.values()].filter(
+				(player) => player.alive || !this.ghostsAllowed,
+			),
 			anomalies: this.anomalies,
 			dangerZones: archivistDangerZones(this.anomalies, this.layout),
 		};
@@ -660,6 +873,13 @@ export class Match {
 			const energy = stepEnergy(player, dt);
 			if (energy.sprintLockedNow) {
 				this.sprintLockTimes.set(player.id, this.now);
+			}
+			if (hasMutator(this.config, "infiniteEnergy")) {
+				player.energy = ENERGY_MAX;
+				player.sprintLocked = false;
+			}
+			if (player.moveInput || player.hidden || player.carried) {
+				stopEmote(this, player);
 			}
 			this.updateSlime(player);
 			this.updateBrew(player);
@@ -1005,7 +1225,8 @@ export class Match {
 			!player.alive ||
 			player.hidden ||
 			player.protectedUntil > this.now ||
-			player.devModes.immortal
+			player.devModes.immortal ||
+			(player.possessed && source !== "fall" && source !== "pact")
 		) {
 			return false;
 		}
@@ -1060,6 +1281,8 @@ export class Match {
 	}
 
 	private kill(player: MatchPlayer, cause: SpeciesId | DamageCause): void {
+		this.bounty.onDeath(this, player);
+		player.emoteUntil = 0;
 		this.walkies.release(this, player);
 		this.cameras.release(this, player);
 		const fragmentsLost = this.tutorial
@@ -1067,10 +1290,14 @@ export class Match {
 			: this.loot.loseFragments(this, player);
 		player.alive = false;
 		player.deaths += 1;
-		player.respawnAt = this.now + PLAYER_RESPAWN_DELAY_MS;
+		player.respawnAt = hasMutator(this.config, "oneLife")
+			? Infinity
+			: this.now + PLAYER_RESPAWN_DELAY_MS;
 		player.lanternOpen = false;
 		player.casting = null;
+		player.radioOn = false;
 		player.velocity = { x: 0, y: 0, z: 0 };
+		player.movementBudget = 1.5;
 		this.emit({
 			type: "death",
 			playerId: player.id,
@@ -1178,7 +1405,11 @@ export class Match {
 		) {
 			return;
 		}
-		if (open && player.energy < LANTERN_MIN_ENERGY_TO_OPEN) {
+		if (
+			open &&
+			(player.energy < LANTERN_MIN_ENERGY_TO_OPEN ||
+				hasMutator(this.config, "darkness"))
+		) {
 			return;
 		}
 		if (open && !player.lanternOpen) {
@@ -1356,7 +1587,7 @@ export class Match {
 
 	private interactDoor(player: MatchPlayer, doorId: number): void {
 		const door = this.doors.get(doorId);
-		if (!door || player.hidden) {
+		if (!door || player.hidden || this.doorsLocked()) {
 			return;
 		}
 		const eye = player.eyePosition();
@@ -1519,7 +1750,8 @@ export class Match {
 				player.objects[entity.occult] -= 1;
 				this.sendInventory(player);
 			}
-			player.score += entity.definition.points;
+			const points = Math.round(entity.definition.points * this.pointsFactor());
+			player.score += points;
 			player.captures += 1;
 			this.emit({
 				type: "capture",
@@ -1527,10 +1759,16 @@ export class Match {
 				anomalyId: entity.id,
 				gen: entity.gen,
 				species: entity.species,
-				points: entity.definition.points,
+				points,
 				score: player.score,
 			});
 			this.removeAnomaly(entity, "captured");
+			this.transport.toPlayer(player.id, "game:castResult", {
+				...result,
+				points,
+			});
+			this.possessed?.onCapture(this);
+			return;
 		}
 		this.transport.toPlayer(player.id, "game:castResult", result);
 	}
@@ -1541,6 +1779,72 @@ export class Match {
 			this.now = this.clock();
 			tryPush(this, player, yaw);
 		}
+	}
+
+	handlePing(playerId: string, request: PingRequest): void {
+		const player = this.players.get(playerId);
+		if (player && this.phase === "playing") {
+			this.now = this.clock();
+			sendPing(this, player, request);
+		}
+	}
+
+	handleEmote(playerId: string, emote: EmoteId | null): void {
+		const player = this.players.get(playerId);
+		if (player && (this.phase === "playing" || this.phase === "voting")) {
+			this.now = this.clock();
+			playEmote(this, player, emote);
+		}
+	}
+
+	handleGift(playerId: string, targetId: string, material: MaterialId): void {
+		const player = this.players.get(playerId);
+		if (player && this.phase === "playing") {
+			this.now = this.clock();
+			giveFragment(this, player, targetId, material);
+		}
+	}
+
+	handleGhostAction(playerId: string, kind: GhostActionKind, id: number): void {
+		const player = this.players.get(playerId);
+		if (player && this.phase === "playing") {
+			this.now = this.clock();
+			ghostAction(this, player, kind, id);
+		}
+	}
+
+	handlePower(playerId: string, request: PowerRequest): void {
+		const player = this.players.get(playerId);
+		if (player && this.phase === "playing" && this.possessed) {
+			this.now = this.clock();
+			this.possessed.castPower(this, player, request);
+		}
+	}
+
+	handleVote(playerId: string, targetId: string): void {
+		const player = this.players.get(playerId);
+		if (player && this.phase === "voting" && this.possessed) {
+			this.now = this.clock();
+			this.possessed.castVote(this, player, targetId);
+		}
+	}
+
+	isGhost(player: MatchPlayer): boolean {
+		return isGhost(this, player);
+	}
+
+	altarNear(player: MatchPlayer): number | null {
+		const eye = player.eyePosition();
+		const altar = this.layout.altars.find(
+			(candidate) =>
+				Math.hypot(
+					candidate.x - eye.x,
+					candidate.y + 0.8 - eye.y,
+					candidate.z - eye.z,
+				) <=
+				ALTAR_INTERACT_RANGE + 0.5,
+		);
+		return altar?.id ?? null;
 	}
 
 	handleRadio(playerId: string, on: boolean): void {
@@ -1724,6 +2028,7 @@ export class Match {
 			events: this.currentStateEvents(),
 		});
 		this.sendInventory(player);
+		this.possessed?.sendRole(this, player);
 		this.challengesSent.delete(playerId);
 		if (player.alive) {
 			this.forcedMove(player, "spawn", player.position, player.yaw, 0);
@@ -1767,6 +2072,9 @@ export class Match {
 			...this.walkies.stateEvents(),
 			...this.cameras.stateEvents(),
 			...this.stakes.stateEvents(),
+			...this.manorEvents.stateEvents(),
+			...this.bounty.stateEvents(),
+			...(this.possessed?.stateEvents(this.now) ?? []),
 		);
 		for (const puddle of this.hazards.puddles) {
 			events.push({
@@ -1801,7 +2109,11 @@ export class Match {
 				team: player.team,
 			}))
 			.sort((a, b) => b.score - a.score || a.deaths - b.deaths);
-		const teams = this.config.teamCount > 0 ? teamStandings(entries) : [];
+		const teams =
+			this.config.teamCount > 0 && !this.possessed
+				? teamStandings(entries)
+				: [];
+		const possessed = this.possessed?.outcome() ?? null;
 		const top = entries[0];
 		const tie = entries.length > 1 && entries[1].score === top?.score;
 		const topTeam = teams[0];
@@ -1811,16 +2123,19 @@ export class Match {
 			entries,
 			teams,
 			winnerId:
-				teams.length === 0 && top && top.score > 0 && !tie
+				!possessed && teams.length === 0 && top && top.score > 0 && !tie
 					? top.playerId
 					: null,
 			winnerTeam:
-				topTeam && topTeam.score > 0 && !teamTie ? topTeam.team : null,
+				!possessed && topTeam && topTeam.score > 0 && !teamTie
+					? topTeam.team
+					: null,
 			durationMs: matchDurationMs(this.config),
 			awards: pickAwards(this.awards.stats),
 			highlights: this.highlights?.finish() ?? [],
 			daily: this.daily,
 			metrics: {},
+			possessed,
 		};
 		results.metrics = this.finalChallengeMetrics(results);
 		this.transport.broadcast("game:end", results);

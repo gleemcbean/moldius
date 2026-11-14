@@ -2,6 +2,7 @@ import type { MatchAward } from "../awards.js";
 import type { MatchMetrics } from "../challenges.js";
 import type { StakeKind } from "../config/items.js";
 import type { MaterialId, OccultId } from "../config/occult.js";
+import type { EmoteId, ManorEventKind, PingKind } from "../config/party.js";
 import type { SpeciesId } from "../config/species.js";
 import type { HatPattern } from "../hatPatterns.js";
 import type { BrewEffect } from "../manor/brews.js";
@@ -59,6 +60,41 @@ export interface MatchInit {
 	pickupTotal: number;
 	walkieTotal: number;
 	cameraTotal: number;
+	ritualQuota: number | null;
+}
+
+export type PlayerRole = "hunter" | "possessed";
+
+export interface RoleInfo {
+	role: PlayerRole;
+	quota: number;
+}
+
+export interface PingRequest {
+	kind: PingKind;
+	x: number;
+	y: number;
+	z: number;
+	anomalyId: number | null;
+}
+
+export type GhostActionKind = "door" | "knock";
+
+export interface PowerRequest {
+	altarId: number;
+	x: number;
+	y: number;
+	z: number;
+}
+
+export interface PossessedOutcome {
+	possessedId: string;
+	winner: "hunters" | "possessed";
+	quota: number;
+	captures: number;
+	quotaReached: boolean;
+	unmasked: boolean;
+	votes: Record<string, string>;
 }
 
 export interface MatchBegin {
@@ -87,6 +123,7 @@ export const PLAYER_FLAG = {
 	camera: 32768,
 	walkieHeld: 65536,
 	cameraHeld: 131072,
+	bounty: 262144,
 } as const;
 
 export interface PlayerSnapshot {
@@ -396,7 +433,47 @@ export type GameEvent =
 			activeUntil: number;
 			cooldownUntil: number;
 	  }
-	| { type: "notice"; text: string };
+	| { type: "notice"; text: string }
+	| {
+			type: "ping";
+			id: number;
+			playerId: string;
+			kind: PingKind;
+			x: number;
+			y: number;
+			z: number;
+			anomalyId: number | null;
+			expiresAt: number;
+	  }
+	| { type: "emote"; playerId: string; emote: EmoteId | null; until: number }
+	| { type: "gift"; fromId: string; toId: string; material: MaterialId }
+	| { type: "poltergeist"; playerId: string; x: number; y: number; z: number }
+	| {
+			type: "manorEvent";
+			kind: ManorEventKind;
+			phase: "warning" | "start" | "end";
+			startsAt: number;
+			endsAt: number;
+	  }
+	| { type: "bounty"; playerId: string | null; value: number }
+	| {
+			type: "bountyReward";
+			playerId: string;
+			targetId: string;
+			points: number;
+			score: number;
+			reason: "push" | "claim";
+	  }
+	| { type: "altarCurse"; altarId: number; until: number }
+	| { type: "darkCall"; x: number; y: number; z: number }
+	| { type: "ritual"; captures: number; quota: number }
+	| {
+			type: "vote";
+			phase: "start" | "end";
+			endsAt: number;
+			reason: "ritual" | "timeout";
+	  }
+	| { type: "voteCast"; voterId: string };
 
 export interface TimedEvent {
 	t: number;
@@ -467,6 +544,7 @@ export interface MatchResults {
 	highlights: Highlight[];
 	daily: string | null;
 	metrics: Record<string, MatchMetrics>;
+	possessed?: PossessedOutcome | null;
 }
 
 export interface TimeSyncPing {

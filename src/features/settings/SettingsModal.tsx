@@ -9,11 +9,12 @@ import { AudioSettings } from "./AudioSettings";
 import { ControlsSettings } from "./ControlsSettings";
 import { DevSettings } from "./DevSettings";
 import { DisplaySettings } from "./DisplaySettings";
+import { StatsSettings } from "./StatsSettings";
 import styles from "./SettingsModal.module.scss";
 
-type Tab = "controls" | "display" | "audio" | "dev";
+type Tab = "controls" | "display" | "stats" | "audio" | "dev";
 
-const TABS: readonly Tab[] = ["controls", "display", "audio", "dev"];
+const TABS: readonly Tab[] = ["controls", "display", "stats", "audio", "dev"];
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
 	const t = useT();
@@ -28,6 +29,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 					options={[
 						{ value: "controls", label: t.settings.tabs.controls },
 						{ value: "display", label: t.settings.tabs.display },
+						{ value: "stats", label: t.settings.tabs.stats },
 						{ value: "audio", label: t.settings.tabs.audio },
 						...(dev
 							? [{ value: "dev" as const, label: t.settings.tabs.dev }]
@@ -38,6 +40,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 			<PageSwap page={tab} order={TABS}>
 				{tab === "controls" ? <ControlsSettings /> : null}
 				{tab === "display" ? <DisplaySettings /> : null}
+				{tab === "stats" ? <StatsSettings /> : null}
 				{tab === "audio" ? <AudioSettings /> : null}
 				{tab === "dev" && dev ? <DevSettings /> : null}
 			</PageSwap>

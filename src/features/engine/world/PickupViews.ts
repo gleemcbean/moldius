@@ -10,6 +10,7 @@ export class PickupViews {
 	readonly group = new THREE.Group();
 	private readonly taken = new Set<number>();
 	private readonly models = new Map<number, THREE.Object3D>();
+	private readonly rooms = new Map<number, number>();
 	private readonly templates = new Map<MaterialId, THREE.Group>();
 
 	constructor(
@@ -25,6 +26,7 @@ export class PickupViews {
 			model.rotation.y = pickup.id * 1.7;
 			model.scale.setScalar(pickup.spot === "floor" ? 1.25 : 1.05);
 			this.models.set(pickup.id, model);
+			this.rooms.set(pickup.id, pickup.roomId);
 			this.group.add(model);
 		}
 	}
@@ -72,6 +74,17 @@ export class PickupViews {
 			model.visible = near;
 			if (near) {
 				model.rotation.y += dt * 0.5;
+			}
+		}
+	}
+
+	cull(rooms: ArrayLike<number> | null): void {
+		if (rooms === null) {
+			return;
+		}
+		for (const [id, model] of this.models) {
+			if (model.visible && rooms[this.rooms.get(id) ?? -1] !== 1) {
+				model.visible = false;
 			}
 		}
 	}

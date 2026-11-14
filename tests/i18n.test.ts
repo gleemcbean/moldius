@@ -17,6 +17,7 @@ const SECTIONS: [string, string, string][] = [
 	["game", "gameFr", "gameEn"],
 	["grimoire", "grimoireFr", "grimoireEn"],
 	["world", "worldFr", "worldEn"],
+	["party", "partyFr", "partyEn"],
 ];
 
 async function section(file: string): Promise<Tree> {

@@ -1,0 +1,132 @@
+@use '../../styles/tokens' as *;
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: $scrim;
+  backdrop-filter: blur(2px) saturate(0.6);
+  pointer-events: auto;
+  cursor: default;
+  text-shadow: none;
+  animation: vote-fade 300ms ease-out backwards;
+}
+
+.panel {
+  width: min(560px, calc(100% - 40px));
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-6 $space-6 $space-5;
+  @include surface-raised;
+  border-color: $danger;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $space-4;
+
+  h2 {
+    margin: 0;
+    @include display(40px);
+    color: $danger;
+  }
+}
+
+.timer {
+  @include figures(32px);
+  color: $accent;
+}
+
+.text {
+  margin: 0;
+  @include body(17px);
+  color: $ink-muted;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-2;
+
+  @media (max-width: 520px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.candidate {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  @include well;
+  border: $border solid $line;
+  color: $ink;
+  cursor: pointer;
+  text-align: left;
+  @include ui(20px);
+  transition: border-color $fast $ease, background $fast $ease;
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    outline: none;
+    border-color: $accent;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.chosen {
+  border-color: $danger;
+  background: tint($danger, 0.16);
+}
+
+.swatch {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background: var(--swatch);
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voted {
+  @include tag;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: $space-2;
+  @include ui(16px);
+  color: $ink-muted;
+}
+
+@keyframes vote-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: none;
+  }
+}

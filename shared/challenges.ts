@@ -198,9 +198,17 @@ export function newlyCompleted(
 }
 
 export function entryWon(
-	results: Pick<MatchResults, "teams" | "winnerTeam" | "winnerId">,
+	results: Pick<MatchResults, "teams" | "winnerTeam" | "winnerId"> &
+		Partial<Pick<MatchResults, "possessed">>,
 	entry: Pick<MatchResultEntry, "playerId" | "team">,
 ): boolean {
+	const possessed = results.possessed;
+	if (possessed) {
+		return (
+			(possessed.winner === "possessed") ===
+			(possessed.possessedId === entry.playerId)
+		);
+	}
 	return results.teams.length > 0
 		? results.winnerTeam !== null && results.winnerTeam === entry.team
 		: results.winnerId === entry.playerId;

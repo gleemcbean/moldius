@@ -23,6 +23,9 @@ export const ACTION_IDS = [
 	"leaderboard",
 	"pagePrevious",
 	"pageNext",
+	"ping",
+	"emote",
+	"power",
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];
@@ -50,6 +53,33 @@ export type PostEffectId = (typeof POST_EFFECT_IDS)[number];
 export type PostEffectLevels = Record<PostEffectId, number>;
 
 export type PostEffectPreset = "clear" | "balanced" | "vhs";
+
+export const STATS_METRICS = [
+	"fps",
+	"frameTime",
+	"ping",
+	"jitter",
+	"snapshots",
+	"loss",
+	"interpolation",
+	"drawCalls",
+	"triangles",
+	"memory",
+	"voice",
+] as const;
+
+export type StatsMetric = (typeof STATS_METRICS)[number];
+
+export type StatsCorner = "topLeft" | "topRight" | "bottomLeft" | "bottomRight";
+
+export type StatsPreset = "off" | "minimal" | "network" | "full";
+
+export interface StatsOverlaySettings {
+	metrics: Record<StatsMetric, boolean>;
+	corner: StatsCorner;
+	graph: boolean;
+	opacity: number;
+}
 
 export interface VolumeSettings {
 	master: number;
@@ -82,7 +112,7 @@ export interface PlayerSettings {
 	fpsLimit: number;
 	headBob: boolean;
 	reduceMotion: boolean;
-	showFps: boolean;
+	stats: StatsOverlaySettings;
 	volumes: VolumeSettings;
 	micDeviceId: string | null;
 	voiceGate: number;

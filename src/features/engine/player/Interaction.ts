@@ -1,6 +1,8 @@
 import {
 	ALTAR_INTERACT_RANGE,
 	DOOR_INTERACT_RANGE,
+	GHOST_DOOR_RANGE,
+	GIFT_RANGE,
 	HIDE_INTERACT_RANGE,
 	PICKUP_INTERACT_RANGE,
 	STAKE_INTERACT_RANGE,
@@ -23,9 +25,16 @@ import type { GadgetViews } from "../world/GadgetViews";
 import type { PickupViews } from "../world/PickupViews";
 
 export interface InteractionTarget {
-	kind: InteractionKind | "altar";
+	kind: InteractionKind | "altar" | "gift" | "ghostDoor";
 	id: number;
 	label: string;
+	playerId?: string;
+}
+
+export interface GiftCandidate {
+	id: string;
+	name: string;
+	chest: THREE.Vector3;
 }
 
 function isHideableKind(kind: string): kind is HideableKind {
@@ -59,8 +68,11 @@ export class InteractionFinder {
 		feet: THREE.Vector3,
 		hiddenSpot: number,
 		serverTime: number,
+		people: readonly GiftCandidate[] = [],
+		doorsLocked = false,
 	): InteractionTarget | null {
 		const labels = currentMessages().game.interaction;
+		const party = currentMessages().party;
 		if (hiddenSpot >= 0) {
 			const spot = this.layout.hideSpots[hiddenSpot];
 			return {
@@ -95,7 +107,11 @@ export class InteractionFinder {
 					target: {
 						kind: "door",
 						id: door.doorId,
-						label: open ? labels.closeDoor : labels.openDoor,
+						label: doorsLocked
+							? party.events.locked
+							: open
+								? labels.closeDoor
+								: labels.openDoor,
 					},
 					score: distance + angle * 2 - (hit ? 1 : 0),
 				});
@@ -253,13 +269,67 @@ export class InteractionFinder {
 			const angle = angleTo(eye, forward, point);
 			if (angle < 0.7 && this.clearLine(eye, point)) {
 				candidates.push({
-					target: { kind: "altar", id: altar.id, label: labels.useAltar },
+					target: {
+						kind: "altar",
+						id: altar.id,
+						label: this.state.altarCursed(altar.id, serverTime)
+							? party.possessed.altarCursed
+							: labels.useAltar,
+					},
 					score: distance + angle * 2,
+				});
+			}
+		}
+		for (const person of people) {
+			const distance = person.chest.distanceTo(eye);
+			if (distance > GIFT_RANGE) {
+				continue;
+			}
+			const angle = angleTo(eye, forward, person.chest);
+			if (angle < 0.32 && this.clearLine(eye, person.chest)) {
+				candidates.push({
+					target: {
+						kind: "gift",
+						id: -1,
+						playerId: person.id,
+						label: party.gift.prompt(person.name),
+					},
+					score: distance + angle * 2 - 0.3,
 				});
 			}
 		}
 		candidates.sort((a, b) => a.score - b.score);
 		return candidates[0]?.target ?? null;
+	}
+
+	findGhostDoor(
+		eye: THREE.Vector3,
+		forward: THREE.Vector3,
+	): InteractionTarget | null {
+		let best: { id: number; score: number } | null = null;
+		for (const door of this.doors.doors.values()) {
+			const center = new THREE.Vector3(
+				door.geometry.center.x,
+				door.geometry.floorY + 1.1,
+				door.geometry.center.z,
+			);
+			const distance = center.distanceTo(eye);
+			if (distance > GHOST_DOOR_RANGE) {
+				continue;
+			}
+			const angle = angleTo(eye, forward, center);
+			const score = distance + angle * 3;
+			if (angle < 0.65 && (!best || score < best.score)) {
+				best = { id: door.doorId, score };
+			}
+		}
+		return best
+			? {
+					kind: "ghostDoor",
+					id: best.id,
+					label: currentMessages().party.ghost.door,
+				}
+			: null;
 	}
 
 	private clearLine(eye: THREE.Vector3, point: THREE.Vector3): boolean {

@@ -44,6 +44,7 @@ import type {
 	SessionAccount,
 	SessionRegistry,
 } from "../sessions/SessionRegistry.js";
+import { isEmoteId, isMaterialId, isPingKind } from "../game/systems/social.js";
 import type { SpeechService } from "../speech/SpeechService.js";
 import {
 	accountPresenceChanged,
@@ -311,6 +312,26 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				};
 			}
 			return deps.lobbies.createDaily(
+				current,
+				name,
+				preferredLook(payload, current),
+			);
+		});
+	});
+
+	socket.on("lobby:createPossessed", (payload, ack) => {
+		respond(ack, allow("lobby:join"), session(), (current) => {
+			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+			if (!name) {
+				return {
+					ok: false,
+					error: {
+						code: "invalid-name",
+						message: "Choisissez un pseudonyme de 2 à 18 caractères.",
+					},
+				};
+			}
+			return deps.lobbies.createPossessed(
 				current,
 				name,
 				preferredLook(payload, current),
@@ -652,6 +673,102 @@ function registerGameHandlers(
 		withMatch("game:devModes", (current, match) =>
 			match.handleDevModes(current.playerId, sanitizeDevModes(payload)),
 		);
+	});
+
+	socket.on("game:ping", (payload) => {
+		withMatch("game:ping", (current, match) => {
+			if (!isRecord(payload) || !isPingKind(payload.kind)) {
+				return;
+			}
+			const x = finiteNumber(payload.x, -500, 500);
+			const y = finiteNumber(payload.y, -20, 60);
+			const z = finiteNumber(payload.z, -500, 500);
+			const anomalyId =
+				payload.anomalyId === null
+					? null
+					: finiteNumber(payload.anomalyId, 0, 1000);
+			if (x === null || y === null || z === null) {
+				return;
+			}
+			match.handlePing(current.playerId, {
+				kind: payload.kind,
+				x,
+				y,
+				z,
+				anomalyId: anomalyId === null ? null : Math.round(anomalyId),
+			});
+		});
+	});
+
+	socket.on("game:emote", (payload) => {
+		withMatch("game:emote", (current, match) => {
+			if (
+				isRecord(payload) &&
+				(payload.emote === null || isEmoteId(payload.emote))
+			) {
+				match.handleEmote(current.playerId, payload.emote);
+			}
+		});
+	});
+
+	socket.on("game:gift", (payload) => {
+		withMatch("game:gift", (current, match) => {
+			if (
+				isRecord(payload) &&
+				typeof payload.targetId === "string" &&
+				payload.targetId.length <= 64 &&
+				isMaterialId(payload.material)
+			) {
+				match.handleGift(current.playerId, payload.targetId, payload.material);
+			}
+		});
+	});
+
+	socket.on("game:ghost", (payload) => {
+		withMatch("game:ghost", (current, match) => {
+			if (!isRecord(payload)) {
+				return;
+			}
+			const id = finiteNumber(payload.id, -1, 100000);
+			if (
+				(payload.kind === "door" || payload.kind === "knock") &&
+				id !== null
+			) {
+				match.handleGhostAction(current.playerId, payload.kind, Math.round(id));
+			}
+		});
+	});
+
+	socket.on("game:power", (payload) => {
+		withMatch("game:power", (current, match) => {
+			if (!isRecord(payload)) {
+				return;
+			}
+			const altarId = finiteNumber(payload.altarId, -1, 1000);
+			const x = finiteNumber(payload.x, -500, 500);
+			const y = finiteNumber(payload.y, -20, 60);
+			const z = finiteNumber(payload.z, -500, 500);
+			if (altarId !== null && x !== null && y !== null && z !== null) {
+				match.handlePower(current.playerId, {
+					altarId: Math.round(altarId),
+					x,
+					y,
+					z,
+				});
+			}
+		});
+	});
+
+	socket.on("game:vote", (payload) => {
+		withMatch("game:vote", (current, match) => {
+			if (
+				isRecord(payload) &&
+				typeof payload.targetId === "string" &&
+				payload.targetId.length <= 64
+			) {
+				match.handleVote(current.playerId, payload.targetId);
+			}
+		});
 	});
 
 	socket.on("game:leave", () => {

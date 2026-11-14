@@ -21,4 +21,7 @@ export const DEFAULT_KEYS: Record<ActionId, string> = {
 	leaderboard: "Tab",
 	pagePrevious: "ArrowLeft",
 	pageNext: "ArrowRight",
+	ping: "MouseMiddle",
+	emote: "KeyB",
+	power: "KeyT",
 };

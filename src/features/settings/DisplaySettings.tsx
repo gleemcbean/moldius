@@ -51,7 +51,6 @@ export function DisplaySettings() {
 			fpsLimit: state.fpsLimit,
 			headBob: state.headBob,
 			reduceMotion: state.reduceMotion,
-			showFps: state.showFps,
 		}),
 		shallowEqual,
 	);
@@ -187,12 +186,6 @@ export function DisplaySettings() {
 						value,
 						label: value === 0 ? labels.unlimited : String(value),
 					}))}
-				/>
-			</Field>
-			<Field label={labels.showFps}>
-				<Toggle
-					checked={settings.showFps}
-					onChange={(showFps) => updateSettings({ showFps })}
 				/>
 			</Field>
 			<div className={styles.row}>

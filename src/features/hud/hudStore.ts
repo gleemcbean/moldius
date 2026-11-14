@@ -1,6 +1,11 @@
+import type { ManorEventKind } from "@shared/config/party";
 import type { BrewEffect } from "@shared/manor/brews";
 import type { Level } from "@shared/manor/types";
-import type { CastFailureReason, PlayerInventory } from "@shared/protocol/game";
+import type {
+	CastFailureReason,
+	PlayerInventory,
+	PlayerRole,
+} from "@shared/protocol/game";
 import type { Tagline } from "@shared/rewards";
 import { createStore } from "../../utils/store";
 
@@ -41,6 +46,31 @@ export interface LeaderboardRow {
 	walkie: boolean;
 	radio: boolean;
 	tagline: Tagline | null;
+	bounty: boolean;
+	voted: boolean;
+}
+
+export interface WheelHud {
+	title: string;
+	labels: string[];
+	colors: string[];
+	selected: number | null;
+}
+
+export interface GiftHud {
+	name: string;
+	selected: number;
+}
+
+export interface StatsLine {
+	label: string;
+	value: string;
+	warn: boolean;
+}
+
+export interface StatsHud {
+	lines: StatsLine[];
+	frames: number[];
 }
 
 export interface HudState {
@@ -96,6 +126,27 @@ export interface HudState {
 	brewTotalMs: number;
 	level: Level;
 	serverNow: number;
+	ghost: boolean;
+	oneLife: boolean;
+	ghostDoorReadyAt: number;
+	ghostKnockReadyAt: number;
+	wheel: WheelHud | null;
+	gift: GiftHud | null;
+	manorEvent: {
+		kind: ManorEventKind;
+		phase: "warning" | "start";
+		startsAt: number;
+		endsAt: number;
+	} | null;
+	bounty: { name: string; value: number; self: boolean } | null;
+	ritual: { captures: number; quota: number } | null;
+	role: PlayerRole | null;
+	roleShownAt: number;
+	powerReadyAt: number;
+	noMap: boolean;
+	voting: boolean;
+	stats: StatsHud | null;
+	pushCooldownMs: number;
 }
 
 export interface DevCastEntry {
@@ -160,6 +211,22 @@ export function initialHud(): HudState {
 		brewTotalMs: 1,
 		level: 0,
 		serverNow: 0,
+		ghost: false,
+		oneLife: false,
+		ghostDoorReadyAt: 0,
+		ghostKnockReadyAt: 0,
+		wheel: null,
+		gift: null,
+		manorEvent: null,
+		bounty: null,
+		ritual: null,
+		role: null,
+		roleShownAt: 0,
+		powerReadyAt: 0,
+		noMap: false,
+		voting: false,
+		stats: null,
+		pushCooldownMs: 0,
 	};
 }
 

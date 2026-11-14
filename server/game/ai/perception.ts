@@ -63,7 +63,8 @@ export function perceive(
 			!player.connected ||
 			player.carried ||
 			player.hidden ||
-			player.protectedUntil > now
+			player.protectedUntil > now ||
+			match.ignoredByAnomalies(player)
 		) {
 			memory.awareness = Math.max(
 				0,
@@ -71,6 +72,7 @@ export function perceive(
 			);
 			continue;
 		}
+		const sense = match.senseFactor(player);
 		const dx = player.position.x - entity.position.x;
 		const dz = player.position.z - entity.position.z;
 		const dy = player.position.y - entity.position.y;
@@ -78,7 +80,11 @@ export function perceive(
 		const lit = match.illuminationOf(player);
 		const lanternFactor = player.lanternOpen ? 1.6 : 1;
 		const range =
-			definition.viewRange * lanternFactor * (0.55 + 0.45 * clamp(lit, 0, 1));
+			definition.viewRange *
+			lanternFactor *
+			(0.55 + 0.45 * clamp(lit, 0, 1)) *
+			match.visionFactor() *
+			sense;
 		const angle = Math.abs(angleDifference(entity.yaw, Math.atan2(-dx, -dz)));
 		const inCone =
 			distance < PERCEPTION_CLOSE_SENSE_DISTANCE ||
@@ -103,7 +109,7 @@ export function perceive(
 						lightFactor *
 						postureFactor *
 						motionFactor;
-			memory.awareness = Math.min(1.5, memory.awareness + rate * dt);
+			memory.awareness = Math.min(1.5, memory.awareness + rate * sense * dt);
 			if (memory.awareness >= 1) {
 				memory.lastSeenAt = now;
 				memory.lastSeenPosition = { ...player.position };
@@ -131,7 +137,11 @@ function listen(
 	const ear = entity.eye();
 	for (const sound of match.sounds) {
 		const source = sound.playerId ? match.players.get(sound.playerId) : null;
-		if (!source || source.protectedUntil > match.now) {
+		if (
+			!source ||
+			source.protectedUntil > match.now ||
+			(source.alive && match.ignoredByAnomalies(source))
+		) {
 			continue;
 		}
 		const distance = Math.hypot(
@@ -139,7 +149,13 @@ function listen(
 			sound.position.y + 1.2 - ear.y,
 			sound.position.z - ear.z,
 		);
-		if (distance > sound.loudness * entity.definition.hearing * 1.05) {
+		if (
+			distance >
+			sound.loudness *
+				entity.definition.hearing *
+				1.05 *
+				match.senseFactor(source)
+		) {
 			continue;
 		}
 		const walls = countWallsBetween(
@@ -149,7 +165,8 @@ function listen(
 			3,
 		);
 		const effective =
-			(sound.loudness * entity.definition.hearing) / (1 + walls * 0.9);
+			(sound.loudness * entity.definition.hearing * match.senseFactor(source)) /
+			(1 + walls * 0.9);
 		const margin = effective - distance;
 		if (margin <= 0) {
 			continue;

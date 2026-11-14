@@ -186,7 +186,7 @@ describe("modes de développement", () => {
 });
 
 describe("joueur à terre", () => {
-	it("garde l'orientation de sa chute aux yeux des autres", () => {
+	it("devient un fantôme qui regarde librement autour de lui", () => {
 		const sim = simulation(false);
 		const fallen = player(sim);
 		const yaw = fallen.yaw;
@@ -194,7 +194,7 @@ describe("joueur à terre", () => {
 		expect(fallen.alive).toBe(false);
 		sim.bot("p1").input.yaw = yaw + 2;
 		sim.run(1);
-		expect(fallen.yaw).toBe(yaw);
+		expect(fallen.yaw).toBeCloseTo(yaw + 2);
 	});
 });
 

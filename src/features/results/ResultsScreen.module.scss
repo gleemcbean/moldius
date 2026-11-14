@@ -737,3 +737,59 @@
 .table > li {
   @include enter-stagger(left, 300ms, 45ms, 8);
 }
+
+.reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: $border solid #c39bff;
+}
+
+.revealDark {
+  border-color: $danger;
+
+  .heading {
+    color: $danger;
+  }
+}
+
+.revealWho {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  @include heading(26px);
+  color: $ink;
+}
+
+.revealTitle {
+  margin: 8px 0 0;
+  @include label;
+  color: $ink-dim;
+}
+
+.revealVotes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  @include ui(17px);
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 8px;
+    @include well;
+  }
+}
+
+.revealRight {
+  color: $ok;
+}
+
+.revealWrong {
+  color: $danger;
+}

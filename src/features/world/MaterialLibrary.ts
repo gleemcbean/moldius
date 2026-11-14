@@ -172,6 +172,7 @@ export class MaterialLibrary {
 			alphaTest: options.alphaTest ?? 0,
 			depthWrite: options.depthWrite ?? true,
 			fog: options.fog ?? true,
+			forceSinglePass: true,
 		};
 		if (options.unlit) {
 			const basic = new THREE.MeshBasicMaterial(shared);

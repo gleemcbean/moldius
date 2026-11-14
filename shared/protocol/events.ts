@@ -12,11 +12,15 @@ import type {
 	ClientStateMessage,
 	ForcedMove,
 	GameEvent,
+	GhostActionKind,
 	InteractRequest,
 	MatchBegin,
 	MatchInit,
 	MatchResults,
+	PingRequest,
 	PlayerInventory,
+	PowerRequest,
+	RoleInfo,
 	TimeSyncPing,
 	TimeSyncPong,
 	WorldSnapshot,
@@ -51,6 +55,7 @@ export interface ClientToServerEvents {
 	"lobby:quickJoin": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:createPrivate": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:createDaily": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
+	"lobby:createPossessed": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:joinPrivate": (
 		payload: JoinPrivateRequest,
 		ack: Ack<LobbyState>,
@@ -123,6 +128,12 @@ export interface ClientToServerEvents {
 	"game:tutorialSummon": () => void;
 	"game:tutorialWound": () => void;
 	"game:devModes": (payload: DevModes) => void;
+	"game:ping": (payload: PingRequest) => void;
+	"game:emote": (payload: { emote: string | null }) => void;
+	"game:gift": (payload: { targetId: string; material: string }) => void;
+	"game:ghost": (payload: { kind: GhostActionKind; id: number }) => void;
+	"game:power": (payload: PowerRequest) => void;
+	"game:vote": (payload: { targetId: string }) => void;
 	"game:leave": () => void;
 }
 
@@ -145,6 +156,7 @@ export interface ServerToClientEvents {
 	"game:castResult": (payload: CastResult) => void;
 	"game:inventory": (payload: PlayerInventory) => void;
 	"game:challenges": (payload: MatchMetrics) => void;
+	"game:role": (payload: RoleInfo) => void;
 	"game:end": (payload: MatchResults) => void;
 	"game:aborted": (payload: { reason: AbortReason }) => void;
 }

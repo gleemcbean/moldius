@@ -104,6 +104,7 @@ export function initMatchController(): void {
 	socket.on("game:inventory", (inventory) =>
 		session?.handleInventory(inventory),
 	);
+	socket.on("game:role", (role) => session?.handleRole(role));
 	socket.on("game:end", (results) => {
 		if (!session || results.matchId !== session.matchId) {
 			return;

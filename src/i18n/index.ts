@@ -12,6 +12,7 @@ import { gameEn, gameFr } from "./sections/game";
 import { grimoireEn, grimoireFr } from "./sections/grimoire";
 import { appearanceEn, appearanceFr, homeEn, homeFr } from "./sections/home";
 import { lobbyEn, lobbyFr } from "./sections/lobby";
+import { partyEn, partyFr } from "./sections/party";
 import { progressionEn, progressionFr } from "./sections/progression";
 import { settingsEn, settingsFr } from "./sections/settings";
 import { worldEn, worldFr } from "./sections/world";
@@ -32,6 +33,7 @@ const fr = {
 	bestiary: bestiaryFr,
 	world: worldFr,
 	progression: progressionFr,
+	party: partyFr,
 };
 
 export type Messages = typeof fr;
@@ -52,6 +54,7 @@ const en: Messages = {
 	bestiary: bestiaryEn,
 	world: worldEn,
 	progression: progressionEn,
+	party: partyEn,
 };
 
 const MESSAGES: Record<Language, Messages> = { fr, en };

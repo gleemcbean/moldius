@@ -72,6 +72,7 @@ export class HazardViews {
 		roughness: 0.1,
 		depthWrite: false,
 		side: THREE.DoubleSide,
+		forceSinglePass: true,
 	});
 	private readonly poolMaterial = new THREE.MeshStandardMaterial({
 		color: 0x5aff7a,
@@ -90,6 +91,16 @@ export class HazardViews {
 		depthWrite: false,
 	});
 	private time = 0;
+
+	warmMaterials(): THREE.Material[] {
+		return [
+			this.emberMaterial,
+			this.slimeMaterial,
+			this.streamMaterial,
+			this.poolMaterial,
+			this.coreMaterial,
+		];
+	}
 
 	constructor(
 		private readonly state: ClientWorldState,

@@ -1,7 +1,12 @@
 import { currentMessages } from "../i18n";
 import type { ActionId } from "../types/settings";
 
-export type ActionGroupId = "movement" | "objects" | "sabotage" | "interface";
+export type ActionGroupId =
+	| "movement"
+	| "objects"
+	| "sabotage"
+	| "social"
+	| "interface";
 
 export const ACTION_GROUPS: { id: ActionGroupId; actions: ActionId[] }[] = [
 	{
@@ -30,7 +35,8 @@ export const ACTION_GROUPS: { id: ActionGroupId; actions: ActionId[] }[] = [
 			"pageNext",
 		],
 	},
-	{ id: "sabotage", actions: ["push", "shout"] },
+	{ id: "sabotage", actions: ["push", "shout", "power"] },
+	{ id: "social", actions: ["ping", "emote"] },
 	{ id: "interface", actions: ["map", "leaderboard"] },
 ];
 

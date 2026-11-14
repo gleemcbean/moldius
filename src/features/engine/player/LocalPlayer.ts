@@ -1,6 +1,13 @@
-import { CROUCH_EYE_DROP, EYE_HEIGHT_STANDING } from "@shared/config/index";
+import {
+	CROUCH_EYE_DROP,
+	EYE_HEIGHT_STANDING,
+	GHOST_FAST_SPEED,
+	GHOST_SPEED,
+	GHOST_VERTICAL_SPEED,
+} from "@shared/config/index";
 import type { DevModes } from "@shared/devModes";
-import { clamp, lerp, type Vec2, type Vec3 } from "@shared/math";
+import { clampToGhostBounds, type GhostBounds } from "@shared/ghost";
+import { clamp, lerp, rotate2, type Vec2, type Vec3 } from "@shared/math";
 import {
 	type CharacterInput,
 	type CharacterState,
@@ -45,6 +52,7 @@ export interface LocalContext {
 	hideInterior: Vec3 | null;
 	hideFacing: number;
 	devModes: DevModes;
+	ghost: GhostBounds | null;
 }
 
 interface ForcedAnimation {
@@ -64,7 +72,11 @@ export class LocalPlayer {
 	jumps = 0;
 	private accumulator = 0;
 	private readonly jumpAssist = new JumpAssist();
-	readonly events: { kind: "jump" | "land" | "tired"; speed: number }[] = [];
+	readonly events: {
+		kind: "jump" | "land" | "tired" | "bounds";
+		speed: number;
+	}[] = [];
+	private boundsWarnedAt = -Infinity;
 	private cameraY: number;
 	private forced: ForcedAnimation | null = null;
 	private deathTilt = 0;
@@ -154,6 +166,11 @@ export class LocalPlayer {
 			this.updateForced();
 			return;
 		}
+		if (!context.alive && context.ghost) {
+			this.deathTilt = 0;
+			this.updateGhost(dt, controls, context.ghost);
+			return;
+		}
 		if (!context.alive || context.carriedAnchor || context.hideInterior) {
 			this.character.vx = 0;
 			this.character.vz = 0;
@@ -218,6 +235,57 @@ export class LocalPlayer {
 		}
 	}
 
+	private updateGhost(
+		dt: number,
+		controls: LocalControls,
+		bounds: GhostBounds,
+	): void {
+		Object.assign(this.previous, this.character);
+		let forward = clamp(controls.forward, -1, 1);
+		let strafe = clamp(controls.strafe, -1, 1);
+		const length = Math.hypot(forward, strafe);
+		if (length > 1) {
+			forward /= length;
+			strafe /= length;
+		}
+		const speed = controls.sprint ? GHOST_FAST_SPEED : GHOST_SPEED;
+		const world = rotate2({ x: strafe, z: -forward }, -this.yaw);
+		const blend = Math.min(1, dt * 7);
+		this.character.vx += (world.x * speed - this.character.vx) * blend;
+		this.character.vz += (world.z * speed - this.character.vz) * blend;
+		this.character.vy +=
+			(clamp(controls.rise, -1, 1) * GHOST_VERTICAL_SPEED - this.character.vy) *
+			blend;
+		const wanted = {
+			x: this.character.x + this.character.vx * dt,
+			y: this.character.y + this.character.vy * dt,
+			z: this.character.z + this.character.vz * dt,
+		};
+		const kept = clampToGhostBounds(wanted, bounds);
+		if (
+			Math.hypot(kept.x - wanted.x, kept.y - wanted.y, kept.z - wanted.z) >
+				0.001 &&
+			this.time - this.boundsWarnedAt > 3
+		) {
+			this.boundsWarnedAt = this.time;
+			this.events.push({ kind: "bounds", speed: 0 });
+		}
+		this.character.x = kept.x;
+		this.character.y = kept.y;
+		this.character.z = kept.z;
+		this.character.grounded = false;
+		this.character.crouch = 0;
+		this.cameraY = kept.y + EYE_HEIGHT_STANDING;
+		this.lastInput = {
+			forward: controls.forward,
+			strafe: controls.strafe,
+			yaw: this.yaw,
+			sprint: false,
+			crouch: false,
+			jump: false,
+		};
+	}
+
 	private updateLook(controls: LocalControls, context: LocalContext): void {
 		const scale = MOUSE_LOOK_SCALE * context.sensitivity;
 		this.yaw -= controls.lookX * scale;
@@ -255,6 +323,13 @@ export class LocalPlayer {
 	}
 
 	eyePosition(context: LocalContext, dt: number): Vec3 {
+		if (!context.alive && context.ghost && !this.forced) {
+			return {
+				x: this.character.x,
+				y: this.character.y + EYE_HEIGHT_STANDING,
+				z: this.character.z,
+			};
+		}
 		if (context.hideInterior && !this.forced) {
 			this.cameraY = context.hideInterior.y;
 			return { ...context.hideInterior };

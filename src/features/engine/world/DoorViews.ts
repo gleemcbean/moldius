@@ -7,6 +7,7 @@ import {
 import type { DoorSpec, ManorLayout, Opening } from "@shared/manor/types";
 import { angleDifference } from "@shared/math";
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { ModelKit } from "../../models/modelKit";
 import type { MaterialOptions } from "../../world/MaterialLibrary";
 
@@ -25,6 +26,68 @@ export interface DoorView {
 	angle: number;
 	targetOpen: boolean;
 	predictedUntil: number;
+}
+
+const SHUT_TOLERANCE = 1e-3;
+
+function mergeParts(pivot: THREE.Group): void {
+	const parts = pivot.children;
+	const groups = new Map<THREE.Material, THREE.BufferGeometry[]>();
+	for (const part of parts) {
+		if (
+			!(part instanceof THREE.Mesh) ||
+			Array.isArray(part.material) ||
+			part.children.length > 0
+		) {
+			return;
+		}
+	}
+	for (const part of parts as THREE.Mesh[]) {
+		part.updateMatrix();
+		const geometry = part.geometry.clone().applyMatrix4(part.matrix);
+		const list = groups.get(part.material as THREE.Material);
+		if (list) {
+			list.push(geometry);
+		} else {
+			groups.set(part.material as THREE.Material, [geometry]);
+		}
+	}
+	const merged: THREE.Mesh[] = [];
+	for (const [material, geometries] of groups) {
+		const geometry =
+			geometries.length === 1
+				? geometries[0]
+				: mergeGeometries(geometries, false);
+		if (!geometry) {
+			for (const list of groups.values()) {
+				for (const clone of list) {
+					clone.dispose();
+				}
+			}
+			for (const mesh of merged) {
+				mesh.geometry.dispose();
+			}
+			return;
+		}
+		if (geometries.length > 1) {
+			for (const clone of geometries) {
+				clone.dispose();
+			}
+		}
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.castShadow = false;
+		mesh.receiveShadow = false;
+		mesh.matrixAutoUpdate = false;
+		mesh.updateMatrix();
+		merged.push(mesh);
+	}
+	for (const part of [...parts] as THREE.Mesh[]) {
+		part.geometry.dispose();
+		pivot.remove(part);
+	}
+	for (const mesh of merged) {
+		pivot.add(mesh);
+	}
 }
 
 export class DoorViews {
@@ -119,7 +182,28 @@ export class DoorViews {
 			hinge.position.set(0.0, y, 0);
 			pivot.add(hinge);
 		}
+		mergeParts(pivot);
 		return pivot;
+	}
+
+	isShut(doorId: number): boolean {
+		const door = this.doors.get(doorId);
+		if (!door || door.targetOpen) {
+			return false;
+		}
+		return (
+			Math.abs(angleDifference(door.angle, door.geometry.closedAngle)) <
+			SHUT_TOLERANCE
+		);
+	}
+
+	cull(rooms: ArrayLike<number> | null): void {
+		for (const door of this.doors.values()) {
+			door.pivot.visible =
+				rooms === null ||
+				rooms[door.opening.roomA] === 1 ||
+				rooms[door.opening.roomB] === 1;
+		}
 	}
 
 	setOpen(doorId: number, open: boolean, predictedUntil = 0): void {

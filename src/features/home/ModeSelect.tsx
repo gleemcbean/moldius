@@ -1,3 +1,4 @@
+import { POSSESSED_MIN_PLAYERS } from "@shared/config/party";
 import { dailyChallenge, formatDailyCountdown } from "@shared/dailyChallenge";
 import { openOverlay } from "../../app/appStore";
 import { Icon } from "../../components/Icon";
@@ -6,6 +7,7 @@ import { useT } from "../../i18n";
 import { useDailyClock } from "../daily/useDailyClock";
 import {
 	createDailyLobby,
+	createPossessedLobby,
 	quickJoin,
 	startTutorial,
 } from "../lobby/lobbyClient";
@@ -16,9 +18,12 @@ import type { GameMode } from "./modeArt";
 import { PublicLobbyPreview } from "./PublicLobbyPreview";
 import styles from "./ModeSelect.module.scss";
 
-const ART: Record<GameMode, string> = {
+type ModeCard = GameMode | "possessed";
+
+const ART: Record<ModeCard, string> = {
 	classic: classicArt,
 	daily: dailyArt,
+	possessed: classicArt,
 	tutorial: tutorialArt,
 };
 
@@ -37,19 +42,21 @@ export function ModeSelect({
 	const challenge = dailyChallenge(date);
 	const theme = t.daily.themes[challenge.theme];
 
-	const start = (mode: GameMode) => {
+	const start = (mode: ModeCard) => {
 		onClose();
 		if (mode === "classic") {
 			quickJoin(name);
 		} else if (mode === "daily") {
 			createDailyLobby(name);
+		} else if (mode === "possessed") {
+			createPossessedLobby(name);
 		} else {
 			startTutorial(name);
 		}
 	};
 
 	const cards: {
-		mode: GameMode;
+		mode: ModeCard;
 		title: string;
 		text: string;
 		meta: string;
@@ -74,6 +81,12 @@ export function ModeSelect({
 			meta: t.daily.nextIn(formatDailyCountdown(remainingMs)),
 		},
 		{
+			mode: "possessed",
+			title: t.party.possessed.modeName,
+			text: t.party.possessed.modeText,
+			meta: t.party.possessed.modeMeta(POSSESSED_MIN_PLAYERS),
+		},
+		{
 			mode: "tutorial",
 			title: labels.tutorial,
 			text: labels.tutorialText,
@@ -93,7 +106,12 @@ export function ModeSelect({
 							onClick={() => start(card.mode)}
 							data-selectable=""
 						>
-							<span className={styles.art}>
+							<span
+								className={[
+									styles.art,
+									card.mode === "possessed" ? styles.possessedArt : "",
+								].join(" ")}
+							>
 								<img src={ART[card.mode]} alt="" />
 
 							</span>

@@ -92,6 +92,7 @@ export class LootSystem {
 		if (
 			!altar ||
 			player.hidden ||
+			match.altarCursed(altarId) ||
 			!within(
 				player,
 				{ x: altar.x, y: altar.y + 0.8, z: altar.z },

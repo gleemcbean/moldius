@@ -1,3 +1,4 @@
+import type { EmoteId, ManorEventKind, PingKind } from "@shared/config/party";
 import { SPECIES, type SpeciesId } from "@shared/config/species";
 import { DEFAULT_HAT_PATTERN, type HatPattern } from "@shared/hatPatterns";
 import type { BrewEffect } from "@shared/manor/brews";
@@ -11,8 +12,10 @@ import {
 	type AnomalyState,
 	type GameEvent,
 	type MatchInit,
+	PLAYER_FLAG,
 	type PlayerSnapshot,
 	type ProjectileKind,
+	type RoleInfo,
 	type WorldSnapshot,
 } from "@shared/protocol/game";
 import { DEFAULT_LANTERN_TINT, type LanternTint } from "@shared/rewards";
@@ -64,6 +67,31 @@ export interface ProjectileClientState {
 	launchedAt: number;
 }
 
+export interface PingClientState {
+	id: number;
+	playerId: string;
+	kind: PingKind;
+	x: number;
+	y: number;
+	z: number;
+	anomalyId: number | null;
+	expiresAt: number;
+	createdAt: number;
+}
+
+export interface EmoteClientState {
+	emote: EmoteId;
+	startedAt: number;
+	until: number;
+}
+
+export interface ManorEventClientState {
+	kind: ManorEventKind;
+	phase: "warning" | "start";
+	startsAt: number;
+	endsAt: number;
+}
+
 export type EventListener = (event: GameEvent, serverTime: number) => void;
 
 export class ClientWorldState {
@@ -90,6 +118,18 @@ export class ClientWorldState {
 	readonly puddles = new Map<number, PuddleClientState>();
 	readonly projectiles = new Map<number, ProjectileClientState>();
 	readonly listeners = new Set<EventListener>();
+	readonly pings = new Map<number, PingClientState>();
+	readonly emotes = new Map<string, EmoteClientState>();
+	readonly altarCurses = new Map<number, number>();
+	readonly voters = new Set<string>();
+	bounty: { playerId: string | null; value: number } = {
+		playerId: null,
+		value: 0,
+	};
+	manorEvent: ManorEventClientState | null = null;
+	ritual: { captures: number; quota: number } | null = null;
+	vote: { endsAt: number; reason: "ritual" | "timeout" } | null = null;
+	role: RoleInfo | null = null;
 	remainingMs = 0;
 	latestSnapshotTime = -Infinity;
 	lastTick = -1;
@@ -150,6 +190,37 @@ export class ClientWorldState {
 		return brew && brew.until > serverNow ? brew : null;
 	}
 
+	get selfDead(): boolean {
+		return ((this.self?.latest?.flags ?? 0) & PLAYER_FLAG.dead) !== 0;
+	}
+
+	emoteOf(
+		playerId: string,
+		serverNow: number,
+	): { emote: EmoteId; time: number } | null {
+		const emote = this.emotes.get(playerId);
+		if (!emote || serverNow >= emote.until) {
+			return null;
+		}
+		return {
+			emote: emote.emote,
+			time: Math.max(0, (serverNow - emote.startedAt) / 1000),
+		};
+	}
+
+	activePings(serverNow: number): PingClientState[] {
+		for (const [id, ping] of this.pings) {
+			if (serverNow >= ping.expiresAt) {
+				this.pings.delete(id);
+			}
+		}
+		return [...this.pings.values()];
+	}
+
+	altarCursed(altarId: number, serverNow: number): boolean {
+		return (this.altarCurses.get(altarId) ?? 0) > serverNow;
+	}
+
 	get selfHasCamera(): boolean {
 		return [...this.cameras.values()].some(
 			(camera) => camera.holder === this.selfId,
@@ -161,6 +232,8 @@ export class ClientWorldState {
 		this.latestSnapshotTime = -Infinity;
 		this.puddles.clear();
 		this.projectiles.clear();
+		this.pings.clear();
+		this.emotes.clear();
 		for (const player of this.players.values()) {
 			player.buffer.reset();
 			player.latest = null;
@@ -295,6 +368,68 @@ export class ClientWorldState {
 				break;
 			case "projectileEnd":
 				this.projectiles.delete(event.id);
+				break;
+			case "ping":
+				for (const [id, ping] of this.pings) {
+					if (ping.playerId === event.playerId && ping.kind === event.kind) {
+						this.pings.delete(id);
+					}
+				}
+				this.pings.set(event.id, {
+					id: event.id,
+					playerId: event.playerId,
+					kind: event.kind,
+					x: event.x,
+					y: event.y,
+					z: event.z,
+					anomalyId: event.anomalyId,
+					expiresAt: event.expiresAt,
+					createdAt: serverTime,
+				});
+				break;
+			case "emote":
+				if (event.emote === null) {
+					this.emotes.delete(event.playerId);
+				} else {
+					this.emotes.set(event.playerId, {
+						emote: event.emote,
+						startedAt: serverTime,
+						until: event.until,
+					});
+				}
+				break;
+			case "respawn":
+			case "death":
+				this.emotes.delete(event.playerId);
+				break;
+			case "bounty":
+				this.bounty = { playerId: event.playerId, value: event.value };
+				break;
+			case "manorEvent":
+				this.manorEvent =
+					event.phase === "end"
+						? null
+						: {
+								kind: event.kind,
+								phase: event.phase,
+								startsAt: event.startsAt,
+								endsAt: event.endsAt,
+							};
+				break;
+			case "ritual":
+				this.ritual = { captures: event.captures, quota: event.quota };
+				break;
+			case "vote":
+				this.vote =
+					event.phase === "start"
+						? { endsAt: event.endsAt, reason: event.reason }
+						: null;
+				break;
+			case "voteCast":
+				this.voters.add(event.voterId);
+				break;
+			case "altarCurse":
+				this.altarCurses.set(event.altarId, event.until);
 				break;
 			case "scream": {
 				const anomaly = this.anomalies.get(event.anomalyId);

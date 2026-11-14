@@ -29,6 +29,10 @@ uniform sampler2D scene;
 uniform sampler2D hud;
 uniform vec2 hudSize;
 uniform float hudOn;
+uniform sampler2D minimap;
+uniform vec4 minimapRect;
+uniform vec2 minimapSize;
+uniform float minimapOn;
 uniform float desaturate;
 uniform vec2 resolution;
 uniform float lines;
@@ -67,11 +71,15 @@ float bayer4(vec2 cell) {
   return bayer2(cell * 0.5) * 0.25 + bayer2(cell);
 }
 
-vec2 hudTexel(vec2 point) {
-  vec2 texel = point * hudSize;
+vec2 crispTexel(vec2 point, vec2 size) {
+  vec2 texel = point * size;
   vec2 seam = floor(texel + 0.5);
   vec2 spread = max(fwidth(texel), vec2(0.0001));
-  return (seam + clamp((texel - seam) / spread, -0.5, 0.5)) / hudSize;
+  return (seam + clamp((texel - seam) / spread, -0.5, 0.5)) / size;
+}
+
+vec2 hudTexel(vec2 point) {
+  return crispTexel(point, hudSize);
 }
 
 void main() {
@@ -131,7 +139,25 @@ void main() {
     float hudRed = texture2D(hud, hudTexel(hudUv + hudShift)).r;
     float hudBlue = texture2D(hud, hudTexel(hudUv - hudShift)).b;
     hudAlpha = hudMain.a;
-    gl_FragColor.rgb = vec3(hudRed, hudMain.g, hudBlue) + gl_FragColor.rgb * (1.0 - hudAlpha);
+    vec3 under = gl_FragColor.rgb;
+    if (minimapOn > 0.5) {
+      vec2 local = (hudUv - minimapRect.xy) / minimapRect.zw;
+      vec2 localShift = hudShift / minimapRect.zw;
+      vec2 mapMain = crispTexel(local, minimapSize);
+      vec2 mapRed = crispTexel(local + localShift, minimapSize);
+      vec2 mapBlue = crispTexel(local - localShift, minimapSize);
+      vec2 pad = 1.0 / minimapSize;
+      vec2 within = step(-pad, local) * step(local, 1.0 + pad);
+      float inside = within.x * within.y;
+      vec3 mapColor = vec3(
+        texture2D(minimap, mapRed).r,
+        texture2D(minimap, mapMain).g,
+        texture2D(minimap, mapBlue).b
+      );
+      under = mix(under, mapColor, inside);
+      hudAlpha = max(hudAlpha, inside);
+    }
+    gl_FragColor.rgb = vec3(hudRed, hudMain.g, hudBlue) + under * (1.0 - hudMain.a);
   }
 
   float luminance = dot(gl_FragColor.rgb, LUMA);
@@ -181,6 +207,10 @@ export class PostEffects {
 				hud: { value: null },
 				hudSize: { value: new THREE.Vector2(1, 1) },
 				hudOn: { value: 0 },
+				minimap: { value: null },
+				minimapRect: { value: new THREE.Vector4(0, 0, 1, 1) },
+				minimapSize: { value: new THREE.Vector2(1, 1) },
+				minimapOn: { value: 0 },
 				desaturate: { value: 0 },
 				resolution: { value: new THREE.Vector2(1, 1) },
 				lines: { value: 300 },
@@ -218,6 +248,26 @@ export class PostEffects {
 
 	clearHud(): void {
 		this.material.uniforms.hudOn.value = 0;
+	}
+
+	setMinimap(
+		texture: THREE.Texture | null,
+		rect: THREE.Vector4,
+		size: THREE.Vector2,
+	): void {
+		const uniforms = this.material.uniforms;
+		if (!texture) {
+			uniforms.minimapOn.value = 0;
+			return;
+		}
+		uniforms.minimap.value = texture;
+		uniforms.minimapRect.value.copy(rect);
+		uniforms.minimapSize.value.copy(size);
+		uniforms.minimapOn.value = 1;
+	}
+
+	get sceneTarget(): THREE.WebGLRenderTarget {
+		return this.target;
 	}
 
 	render(frame: PostEffectsFrame, draw: () => void): void {

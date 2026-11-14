@@ -28,12 +28,18 @@ import { soundBank } from "../../audio/soundBank";
 import { AmbientAudio } from "../../engine/audio/AmbientAudio";
 import { AmbientMotes } from "../../engine/effects/AmbientMotes";
 import { HazardViews } from "../../engine/effects/HazardViews";
+import { createPingMaterial } from "../../engine/world/PingViews";
+import { GHOST_MATERIAL } from "../../models/MushroomModel";
+
 import { ParticleSystem } from "../../engine/effects/Particles";
 import { AnomalyViews } from "../../engine/entities/AnomalyViews";
 import { RemotePlayers } from "../../engine/entities/RemotePlayers";
 import { LightPool } from "../../engine/lighting/LightPool";
 import { FirstPersonBody } from "../../engine/player/FirstPersonBody";
-import { FirstPersonRig } from "../../engine/player/FirstPersonRig";
+import {
+	FIRST_PERSON_LAYER,
+	FirstPersonRig,
+} from "../../engine/player/FirstPersonRig";
 import { PhotoCamera } from "../../engine/player/PhotoCamera";
 import { PostEffects } from "../../engine/render/PostEffects";
 import { ClientWorldState } from "../../engine/state/ClientWorldState";
@@ -93,6 +99,7 @@ export interface LoadedWorld {
 	camera: THREE.PerspectiveCamera;
 	textures: TextureLibrary;
 	materials: MaterialLibrary;
+	rigMaterials: MaterialLibrary;
 	kit: ModelKit;
 	rooms: RoomMeshes[];
 	doors: DoorViews;
@@ -111,6 +118,96 @@ export interface LoadedWorld {
 }
 
 type Progress = (step: LoadStepId, fraction: number) => void;
+
+function effectWarmup(materials: THREE.Material[]): THREE.Group {
+	const group = new THREE.Group();
+	const plane = new THREE.PlaneGeometry(0.1, 0.1);
+	const canvas = document.createElement("canvas");
+	canvas.width = 2;
+	canvas.height = 2;
+	const texture = new THREE.CanvasTexture(canvas);
+	const samples: THREE.Material[] = [
+		...materials,
+		GHOST_MATERIAL,
+		new THREE.MeshBasicMaterial({ color: 0xffffff }),
+		new THREE.MeshBasicMaterial({
+			color: 0xffffff,
+			transparent: true,
+			depthWrite: false,
+		}),
+		new THREE.MeshBasicMaterial({
+			map: texture,
+			transparent: true,
+			depthWrite: false,
+		}),
+		new THREE.MeshStandardMaterial({ flatShading: true, emissive: 0x222222 }),
+		new THREE.MeshStandardMaterial({
+			map: texture,
+			emissiveMap: texture,
+			transparent: true,
+			depthWrite: false,
+			alphaTest: 0.05,
+		}),
+	];
+	for (const material of samples) {
+		group.add(new THREE.Mesh(plane, material));
+	}
+	group.add(new THREE.Sprite(createPingMaterial(texture)));
+	group.userData.plane = plane;
+	return group;
+}
+
+async function compileInto(
+	renderer: THREE.WebGLRenderer,
+	target: THREE.WebGLRenderTarget,
+	root: THREE.Object3D,
+	camera: THREE.Camera,
+): Promise<void> {
+	const previous = renderer.getRenderTarget();
+	renderer.setRenderTarget(target);
+	let pending: Promise<unknown> = Promise.resolve();
+	try {
+		pending = renderer.compileAsync(root, camera);
+	} catch {
+		renderer.compile(root, camera);
+	} finally {
+		renderer.setRenderTarget(previous);
+	}
+	await pending.catch(() => undefined);
+}
+
+function uploadGeometry(
+	renderer: THREE.WebGLRenderer,
+	target: THREE.WebGLRenderTarget,
+	scene: THREE.Scene,
+	camera: THREE.Camera,
+): void {
+	const culled: THREE.Object3D[] = [];
+	scene.traverse((object) => {
+		if (object.frustumCulled) {
+			object.frustumCulled = false;
+			culled.push(object);
+		}
+	});
+	const previous = renderer.getRenderTarget();
+	const shadows = renderer.shadowMap.autoUpdate;
+	renderer.shadowMap.autoUpdate = false;
+	renderer.setRenderTarget(target);
+	try {
+		renderer.render(scene, camera);
+	} finally {
+		renderer.setRenderTarget(previous);
+		renderer.shadowMap.autoUpdate = shadows;
+		for (const object of culled) {
+			object.frustumCulled = true;
+		}
+	}
+}
+
+function disposeWarmup(group: THREE.Group): void {
+	group.removeFromParent();
+	(group.userData.plane as THREE.BufferGeometry).dispose();
+}
 
 function nextFrame(): Promise<void> {
 	return new Promise((resolve) => requestAnimationFrame(() => resolve()));
@@ -320,8 +417,9 @@ export async function loadSession(
 	const selfLantern =
 		init.players.find((player) => player.id === selfId)?.lantern ??
 		DEFAULT_LANTERN_TINT;
+	const rigMaterials = new MaterialLibrary(textures);
 	const rig = new FirstPersonRig(
-		kit,
+		new ModelKit(rigMaterials),
 		selfLantern === DEFAULT_LANTERN_TINT
 			? null
 			: LANTERN_TINT_COLORS[selfLantern],
@@ -408,20 +506,25 @@ export async function loadSession(
 		});
 		scene.add(model.root);
 	}
+	const warmEffects = effectWarmup(hazards.warmMaterials());
+	warmEffects.position.set(spawn0(init, selfId).x, -40, spawn0(init, selfId).z);
+	scene.add(warmEffects);
 	await nextFrame();
 	const spawn = spawn0(init, selfId);
 	camera.position.set(spawn.x, spawn.y + EYE_HEIGHT_STANDING, spawn.z);
 	camera.rotation.set(0, spawn.yaw, 0, "YXZ");
-	camera.updateMatrixWorld(true);
-	try {
-		await renderer.compileAsync(scene, camera);
-	} catch {
-		renderer.compile(scene, camera);
-	}
+	scene.matrixAutoUpdate = false;
+	scene.updateMatrixWorld(true);
+	await compileInto(renderer, post.sceneTarget, scene, camera);
+	camera.layers.set(FIRST_PERSON_LAYER);
+	await compileInto(renderer, post.sceneTarget, rig.root, camera);
+	camera.layers.set(0);
+	uploadGeometry(renderer, post.sceneTarget, scene, camera);
 	for (const model of warmModels) {
 		scene.remove(model.root);
 		model.dispose();
 	}
+	disposeWarmup(warmEffects);
 	progress("gpu", 1);
 
 	return {
@@ -437,6 +540,7 @@ export async function loadSession(
 		camera,
 		textures,
 		materials,
+		rigMaterials,
 		kit,
 		rooms,
 		doors,

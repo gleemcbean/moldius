@@ -105,6 +105,19 @@ export class MatchPlayer {
 	tagline: Tagline | null = null;
 	team: number | null = null;
 	devModes: DevModes = noDevModes();
+	possessed = false;
+	ghostDoorReadyAt = 0;
+	ghostKnockReadyAt = 0;
+	pingReadyAt = 0;
+	readonly pingTimes: number[] = [];
+	emoteReadyAt = 0;
+	emoteUntil = 0;
+	giftReadyAt = 0;
+	powerReadyAt = 0;
+	bountyHolder = false;
+	bountyPushedBy: string | null = null;
+	bountyPushedAt = -Infinity;
+	bountyPushReadyAt = 0;
 
 	constructor(
 		readonly id: string,
@@ -252,6 +265,9 @@ export class MatchPlayer {
 		}
 		if (this.camera >= 0) {
 			flags |= PLAYER_FLAG.cameraHeld;
+		}
+		if (this.bountyHolder) {
+			flags |= PLAYER_FLAG.bounty;
 		}
 		return flags;
 	}

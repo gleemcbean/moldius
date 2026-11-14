@@ -28,6 +28,13 @@ export interface MapMarker {
 	dead: boolean;
 }
 
+export interface MapPoint {
+	x: number;
+	z: number;
+	level: Level;
+	color: string;
+}
+
 export interface MapDrawOptions {
 	labels: boolean;
 	labelSize: number;
@@ -42,7 +49,18 @@ export interface MapDrawOptions {
 	levelBadge: string | null;
 	pixelRatio: number;
 	silhouette: boolean;
+	pings?: MapPoint[];
+	threats?: MapPoint[];
+	cached?: boolean;
 }
+
+interface StaticLayer {
+	key: string;
+	canvas: HTMLCanvasElement;
+	view: MapView;
+}
+
+type Project = (value: number) => number;
 
 const COLORS = {
 	background: "#0b0d0b",
@@ -124,6 +142,8 @@ function lighten(hex: string, amount: number): string {
 	return `rgb(${channel(16)}, ${channel(8)}, ${channel(0)})`;
 }
 
+const LAYER_MARGIN = 2;
+
 const LABEL_FONT = '"Alegreya", Georgia, serif';
 const FIGURE_FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
 
@@ -153,8 +173,36 @@ function labelPriority(room: Room): number {
 	return room.area - corridorPenalty;
 }
 
+type Collider = ManorLayout["furniture"][number]["colliders"][number];
+
 export class MapRenderer {
+	private readonly corners = new WeakMap<
+		Collider,
+		{ x: number; z: number }[]
+	>();
+	private layer: StaticLayer | null = null;
+
 	constructor(private readonly layout: ManorLayout) {}
+
+	private cornersOf(collider: Collider): { x: number; z: number }[] {
+		let corners = this.corners.get(collider);
+		if (!corners) {
+			corners = boxCorners(collider);
+			this.corners.set(collider, corners);
+		}
+		return corners;
+	}
+
+	private inView(room: Room, view: MapView): boolean {
+		const halfWidth = view.width / 2 / view.scale + 1;
+		const halfHeight = view.height / 2 / view.scale + 1;
+		return (
+			room.bounds.maxX >= view.centerX - halfWidth &&
+			room.bounds.minX <= view.centerX + halfWidth &&
+			room.bounds.maxZ >= view.centerZ - halfHeight &&
+			room.bounds.minZ <= view.centerZ + halfHeight
+		);
+	}
 
 	roomsOnLevel(level: Level): Room[] {
 		return this.layout.rooms.filter(
@@ -207,7 +255,104 @@ export class MapRenderer {
 	): void {
 		const ratio = options.pixelRatio;
 		context.save();
-		context.setTransform(ratio, 0, 0, ratio, 0, 0);
+		if (options.cached) {
+			const shown = this.drawLayer(context, view, options);
+			context.setTransform(ratio, 0, 0, ratio, 0, 0);
+			this.drawOverlay(context, shown, options);
+		} else {
+			context.setTransform(ratio, 0, 0, ratio, 0, 0);
+			this.drawBase(context, view, options);
+			this.drawOverlay(context, view, options);
+		}
+		context.restore();
+	}
+
+	private drawLayer(
+		context: CanvasRenderingContext2D,
+		view: MapView,
+		options: MapDrawOptions,
+	): MapView {
+		const ratio = options.pixelRatio;
+		const layer = this.staticLayer(view, options);
+		const pixelScale = view.scale * ratio;
+		const offsetX = Math.round(
+			(layer.view.centerX - view.centerX) * pixelScale +
+				((view.width - layer.view.width) * ratio) / 2,
+		);
+		const offsetY = Math.round(
+			(layer.view.centerZ - view.centerZ) * pixelScale +
+				((view.height - layer.view.height) * ratio) / 2,
+		);
+		context.setTransform(1, 0, 0, 1, 0, 0);
+		context.fillStyle = COLORS.background;
+		context.fillRect(0, 0, view.width * ratio, view.height * ratio);
+		context.drawImage(layer.canvas, offsetX, offsetY);
+		return {
+			...view,
+			centerX:
+				layer.view.centerX -
+				(offsetX - ((view.width - layer.view.width) * ratio) / 2) / pixelScale,
+			centerZ:
+				layer.view.centerZ -
+				(offsetY - ((view.height - layer.view.height) * ratio) / 2) /
+					pixelScale,
+		};
+	}
+
+	private staticLayer(view: MapView, options: MapDrawOptions): StaticLayer {
+		const key = JSON.stringify([
+			view.level,
+			view.scale,
+			view.width,
+			view.height,
+			options.pixelRatio,
+			options.currentRoomId,
+			options.silhouette,
+			options.grid,
+			options.labels,
+			options.labelSize,
+		]);
+		if (this.layer?.key === key) {
+			return this.layer;
+		}
+		let minX = Infinity;
+		let minZ = Infinity;
+		let maxX = -Infinity;
+		let maxZ = -Infinity;
+		for (const room of this.layout.rooms) {
+			minX = Math.min(minX, room.bounds.minX);
+			minZ = Math.min(minZ, room.bounds.minZ);
+			maxX = Math.max(maxX, room.bounds.maxX);
+			maxZ = Math.max(maxZ, room.bounds.maxZ);
+		}
+		const marginX = view.width / view.scale / 2 + LAYER_MARGIN;
+		const marginZ = view.height / view.scale / 2 + LAYER_MARGIN;
+		const layerView: MapView = {
+			centerX: (minX + maxX) / 2,
+			centerZ: (minZ + maxZ) / 2,
+			scale: view.scale,
+			width: (maxX - minX + marginX * 2) * view.scale,
+			height: (maxZ - minZ + marginZ * 2) * view.scale,
+			level: view.level,
+		};
+		const ratio = options.pixelRatio;
+		const canvas = this.layer?.canvas ?? document.createElement("canvas");
+		canvas.width = Math.max(1, Math.ceil(layerView.width * ratio));
+		canvas.height = Math.max(1, Math.ceil(layerView.height * ratio));
+		const context = canvas.getContext("2d");
+		if (context) {
+			context.setTransform(ratio, 0, 0, ratio, 0, 0);
+			this.drawBase(context, layerView, options);
+		}
+		this.layer = { key, canvas, view: layerView };
+		return this.layer;
+	}
+
+	private drawBase(
+		context: CanvasRenderingContext2D,
+		view: MapView,
+		options: MapDrawOptions,
+	): void {
 		context.fillStyle = COLORS.background;
 		context.fillRect(0, 0, view.width, view.height);
 		const toX = (x: number) => (x - view.centerX) * view.scale + view.width / 2;
@@ -216,7 +361,10 @@ export class MapRenderer {
 		if (options.grid) {
 			this.drawGrid(context, view, toX, toY);
 		}
-		const rooms = this.roomsOnLevel(view.level);
+		const rooms = this.roomsOnLevel(view.level).filter((room) =>
+			this.inView(room, view),
+		);
+		const shownRooms = new Set(rooms);
 		const wallWidth = Math.max(1.5, view.scale * 0.14);
 		const trace = (polygon: { x: number; z: number }[]) => {
 			context.beginPath();
@@ -230,7 +378,9 @@ export class MapRenderer {
 			context.closePath();
 		};
 		const outline = (room: Room) => trace(room.polygon);
-		const below = options.silhouette ? this.roomsBelow(view.level) : [];
+		const below = options.silhouette
+			? this.roomsBelow(view.level).filter((room) => this.inView(room, view))
+			: [];
 		for (const room of below) {
 			outline(room);
 			context.fillStyle = COLORS.silhouetteFill;
@@ -290,7 +440,7 @@ export class MapRenderer {
 		}
 		for (const item of this.layout.furniture) {
 			const room = this.layout.rooms[item.roomId];
-			if (!rooms.includes(room) || item.colliders.length === 0) {
+			if (!shownRooms.has(room) || item.colliders.length === 0) {
 				continue;
 			}
 			if (room.mezzanine) {
@@ -300,7 +450,7 @@ export class MapRenderer {
 				}
 			}
 			for (const collider of item.colliders) {
-				const corners = boxCorners(collider);
+				const corners = this.cornersOf(collider);
 				context.beginPath();
 				corners.forEach((corner, index) => {
 					if (index === 0) {
@@ -398,9 +548,44 @@ export class MapRenderer {
 			);
 		}
 		this.drawAltars(context, view, toX, toY);
+	}
+
+	private drawOverlay(
+		context: CanvasRenderingContext2D,
+		view: MapView,
+		options: MapDrawOptions,
+	): void {
+		const toX: Project = (x) =>
+			(x - view.centerX) * view.scale + view.width / 2;
+		const toY: Project = (z) =>
+			(z - view.centerZ) * view.scale + view.height / 2;
 		const markerSize = Math.max(7, Math.min(12, view.scale * 0.6));
 		for (const marker of options.others) {
 			this.drawMarker(context, marker, toX, toY, view, options, markerSize);
+		}
+		for (const threat of options.threats ?? []) {
+			this.drawPoint(
+				context,
+				threat,
+				toX,
+				toY,
+				view,
+				options,
+				markerSize,
+				"dot",
+			);
+		}
+		for (const ping of options.pings ?? []) {
+			this.drawPoint(
+				context,
+				ping,
+				toX,
+				toY,
+				view,
+				options,
+				markerSize,
+				"diamond",
+			);
 		}
 		if (options.player) {
 			const size = Math.max(10, Math.min(17, view.scale * 0.8));
@@ -428,7 +613,6 @@ export class MapRenderer {
 		if (options.scaleBar) {
 			this.drawScaleBar(context, view);
 		}
-		context.restore();
 	}
 
 	private drawGrid(
@@ -636,6 +820,51 @@ export class MapRenderer {
 			context.lineWidth = 1;
 			context.stroke();
 		}
+	}
+
+	private drawPoint(
+		context: CanvasRenderingContext2D,
+		point: MapPoint,
+		toX: (x: number) => number,
+		toY: (z: number) => number,
+		view: MapView,
+		options: MapDrawOptions,
+		size: number,
+		shape: "dot" | "diamond",
+	): void {
+		let x = toX(point.x);
+		let y = toY(point.z);
+		const margin = size + 3;
+		const outside =
+			x < margin ||
+			y < margin ||
+			x > view.width - margin ||
+			y > view.height - margin;
+		if (outside && !options.pinToEdge) {
+			return;
+		}
+		if (outside) {
+			x = Math.min(view.width - margin, Math.max(margin, x));
+			y = Math.min(view.height - margin, Math.max(margin, y));
+		}
+		context.globalAlpha = point.level !== view.level ? 0.55 : 1;
+		context.beginPath();
+		if (shape === "diamond") {
+			const radius = size * 0.95;
+			context.moveTo(x, y - radius);
+			context.lineTo(x + radius, y);
+			context.lineTo(x, y + radius);
+			context.lineTo(x - radius, y);
+			context.closePath();
+		} else {
+			context.arc(x, y, size * 0.5, 0, Math.PI * 2);
+		}
+		context.fillStyle = point.color;
+		context.strokeStyle = "#0b0d0b";
+		context.lineWidth = 2;
+		context.fill();
+		context.stroke();
+		context.globalAlpha = 1;
 	}
 
 	private drawMarker(

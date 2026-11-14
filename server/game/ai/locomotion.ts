@@ -104,7 +104,7 @@ function stepTowards(
 		entity.pathIndex += 1;
 		return entity.pathIndex >= entity.path.length ? "arrived" : "moving";
 	}
-	const step = Math.min(distance, speed * dt);
+	const step = Math.min(distance, speed * match.anomalySpeedFactor() * dt);
 	const nx = dx / distance;
 	const nz = dz / distance;
 	const hover = entity.definition.flying ? hoverHeight(entity) : 0;
@@ -175,7 +175,7 @@ export function moveDirect(
 		entity.velocity = { x: 0, y: 0, z: 0 };
 		return true;
 	}
-	const step = Math.min(distance, speed * dt);
+	const step = Math.min(distance, speed * match.anomalySpeedFactor() * dt);
 	entity.position.x += (dx / distance) * step;
 	entity.position.z += (dz / distance) * step;
 	const ground = match.groundHeightAt(entity.position, feet.y);
