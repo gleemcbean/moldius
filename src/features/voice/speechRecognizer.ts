@@ -84,7 +84,7 @@ function serverSupported(): boolean {
 
 export function speechEngine(): SpeechEngine | null {
 	const forced = forcedEngine();
-	if ((forced === "server" || (desktopApp && !forced)) && serverSupported()) {
+	if ((forced === null || forced === "server") && serverSupported()) {
 		return "server";
 	}
 	if (forced !== "vosk" && recognitionConstructor() !== null) {

@@ -30,6 +30,16 @@ export interface ListenerPose {
 	forwardZ: number;
 }
 
+type SinkContext = AudioContext & {
+	setSinkId?: (sinkId: string) => Promise<void>;
+};
+
+export function outputDeviceSelectable(): boolean {
+	return (
+		typeof AudioContext !== "undefined" && "setSinkId" in AudioContext.prototype
+	);
+}
+
 class AudioEngine {
 	private context: AudioContext | null = null;
 	private master: GainNode | null = null;
@@ -45,6 +55,12 @@ class AudioEngine {
 		effects: 0.85,
 		voice: 1,
 	};
+
+	private outputDevice: string | null = null;
+
+	get running(): boolean {
+		return this.context?.state === "running";
+	}
 
 	get ctx(): AudioContext {
 		return this.ensureContext();
@@ -86,6 +102,7 @@ class AudioEngine {
 				this.buses.set(bus, gain);
 			}
 			this.applyVolumes();
+			this.applyOutputDevice();
 		}
 		return this.context;
 	}
@@ -108,6 +125,28 @@ class AudioEngine {
 	bus(name: AudioBus): GainNode {
 		this.ensureContext();
 		return this.buses.get(name) as GainNode;
+	}
+
+	get outputDeviceId(): string | null {
+		return this.outputDevice;
+	}
+
+	setOutputDevice(deviceId: string | null): void {
+		if (deviceId === this.outputDevice) {
+			return;
+		}
+		this.outputDevice = deviceId;
+		this.applyOutputDevice();
+	}
+
+	private applyOutputDevice(): void {
+		const context = this.context as SinkContext | null;
+		if (!context?.setSinkId) {
+			return;
+		}
+		void context
+			.setSinkId(this.outputDevice ?? "")
+			.catch(() => context.setSinkId?.("").catch(() => undefined));
 	}
 
 	setVolumes(volumes: VolumeSettings): void {

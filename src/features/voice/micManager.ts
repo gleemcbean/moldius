@@ -18,6 +18,7 @@ export interface MicState {
 	deviceLabel: string;
 	deviceId: string | null;
 	devices: { id: string; label: string }[];
+	outputs: { id: string; label: string }[];
 	level: number;
 	transmitting: boolean;
 }
@@ -27,6 +28,7 @@ export const micStore = createStore<MicState>({
 	deviceLabel: "",
 	deviceId: null,
 	devices: [],
+	outputs: [],
 	level: 0,
 	transmitting: false,
 });
@@ -257,7 +259,11 @@ class MicManager {
 		const url = URL.createObjectURL(clip);
 		const audio = new Audio(url);
 		audio.volume = Math.min(1, Math.max(0, volume));
+		const output = audioEngine.outputDeviceId;
 		try {
+			if (output) {
+				await audio.setSinkId(output).catch(() => undefined);
+			}
 			await audio.play();
 			await new Promise<void>((resolve) => {
 				audio.onended = () => resolve();
@@ -320,7 +326,20 @@ class MicManager {
 					id: device.deviceId,
 					label: device.label || currentMessages().game.mic.device(index + 1),
 				}));
-			micStore.set({ devices: inputs });
+			const outputs = devices
+				.filter(
+					(device) =>
+						device.kind === "audiooutput" &&
+						device.deviceId !== "default" &&
+						device.deviceId !== "communications",
+				)
+				.map((device, index) => ({
+					id: device.deviceId,
+					label:
+						device.label ||
+						currentMessages().settings.audio.outputFallback(index + 1),
+				}));
+			micStore.set({ devices: inputs, outputs });
 			if (inputs.length === 0 && micStore.get().status !== "denied") {
 				this.setStatus("no-device");
 			}

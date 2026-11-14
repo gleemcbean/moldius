@@ -81,6 +81,11 @@ export function createPossessedLobby(name: string): void {
   getSocket().emit('lobby:createPossessed', { name, ...appearance() }, handleJoin);
 }
 
+export function joinPossessedLobby(name: string): void {
+  lobbyStore.set({ pending: true, error: null, lobby: null });
+  getSocket().emit('lobby:joinPossessed', { name, ...appearance() }, handleJoin);
+}
+
 export function startTutorial(name: string): void {
   lobbyStore.set({ pending: true, error: null, lobby: null });
   void micManager.acquire(settingsStore.get().micDeviceId);

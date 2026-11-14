@@ -4,6 +4,7 @@ import { Field, Slider } from "../../components/Controls";
 import { shallowEqual, useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
 import type { VolumeSettings } from "../../types/settings";
+import { outputDeviceSelectable } from "../audio/audioEngine";
 import { MicLevelMeter } from "../voice/MicLevelMeter";
 import { micManager, micStore } from "../voice/micManager";
 import { speechEngine } from "../voice/speechRecognizer";
@@ -21,11 +22,16 @@ export function AudioSettings() {
 	);
 	const voiceGate = useStore(settingsStore, (state) => state.voiceGate);
 	const micDeviceId = useStore(settingsStore, (state) => state.micDeviceId);
+	const speakerDeviceId = useStore(
+		settingsStore,
+		(state) => state.speakerDeviceId,
+	);
 	const mic = useStore(
 		micStore,
 		(state) => ({
 			status: state.status,
 			devices: state.devices,
+			outputs: state.outputs,
 			level: state.level,
 			deviceId: state.deviceId,
 		}),
@@ -126,6 +132,27 @@ export function AudioSettings() {
 					format={percent}
 				/>
 			</Field>
+			{outputDeviceSelectable() ? (
+				<Field label={labels.output}>
+					<select
+						className={styles.select}
+						value={speakerDeviceId ?? ""}
+						onChange={(event) =>
+							updateSettings({ speakerDeviceId: event.target.value || null })
+						}
+						data-selectable=""
+					>
+						<option value="">{labels.defaultDevice}</option>
+						{mic.outputs.map((device) => (
+							<option key={device.id} value={device.id}>
+								{device.label}
+							</option>
+						))}
+					</select>
+				</Field>
+			) : (
+				<p className={styles.hint}>{labels.outputUnsupported}</p>
+			)}
 			<h3 className={styles.section}>{labels.microphone}</h3>
 			<Field label={labels.device} hint={t.game.mic.status[mic.status]}>
 				<select

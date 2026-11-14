@@ -8,22 +8,22 @@ import { useDailyClock } from "../daily/useDailyClock";
 import {
 	createDailyLobby,
 	createPossessedLobby,
+	joinPossessedLobby,
 	quickJoin,
 	startTutorial,
 } from "../lobby/lobbyClient";
 import classicArt from "./art/classic.png";
 import dailyArt from "./art/daily.png";
+import possessedArt from "./art/possessed.png";
 import tutorialArt from "./art/tutorial.png";
+import styles from "./ModeSelect.module.scss";
 import type { GameMode } from "./modeArt";
 import { PublicLobbyPreview } from "./PublicLobbyPreview";
-import styles from "./ModeSelect.module.scss";
 
-type ModeCard = GameMode | "possessed";
-
-const ART: Record<ModeCard, string> = {
+const ART: Record<GameMode, string> = {
 	classic: classicArt,
 	daily: dailyArt,
-	possessed: classicArt,
+	possessed: possessedArt,
 	tutorial: tutorialArt,
 };
 
@@ -42,21 +42,21 @@ export function ModeSelect({
 	const challenge = dailyChallenge(date);
 	const theme = t.daily.themes[challenge.theme];
 
-	const start = (mode: ModeCard) => {
+	const start = (mode: GameMode) => {
 		onClose();
 		if (mode === "classic") {
 			quickJoin(name);
 		} else if (mode === "daily") {
 			createDailyLobby(name);
 		} else if (mode === "possessed") {
-			createPossessedLobby(name);
+			joinPossessedLobby(name);
 		} else {
 			startTutorial(name);
 		}
 	};
 
 	const cards: {
-		mode: ModeCard;
+		mode: GameMode;
 		title: string;
 		text: string;
 		meta: string;
@@ -113,12 +113,11 @@ export function ModeSelect({
 								].join(" ")}
 							>
 								<img src={ART[card.mode]} alt="" />
-
 							</span>
 							<span className={styles.title}>{card.title}</span>
 							<span className={styles.text}>{card.text}</span>
-							{card.mode === "classic" ? (
-								<PublicLobbyPreview className={styles.lobby} />
+							{card.mode === "classic" || card.mode === "possessed" ? (
+								<PublicLobbyPreview className={styles.lobby} mode={card.mode} />
 							) : null}
 							<span className={styles.meta}>{card.meta}</span>
 						</button>
@@ -134,6 +133,21 @@ export function ModeSelect({
 							>
 								<Icon name="crown" />
 								{labels.leaderboard}
+							</button>
+						) : null}
+						{card.mode === "possessed" ? (
+							<button
+								type="button"
+								className={styles.extra}
+								disabled={!ready}
+								onClick={() => {
+									onClose();
+									createPossessedLobby(name);
+								}}
+								data-selectable=""
+							>
+								<Icon name="lock" />
+								{t.party.possessed.privateGame}
 							</button>
 						) : null}
 					</article>

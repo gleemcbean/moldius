@@ -390,6 +390,41 @@ describe("amis, invitations et admin", () => {
 		expect(value(await peek(guest)).players).toEqual([]);
 	});
 
+	it("tient le Possédé public à part des lobbies classiques", async () => {
+		const possessed = (client: Client, name: string) =>
+			new Promise<Reply<LobbyState>>((resolve) =>
+				client.emit("lobby:joinPossessed", { name }, resolve),
+			);
+		const classic = (client: Client, name: string) =>
+			new Promise<Reply<LobbyState>>((resolve) =>
+				client.emit("lobby:quickJoin", { name }, resolve),
+			);
+		const names = (preview: Reply<PublicLobbyPreview>) =>
+			value(preview).players.map((entry) => entry.name);
+		const first = value(await possessed(await connect(), "Alice"));
+		expect(first.visibility).toBe("public");
+		expect(first.config.mode).toBe("possessed");
+		const other = value(await classic(await connect(), "Bob"));
+		expect(other.id).not.toBe(first.id);
+		expect(other.config.mode).toBe("classic");
+		expect(value(await possessed(await connect(), "Carol")).id).toBe(first.id);
+		const guest = await connect();
+		expect(
+			names(
+				await new Promise<Reply<PublicLobbyPreview>>((resolve) =>
+					guest.emit("lobby:peekPossessed", resolve),
+				),
+			),
+		).toEqual(["Alice", "Carol"]);
+		expect(
+			names(
+				await new Promise<Reply<PublicLobbyPreview>>((resolve) =>
+					guest.emit("lobby:peekPublic", resolve),
+				),
+			),
+		).toEqual(["Bob"]);
+	});
+
 	describe("panel admin", () => {
 		const overview = (cookie?: string) =>
 			fetch(`http://127.0.0.1:${server.port}/api/admin/overview`, {

@@ -87,6 +87,7 @@ import { romanNumeral } from "../../../utils/format";
 import { releaseKeyboardLock } from "../../../utils/fullscreen";
 import { audioEngine } from "../../audio/audioEngine";
 import { soundBank } from "../../audio/soundBank";
+import { playHoverTick } from "../../audio/uiSounds";
 import { type FrameInput, InputManager } from "../../engine/input/InputManager";
 import type { DynamicLight } from "../../engine/lighting/LightPool";
 import type { PingClientState } from "../../engine/state/ClientWorldState";
@@ -555,7 +556,11 @@ export class GameSession {
 		hud: LoadedWorld["hud"],
 		point: { x: number; y: number },
 	): void {
+		const before = hud.hoveredMapButton;
 		const hover = hud.hoverMap(point);
+		if (hover && hud.hoveredMapButton !== before) {
+			playHoverTick();
+		}
 		canvas.style.cursor = hover
 			? "pointer"
 			: hud.inMapArea(point)
@@ -730,6 +735,7 @@ export class GameSession {
 					this.gift.selected + step,
 					MATERIAL_IDS.length,
 				);
+				playHoverTick(1.1);
 			}
 			for (const digit of frame.digits) {
 				if (MATERIAL_IDS[digit - 1]) {
@@ -1941,7 +1947,11 @@ export class GameSession {
 			if (Math.hypot(this.wheel.x, this.wheel.y) > WHEEL_DEADZONE) {
 				const step = (Math.PI * 2) / count;
 				const angle = Math.atan2(this.wheel.y, this.wheel.x) + Math.PI / 2;
-				this.wheel.selected = wrapIndex(Math.round(angle / step), count);
+				const selected = wrapIndex(Math.round(angle / step), count);
+				if (selected !== this.wheel.selected) {
+					playHoverTick(1.1);
+				}
+				this.wheel.selected = selected;
 			}
 		}
 		if (!able || this.mapOpen) {

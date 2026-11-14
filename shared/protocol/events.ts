@@ -56,6 +56,7 @@ export interface ClientToServerEvents {
 	"lobby:createPrivate": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:createDaily": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:createPossessed": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
+	"lobby:joinPossessed": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:joinPrivate": (
 		payload: JoinPrivateRequest,
 		ack: Ack<LobbyState>,
@@ -65,6 +66,7 @@ export interface ClientToServerEvents {
 		ack: Ack<LobbyState>,
 	) => void;
 	"lobby:peekPublic": (ack: Ack<PublicLobbyPreview>) => void;
+	"lobby:peekPossessed": (ack: Ack<PublicLobbyPreview>) => void;
 	"lobby:startTutorial": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"friends:list": (ack: Ack<FriendsOverview>) => void;
 	"friends:add": (payload: { code: string }, ack: Ack<FriendsOverview>) => void;

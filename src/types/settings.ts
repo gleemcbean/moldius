@@ -115,6 +115,7 @@ export interface PlayerSettings {
 	stats: StatsOverlaySettings;
 	volumes: VolumeSettings;
 	micDeviceId: string | null;
+	speakerDeviceId: string | null;
 	voiceGate: number;
 	termsAccepted: boolean;
 }

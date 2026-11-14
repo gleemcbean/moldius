@@ -4,6 +4,7 @@ import { AccountModal } from "../features/account/AccountModal";
 import { initAccount } from "../features/account/accountStore";
 import { audioEngine } from "../features/audio/audioEngine";
 import { music } from "../features/audio/music";
+import { installHoverSounds } from "../features/audio/uiSounds";
 import { BestiaryModal } from "../features/bestiary/BestiaryModal";
 import { ChallengesModal } from "../features/challenges/ChallengesModal";
 import { DailyModal } from "../features/daily/DailyModal";
@@ -63,6 +64,7 @@ function useGlobalSetup(): void {
 				settings.reduceMotion,
 			);
 			audioEngine.setVolumes(settings.volumes);
+			audioEngine.setOutputDevice(settings.speakerDeviceId);
 			micManager.setVoiceGate(settings.voiceGate);
 		};
 		applySettings();
@@ -76,8 +78,10 @@ function useGlobalSetup(): void {
 			void audioEngine.resume().then(() => music.start());
 		window.addEventListener("pointerdown", unlockAudio);
 		window.addEventListener("keydown", unlockAudio);
+		const stopHoverSounds = installHoverSounds();
 		return () => {
 			unsubscribe();
+			stopHoverSounds();
 			stopLanguage();
 			stopScreen();
 			window.removeEventListener("pointerdown", unlockAudio);

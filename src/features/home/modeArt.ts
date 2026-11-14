@@ -2,6 +2,7 @@ import {
 	LANTERN_LIGHT_INTENSITY,
 	LANTERN_LIGHT_RANGE,
 } from "@shared/config/index";
+import type { SpeciesId } from "@shared/config/species";
 import { DEFAULT_HAT_PATTERN, type HatPattern } from "@shared/hatPatterns";
 import { generateManor } from "@shared/manor/generateManor";
 import type { ManorLayout, Room, RoomType } from "@shared/manor/types";
@@ -41,7 +42,7 @@ import { ManorMeshBuilder } from "../world/ManorMeshBuilder";
 import { MaterialLibrary } from "../world/MaterialLibrary";
 import { TextureLibrary } from "../world/textures/TextureLibrary";
 
-export type GameMode = "classic" | "daily" | "tutorial";
+export type GameMode = "classic" | "daily" | "tutorial" | "possessed";
 export type PresenceArt = "menu" | "lobby" | "match" | "daily";
 
 const MODE_WIDTH = 336;
@@ -102,10 +103,10 @@ interface Actor {
 type CastMember = Actor &
 	(
 		| { kind: "self"; grimoire?: boolean; run?: boolean }
-		| { kind: "mate"; look: Look }
+		| { kind: "mate"; look: Look; run?: boolean }
 		| {
 				kind: "monster";
-				species: "veilleur" | "gorgone";
+				species: SpeciesId;
 				state: "chase" | "idle";
 		  }
 	);
@@ -173,11 +174,17 @@ function placements(
 			return null;
 		}
 		const visible = [0.25, 0.8, 1.3].every((height) =>
-			lineOfSight(
-				manor.world,
-				eye,
-				{ x: position.x, y: position.y + height, z: position.z },
-				{ ignoreFurniture: false },
+			[-0.25, 0, 0.25].every((offset) =>
+				lineOfSight(
+					manor.world,
+					eye,
+					{
+						x: position.x + right.x * offset,
+						y: position.y + height,
+						z: position.z + right.y * offset,
+					},
+					{ ignoreFurniture: false },
+				),
 			),
 		);
 		if (!visible) {
@@ -402,7 +409,7 @@ class Stage {
 	}
 
 	addMonster(
-		species: "veilleur" | "gorgone",
+		species: SpeciesId,
 		actor: Actor,
 		state: "chase" | "idle",
 	): AnomalyModel {
@@ -523,6 +530,32 @@ const GATHERING: CastMember[] = [
 	},
 ];
 
+const POSSESSED_LOOK: Look = {
+	color: PLAYER_COLOR_CHOICES[6],
+	pattern: "eyes",
+	lantern: LANTERN_TINT_COLORS.abyss,
+};
+
+const SPARED: CastMember[] = [
+	{ kind: "mate", look: POSSESSED_LOOK, depth: 4.3, side: -0.15, facing: 0.15 },
+	{
+		kind: "monster",
+		species: "murmure",
+		state: "chase",
+		depth: 4.4,
+		side: 0.7,
+		facing: -0.25,
+	},
+	{
+		kind: "mate",
+		look: COMPANIONS[0],
+		depth: 2.2,
+		side: -1,
+		facing: Math.PI - 0.4,
+	},
+	{ kind: "self", depth: 2.4, side: 1.2, facing: Math.PI + 0.4 },
+];
+
 const MODE_PLATES: Record<GameMode, Plate> = {
 	classic: {
 		rooms: ["salon", "dining", "library", "hall", "music"],
@@ -545,6 +578,13 @@ const MODE_PLATES: Record<GameMode, Plate> = {
 		focus: 0.85,
 		cast: READING,
 		mood: CALM,
+	},
+	possessed: {
+		rooms: ["ritual", "chapel", "crypt", "sanctuary", "pact"],
+		eye: 1.6,
+		focus: 0.9,
+		cast: SPARED,
+		mood: GAZED,
 	},
 };
 
@@ -601,7 +641,7 @@ function perform(stage: Stage, cast: readonly CastMember[]): void {
 				member,
 				member.kind === "self"
 					? { grimoire: member.grimoire, run: member.run }
-					: {},
+					: { run: member.run },
 			);
 		}
 	}

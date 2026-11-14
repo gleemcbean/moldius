@@ -404,6 +404,10 @@ export class HudCanvas {
 		);
 	}
 
+	get hoveredMapButton(): string | null {
+		return this.mapHover;
+	}
+
 	hoverMap(point: HudPoint | null): boolean {
 		this.mapHover = point ? (this.mapButtonAt(point)?.id ?? null) : null;
 		return this.mapHover !== null;

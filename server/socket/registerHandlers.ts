@@ -179,7 +179,18 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 		}
 		ack(
 			allow("lobby:peek")
-				? { ok: true, value: deps.lobbies.publicPreview() }
+				? { ok: true, value: deps.lobbies.publicPreview("classic") }
+				: { ok: false, error: RATE_LIMITED },
+		);
+	});
+
+	socket.on("lobby:peekPossessed", (ack) => {
+		if (typeof ack !== "function") {
+			return;
+		}
+		ack(
+			allow("lobby:peek")
+				? { ok: true, value: deps.lobbies.publicPreview("possessed") }
 				: { ok: false, error: RATE_LIMITED },
 		);
 	});
@@ -332,6 +343,26 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				};
 			}
 			return deps.lobbies.createPossessed(
+				current,
+				name,
+				preferredLook(payload, current),
+			);
+		});
+	});
+
+	socket.on("lobby:joinPossessed", (payload, ack) => {
+		respond(ack, allow("lobby:join"), session(), (current) => {
+			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+			if (!name) {
+				return {
+					ok: false,
+					error: {
+						code: "invalid-name",
+						message: "Choisissez un pseudonyme de 2 à 18 caractères.",
+					},
+				};
+			}
+			return deps.lobbies.joinPossessed(
 				current,
 				name,
 				preferredLook(payload, current),

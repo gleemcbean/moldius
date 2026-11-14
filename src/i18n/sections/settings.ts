@@ -190,6 +190,10 @@ export const settingsFr = {
 		music: "Musique",
 		effects: "Effets",
 		voice: "Voix des joueurs",
+		output: "Sortie audio",
+		outputUnsupported:
+			"Ce navigateur ne permet pas de choisir la sortie : le son passe par celle du système.",
+		outputFallback: (index: number) => `Sortie ${index}`,
 		microphone: "Microphone",
 		device: "Périphérique",
 		defaultDevice: "Périphérique par défaut",
@@ -398,6 +402,10 @@ export const settingsEn: typeof settingsFr = {
 		music: "Music",
 		effects: "Effects",
 		voice: "Player voices",
+		output: "Audio output",
+		outputUnsupported:
+			"This browser can't pick the output: sound goes through the system's.",
+		outputFallback: (index: number) => `Output ${index}`,
 		microphone: "Microphone",
 		device: "Device",
 		defaultDevice: "Default device",

@@ -144,6 +144,7 @@ export function defaultSettings(
 			voice: 1,
 		},
 		micDeviceId: null,
+		speakerDeviceId: null,
 		voiceGate: 0.06,
 		termsAccepted: false,
 	};
@@ -366,6 +367,8 @@ function sanitize(raw: StoredSettings | null): PlayerSettings {
 			voice: clampNumber(raw.volumes?.voice, 0, 1.5, base.volumes.voice),
 		},
 		micDeviceId: typeof raw.micDeviceId === "string" ? raw.micDeviceId : null,
+		speakerDeviceId:
+			typeof raw.speakerDeviceId === "string" ? raw.speakerDeviceId : null,
 		voiceGate: clampNumber(raw.voiceGate, 0, 0.3, base.voiceGate),
 		termsAccepted: raw.termsAccepted === true,
 	};
@@ -438,6 +441,7 @@ export function resetAllSettings(): void {
 		...defaultSettings(current.language),
 		playerName: current.playerName,
 		micDeviceId: current.micDeviceId,
+		speakerDeviceId: current.speakerDeviceId,
 	});
 }
 

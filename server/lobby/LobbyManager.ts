@@ -7,6 +7,7 @@ import {
 } from "../../shared/config/index.js";
 import { dailyChallenge, dailyDateKey } from "../../shared/dailyChallenge.js";
 import {
+	type GameModeId,
 	type MatchConfig,
 	possessedConfig,
 	TUTORIAL_MATCH_CONFIG,
@@ -94,12 +95,19 @@ export class LobbyManager {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
 		this.leave(session);
-		const lobby =
-			[...this.lobbies.values()].find(
-				(candidate) =>
-					candidate.visibility === "public" && candidate.acceptsPlayers,
-			) ?? this.createLobby("public");
-		return this.join(session, lobby, name, look);
+		return this.join(session, this.openPublicLobby("classic"), name, look);
+	}
+
+	joinPossessed(
+		session: Session,
+		name: string,
+		look: LookPreference = {},
+	): LobbyResult {
+		if (this.accountBusy(session)) {
+			return { ok: false, error: ALREADY_PLAYING };
+		}
+		this.leave(session);
+		return this.join(session, this.openPublicLobby("possessed"), name, look);
 	}
 
 	createDaily(
@@ -139,14 +147,33 @@ export class LobbyManager {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
 		this.leave(session);
-		const lobby = this.createLobby(
-			"private",
-			this.options.dev
-				? this.options.minPlayers
-				: Math.max(this.options.minPlayers, POSSESSED_MIN_PLAYERS),
-		);
+		const lobby = this.createLobby("private", this.possessedMinPlayers());
 		lobby.config = possessedConfig();
 		return this.join(session, lobby, name, look);
+	}
+
+	private possessedMinPlayers(): number {
+		return this.options.dev
+			? this.options.minPlayers
+			: Math.max(this.options.minPlayers, POSSESSED_MIN_PLAYERS);
+	}
+
+	private openPublicLobby(mode: GameModeId): Lobby {
+		const open = [...this.lobbies.values()].find(
+			(candidate) =>
+				candidate.visibility === "public" &&
+				candidate.config.mode === mode &&
+				candidate.acceptsPlayers,
+		);
+		if (open) {
+			return open;
+		}
+		if (mode === "classic") {
+			return this.createLobby("public");
+		}
+		const lobby = this.createLobby("public", this.possessedMinPlayers());
+		lobby.config = possessedConfig();
+		return lobby;
 	}
 
 	joinPrivate(
@@ -286,9 +313,9 @@ export class LobbyManager {
 			: null;
 	}
 
-	publicPreview(): PublicLobbyPreview {
+	publicPreview(mode: GameModeId): PublicLobbyPreview {
 		const lobbies = [...this.lobbies.values()].filter(
-			(lobby) => lobby.visibility === "public",
+			(lobby) => lobby.visibility === "public" && lobby.config.mode === mode,
 		);
 		const open = lobbies.find((lobby) => lobby.acceptsPlayers);
 		return {

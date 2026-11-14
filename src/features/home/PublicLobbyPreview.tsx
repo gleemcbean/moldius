@@ -1,3 +1,4 @@
+import type { Ack } from "@shared/protocol/events";
 import type { PublicLobbyPreview as Preview } from "@shared/protocol/friends";
 import { useEffect, useState } from "react";
 import { HatPreview } from "../../components/HatPreview";
@@ -9,7 +10,13 @@ import styles from "./HomeScreen.module.scss";
 
 const REFRESH_MS = 4000;
 
-export function PublicLobbyPreview({ className }: { className: string }) {
+export function PublicLobbyPreview({
+	className,
+	mode = "classic",
+}: {
+	className: string;
+	mode?: "classic" | "possessed";
+}) {
 	const t = useT();
 	const connected = useStore(
 		sessionStore,
@@ -27,11 +34,16 @@ export function PublicLobbyPreview({ className }: { className: string }) {
 			if (document.hidden) {
 				return;
 			}
-			getSocket().emit("lobby:peekPublic", (reply) => {
+			const show: Ack<Preview> = (reply) => {
 				if (active && reply.ok) {
 					setPreview(reply.value);
 				}
-			});
+			};
+			if (mode === "possessed") {
+				getSocket().emit("lobby:peekPossessed", show);
+			} else {
+				getSocket().emit("lobby:peekPublic", show);
+			}
 		};
 		load();
 		const timer = window.setInterval(load, REFRESH_MS);
@@ -39,7 +51,7 @@ export function PublicLobbyPreview({ className }: { className: string }) {
 			active = false;
 			window.clearInterval(timer);
 		};
-	}, [connected]);
+	}, [connected, mode]);
 
 	if (!preview) {
 		return null;
