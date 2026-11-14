@@ -105,6 +105,7 @@ export function ModeSelect({
 							disabled={!ready}
 							onClick={() => start(card.mode)}
 							data-selectable=""
+							data-sound="confirm"
 						>
 							<span
 								className={[

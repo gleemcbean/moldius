@@ -60,6 +60,7 @@ export function Modal({
 							onClick={onClose}
 							aria-label={t.common.close}
 							data-selectable=""
+							data-sound="back"
 						>
 							<Icon name="close" />
 						</button>

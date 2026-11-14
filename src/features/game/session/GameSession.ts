@@ -87,7 +87,7 @@ import { romanNumeral } from "../../../utils/format";
 import { releaseKeyboardLock } from "../../../utils/fullscreen";
 import { audioEngine } from "../../audio/audioEngine";
 import { soundBank } from "../../audio/soundBank";
-import { playHoverTick } from "../../audio/uiSounds";
+import { playHoverTick, playUiClick } from "../../audio/uiSounds";
 import { type FrameInput, InputManager } from "../../engine/input/InputManager";
 import type { DynamicLight } from "../../engine/lighting/LightPool";
 import type { PingClientState } from "../../engine/state/ClientWorldState";
@@ -510,6 +510,7 @@ export class GameSession {
 		const canvas = event.currentTarget as HTMLCanvasElement;
 		const point = hud.pointer(event.clientX, event.clientY, canvas);
 		if (hud.pressMap(point)) {
+			playUiClick();
 			return;
 		}
 		if (hud.inMapArea(point)) {

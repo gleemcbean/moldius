@@ -3,6 +3,13 @@ import styles from "./Button.module.scss";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
+const VARIANT_SOUNDS: Record<ButtonVariant, string | undefined> = {
+	primary: "confirm",
+	secondary: undefined,
+	ghost: undefined,
+	danger: "danger",
+};
+
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	variant?: ButtonVariant;
 	size?: "small" | "medium" | "large";
@@ -30,7 +37,13 @@ export function Button({
 		.filter(Boolean)
 		.join(" ");
 	return (
-		<button type={type} className={classes} data-selectable="" {...rest}>
+		<button
+			type={type}
+			className={classes}
+			data-selectable=""
+			data-sound={VARIANT_SOUNDS[variant]}
+			{...rest}
+		>
 			{icon ? <span className={styles.icon}>{icon}</span> : null}
 			<span className={styles.label}>{children}</span>
 		</button>
