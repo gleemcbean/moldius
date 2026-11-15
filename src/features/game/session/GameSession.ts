@@ -37,9 +37,9 @@ import {
 	POSSESSED_POWER_COOLDOWN_MS,
 	PUSH_COOLDOWN_MS,
 	SHOUT_COOLDOWN_MS,
+	SLIME_SPEED_FACTOR,
 	SNAPSHOT_INTERVAL_TICKS,
 	STRONG_PUSH_COOLDOWN_FACTOR,
-	SLIME_SPEED_FACTOR,
 	WATER_SPEED_FACTOR,
 } from "@shared/config/index";
 import { PlayerMarkerBlender } from "@shared/doubleDisguise";
@@ -51,10 +51,9 @@ import {
 	type BrewEffect,
 } from "@shared/manor/brews";
 import { levelForHeight } from "@shared/manor/levels";
-import { hasMutator } from "@shared/matchConfig";
-
 import { type LiquidVolume, liquidAt } from "@shared/manor/liquids";
 import type { Level } from "@shared/manor/types";
+import { hasMutator } from "@shared/matchConfig";
 import type { CharacterBody } from "@shared/physics/character";
 import { pullBackToSight } from "@shared/physics/lineOfSight";
 import {
@@ -85,6 +84,7 @@ import {
 } from "../../../config/feel";
 import { renderPixelRatio } from "../../../config/graphics";
 import { currentMessages } from "../../../i18n";
+import type { ActionId } from "../../../types/settings";
 import { romanNumeral } from "../../../utils/format";
 import { releaseKeyboardLock } from "../../../utils/fullscreen";
 import { audioEngine } from "../../audio/audioEngine";
@@ -92,9 +92,6 @@ import { soundBank } from "../../audio/soundBank";
 import { playHoverTick, playUiClick } from "../../audio/uiSounds";
 import { type FrameInput, InputManager } from "../../engine/input/InputManager";
 import type { DynamicLight } from "../../engine/lighting/LightPool";
-import type { PingClientState } from "../../engine/state/ClientWorldState";
-import { PingViews } from "../../engine/world/PingViews";
-import { RoomVisibility } from "../../engine/world/RoomVisibility";
 import { FIRST_PERSON_LAYER } from "../../engine/player/FirstPersonRig";
 import {
 	type GiftCandidate,
@@ -107,6 +104,10 @@ import {
 	LocalPlayer,
 } from "../../engine/player/LocalPlayer";
 import { SpottedDetector } from "../../engine/player/SpottedDetector";
+import { FIRST_PERSON_DEPTH } from "../../engine/render/PostEffects";
+import type { PingClientState } from "../../engine/state/ClientWorldState";
+import { PingViews } from "../../engine/world/PingViews";
+import { RoomVisibility } from "../../engine/world/RoomVisibility";
 import { type HudMarker, MINIMAP_SIZE } from "../../hud/HudCanvas";
 import {
 	hudStore,
@@ -130,7 +131,6 @@ import { settingsStore } from "../../settings/settingsStore";
 import { doubleVoices, speakRadioClip } from "../../voice/doubleVoices";
 import { micManager } from "../../voice/micManager";
 import { momentVoices } from "../../voice/momentVoices";
-import type { ActionId } from "../../../types/settings";
 import { voiceChat, voiceStore } from "../../voice/voiceChat";
 import { CastController } from "../CastController";
 import { replayStore } from "../replayStore";
@@ -1060,12 +1060,11 @@ export class GameSession {
 		loaded.post.render(
 			{
 				dt,
-				effects: settings.postEffects,
 				tension: Math.max(spotted, wounded, this.gaze * 0.8, this.haze * 0.5),
 				animated: !settings.reduceMotion,
-				colorLevels: settings.colorLevels,
 				desaturate: spotted,
 				nausea: this.nausea,
+				camera: loaded.camera,
 			},
 			() => this.render(loaded),
 		);
@@ -3056,10 +3055,12 @@ export class GameSession {
 		if (!rig.root.visible) {
 			return;
 		}
-		renderer.clearDepth();
+		const gl = renderer.getContext();
+		gl.depthRange(0, FIRST_PERSON_DEPTH);
 		camera.layers.set(FIRST_PERSON_LAYER);
 		renderer.render(rig.root, camera);
 		camera.layers.set(0);
+		gl.depthRange(0, 1);
 	}
 
 	private updateRadioGhost(): void {
@@ -3185,11 +3186,10 @@ export class GameSession {
 		loaded.post.render(
 			{
 				dt,
-				effects: settings.postEffects,
 				tension: 0,
 				animated: !settings.reduceMotion,
-				colorLevels: settings.colorLevels,
 				desaturate: 0,
+				camera: loaded.camera,
 			},
 			() => this.render(loaded),
 		);

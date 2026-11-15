@@ -1,6 +1,7 @@
 import { ENABLED_SPECIES_IDS } from "@shared/config/monsters";
 import type { SpeciesId } from "@shared/config/species";
 import * as THREE from "three";
+import { surfaceQuality } from "../../config/graphics";
 import { renderIllustrations } from "../grimoire/illustrations";
 import { ModelKit } from "../models/modelKit";
 import { MaterialLibrary } from "../world/MaterialLibrary";
@@ -26,9 +27,10 @@ async function drawAll(): Promise<BestiaryArt> {
 	});
 	renderer.outputColorSpace = THREE.SRGBColorSpace;
 	renderer.toneMapping = THREE.ACESFilmicToneMapping;
-	const textures = new TextureLibrary(1);
+	const textures = new TextureLibrary(1, surfaceQuality("medium"));
 	const materials = new MaterialLibrary(textures);
 	try {
+		await textures.prepare();
 		const canvases = await renderIllustrations(
 			renderer,
 			new ModelKit(materials),

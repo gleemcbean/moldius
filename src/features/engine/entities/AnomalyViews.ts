@@ -44,12 +44,12 @@ import {
 import { voiceChat } from "../../voice/voiceChat";
 import type { TextureLibrary } from "../../world/textures/TextureLibrary";
 import { footstepSound } from "../audio/AmbientAudio";
-import type { DynamicLight } from "../lighting/LightPool";
 import {
 	CaptureRitual,
 	Pentacle,
 	RITUAL_FALLBACK_COLOR,
 } from "../effects/CaptureRitual";
+import type { DynamicLight } from "../lighting/LightPool";
 import { occultColor } from "../player/OccultAura";
 import type { ClientWorldState } from "../state/ClientWorldState";
 import { nameTag } from "./nameTag";

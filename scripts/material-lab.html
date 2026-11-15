@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="fr">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Labo des matériaux</title>
+		<style>
+			html,
+			body {
+				margin: 0;
+				height: 100%;
+				background: #0b0b0c;
+				overflow: hidden;
+			}
+			canvas {
+				display: block;
+				width: 100vw;
+				height: 100vh;
+			}
+		</style>
+	</head>
+	<body>
+		<script type="module">
+			import * as THREE from "three";
+			import { generateManor } from "/shared/manor/generateManor.ts";
+			import { PUBLIC_MATCH_CONFIG } from "/shared/matchConfig.ts";
+			import {
+				LANTERN_COLOR,
+				MANOR_AIR_COLOR,
+				MANOR_AIR_DENSITY,
+				MANOR_AMBIENT_INTENSITY,
+				MANOR_GROUND_LIGHT,
+				MANOR_SKY_LIGHT,
+			} from "/src/config/feel.ts";
+			import {
+				QUALITY_PRESETS,
+				surfaceQuality,
+			} from "/src/config/graphics.ts";
+			import { LightPool } from "/src/features/engine/lighting/LightPool.ts";
+			import { PostEffects } from "/src/features/engine/render/PostEffects.ts";
+			import { DoorViews } from "/src/features/engine/world/DoorViews.ts";
+			import {
+				FIRST_PERSON_LAYER,
+				FirstPersonRig,
+			} from "/src/features/engine/player/FirstPersonRig.ts";
+			import { MushroomModel } from "/src/features/models/MushroomModel.ts";
+			import { LanternModel } from "/src/features/models/LanternModel.ts";
+			import { GrimoireModel } from "/src/features/grimoire/GrimoireModel.ts";
+			import { ModelKit } from "/src/features/models/modelKit.ts";
+			import { createAnomalyModel } from "/src/features/models/anomalies/createAnomalyModel.ts";
+			import { ManorMeshBuilder } from "/src/features/world/ManorMeshBuilder.ts";
+			import { MaterialLibrary } from "/src/features/world/MaterialLibrary.ts";
+			import { TextureLibrary } from "/src/features/world/textures/TextureLibrary.ts";
+
+			const params = new URLSearchParams(location.search);
+			const quality = params.get("quality") ?? "high";
+			const preset = QUALITY_PRESETS[quality];
+			const seed = Number(params.get("seed") ?? 7);
+			const post = params.get("post") !== "0";
+			const view = params.get("view") ?? "room";
+
+			const renderer = new THREE.WebGLRenderer({
+				antialias: preset.antialias,
+				powerPreference: "high-performance",
+				stencil: false,
+			});
+			renderer.setPixelRatio(Number(params.get("ratio") ?? preset.pixelRatio));
+			renderer.setSize(window.innerWidth, window.innerHeight, false);
+			renderer.outputColorSpace = THREE.SRGBColorSpace;
+			renderer.toneMapping = THREE.ACESFilmicToneMapping;
+			renderer.toneMappingExposure = Number(params.get("exposure") ?? 1);
+			renderer.shadowMap.enabled = true;
+			renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+			renderer.autoClear = false;
+			document.body.append(renderer.domElement);
+			const effects = new PostEffects(renderer, preset.antialias ? 4 : 0);
+
+			const scene = new THREE.Scene();
+			scene.background = new THREE.Color(MANOR_AIR_COLOR);
+			scene.fog = new THREE.FogExp2(MANOR_AIR_COLOR, MANOR_AIR_DENSITY);
+			const camera = new THREE.PerspectiveCamera(
+				Number(params.get("fov") ?? 75),
+				window.innerWidth / window.innerHeight,
+				0.03,
+				90,
+			);
+			scene.add(camera);
+			scene.add(
+				new THREE.HemisphereLight(
+					MANOR_SKY_LIGHT,
+					MANOR_GROUND_LIGHT,
+					MANOR_AMBIENT_INTENSITY,
+				),
+			);
+			const lantern = new THREE.PointLight(LANTERN_COLOR, 12, 16, 2);
+			lantern.castShadow = true;
+			lantern.shadow.mapSize.set(preset.shadowMapSize, preset.shadowMapSize);
+			lantern.shadow.bias = -0.002;
+			lantern.shadow.camera.near = 0.1;
+			lantern.shadow.camera.far = 16;
+			scene.add(lantern);
+
+			const anisotropy = Math.min(
+				preset.textureAnisotropy,
+				renderer.capabilities.getMaxAnisotropy(),
+			);
+			const textures = new TextureLibrary(anisotropy, surfaceQuality(quality));
+			const bakeStart = performance.now();
+			await textures.prepare();
+			const bakeMs = Math.round(performance.now() - bakeStart);
+			const materials = new MaterialLibrary(textures);
+			const kit = new ModelKit(materials);
+
+			if (view === "prop") {
+				const name = params.get("prop") ?? "lantern";
+				const stage = new THREE.Group();
+				const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 3).scale(1, 1, 1), materials.get({ texture: params.get("ground") ?? "darkPlanks" }));
+				const floorUv = floorMesh.geometry.getAttribute("uv");
+				for (let index = 0; index < floorUv.count; index += 1) floorUv.setXY(index, floorUv.getX(index) * 3, floorUv.getY(index) * 3);
+				floorMesh.rotation.x = -Math.PI / 2;
+				floorMesh.receiveShadow = true;
+				stage.add(floorMesh);
+				const backMesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 2), materials.get({ texture: params.get("back") ?? "wallpaperGreen" }));
+				const backUv = backMesh.geometry.getAttribute("uv");
+				for (let index = 0; index < backUv.count; index += 1) backUv.setXY(index, backUv.getX(index) * 3, backUv.getY(index) * 2);
+				backMesh.position.set(0, 1, -0.6);
+				backMesh.receiveShadow = true;
+				stage.add(backMesh);
+				scene.add(stage);
+				let subject;
+				if (name === "lantern") {
+					const model = new LanternModel(kit, 1, null);
+					model.update(1, params.get("open") !== "0");
+					subject = model.root;
+				} else if (name === "grimoire") {
+					const model = new GrimoireModel(kit);
+					model.root.rotation.x = -Math.PI / 2 + 0.25;
+					model.root.position.y = 0.05;
+					subject = new THREE.Group();
+					subject.add(model.root);
+				} else if (name === "door") {
+					const doorLayout = generateManor(seed, { ...PUBLIC_MATCH_CONFIG, pickupTotal: 0 });
+					const doorViews = new DoorViews(doorLayout, kit);
+					const first = [...doorViews.doors.values()][Number(params.get("pick") ?? 0)];
+					subject = first.pivot;
+					subject.position.set(-0.45, 0, 0);
+					subject.rotation.set(0, 0, 0);
+				} else if (name === "mushroom") {
+					const model = new MushroomModel(kit, 0xd8442f);
+					model.update(0.016, { speed: 0, crouch: 0, grounded: true, sprinting: false, lanternOpen: true, grimoireOpen: false, dead: false, talking: 0 });
+					subject = model.root;
+				} else if (name === "anomaly") {
+					const model = createAnomalyModel(params.get("species") ?? "reverbere", kit, 0xd8442f);
+					model.update({ state: "idle", stateMs: 400, extra: 0, speed: 0, dt: 0.016, time: 1.2 });
+					subject = model.root;
+				}
+				subject.traverse((object) => { if (object.isMesh) { object.castShadow = true; } });
+				scene.add(subject);
+				scene.updateMatrixWorld(true);
+				const box = new THREE.Box3().setFromObject(subject);
+				const center = box.getCenter(new THREE.Vector3());
+				const size = box.getSize(new THREE.Vector3());
+				const radius = Math.max(size.x, size.y, size.z) * Number(params.get("zoom") ?? 1);
+				const yaw = Number(params.get("yaw") ?? 0.5);
+				const tilt = Number(params.get("tilt") ?? 0.25);
+				const distance = radius / Math.tan((camera.fov * Math.PI) / 360) * 0.75;
+				camera.position.set(center.x + Math.sin(yaw) * Math.cos(tilt) * distance, center.y + Math.sin(tilt) * distance, center.z + Math.cos(yaw) * Math.cos(tilt) * distance);
+				camera.near = 0.01;
+				camera.updateProjectionMatrix();
+				camera.lookAt(center);
+				camera.updateMatrixWorld(true);
+				scene.fog = null;
+				lantern.position.copy(camera.position).add(new THREE.Vector3(Math.cos(yaw) * radius * 1.2, radius * 0.9, -Math.sin(yaw) * radius * 1.2));
+				lantern.intensity = Number(params.get("light") ?? 3);
+				lantern.distance = 0;
+				const rim = new THREE.PointLight(0xffd9a0, Number(params.get("rim") ?? 1.5), 0, 2);
+				rim.position.copy(center).add(new THREE.Vector3(-radius * 1.5, radius * 1.2, -radius));
+				scene.add(rim);
+				scene.updateMatrixWorld(true);
+				for (let frame = 0; frame < 4; frame += 1) {
+					const draw = () => {
+						renderer.setClearColor(MANOR_AIR_COLOR, 1);
+						renderer.clear();
+						renderer.render(scene, camera);
+					};
+					if (post) {
+						effects.render({ dt: 1 / 30, tension: 0.2, animated: false }, draw);
+					} else {
+						renderer.setRenderTarget(null);
+						draw();
+					}
+					await new Promise((resolve) => setTimeout(resolve, 5));
+				}
+				await new Promise((resolve) => setTimeout(resolve, 500));
+				window.labInfo = { bakeMs, name };
+				document.title = "lab-ready";
+				throw new Error("prop-done");
+			}
+
+			if (view === "grid") {
+				const keys = (params.get("keys") ?? "").split(",").filter(Boolean);
+				const columns = Number(params.get("columns") ?? 5);
+				const size = 1;
+				const rows = Math.ceil(keys.length / columns);
+				keys.forEach((key, index) => {
+					const column = index % columns;
+					const row = Math.floor(index / columns);
+					const geometry = new THREE.PlaneGeometry(size * 0.94, size * 0.94);
+					const uv = geometry.getAttribute("uv");
+					for (let vertex = 0; vertex < uv.count; vertex += 1) {
+						uv.setXY(vertex, uv.getX(vertex) * size, uv.getY(vertex) * size);
+					}
+					const mesh = new THREE.Mesh(geometry, materials.get({ texture: key, metalness: params.get("metal") ? Number(params.get("metal")) : undefined }));
+					mesh.position.set((column - (columns - 1) / 2) * size, (rows - 1 - row) * size + 0.5, -2);
+					scene.add(mesh);
+				});
+				camera.fov = 50;
+				camera.position.set(0, (rows * size) / 2, (rows * size) * 1.05 + 0.6);
+				camera.lookAt(0, (rows * size) / 2, -2);
+				camera.updateProjectionMatrix();
+				camera.updateMatrixWorld(true);
+				scene.fog = null;
+				lantern.intensity = 0;
+				const { RoomEnvironment } = await import("three/addons/environments/RoomEnvironment.js");
+				const pmrem = new THREE.PMREMGenerator(renderer);
+				scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+				scene.environmentIntensity = Number(params.get("env") ?? 0.6);
+				const sun = new THREE.DirectionalLight(0xfff0dc, Number(params.get("light") ?? 2.2));
+				sun.position.set(-3, 2.2, 1.2);
+				scene.add(sun);
+				scene.updateMatrixWorld(true);
+				renderer.setRenderTarget(null);
+				for (let frame = 0; frame < 3; frame += 1) {
+					renderer.setClearColor(0x050505, 1);
+					renderer.clear();
+					renderer.render(scene, camera);
+					await new Promise((resolve) => setTimeout(resolve, 5));
+				}
+				await new Promise((resolve) => setTimeout(resolve, 500));
+				window.labInfo = { bakeMs, keys };
+				document.title = "lab-ready";
+				throw new Error("grid-done");
+			}
+
+			if (view === "swatch") {
+				const key = params.get("texture") ?? "stoneBlocks";
+				const floorKey = params.get("ground") ?? key;
+				const meterPlane = (width, height) => {
+					const geometry = new THREE.PlaneGeometry(width, height, 1, 1);
+					const uv = geometry.getAttribute("uv");
+					for (let index = 0; index < uv.count; index += 1) {
+						uv.setXY(index, uv.getX(index) * width, uv.getY(index) * height);
+					}
+					return geometry;
+				};
+				const wall = new THREE.Mesh(meterPlane(4, 2.6), materials.get({ texture: key, roughness: 1 }));
+				wall.position.set(0, 1.3, -1.6);
+				const ground = new THREE.Mesh(meterPlane(4, 3.2), materials.get({ texture: floorKey }));
+				ground.rotation.x = -Math.PI / 2;
+				ground.position.set(0, 0, 0);
+				const side = new THREE.Mesh(meterPlane(3.2, 2.6), materials.get({ texture: key, roughness: 1 }));
+				side.rotation.y = Math.PI / 2;
+				side.position.set(-2, 1.3, 0);
+				for (const mesh of [wall, ground, side]) {
+					mesh.receiveShadow = true;
+					scene.add(mesh);
+				}
+				const ball = new THREE.Mesh(new THREE.SphereGeometry(0.3, 48, 32), materials.get({ texture: params.get("ball") ?? key, metalness: Number(params.get("metal") ?? 0.8) }));
+				ball.position.set(0.9, 0.3, -0.6);
+				ball.castShadow = true;
+				scene.add(ball);
+				camera.position.set(0.5, 1.45, 1.4);
+				camera.rotation.set(-0.3, 0.32, 0, "YXZ");
+				camera.updateMatrixWorld(true);
+				lantern.position.set(1.2, 1.2, 0.6);
+				lantern.intensity = Number(params.get("light") ?? 6);
+				const graze = new THREE.PointLight(0xffd9a0, Number(params.get("graze") ?? 3), 6, 2);
+				graze.position.set(-1.7, 2.3, -1.2);
+				scene.add(graze);
+				scene.updateMatrixWorld(true);
+				for (let frame = 0; frame < 4; frame += 1) {
+					const draw = () => {
+						renderer.setClearColor(MANOR_AIR_COLOR, 1);
+						renderer.clear();
+						renderer.render(scene, camera);
+					};
+					if (post) {
+						effects.render({ dt: 1 / 30, tension: 0.2, animated: false }, draw);
+					} else {
+						renderer.setRenderTarget(null);
+						draw();
+					}
+					await new Promise((resolve) => setTimeout(resolve, 5));
+				}
+				await new Promise((resolve) => setTimeout(resolve, 500));
+				window.labInfo = { bakeMs, key };
+				document.title = "lab-ready";
+				throw new Error("swatch-done");
+			}
+
+			const layout = generateManor(seed, {
+				...PUBLIC_MATCH_CONFIG,
+				pickupTotal: 0,
+			});
+			const builder = new ManorMeshBuilder(layout, materials);
+			const wanted = params.get("room");
+			const floorStyle = params.get("floor");
+			const wallStyle = params.get("wall");
+			const candidates = layout.rooms.filter(
+				(room) =>
+					(!floorStyle || room.style.floor === floorStyle) &&
+					(!wallStyle || room.style.wall === wallStyle) &&
+					(!params.get("type") || room.type === params.get("type")),
+			);
+			const room =
+				wanted !== null
+					? layout.rooms[Number(wanted)]
+					: candidates.sort((a, b) => b.area - a.area)[
+							Number(params.get("pick") ?? 0)
+						];
+			if (!room) {
+				document.title = "lab-missing";
+				throw new Error("aucune salle");
+			}
+			const shown = new Set(
+				params.get("all") === "1"
+					? layout.rooms.filter((entry) => entry.level === room.level).map((entry) => entry.id)
+					: [room.id],
+			);
+			for (const opening of layout.openings) {
+				if (opening.roomA === room.id) shown.add(opening.roomB);
+				if (opening.roomB === room.id) shown.add(opening.roomA);
+			}
+			for (const id of shown) {
+				const built = builder.buildRoom(layout.rooms[id]);
+				built.group.traverse((object) => {
+					if (object instanceof THREE.Mesh) {
+						object.castShadow = true;
+						object.receiveShadow = true;
+					}
+				});
+				scene.add(built.group);
+			}
+			const doors = new DoorViews(layout, kit);
+			doors.update(10);
+			scene.add(doors.group);
+			const lights = new LightPool(
+				scene,
+				Number(params.get("pool") ?? preset.lightPool),
+				layout.lights.filter((light) => shown.has(light.roomId)),
+				layout.rooms,
+			);
+
+			const eyeHeight = 1.55;
+			const floorY = room.floorY ?? 0;
+			const bounds = room.bounds;
+			const spot = room.labelPoint;
+			const turn = Number(params.get("turn") ?? 0);
+			const pitch = Number(params.get("pitch") ?? -0.32);
+			const back = Number(params.get("back") ?? 0);
+			const corners = [
+				[bounds.minX, bounds.minZ],
+				[bounds.maxX, bounds.minZ],
+				[bounds.maxX, bounds.maxZ],
+				[bounds.minX, bounds.maxZ],
+			];
+			const far = corners.sort(
+				(a, b) =>
+					Math.hypot(b[0] - spot.x, b[1] - spot.z) -
+					Math.hypot(a[0] - spot.x, a[1] - spot.z),
+			)[0];
+			const yaw =
+				Math.atan2(-(far[0] - spot.x), -(far[1] - spot.z)) + Math.PI + turn;
+			camera.position.set(
+				spot.x - Math.sin(yaw + Math.PI) * back,
+				floorY + eyeHeight,
+				spot.z - Math.cos(yaw + Math.PI) * back,
+			);
+			camera.rotation.set(pitch, yaw + Math.PI, 0, "YXZ");
+			camera.updateMatrixWorld(true);
+			lantern.position.copy(
+				camera.localToWorld(new THREE.Vector3(0.27, -0.2, -0.5)),
+			);
+
+			const extras = [];
+			if (params.get("cast") === "1") {
+				const ahead = camera.localToWorld(new THREE.Vector3(0, 0, -2.6));
+				const colors = [0xd8442f, 0x3d7bd8, 0x7bc043];
+				colors.forEach((color, index) => {
+					const model = new MushroomModel(kit, color);
+					model.root.position.set(
+						ahead.x + (index - 1) * 0.9,
+						floorY,
+						ahead.z,
+					);
+					model.root.rotation.y = camera.rotation.y + (index - 1) * 0.4;
+					model.update(0.016, {
+						speed: 0,
+						crouch: 0,
+						grounded: true,
+						sprinting: false,
+						lanternOpen: true,
+						grimoireOpen: false,
+						dead: false,
+						talking: 0,
+					});
+					scene.add(model.root);
+					extras.push(model);
+				});
+			}
+			const species = params.get("anomaly");
+			if (species) {
+				const model = createAnomalyModel(species, kit, 0xd8442f);
+				const ahead = camera.localToWorld(new THREE.Vector3(0, 0, -3.2));
+				model.root.position.set(ahead.x, floorY, ahead.z);
+				model.root.rotation.y = camera.rotation.y;
+				model.update({
+					state: "idle",
+					stateMs: 400,
+					extra: 0,
+					speed: 0,
+					dt: 0.016,
+					time: 1.2,
+				});
+				scene.add(model.root);
+			}
+
+			let rig = null;
+			if (view === "fp") {
+				rig = new FirstPersonRig(new ModelKit(new MaterialLibrary(textures)), null, null);
+				camera.add(rig.root);
+				rig.lantern.update(1, true);
+			}
+
+			scene.updateMatrixWorld(true);
+			lights.update(camera.position, [], 0.5);
+			lights.update(camera.position, [], 0.5);
+
+			const frames = Number(params.get("frames") ?? 8);
+			for (let frame = 0; frame < frames; frame += 1) {
+				lights.update(camera.position, [], 1 / 30);
+				if (rig) {
+					rig.update(1 / 30, {
+						grimoireOpen: params.get("book") === "1",
+						heldObject: null,
+						cameraRaised: false,
+						cameraAimed: false,
+						lanternOpen: true,
+						speed: 0,
+						crouch: 0,
+						lookDeltaX: 0,
+						lookDeltaY: 0,
+						yaw: camera.rotation.y,
+						pitch: camera.rotation.x,
+						swing: 0,
+						headBob: false,
+						reduceMotion: true,
+						visible: true,
+						fov: camera.fov,
+						aspect: camera.aspect,
+					});
+					lantern.position.copy(camera.localToWorld(rig.lanternLocalPosition()));
+				}
+				const draw = () => {
+					renderer.setClearColor(MANOR_AIR_COLOR, 1);
+					renderer.clear();
+					camera.layers.set(0);
+					renderer.render(scene, camera);
+					if (rig) {
+						const gl = renderer.getContext();
+						gl.depthRange(0, 0.002);
+						camera.layers.set(FIRST_PERSON_LAYER);
+						renderer.render(rig.root, camera);
+						camera.layers.set(0);
+						gl.depthRange(0, 1);
+					}
+				};
+				if (post) {
+					effects.render(
+						{
+							dt: 1 / 30,
+							tension: 0.2,
+							animated: false,
+							camera: params.get("depth") === "0" ? undefined : camera,
+						},
+						draw,
+					);
+				} else {
+					renderer.setRenderTarget(null);
+					draw();
+				}
+				await new Promise((resolve) => setTimeout(resolve, 5));
+			}
+			await new Promise((resolve) => setTimeout(resolve, 500));
+			let bench = null;
+			if (params.get("bench") === "1") {
+				const gl = renderer.getContext();
+				const draw = () => {
+					renderer.setClearColor(MANOR_AIR_COLOR, 1);
+					renderer.clear();
+					renderer.render(scene, camera);
+				};
+				renderer.setRenderTarget(null);
+				draw();
+				gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+				const started = performance.now();
+				const count = 60;
+				for (let frame = 0; frame < count; frame += 1) {
+					draw();
+					gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+				}
+				bench = {
+					ms: Math.round(((performance.now() - started) / count) * 100) / 100,
+					calls: renderer.info.render.calls,
+					triangles: renderer.info.render.triangles,
+					programs: renderer.info.programs.length,
+					textures: renderer.info.memory.textures,
+				};
+				renderer.setRenderTarget(null);
+			}
+			window.labInfo = {
+				bakeMs,
+				bench,
+				room: room.id,
+				type: room.type,
+				style: room.style,
+				candidates: candidates.map((entry) => `${entry.id}:${entry.type}:${entry.style.floor}/${entry.style.wall}`),
+			};
+			document.title = "lab-ready";
+		</script>
+	</body>
+</html>

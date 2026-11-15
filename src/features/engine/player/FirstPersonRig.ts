@@ -73,6 +73,8 @@ void main() {
 	#include <colorspace_fragment>
 }`;
 const UP = new THREE.Vector3(0, 1, 0);
+const FP_KEY_COLOR = 0xffd9b0;
+const FP_KEY_INTENSITY = 0.9;
 
 const LANTERN_SCALE = 0.95;
 const LANTERN_IDLE = new THREE.Vector3(0.27, -0.03, -0.5);
@@ -183,6 +185,10 @@ export class FirstPersonRig {
 		this.root.add(this.fpLight);
 		this.fpAmbient = new THREE.HemisphereLight(0xaaaaae, 0x4c4c4e, 1.25);
 		this.root.add(this.fpAmbient);
+		const key = new THREE.DirectionalLight(FP_KEY_COLOR, FP_KEY_INTENSITY);
+		key.position.set(-0.7, 1.1, 0.5);
+		key.target.position.set(0.25, -0.3, -0.6);
+		this.root.add(key, key.target);
 		this.root.traverse((object) => object.layers.set(FIRST_PERSON_LAYER));
 	}
 

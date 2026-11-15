@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { TextureLibrary } from "./textures/TextureLibrary";
+import type { SurfaceMaps, TextureLibrary } from "./textures/TextureLibrary";
 
 export type MaterialWave = "flame" | "fire" | "foliage" | "cloth";
 
@@ -66,8 +66,11 @@ export interface MaterialOptions {
 	unlit?: boolean;
 	fixedRepeat?: boolean;
 	fog?: boolean;
+	relief?: number;
 }
 
+const METAL_SHEEN = 0.9;
+const GLOSS_SHEEN = 0.6;
 const PIXELS_PER_METER = "28.0";
 const PIXEL_SHADE = "0.04";
 
@@ -112,6 +115,135 @@ diffuseColor.rgb *= 1.0 + (pixelHash(pixelCell) - 0.5) * ${PIXEL_SHADE};`,
 	};
 }
 
+const RELIEF_PARS = `
+uniform float reliefDepth;
+uniform float reliefSteps;
+vec2 reliefOffset( vec2 uv ) {
+	vec3 eye = - vViewPosition;
+	vec3 q0 = dFdx( eye );
+	vec3 q1 = dFdy( eye );
+	vec2 st0 = dFdx( uv );
+	vec2 st1 = dFdy( uv );
+	vec3 surfaceNormal = normalize( vNormal );
+	#ifdef DOUBLE_SIDED
+		surfaceNormal *= gl_FrontFacing ? 1.0 : - 1.0;
+	#endif
+	vec3 q1perp = cross( q1, surfaceNormal );
+	vec3 q0perp = cross( surfaceNormal, q0 );
+	vec3 tangent = q1perp * st0.x + q0perp * st1.x;
+	vec3 bitangent = q1perp * st0.y + q0perp * st1.y;
+	float det = dot( q0, q1perp );
+	vec3 view = normalize( vViewPosition );
+	float facing = dot( view, surfaceNormal );
+	if ( abs( det ) < 1e-14 || facing < 0.02 ) {
+		return vec2( 0.0 );
+	}
+	vec2 span = - vec2( dot( tangent, view ), dot( bitangent, view ) ) / ( max( facing, 0.3 ) * det ) * reliefDepth;
+	float layers = floor( mix( reliefSteps, max( 4.0, reliefSteps * 0.3 ), facing ) );
+	float layerDepth = 1.0 / layers;
+	vec2 delta = span * layerDepth;
+	vec2 shift = vec2( 0.0 );
+	float depth = 0.0;
+	float surface = 1.0 - textureGrad( normalMap, uv, st0, st1 ).a;
+	for ( int step = 0; step < 64; step ++ ) {
+		if ( float( step ) >= layers || depth >= surface ) {
+			break;
+		}
+		shift += delta;
+		depth += layerDepth;
+		surface = 1.0 - textureGrad( normalMap, uv + shift, st0, st1 ).a;
+	}
+	vec2 previous = shift - delta;
+	float after = surface - depth;
+	float before = ( 1.0 - textureGrad( normalMap, uv + previous, st0, st1 ).a ) - depth + layerDepth;
+	float blend = after / min( after - before, - 1e-5 );
+	return mix( shift, previous, clamp( blend, 0.0, 1.0 ) );
+}`;
+
+const RELIEF_CHUNKS: [string, string, string][] = [
+	[
+		"#include <map_fragment>",
+		"vMapUv",
+		"vec2 reliefShift = reliefOffset( vNormalMapUv );\n",
+	],
+	["#include <normal_fragment_maps>", "vNormalMapUv", ""],
+	["#include <roughnessmap_fragment>", "vRoughnessMapUv", ""],
+	["#include <metalnessmap_fragment>", "vMetalnessMapUv", ""],
+	["#include <aomap_fragment>", "vAoMapUv", ""],
+	["#include <emissivemap_fragment>", "vEmissiveMapUv", ""],
+];
+
+function shiftedChunk(include: string, varying: string): string {
+	const name = include.slice("#include <".length, -1);
+	return THREE.ShaderChunk[name as keyof typeof THREE.ShaderChunk].replaceAll(
+		varying,
+		`( ${varying} + reliefShift )`,
+	);
+}
+
+function addRelief(
+	material: THREE.MeshStandardMaterial,
+	depth: number,
+	steps: number,
+): void {
+	const previous = material.onBeforeCompile.bind(material);
+	const previousKey = material.customProgramCacheKey.bind(material);
+	material.customProgramCacheKey = () => `${previousKey()}-relief-1`;
+	material.onBeforeCompile = (shader, renderer) => {
+		previous(shader, renderer);
+		shader.uniforms.reliefDepth = { value: depth };
+		shader.uniforms.reliefSteps = { value: steps };
+		let fragment = shader.fragmentShader.replace(
+			"#include <normalmap_pars_fragment>",
+			`#include <normalmap_pars_fragment>${RELIEF_PARS}`,
+		);
+		for (const [include, varying, prefix] of RELIEF_CHUNKS) {
+			fragment = fragment.replace(
+				include,
+				`${prefix}${shiftedChunk(include, varying)}`,
+			);
+		}
+		shader.fragmentShader = fragment;
+	};
+}
+
+const SHEEN_ONLY = THREE.ShaderChunk.lights_fragment_maps.replace(
+	"iblIrradiance += getIBLIrradiance( geometryNormal );",
+	"",
+);
+
+function addSheen(material: THREE.MeshStandardMaterial): void {
+	const previous = material.onBeforeCompile.bind(material);
+	const previousKey = material.customProgramCacheKey.bind(material);
+	material.customProgramCacheKey = () => `${previousKey()}-sheen-1`;
+	material.onBeforeCompile = (shader, renderer) => {
+		previous(shader, renderer);
+		shader.fragmentShader = shader.fragmentShader.replace(
+			"#include <lights_fragment_maps>",
+			SHEEN_ONLY,
+		);
+	};
+}
+
+function retiled(texture: THREE.Texture | null): THREE.Texture | null {
+	if (!texture) {
+		return null;
+	}
+	const copy = texture.clone();
+	copy.repeat.set(1, 1);
+	copy.needsUpdate = true;
+	return copy;
+}
+
+function fixedSurface(surface: SurfaceMaps): SurfaceMaps {
+	return {
+		...surface,
+		map: retiled(surface.map) as THREE.Texture,
+		normalMap: retiled(surface.normalMap),
+		ormMap: retiled(surface.ormMap),
+	};
+}
+
 export class MaterialLibrary {
 	private readonly materials = new Map<string, THREE.Material>();
 
@@ -134,6 +266,7 @@ export class MaterialLibrary {
 			options.fixedRepeat ?? false,
 			options.fog ?? true,
 			options.wave ?? "",
+			options.relief ?? 1,
 		]);
 	}
 
@@ -154,15 +287,14 @@ export class MaterialLibrary {
 	}
 
 	private create(options: MaterialOptions): THREE.Material {
-		let map: THREE.Texture | null = null;
+		let surface: SurfaceMaps | null = null;
 		if (options.texture) {
-			map = this.textures.get(options.texture);
+			surface = this.textures.surface(options.texture);
 			if (options.fixedRepeat) {
-				map = map.clone();
-				map.repeat.set(1, 1);
-				map.needsUpdate = true;
+				surface = fixedSurface(surface);
 			}
 		}
+		const map = surface?.map ?? null;
 		const shared = {
 			map,
 			color: new THREE.Color(options.color ?? 0xffffff),
@@ -189,7 +321,32 @@ export class MaterialLibrary {
 			emissiveIntensity: options.emissiveIntensity ?? 1,
 			emissiveMap: options.emissive && map ? map : null,
 		});
-		pixelate(material);
+		const relief = options.relief ?? 1;
+		if (surface?.normalMap && relief > 0) {
+			material.normalMap = surface.normalMap;
+			material.normalScale.set(relief, relief);
+		}
+		if (surface?.fine) {
+			material.roughness = 1;
+			material.roughnessMap = surface.ormMap;
+			material.aoMap = surface.ormMap;
+			if (surface.metallic) {
+				material.metalnessMap = surface.ormMap;
+				material.metalness = options.metalness ?? 1;
+			}
+			const steps = this.textures.quality.parallax;
+			if (surface.parallax && steps > 0 && relief > 0 && !options.transparent) {
+				addRelief(material, surface.depth * relief, steps);
+			}
+			const reflections = this.textures.reflections();
+			if (reflections) {
+				material.envMap = reflections;
+				material.envMapIntensity = surface.metallic ? METAL_SHEEN : GLOSS_SHEEN;
+				addSheen(material);
+			}
+		} else {
+			pixelate(material);
+		}
 		if (options.wave) {
 			applyWave(material, options.wave);
 		}

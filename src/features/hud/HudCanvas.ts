@@ -27,6 +27,7 @@ import {
 	curvatureZoom,
 	HUD_BEND,
 	POST_BULGE,
+	POST_EFFECTS,
 	type ScreenVeil,
 } from "../engine/render/PostEffects";
 import type { ObjectArt, ObjectArtId } from "../grimoire/objectArt";
@@ -269,7 +270,6 @@ export class HudCanvas {
 	private minimapUploaded = 0;
 	private width = 1;
 	private height = 1;
-	private curvature = 0;
 	private drawScale = RESOLUTION;
 	private paintedAt = -Infinity;
 	private feedbackId = -1;
@@ -340,7 +340,6 @@ export class HudCanvas {
 		const dt = Math.min(0.2, (now - this.paintedAt) / 1000);
 		this.paintedAt = now;
 		const settings = settingsStore.get();
-		this.curvature = settings.postEffects.curvature;
 		const hud = hudStore.get();
 		const context = this.context;
 		context.begin();
@@ -593,10 +592,10 @@ export class HudCanvas {
 		const cx = nx - 0.5;
 		const cy = ny - 0.5;
 		const aspect = this.width / this.height;
-		const bulge = POST_BULGE * this.curvature;
+		const bulge = POST_BULGE * POST_EFFECTS.curvature;
 		const factor =
 			(1 + bulge * ((cx * aspect) ** 2 + cy * cy)) /
-			curvatureZoom(this.curvature, aspect);
+			curvatureZoom(POST_EFFECTS.curvature, aspect);
 		return {
 			x: (nx + (0.5 + cx * factor - nx) * HUD_BEND) * this.width,
 			y: (ny + (0.5 + cy * factor - ny) * HUD_BEND) * this.height,

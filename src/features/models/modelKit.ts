@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { meterLathe, meterSphere, scaleUv } from "../world/geometryUtils";
 import type {
 	MaterialLibrary,
@@ -182,6 +183,43 @@ export class ModelKit {
 		group.name = name;
 		group.position.set(x, y, z);
 		return group;
+	}
+}
+
+export class PartList {
+	private readonly groups = new Map<Surface, THREE.BufferGeometry[]>();
+
+	add(surface: Surface, geometry: THREE.BufferGeometry): void {
+		if (!geometry.index) {
+			const count = geometry.getAttribute("position").count;
+			geometry.setIndex(Array.from({ length: count }, (_, vertex) => vertex));
+		}
+		const list = this.groups.get(surface);
+		if (list) {
+			list.push(geometry);
+		} else {
+			this.groups.set(surface, [geometry]);
+		}
+	}
+
+	build(kit: ModelKit, parent: THREE.Object3D): THREE.Mesh[] {
+		const meshes: THREE.Mesh[] = [];
+		for (const [surface, geometries] of this.groups) {
+			const merged =
+				geometries.length === 1
+					? geometries[0]
+					: (mergeGeometries(geometries, false) as THREE.BufferGeometry);
+			if (geometries.length > 1) {
+				for (const geometry of geometries) {
+					geometry.dispose();
+				}
+			}
+			const mesh = kit.mesh(merged, surface);
+			parent.add(mesh);
+			meshes.push(mesh);
+		}
+		this.groups.clear();
+		return meshes;
 	}
 }
 

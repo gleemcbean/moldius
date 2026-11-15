@@ -1,14 +1,33 @@
 import * as THREE from "three";
-import type { PostEffectLevels } from "../../../types/settings";
+
+export const POST_EFFECTS = {
+	curvature: 1,
+	aberration: 0.45,
+	bleed: 0.05,
+	vignette: 0.55,
+	grain: 0.65,
+	scanlines: 0.4,
+	dither: 0.5,
+	flicker: 0.6,
+	band: 0.5,
+	saturation: 1,
+	danger: 1,
+} as const;
+
+const COLOR_LEVELS = 12;
 
 export interface PostEffectsFrame {
 	dt: number;
-	effects: PostEffectLevels;
 	tension: number;
 	animated: boolean;
-	colorLevels: number;
 	desaturate?: number;
 	nausea?: number;
+	camera?: THREE.PerspectiveCamera;
+}
+
+export interface SceneDepth {
+	texture: THREE.DepthTexture;
+	camera: THREE.PerspectiveCamera;
 }
 
 export interface ScreenVeil {
@@ -26,6 +45,9 @@ export interface ScreenVeil {
 export const POST_BULGE = 0.3;
 export const HUD_BEND = 0.38;
 export const MAX_VEILS = 8;
+export const FIRST_PERSON_DEPTH = 0.002;
+const DITHER_NEAR = 1.5;
+const DITHER_FAR = 50;
 const HUD_SHIFT = 0.1;
 
 export function curvatureZoom(curvature: number, aspect: number): number {
@@ -63,6 +85,9 @@ uniform float grainTime;
 uniform float tension;
 uniform float animated;
 uniform float levels;
+uniform sampler2D sceneDepth;
+uniform vec2 depthRange;
+uniform float depthOn;
 uniform float nausea;
 uniform float curvature;
 uniform float zoom;
@@ -78,6 +103,11 @@ uniform float saturation;
 varying vec2 vUv;
 
 const vec3 LUMA = vec3(0.299, 0.587, 0.114);
+
+float viewDistance(vec2 point) {
+  float depth = texture2D(sceneDepth, point).r;
+  return depthRange.x * depthRange.y / max(depthRange.y - depth * (depthRange.y - depthRange.x), 1e-4);
+}
 
 float hash(vec2 point) {
   vec3 p3 = fract(vec3(point.xyx) * 0.1031);
@@ -173,6 +203,17 @@ void main() {
 
   gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(dot(gl_FragColor.rgb, LUMA)), desaturate);
 
+  float pattern = bayer4(gl_FragCoord.xy);
+  float sceneLuminance = dot(gl_FragColor.rgb, LUMA);
+  float noise = hash(floor(gl_FragCoord.xy) + grainTime * 131.0) - 0.5;
+  float grainShift = noise * (0.022 + 0.03 * (1.0 - sceneLuminance)) * grainAmount;
+  gl_FragColor.rgb += grainShift;
+  float distant = depthOn > 0.5 ? smoothstep(${DITHER_NEAR.toFixed(2)}, ${DITHER_FAR.toFixed(2)}, viewDistance(uv)) : 1.0;
+  float density = mix(0.08, 1.0, distant);
+  float ditherSpread = 0.05 * (1.0 - smoothstep(0.02, 0.4, sceneLuminance)) + 0.13 * distant * depthOn;
+  gl_FragColor.rgb += (pattern - 0.5) * ditherSpread * dither;
+  gl_FragColor.rgb = floor(clamp(gl_FragColor.rgb, 0.0, 1.0) * levels + mix(0.5, pattern, density)) / levels;
+
   float hudAlpha = 0.0;
   if (hudOn > 0.5) {
     vec2 hudUv = mix(vUv, uv, ${HUD_BEND.toFixed(3)});
@@ -203,9 +244,7 @@ void main() {
     gl_FragColor.rgb = vec3(hudRed, hudMain.g, hudBlue) + under * (1.0 - hudMain.a);
   }
 
-  float luminance = dot(gl_FragColor.rgb, LUMA);
-  float noise = hash(floor(gl_FragCoord.xy) + grainTime * 131.0) - 0.5;
-  gl_FragColor.rgb += noise * (0.022 + 0.03 * (1.0 - luminance)) * grainAmount;
+  gl_FragColor.rgb += grainShift * hudAlpha;
 
   float scan = 0.5 + 0.5 * sin(vUv.y * lines * 6.28318);
   gl_FragColor.rgb *= 1.0 - scan * 0.07 * scanlines;
@@ -213,10 +252,6 @@ void main() {
   float roll = fract(vUv.y * 0.6 - time * 0.07);
   gl_FragColor.rgb *= 1.0 + animated * band * smoothstep(0.0, 0.04, roll) * smoothstep(0.1, 0.04, roll) * 0.035;
 
-  float pattern = bayer4(gl_FragCoord.xy);
-  float shadow = 1.0 - smoothstep(0.02, 0.4, luminance);
-  gl_FragColor.rgb += (pattern - 0.5) * 0.05 * shadow * dither;
-  gl_FragColor.rgb = floor(clamp(gl_FragColor.rgb, 0.0, 1.0) * levels + pattern) / levels;
   gl_FragColor.rgb *= 1.0 - (1.0 - vignette) * (0.62 * vignetteAmount + 0.25 * tension) * (1.0 - hudAlpha * 0.9);
   gl_FragColor.rgb = clamp(gl_FragColor.rgb, 0.0, 1.0);
 }
@@ -241,6 +276,7 @@ export class PostEffects {
 		this.target = new THREE.WebGLRenderTarget(1, 1, {
 			type: THREE.HalfFloatType,
 			depthBuffer: true,
+			depthTexture: new THREE.DepthTexture(1, 1),
 			samples,
 		});
 		this.material = new THREE.ShaderMaterial({
@@ -275,19 +311,22 @@ export class PostEffects {
 				grainTime: { value: 0 },
 				tension: { value: 0 },
 				animated: { value: 1 },
-				levels: { value: 127 },
+				levels: { value: COLOR_LEVELS },
+				sceneDepth: { value: null },
+				depthRange: { value: new THREE.Vector2(0.1, 100) },
+				depthOn: { value: 0 },
 				nausea: { value: 0 },
-				curvature: { value: 0 },
+				curvature: { value: POST_EFFECTS.curvature },
 				zoom: { value: 1 },
-				aberration: { value: 0 },
-				bleed: { value: 0 },
-				vignetteAmount: { value: 0 },
-				grainAmount: { value: 0 },
-				scanlines: { value: 0 },
-				dither: { value: 0 },
-				flicker: { value: 0 },
-				band: { value: 0 },
-				saturation: { value: 0 },
+				aberration: { value: POST_EFFECTS.aberration },
+				bleed: { value: POST_EFFECTS.bleed },
+				vignetteAmount: { value: POST_EFFECTS.vignette },
+				grainAmount: { value: POST_EFFECTS.grain },
+				scanlines: { value: POST_EFFECTS.scanlines },
+				dither: { value: POST_EFFECTS.dither },
+				flicker: { value: POST_EFFECTS.flicker },
+				band: { value: POST_EFFECTS.band },
+				saturation: { value: POST_EFFECTS.saturation },
 			},
 			depthTest: false,
 			depthWrite: false,
@@ -360,10 +399,9 @@ export class PostEffects {
 		this.tension +=
 			(Math.min(1, Math.max(0, frame.tension)) - this.tension) *
 			Math.min(1, frame.dt * 3);
-		const effects = frame.effects;
 		this.renderer.getDrawingBufferSize(this.size);
 		const zoom = curvatureZoom(
-			effects.curvature,
+			POST_EFFECTS.curvature,
 			this.size.x / Math.max(1, this.size.y),
 		);
 		const limit = this.renderer.capabilities.maxTextureSize;
@@ -385,24 +423,22 @@ export class PostEffects {
 		uniforms.lines.value = Math.min(cssHeight / 3, this.size.y / 2.5);
 		uniforms.time.value = this.time;
 		uniforms.grainTime.value = Math.floor(this.time * 24) / 24;
-		uniforms.tension.value = this.tension * effects.danger;
+		uniforms.tension.value = this.tension * POST_EFFECTS.danger;
 		uniforms.animated.value = frame.animated ? 1 : 0;
-		uniforms.levels.value = frame.colorLevels;
+		this.applyDepth(
+			frame.camera
+				? {
+						texture: this.target.depthTexture as THREE.DepthTexture,
+						camera: frame.camera,
+					}
+				: null,
+		);
 		this.nausea +=
 			(Math.min(1, Math.max(0, frame.nausea ?? 0)) - this.nausea) *
 			Math.min(1, frame.dt * 1.5);
 		uniforms.nausea.value = this.nausea;
-		uniforms.desaturate.value = (frame.desaturate ?? 0) * 0.75 * effects.danger;
-		uniforms.curvature.value = effects.curvature;
-		uniforms.aberration.value = effects.aberration;
-		uniforms.bleed.value = effects.bleed;
-		uniforms.vignetteAmount.value = effects.vignette;
-		uniforms.grainAmount.value = effects.grain;
-		uniforms.scanlines.value = effects.scanlines;
-		uniforms.dither.value = effects.dither;
-		uniforms.flicker.value = effects.flicker;
-		uniforms.band.value = effects.band;
-		uniforms.saturation.value = effects.saturation;
+		uniforms.desaturate.value =
+			(frame.desaturate ?? 0) * 0.75 * POST_EFFECTS.danger;
 
 		const previous = this.renderer.getRenderTarget();
 		this.renderer.setRenderTarget(this.target);
@@ -411,7 +447,20 @@ export class PostEffects {
 		this.renderer.render(this.scene, this.camera);
 	}
 
-	renderSquare(source: THREE.Texture, side: number): void {
+	private applyDepth(depth: SceneDepth | null): void {
+		const uniforms = this.material.uniforms;
+		uniforms.sceneDepth.value = depth?.texture ?? null;
+		uniforms.depthOn.value = depth ? 1 : 0;
+		if (depth) {
+			uniforms.depthRange.value.set(depth.camera.near, depth.camera.far);
+		}
+	}
+
+	renderSquare(
+		source: THREE.Texture,
+		side: number,
+		depth: SceneDepth | null = null,
+	): void {
 		const uniforms = this.material.uniforms;
 		const saved = {
 			scene: uniforms.scene.value,
@@ -421,6 +470,9 @@ export class PostEffects {
 			lines: uniforms.lines.value,
 			zoom: uniforms.zoom.value,
 			resolution: uniforms.resolution.value.clone(),
+			sceneDepth: uniforms.sceneDepth.value,
+			depthOn: uniforms.depthOn.value,
+			depthRange: uniforms.depthRange.value.clone(),
 		};
 		uniforms.scene.value = source;
 		uniforms.hudOn.value = 0;
@@ -429,7 +481,11 @@ export class PostEffects {
 		uniforms.resolution.value.set(side, side);
 		uniforms.lines.value = side / 3;
 		uniforms.zoom.value = this.squareScale;
+		this.applyDepth(depth);
 		this.renderer.render(this.scene, this.camera);
+		uniforms.sceneDepth.value = saved.sceneDepth;
+		uniforms.depthOn.value = saved.depthOn;
+		uniforms.depthRange.value.copy(saved.depthRange);
 		uniforms.scene.value = saved.scene;
 		uniforms.hudOn.value = saved.hudOn;
 		uniforms.desaturate.value = saved.desaturate;

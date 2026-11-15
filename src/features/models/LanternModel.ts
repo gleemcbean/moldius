@@ -1,6 +1,12 @@
 import * as THREE from "three";
+import {
+	meterCylinder,
+	meterLathe,
+	meterSphere,
+	meterTorus,
+} from "../world/geometryUtils";
 import type { MaterialOptions } from "../world/MaterialLibrary";
-import type { ModelKit } from "./modelKit";
+import { type ModelKit, PartList } from "./modelKit";
 
 const BRASS: MaterialOptions = {
 	texture: "brass",
@@ -21,6 +27,9 @@ const GLASS: MaterialOptions = {
 	depthWrite: false,
 	side: THREE.DoubleSide,
 };
+const WAX: MaterialOptions = { texture: "wax", roughness: 0.6 };
+const GRIP: MaterialOptions = { texture: "woodDark", roughness: 0.6 };
+const SOOT: MaterialOptions = { color: 0x0d0b09, roughness: 1 };
 const FLAME: MaterialOptions = {
 	texture: "flame",
 	unlit: true,
@@ -37,141 +46,442 @@ function towardWhite(color: number, amount: number): number {
 		.getHex();
 }
 
-const SEGMENTS = 20;
+const SEGMENTS = 36;
 const GLASS_RADIUS = 0.058;
-const SHUTTER_RADIUS = 0.066;
+const GLASS_BULGE = 0.066;
+const GUARD_GAP = 0.0035;
+const SHUTTER_RADIUS = 0.072;
 const GLASS_BOTTOM = 0.03;
 const GLASS_TOP = 0.19;
-const RIBS = 6;
+const GUARD_WIRES = 6;
+const BAIL_RADIUS = 0.076;
 const BAIL_Y = 0.2225;
 const HANDLE_Y = BAIL_Y + 0.08;
+const CANDLE_TOP = 0.0845;
+
+function glassRadiusAt(y: number): number {
+	const t = (y - GLASS_BOTTOM) / (GLASS_TOP - GLASS_BOTTOM);
+	return GLASS_RADIUS + (GLASS_BULGE - GLASS_RADIUS) * Math.sin(Math.PI * t);
+}
+
+function lathe(
+	profile: [number, number][],
+	segments = SEGMENTS,
+): THREE.BufferGeometry {
+	return meterLathe(
+		profile.map(([radius, height]) => new THREE.Vector2(radius, height)),
+		segments,
+	);
+}
+
+function at(
+	geometry: THREE.BufferGeometry,
+	x: number,
+	y: number,
+	z: number,
+	rotationX = 0,
+	rotationY = 0,
+	rotationZ = 0,
+): THREE.BufferGeometry {
+	geometry.applyMatrix4(
+		new THREE.Matrix4().compose(
+			new THREE.Vector3(x, y, z),
+			new THREE.Quaternion().setFromEuler(
+				new THREE.Euler(rotationX, rotationY, rotationZ, "YXZ"),
+			),
+			new THREE.Vector3(1, 1, 1),
+		),
+	);
+	return geometry;
+}
+
+function guardWire(angle: number): THREE.BufferGeometry {
+	const points: THREE.Vector3[] = [];
+	for (let step = 0; step <= 8; step += 1) {
+		const y =
+			GLASS_BOTTOM + 0.004 + ((GLASS_TOP - GLASS_BOTTOM - 0.008) * step) / 8;
+		const radius = glassRadiusAt(y) + GUARD_GAP;
+		points.push(
+			new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius),
+		);
+	}
+	return new THREE.TubeGeometry(
+		new THREE.CatmullRomCurve3(points),
+		20,
+		0.0017,
+		6,
+		false,
+	);
+}
 
 export class LanternModel {
 	readonly root = new THREE.Group();
 	readonly lightAnchor = new THREE.Object3D();
 	readonly handle = new THREE.Object3D();
-	private readonly shutter: THREE.Mesh;
+	private readonly shutter: THREE.Group;
 	private readonly flames: THREE.Mesh[] = [];
 	private readonly core: THREE.Mesh;
 	private openness = 0;
 	private time = Math.random() * 10;
 
 	constructor(kit: ModelKit, scale = 1, tint: number | null = null) {
-		const base = kit.lathe(
-			[
-				[0.001, 0],
-				[0.072, 0],
-				[0.078, 0.006],
-				[0.078, 0.014],
-				[0.07, 0.02],
-				[0.068, GLASS_BOTTOM],
-				[0.001, GLASS_BOTTOM],
-			],
-			BRASS,
-			SEGMENTS,
-		);
-		this.root.add(base);
+		const parts = new PartList();
 
-		const glass = kit.mesh(
-			new THREE.CylinderGeometry(
-				GLASS_RADIUS,
-				GLASS_RADIUS,
-				GLASS_TOP - GLASS_BOTTOM,
-				SEGMENTS,
-				1,
-				true,
+		parts.add(
+			BRASS,
+			lathe([
+				[0.001, 0],
+				[0.074, 0],
+				[0.079, 0.0025],
+				[0.0805, 0.007],
+				[0.078, 0.011],
+				[0.072, 0.013],
+				[0.0745, 0.0165],
+				[0.0745, 0.0225],
+				[0.071, 0.025],
+				[0.0665, 0.027],
+				[0.0665, GLASS_BOTTOM],
+				[0.001, GLASS_BOTTOM],
+			]),
+		);
+		parts.add(
+			BRASS,
+			at(meterTorus(0.0752, 0.0016, 6, SEGMENTS), 0, 0.0132, 0, Math.PI / 2),
+		);
+		for (let index = 0; index < 18; index += 1) {
+			const angle = (index / 18) * Math.PI * 2;
+			parts.add(
+				SOOT,
+				at(
+					meterSphere(0.0021, 8, 6).scale(0.5, 1.5, 1),
+					Math.cos(angle) * 0.0742,
+					0.0196,
+					Math.sin(angle) * 0.0742,
+					0,
+					-angle,
+				),
+			);
+		}
+
+		parts.add(
+			BRASS,
+			lathe(
+				[
+					[0.001, GLASS_BOTTOM],
+					[0.021, GLASS_BOTTOM],
+					[0.0235, GLASS_BOTTOM + 0.0055],
+					[0.0205, GLASS_BOTTOM + 0.0075],
+					[0.0175, GLASS_BOTTOM + 0.0045],
+					[0.001, GLASS_BOTTOM + 0.0045],
+				],
+				24,
 			),
+		);
+		parts.add(
+			WAX,
+			lathe(
+				[
+					[0.001, GLASS_BOTTOM + 0.004],
+					[0.0145, GLASS_BOTTOM + 0.004],
+					[0.0148, 0.072],
+					[0.015, 0.082],
+					[0.0136, CANDLE_TOP],
+					[0.0105, 0.0832],
+					[0.004, 0.0816],
+					[0.001, 0.0815],
+				],
+				24,
+			),
+		);
+		for (const [angle, length, drop] of [
+			[0.4, 0.016, 0.075],
+			[2.3, 0.011, 0.078],
+			[4.1, 0.022, 0.071],
+		] as const) {
+			parts.add(
+				WAX,
+				at(
+					meterSphere(0.0042, 10, 8).scale(1, length / 0.0084, 0.8),
+					Math.cos(angle) * 0.0147,
+					drop,
+					Math.sin(angle) * 0.0147,
+					0,
+					-angle,
+				),
+			);
+		}
+		parts.add(
+			SOOT,
+			at(
+				meterCylinder(0.0011, 0.0013, 0.011, 6),
+				0.0008,
+				0.0868,
+				0,
+				0,
+				0,
+				0.18,
+			),
+		);
+
+		const glass = lathe(
+			Array.from({ length: 9 }, (_, step) => {
+				const y = GLASS_BOTTOM + ((GLASS_TOP - GLASS_BOTTOM) * step) / 8;
+				return [glassRadiusAt(y), y] as [number, number];
+			}),
+		);
+		const glassMesh = kit.mesh(
+			glass,
 			tint === null ? GLASS : { ...GLASS, color: towardWhite(tint, 0.55) },
 		);
-		glass.position.y = (GLASS_TOP + GLASS_BOTTOM) / 2;
-		this.root.add(glass);
+		glassMesh.renderOrder = 1;
+		this.root.add(glassMesh);
 
-		for (const y of [GLASS_BOTTOM + 0.004, GLASS_TOP - 0.002]) {
-			const ring = kit.mesh(
-				new THREE.TorusGeometry(GLASS_RADIUS + 0.003, 0.004, 6, SEGMENTS),
+		for (let index = 0; index < GUARD_WIRES; index += 1) {
+			parts.add(
 				BRASS,
+				guardWire((index / GUARD_WIRES) * Math.PI * 2 + Math.PI / GUARD_WIRES),
 			);
-			ring.rotation.x = Math.PI / 2;
-			ring.position.y = y;
-			this.root.add(ring);
 		}
-		for (let index = 0; index < RIBS; index += 1) {
-			const angle = (index / RIBS) * Math.PI * 2;
-			const rib = kit.cylinder(
-				0.0035,
-				0.0035,
-				GLASS_TOP - GLASS_BOTTOM,
+		for (const y of [0.07, 0.15]) {
+			parts.add(
 				BRASS,
-				6,
+				at(
+					meterTorus(glassRadiusAt(y) + GUARD_GAP, 0.0017, 6, SEGMENTS),
+					0,
+					y,
+					0,
+					Math.PI / 2,
+				),
 			);
-			rib.position.set(
-				Math.cos(angle) * (GLASS_RADIUS + 0.002),
-				(GLASS_TOP + GLASS_BOTTOM) / 2,
-				Math.sin(angle) * (GLASS_RADIUS + 0.002),
-			);
-			this.root.add(rib);
 		}
+		for (const y of [GLASS_BOTTOM + 0.003, GLASS_TOP - 0.002]) {
+			parts.add(
+				BRASS,
+				at(
+					meterTorus(GLASS_RADIUS + 0.0035, 0.0034, 8, SEGMENTS),
+					0,
+					y,
+					0,
+					Math.PI / 2,
+				),
+			);
+		}
+
+		const roofY = GLASS_TOP;
+		parts.add(
+			BRASS,
+			lathe([
+				[0.001, roofY],
+				[0.074, roofY],
+				[0.0805, roofY + 0.003],
+				[0.0815, roofY + 0.008],
+				[0.0775, roofY + 0.0115],
+				[0.0705, roofY + 0.0155],
+				[0.0565, roofY + 0.028],
+				[0.0548, roofY + 0.0315],
+				[0.0525, roofY + 0.032],
+				[0.04, roofY + 0.0425],
+				[0.03, roofY + 0.05],
+				[0.0262, roofY + 0.054],
+				[0.0242, roofY + 0.058],
+				[0.001, roofY + 0.058],
+			]),
+		);
+		for (let index = 0; index < 14; index += 1) {
+			const angle = (index / 14) * Math.PI * 2;
+			parts.add(
+				SOOT,
+				at(
+					meterSphere(0.0024, 8, 6).scale(0.45, 0.9, 1.6),
+					Math.cos(angle) * 0.0617,
+					roofY + 0.0222,
+					Math.sin(angle) * 0.0617,
+					0,
+					-angle,
+					0.72,
+				),
+			);
+		}
+		parts.add(
+			BRASS,
+			at(meterCylinder(0.0165, 0.0185, 0.024, 20), 0, roofY + 0.07, 0),
+		);
+		parts.add(
+			BRASS,
+			at(meterTorus(0.0178, 0.0018, 6, 20), 0, roofY + 0.0815, 0, Math.PI / 2),
+		);
+		for (let index = 0; index < 3; index += 1) {
+			const angle = (index / 3) * Math.PI * 2;
+			parts.add(
+				BRASS,
+				at(
+					meterCylinder(0.0015, 0.0015, 0.008, 6),
+					Math.cos(angle) * 0.0155,
+					roofY + 0.0855,
+					Math.sin(angle) * 0.0155,
+				),
+			);
+		}
+		parts.add(
+			BRASS,
+			lathe(
+				[
+					[0.001, roofY + 0.0885],
+					[0.0305, roofY + 0.0885],
+					[0.031, roofY + 0.0905],
+					[0.0255, roofY + 0.0945],
+					[0.012, roofY + 0.1005],
+					[0.004, roofY + 0.1025],
+					[0.001, roofY + 0.1025],
+				],
+				24,
+			),
+		);
+		parts.add(
+			SOOT,
+			at(meterCylinder(0.0128, 0.0128, 0.001, 20), 0, roofY + 0.0822, 0),
+		);
+
+		parts.add(
+			BRASS,
+			at(meterTorus(BAIL_RADIUS, 0.0028, 8, 40, Math.PI), 0, BAIL_Y, 0),
+		);
+		for (const side of [-1, 1]) {
+			parts.add(
+				BRASS,
+				at(
+					meterCylinder(0.0085, 0.0085, 0.004, 16),
+					side * (BAIL_RADIUS - 0.002),
+					BAIL_Y,
+					0,
+					0,
+					0,
+					Math.PI / 2,
+				),
+			);
+			parts.add(
+				BRASS,
+				at(
+					meterSphere(0.0032, 10, 8),
+					side * (BAIL_RADIUS + 0.0012),
+					BAIL_Y,
+					0,
+				),
+			);
+			parts.add(
+				BRASS,
+				at(
+					meterCylinder(0.0024, 0.0024, 0.026, 8),
+					side * (BAIL_RADIUS - 0.014),
+					BAIL_Y,
+					0,
+					0,
+					0,
+					Math.PI / 2,
+				),
+			);
+			parts.add(
+				BRASS,
+				at(
+					meterCylinder(0.0018, 0.0018, 0.03, 6),
+					side * (BAIL_RADIUS - 0.006),
+					BAIL_Y - 0.014,
+					0,
+					0,
+					0,
+					side * 0.5,
+				),
+			);
+		}
+		parts.add(
+			GRIP,
+			at(
+				lathe(
+					[
+						[0.001, -0.021],
+						[0.0058, -0.021],
+						[0.0072, -0.016],
+						[0.0079, -0.006],
+						[0.0079, 0.006],
+						[0.0072, 0.016],
+						[0.0058, 0.021],
+						[0.001, 0.021],
+					],
+					16,
+				),
+				0,
+				BAIL_Y + BAIL_RADIUS - 0.0015,
+				0,
+				0,
+				0,
+				Math.PI / 2,
+			),
+		);
+		parts.add(
+			BRASS,
+			at(meterTorus(0.014, 0.0033, 8, 20), 0, BAIL_Y + BAIL_RADIUS + 0.0115, 0),
+		);
+		parts.build(kit, this.root);
 
 		const shutterHeight = GLASS_TOP - GLASS_BOTTOM;
-		const shutterGeometry = new THREE.CylinderGeometry(
-			SHUTTER_RADIUS,
-			SHUTTER_RADIUS,
-			shutterHeight,
-			SEGMENTS,
-			1,
-			true,
-		);
-		shutterGeometry.translate(0, -shutterHeight / 2, 0);
-		this.shutter = kit.mesh(shutterGeometry, IRON);
+		this.shutter = new THREE.Group();
 		this.shutter.position.y = GLASS_TOP;
+		const sleeve = new PartList();
+		sleeve.add(
+			IRON,
+			at(
+				new THREE.CylinderGeometry(
+					SHUTTER_RADIUS,
+					SHUTTER_RADIUS,
+					shutterHeight,
+					SEGMENTS,
+					1,
+					true,
+				),
+				0,
+				-shutterHeight / 2,
+				0,
+			),
+		);
+		sleeve.add(
+			BRASS,
+			at(
+				meterTorus(SHUTTER_RADIUS, 0.0032, 6, SEGMENTS),
+				0,
+				-shutterHeight,
+				0,
+				Math.PI / 2,
+			),
+		);
+		sleeve.add(
+			BRASS,
+			at(
+				meterTorus(SHUTTER_RADIUS, 0.0026, 6, SEGMENTS),
+				0,
+				-0.004,
+				0,
+				Math.PI / 2,
+			),
+		);
+		for (let row = 0; row < 4; row += 1) {
+			for (let column = 0; column < 12; column += 1) {
+				const angle = (column / 12) * Math.PI * 2 + (row % 2) * (Math.PI / 12);
+				sleeve.add(
+					SOOT,
+					at(
+						meterSphere(0.0026, 8, 6).scale(0.35, 1, 1),
+						Math.cos(angle) * (SHUTTER_RADIUS + 0.0002),
+						-0.03 - row * 0.032,
+						Math.sin(angle) * (SHUTTER_RADIUS + 0.0002),
+						0,
+						-angle,
+					),
+				);
+			}
+		}
+		sleeve.build(kit, this.shutter);
 		this.root.add(this.shutter);
-		const shutterLip = kit.mesh(
-			new THREE.TorusGeometry(SHUTTER_RADIUS, 0.003, 5, SEGMENTS),
-			BRASS,
-		);
-		shutterLip.rotation.x = Math.PI / 2;
-		shutterLip.position.y = -shutterHeight;
-		this.shutter.add(shutterLip);
 
-		const roof = kit.lathe(
-			[
-				[0.001, GLASS_TOP],
-				[0.074, GLASS_TOP],
-				[0.08, GLASS_TOP + 0.008],
-				[0.076, GLASS_TOP + 0.016],
-				[0.052, GLASS_TOP + 0.038],
-				[0.024, GLASS_TOP + 0.056],
-				[0.02, GLASS_TOP + 0.058],
-				[0.001, GLASS_TOP + 0.058],
-			],
-			BRASS,
-			SEGMENTS,
-		);
-		this.root.add(roof);
-		const chimney = kit.cylinder(0.016, 0.018, 0.026, BRASS, 12);
-		chimney.position.y = GLASS_TOP + 0.07;
-		this.root.add(chimney);
-		const cap = kit.lathe(
-			[
-				[0.001, GLASS_TOP + 0.08],
-				[0.026, GLASS_TOP + 0.08],
-				[0.022, GLASS_TOP + 0.088],
-				[0.001, GLASS_TOP + 0.094],
-			],
-			BRASS,
-			12,
-		);
-		this.root.add(cap);
-
-		const candle = kit.cylinder(
-			0.014,
-			0.016,
-			0.05,
-			{ texture: "wax", roughness: 0.6 },
-			10,
-		);
-		candle.position.y = 0.055;
-		this.root.add(candle);
 		for (const rotation of [0, Math.PI / 3, (Math.PI * 2) / 3]) {
 			const flame = kit.mesh(
 				new THREE.PlaneGeometry(0.04, 0.075),
@@ -196,20 +506,6 @@ export class LanternModel {
 		this.core.position.y = 0.102;
 		this.root.add(this.core);
 
-		const bail = kit.mesh(
-			new THREE.TorusGeometry(0.058, 0.0045, 6, 18, Math.PI),
-			BRASS,
-		);
-		bail.position.y = BAIL_Y;
-		this.root.add(bail);
-		for (const side of [-1, 1]) {
-			const lug = kit.sphere(0.008, BRASS, [1, 1, 1], 8);
-			lug.position.set(side * 0.058, BAIL_Y, 0);
-			this.root.add(lug);
-		}
-		const ring = kit.mesh(new THREE.TorusGeometry(0.014, 0.004, 6, 12), BRASS);
-		ring.position.y = BAIL_Y + 0.072;
-		this.root.add(ring);
 		this.handle.position.y = HANDLE_Y;
 		this.root.add(this.handle);
 		this.lightAnchor.position.y = 0.115;

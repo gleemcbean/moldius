@@ -12,6 +12,7 @@ export class PhotoCamera {
 	private readonly shot = new THREE.WebGLRenderTarget(1, 1, {
 		type: THREE.HalfFloatType,
 		depthBuffer: true,
+		depthTexture: new THREE.DepthTexture(1, 1),
 		samples: 4,
 	});
 	private readonly viewport = new THREE.Vector4();
@@ -83,7 +84,10 @@ export class PhotoCamera {
 		renderer.render(scene, this.camera);
 		renderer.setRenderTarget(null);
 		renderer.setViewport(0, 0, side / pixelRatio, side / pixelRatio);
-		post.renderSquare(this.shot.texture, side);
+		post.renderSquare(this.shot.texture, side, {
+			texture: this.shot.depthTexture as THREE.DepthTexture,
+			camera: this.camera,
+		});
 		const output = document.createElement("canvas");
 		output.width = PHOTO_SIZE;
 		output.height = PHOTO_SIZE;

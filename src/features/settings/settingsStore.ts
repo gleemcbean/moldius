@@ -7,12 +7,6 @@ import {
 } from "@shared/rewards";
 import { DEFAULT_KEYS } from "../../config/defaultKeys";
 import {
-	COLOR_LEVELS,
-	DEFAULT_COLOR_LEVELS,
-	DEFAULT_POST_EFFECT_PRESET,
-	POST_EFFECT_PRESETS,
-} from "../../config/graphics";
-import {
 	browserLanguage,
 	isLanguage,
 	type Language,
@@ -21,11 +15,7 @@ import { isDefaultName, randomDefaultName } from "../../i18n/names";
 import {
 	ACTION_IDS,
 	type ActionId,
-	type ColorLevels,
-	POST_EFFECT_IDS,
 	type PlayerSettings,
-	type PostEffectLevels,
-	type PostEffectPreset,
 	STATS_METRICS,
 	type StatsCorner,
 	type StatsMetric,
@@ -130,8 +120,6 @@ export function defaultSettings(
 		shadows: false,
 		renderScale: 0.85,
 		effects: true,
-		postEffects: { ...POST_EFFECT_PRESETS[DEFAULT_POST_EFFECT_PRESET] },
-		colorLevels: DEFAULT_COLOR_LEVELS,
 		fpsLimit: 0,
 		headBob: true,
 		reduceMotion: false,
@@ -244,7 +232,6 @@ export function assignFreshKeys(
 }
 
 type StoredSettings = Partial<PlayerSettings> & {
-	ambiance?: unknown;
 	showFps?: unknown;
 };
 
@@ -270,22 +257,6 @@ function sanitizeStats(raw: StoredSettings): StatsOverlaySettings {
 		graph: typeof saved.graph === "boolean" ? saved.graph : base.graph,
 		opacity: clampNumber(saved.opacity, 0.3, 1, base.opacity),
 	};
-}
-
-function sanitizePostEffects(
-	raw: StoredSettings,
-	base: PostEffectLevels,
-): PostEffectLevels {
-	const saved = raw.postEffects;
-	if (!saved || typeof saved !== "object") {
-		const legacy = clampNumber(raw.ambiance, 0, 1, 1);
-		return Object.fromEntries(
-			POST_EFFECT_IDS.map((id) => [id, base[id] * legacy]),
-		) as PostEffectLevels;
-	}
-	return Object.fromEntries(
-		POST_EFFECT_IDS.map((id) => [id, clampNumber(saved[id], 0, 1, base[id])]),
-	) as PostEffectLevels;
 }
 
 function sanitize(raw: StoredSettings | null): PlayerSettings {
@@ -348,10 +319,6 @@ function sanitize(raw: StoredSettings | null): PlayerSettings {
 		shadows: typeof raw.shadows === "boolean" ? raw.shadows : base.shadows,
 		renderScale: clampNumber(raw.renderScale, 0.5, 1.25, base.renderScale),
 		effects: typeof raw.effects === "boolean" ? raw.effects : base.effects,
-		postEffects: sanitizePostEffects(raw, base.postEffects),
-		colorLevels: COLOR_LEVELS.includes(raw.colorLevels as ColorLevels)
-			? (raw.colorLevels as ColorLevels)
-			: base.colorLevels,
 		fpsLimit: clampNumber(raw.fpsLimit, 0, 240, base.fpsLimit),
 		headBob: typeof raw.headBob === "boolean" ? raw.headBob : base.headBob,
 		reduceMotion:
@@ -382,29 +349,6 @@ settingsStore.subscribe((state) => writeJson(STORAGE_KEY, state));
 
 export function updateSettings(patch: Partial<PlayerSettings>): void {
 	settingsStore.set(patch);
-}
-
-export function setPostEffect(id: keyof PostEffectLevels, value: number): void {
-	settingsStore.set({
-		postEffects: { ...settingsStore.get().postEffects, [id]: value },
-	});
-}
-
-export function applyPostEffectPreset(preset: PostEffectPreset): void {
-	settingsStore.set({ postEffects: { ...POST_EFFECT_PRESETS[preset] } });
-}
-
-export function matchingPostEffectPreset(
-	levels: PostEffectLevels,
-): PostEffectPreset | null {
-	const presets = Object.keys(POST_EFFECT_PRESETS) as PostEffectPreset[];
-	return (
-		presets.find((preset) =>
-			POST_EFFECT_IDS.every(
-				(id) => Math.abs(POST_EFFECT_PRESETS[preset][id] - levels[id]) < 0.001,
-			),
-		) ?? null
-	);
 }
 
 export function setLanguage(language: Language, renameDefault: boolean): void {

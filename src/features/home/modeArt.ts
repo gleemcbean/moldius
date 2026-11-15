@@ -24,12 +24,7 @@ import {
 	MANOR_GROUND_LIGHT,
 	MANOR_SKY_LIGHT,
 } from "../../config/feel";
-import {
-	DEFAULT_COLOR_LEVELS,
-	DEFAULT_POST_EFFECT_PRESET,
-	POST_EFFECT_PRESETS,
-	QUALITY_PRESETS,
-} from "../../config/graphics";
+import { QUALITY_PRESETS, surfaceQuality } from "../../config/graphics";
 import { AmbientMotes } from "../engine/effects/AmbientMotes";
 import { type DynamicLight, LightPool } from "../engine/lighting/LightPool";
 import { PostEffects } from "../engine/render/PostEffects";
@@ -690,7 +685,9 @@ async function drawPlates<Name extends string>(
 			QUALITY_PRESETS.high.textureAnisotropy,
 			renderer.capabilities.getMaxAnisotropy(),
 		),
+		surfaceQuality("high"),
 	);
+	await textures.prepare();
 	const materials = new MaterialLibrary(textures);
 	const kit = new ModelKit(materials);
 	const layout = generateManor(ART_SEED, {
@@ -723,11 +720,10 @@ async function drawPlates<Name extends string>(
 			post.render(
 				{
 					dt: 1,
-					effects: POST_EFFECT_PRESETS[DEFAULT_POST_EFFECT_PRESET],
 					tension: plate.mood.tension,
 					animated: false,
-					colorLevels: DEFAULT_COLOR_LEVELS,
 					desaturate: plate.mood.desaturate,
+					camera: stage.camera,
 				},
 				() => renderer.render(stage.scene, stage.camera),
 			);

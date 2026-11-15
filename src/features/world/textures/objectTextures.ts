@@ -7,42 +7,6 @@ import {
 } from "./PixelPainter";
 import type { TextureRecipe } from "./surfaceTextures";
 
-function woodGrain(base: number): TextureRecipe {
-	return {
-		size: [32, 32],
-		tile: 0.5,
-		draw: (p) => {
-			const color = hexToRgb(base);
-			const rows = Array.from({ length: 32 }, () => p.rng.next() - 0.5);
-			const phases = rows.map(() => p.rng.next() * Math.PI * 2);
-			for (let y = 0; y < 32; y += 1) {
-				const tone =
-					rows[y] * 0.1 + rows[(y + 1) % 32] * 0.06 + rows[(y + 3) % 32] * 0.04;
-				for (let x = 0; x < 32; x += 1) {
-					const drift = Math.sin((x / 32) * Math.PI * 2 + phases[y]) * 0.018;
-					p.setRaw(
-						x,
-						y,
-						shade(color, 1 + tone + drift + (p.rng.next() - 0.5) * 0.025),
-						255,
-					);
-				}
-			}
-			for (let index = 0; index < 9; index += 1) {
-				const dark = index % 3 !== 0;
-				p.rect(
-					p.rng.int(0, 31),
-					p.rng.int(0, 31),
-					p.rng.int(9, 28),
-					1,
-					shade(color, dark ? 0.76 : 1.14),
-					dark ? 96 : 60,
-				);
-			}
-		},
-	};
-}
-
 function fabric(base: number, pattern: "plain" | "weave"): TextureRecipe {
 	return {
 		size: [32, 32],
@@ -58,22 +22,6 @@ function fabric(base: number, pattern: "plain" | "weave"): TextureRecipe {
 				}
 			}
 			p.noise(0.05);
-		},
-	};
-}
-
-function metal(base: number, rust: number): TextureRecipe {
-	return {
-		size: [32, 32],
-		tile: 0.5,
-		draw: (p) => {
-			const color = hexToRgb(base);
-			for (let y = 0; y < 32; y += 1) {
-				p.rect(0, y, 32, 1, shade(color, 0.92 + Math.sin(y * 0.8) * 0.06));
-			}
-			p.noise(0.14);
-			p.stain(rust, hexToRgb(0x6b3a1e), 4, 120);
-			p.speckle(10, shade(color, 1.4));
 		},
 	};
 }
@@ -259,161 +207,13 @@ function paintLeafClipped(
 	}
 }
 
-function terracotta(): TextureRecipe {
-	return {
-		size: [48, 32],
-		tile: [0.6, 0.4],
-		draw: (p) => {
-			const clay = hexToRgb(0xa8603c);
-			for (let y = 0; y < 32; y += 1) {
-				const band = 1 + Math.sin((y / 32) * Math.PI * 6) * 0.025;
-				for (let x = 0; x < 48; x += 1) {
-					p.setRaw(x, y, shade(clay, band + (p.rng.next() - 0.5) * 0.05), 255);
-				}
-			}
-			p.stain(4, shade(clay, 0.78), 7, 36);
-			p.speckle(10, shade(clay, 1.25), 90);
-		},
-	};
-}
-
-function veinedStone(
-	base: number,
-	vein: number,
-	veins: number,
-	strength: number,
-): TextureRecipe {
-	return {
-		size: [64, 64],
-		tile: 1,
-		draw: (p) => {
-			const baseColor = hexToRgb(base);
-			const veinColor = hexToRgb(vein);
-			p.fill(baseColor);
-			p.stain(6, shade(baseColor, 0.86), 15, 34);
-			p.stain(4, shade(baseColor, 1.12), 11, 26);
-			for (let index = 0; index < veins; index += 1) {
-				const origin = p.rng.int(0, 63);
-				const phase = p.rng.next() * Math.PI * 2;
-				const wander = 3 + p.rng.next() * 6;
-				const slant = p.rng.int(-1, 1) * 64;
-				for (let y = 0; y < 64; y += 1) {
-					const t = (y / 64) * Math.PI * 2;
-					const x =
-						origin +
-						(y / 64) * slant +
-						Math.sin(t + phase) * wander +
-						Math.sin(t * 3 + phase * 2) * 1.8;
-					p.set(x, y, veinColor, strength);
-					p.set(x + 1, y, veinColor, strength * 0.4);
-				}
-			}
-			p.noise(0.025);
-		},
-	};
-}
-
-function grainedStone(
-	base: number,
-	dark: number,
-	light: number,
-	grains: number,
-): TextureRecipe {
-	return {
-		size: [48, 48],
-		tile: 0.75,
-		draw: (p) => {
-			const baseColor = hexToRgb(base);
-			p.fill(baseColor);
-			p.stain(5, shade(baseColor, 0.9), 12, 30);
-			p.speckle(grains, hexToRgb(dark), 90);
-			p.speckle(Math.round(grains * 0.7), hexToRgb(light), 80);
-			p.noise(0.05);
-		},
-	};
-}
-
-function beddedStone(base: number, band: number): TextureRecipe {
-	return {
-		size: [48, 48],
-		tile: 1,
-		draw: (p) => {
-			const baseColor = hexToRgb(base);
-			const bandColor = hexToRgb(band);
-			p.fill(baseColor);
-			for (let row = 0; row < 7; row += 1) {
-				const y = p.rng.int(0, 47);
-				const thickness = p.rng.int(1, 4);
-				for (let x = 0; x < 48; x += 1) {
-					const wave = Math.round(Math.sin((x / 48) * Math.PI * 2 + row) * 1.2);
-					p.rect(x, y + wave, 1, thickness, bandColor, 60);
-				}
-			}
-			p.speckle(40, shade(baseColor, 0.8), 120);
-			p.noise(0.06);
-		},
-	};
-}
-
 export const OBJECT_TEXTURES: Record<string, TextureRecipe> = {
-	woodDark: woodGrain(0x3d2718),
-	woodMedium: woodGrain(0x6b4426),
-	woodLight: woodGrain(0x9a7046),
-	woodRed: woodGrain(0x6a2c1c),
-	woodPainted: woodGrain(0x3f4a3a),
-	iron: metal(0x3b3d40, 4),
-	brass: metal(0xa07a32, 1),
-	copper: metal(0x9a5534, 3),
-	pipeMetal: metal(0x4f5452, 7),
 	velvetRed: fabric(0x6a1a22, "plain"),
 	velvetGreen: fabric(0x23402e, "plain"),
 	velvetBlue: fabric(0x22305a, "plain"),
 	velvetPurple: fabric(0x46264f, "plain"),
 	linen: fabric(0xd8cfba, "weave"),
 	burlap: fabric(0x8a7048, "weave"),
-	leather: {
-		size: [32, 32],
-		tile: 0.5,
-		draw: (p) => {
-			p.fill(hexToRgb(0x4a2a1a));
-			p.noise(0.25, 2);
-			p.noise(0.1);
-		},
-	},
-	stoneSmooth: {
-		size: [32, 32],
-		tile: 0.6,
-		draw: (p) => {
-			p.fill(hexToRgb(0x76726a));
-			p.noise(0.18, 2);
-			p.noise(0.08);
-			p.stain(3, hexToRgb(0x5b5850), 5, 80);
-		},
-	},
-	marble: {
-		size: [64, 64],
-		tile: 1,
-		draw: (p) => {
-			p.fill(hexToRgb(0xd9d4c8));
-			p.stain(5, hexToRgb(0xc4bfb4), 16, 26);
-			for (let index = 0; index < 3; index += 1) {
-				const origin = p.rng.int(0, 63);
-				const phase = p.rng.next() * Math.PI * 2;
-				const wander = 3 + p.rng.next() * 4;
-				const vein = hexToRgb(0x9c978c);
-				for (let y = 0; y < 64; y += 1) {
-					const t = (y / 64) * Math.PI * 2;
-					const x =
-						origin +
-						Math.sin(t + phase) * wander +
-						Math.sin(t * 3 + phase * 2) * 1.6;
-					p.set(x, y, vein, 74);
-					p.set(x + 1, y, vein, 28);
-				}
-			}
-			p.noise(0.025);
-		},
-	},
 	books: {
 		size: [64, 32],
 		tile: [0.8, 0.4],
@@ -448,59 +248,12 @@ export const OBJECT_TEXTURES: Record<string, TextureRecipe> = {
 			}
 		},
 	},
-	soil: {
-		size: [32, 32],
-		tile: 0.6,
-		draw: (p) => {
-			p.fill(hexToRgb(0x3a2a1c));
-			p.noise(0.4, 2);
-			p.speckle(30, hexToRgb(0x5a4a34));
-		},
-	},
-	marbleBlack: veinedStone(0x24242a, 0xc0bcae, 4, 150),
-	marbleRose: veinedStone(0xc49a92, 0x7a4a48, 4, 110),
-	marbleGreen: veinedStone(0x2c5546, 0xa8cfae, 5, 130),
-	marbleGold: veinedStone(0xd2c29c, 0x8a6a30, 3, 120),
-	limestone: grainedStone(0xbcb29a, 0x8e856f, 0xd8cfb8, 150),
-	granite: grainedStone(0x6c6c70, 0x2c2c30, 0xb4b4b8, 340),
-	basalt: grainedStone(0x35373c, 0x1e2024, 0x54575c, 220),
-	sandstone: beddedStone(0xb48c5c, 0x8c6638),
-	slate: beddedStone(0x4a525a, 0x323840),
-	terracotta: terracotta(),
 	leafBlade: leafBlade(),
 	palmFrond: palmFrond(),
 	leafSprig: leafSprig(),
 	foliage: leaves(0x3f7a34),
 	foliageDark: leaves(0x2a5a2a),
 	foliageWarm: leaves(0x6a7a2a),
-	bark: {
-		size: [32, 32],
-		tile: 0.5,
-		draw: (p) => {
-			p.fill(hexToRgb(0x4a3828));
-			for (let x = 0; x < 32; x += 3) {
-				p.rect(x, 0, 1, 32, hexToRgb(0x2e2218));
-			}
-			p.noise(0.2);
-		},
-	},
-	ceramic: {
-		size: [32, 32],
-		tile: 0.5,
-		draw: (p) => {
-			p.fill(hexToRgb(0xe6e1d3));
-			p.noise(0.04);
-			p.stain(2, hexToRgb(0xb9b3a3), 4, 60);
-		},
-	},
-	wax: {
-		size: [16, 16],
-		tile: 0.2,
-		draw: (p) => {
-			p.fill(hexToRgb(0xe9dcb8));
-			p.noise(0.06);
-		},
-	},
 	slime: {
 		size: [32, 32],
 		tile: 1,

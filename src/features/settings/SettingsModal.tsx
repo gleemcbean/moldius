@@ -9,8 +9,8 @@ import { AudioSettings } from "./AudioSettings";
 import { ControlsSettings } from "./ControlsSettings";
 import { DevSettings } from "./DevSettings";
 import { DisplaySettings } from "./DisplaySettings";
-import { StatsSettings } from "./StatsSettings";
 import styles from "./SettingsModal.module.scss";
+import { StatsSettings } from "./StatsSettings";
 
 type Tab = "controls" | "display" | "stats" | "audio" | "dev";
 

@@ -9,7 +9,7 @@ import {
 	randomChaseCourse,
 } from "@shared/showcase/chaseDirector";
 import * as THREE from "three";
-import { renderPixelRatio } from "../../config/graphics";
+import { renderPixelRatio, surfaceQuality } from "../../config/graphics";
 import { AmbientMotes } from "../engine/effects/AmbientMotes";
 import { LightPool } from "../engine/lighting/LightPool";
 import { PostEffects } from "../engine/render/PostEffects";
@@ -33,9 +33,13 @@ export class HomeScene {
 	private readonly renderer: THREE.WebGLRenderer;
 	private readonly scene = new THREE.Scene();
 	private readonly camera = new THREE.PerspectiveCamera(60, 1, 0.05, 60);
-	private readonly textures = new TextureLibrary(2);
+	private readonly textures = new TextureLibrary(
+		2,
+		surfaceQuality(settingsStore.get().quality),
+	);
 	private readonly materials = new MaterialLibrary(this.textures);
 	private readonly kit = new ModelKit(this.materials);
+	private disposed = false;
 	private readonly director: ChaseDirector;
 	private readonly doors: DoorViews;
 	private readonly lights: LightPool;
@@ -100,6 +104,7 @@ export class HomeScene {
 			this.scene,
 			6,
 			layout.lights.filter((light) => visible.has(light.roomId)),
+			layout.rooms,
 		);
 
 		this.mushroom = new MushroomModel(
@@ -119,7 +124,12 @@ export class HomeScene {
 		this.observer = new ResizeObserver(() => this.resize());
 		this.observer.observe(host);
 		this.resize();
-		this.frame = requestAnimationFrame(this.loop);
+		void this.textures.settled().then(() => {
+			if (!this.disposed) {
+				this.last = performance.now();
+				this.frame = requestAnimationFrame(this.loop);
+			}
+		});
 	}
 
 	setAppearance(color: number, pattern: HatPattern, tint: LanternTint): void {
@@ -233,10 +243,9 @@ export class HomeScene {
 		this.post.render(
 			{
 				dt,
-				effects: settings.postEffects,
 				tension: shot.lunge > 0 ? 0.7 : 0.2,
 				animated: !settings.reduceMotion,
-				colorLevels: settings.colorLevels,
+				camera: this.camera,
 			},
 			() => this.renderer.render(this.scene, this.camera),
 		);
@@ -248,6 +257,7 @@ export class HomeScene {
 	};
 
 	dispose(): void {
+		this.disposed = true;
 		cancelAnimationFrame(this.frame);
 		this.observer.disconnect();
 		this.lights.dispose(this.scene);

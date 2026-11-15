@@ -12,6 +12,7 @@ import {
 	scaleUv,
 } from "../geometryUtils";
 import type { MaterialOptions } from "../MaterialLibrary";
+import { isFineTexture } from "../textures/surface/recipes";
 
 export interface PartAnimation {
 	kind: "swing" | "spin";
@@ -88,6 +89,42 @@ export function part(
 	return { geometry, material };
 }
 
+const BEVEL_THINNEST = 0.015;
+const BEVEL_LARGEST = 0.01;
+
+function edgeBevel(
+	material: MaterialOptions,
+	width: number,
+	height: number,
+	depth: number,
+): number {
+	if (
+		!material.texture ||
+		material.transparent ||
+		!isFineTexture(material.texture)
+	) {
+		return 0;
+	}
+	const smallest = Math.min(width, height, depth);
+	return smallest < BEVEL_THINNEST
+		? 0
+		: Math.min(BEVEL_LARGEST, smallest * 0.15);
+}
+
+function bevelledBox(
+	material: MaterialOptions,
+	width: number,
+	height: number,
+	depth: number,
+	rounded: number,
+): THREE.BufferGeometry {
+	const radius =
+		rounded > 0 ? rounded : edgeBevel(material, width, height, depth);
+	return radius > 0
+		? roundedBox(width, height, depth, radius)
+		: meterBox(width, height, depth);
+}
+
 export function box(
 	material: MaterialOptions,
 	width: number,
@@ -99,11 +136,16 @@ export function box(
 	rotationY = 0,
 	rounded = 0,
 ): Part {
-	const geometry =
-		rounded > 0
-			? roundedBox(width, height, depth, rounded)
-			: meterBox(width, height, depth);
-	return part(placed(geometry, x, y + height / 2, z, rotationY), material);
+	return part(
+		placed(
+			bevelledBox(material, width, height, depth, rounded),
+			x,
+			y + height / 2,
+			z,
+			rotationY,
+		),
+		material,
+	);
 }
 
 export function boxAt(
@@ -119,7 +161,7 @@ export function boxAt(
 	rz = 0,
 ): Part {
 	return part(
-		placed(meterBox(width, height, depth), x, y, z, ry, rx, rz),
+		placed(bevelledBox(material, width, height, depth, 0), x, y, z, ry, rx, rz),
 		material,
 	);
 }
@@ -342,6 +384,11 @@ export function carvedForSeed(seed: number): MaterialOptions {
 export const LINEN: MaterialOptions = { texture: "linen", roughness: 0.95 };
 export const DARK: MaterialOptions = { color: 0x0b0907, roughness: 1 };
 
+function positionHash(x: number, z: number, salt: number): number {
+	const value = Math.sin(x * 12.9898 + z * 78.233 + salt * 37.719) * 43758.5453;
+	return value - Math.floor(value);
+}
+
 export function candle(
 	x: number,
 	y: number,
@@ -349,9 +396,46 @@ export function candle(
 	height = 0.16,
 	radius = 0.025,
 ): Part[] {
-	return [
-		cylinder(WAX, radius, radius * 1.1, height, x, y, z, 10),
+	const crater = radius * 0.22;
+	const parts: Part[] = [
+		lathe(
+			WAX,
+			[
+				[0.001, 0],
+				[radius * 1.1, 0],
+				[radius * 1.07, height * 0.45],
+				[radius, height * 0.9],
+				[radius * 1.03, height],
+				[radius * 0.8, height - crater * 0.6],
+				[radius * 0.3, height - crater],
+				[0.001, height - crater],
+			],
+			x,
+			y,
+			z,
+			14,
+		),
+		cylinder(DARK, 0.0012, 0.0016, 0.014, x, y + height - crater, z, 5),
 		texturedPlane(FLAME, 0.05, 0.09, x, y + height + 0.045, z),
 		texturedPlane(FLAME, 0.05, 0.09, x, y + height + 0.045, z, Math.PI / 2),
 	];
+	const drips = 1 + Math.floor(positionHash(x, z, 1) * 3);
+	for (let index = 0; index < drips; index += 1) {
+		const angle = positionHash(x, z, index + 2) * Math.PI * 2;
+		const length = 1.6 + positionHash(x, z, index + 7) * 2.2;
+		parts.push(
+			sphere(
+				WAX,
+				radius * 0.2,
+				x + Math.cos(angle) * radius * 1.02,
+				y + height - radius * (0.35 + length * 0.18),
+				z + Math.sin(angle) * radius * 1.02,
+				0.9,
+				length,
+				0.9,
+				8,
+			),
+		);
+	}
+	return parts;
 }

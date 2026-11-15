@@ -21,7 +21,7 @@ import {
 	MANOR_GROUND_LIGHT,
 	MANOR_SKY_LIGHT,
 } from "../../../config/feel";
-import { QUALITY_PRESETS } from "../../../config/graphics";
+import { QUALITY_PRESETS, surfaceQuality } from "../../../config/graphics";
 import { currentMessages } from "../../../i18n";
 import type { LoadStepId } from "../../../i18n/sections/game";
 import { audioEngine } from "../../audio/audioEngine";
@@ -29,9 +29,6 @@ import { soundBank } from "../../audio/soundBank";
 import { AmbientAudio } from "../../engine/audio/AmbientAudio";
 import { AmbientMotes } from "../../engine/effects/AmbientMotes";
 import { HazardViews } from "../../engine/effects/HazardViews";
-import { createPingMaterial } from "../../engine/world/PingViews";
-import { GHOST_MATERIAL } from "../../models/MushroomModel";
-
 import { ParticleSystem } from "../../engine/effects/Particles";
 import { AnomalyViews } from "../../engine/entities/AnomalyViews";
 import { RemotePlayers } from "../../engine/entities/RemotePlayers";
@@ -48,6 +45,7 @@ import { AltarViews } from "../../engine/world/AltarViews";
 import { DoorViews } from "../../engine/world/DoorViews";
 import { GadgetViews } from "../../engine/world/GadgetViews";
 import { PickupViews } from "../../engine/world/PickupViews";
+import { createPingMaterial } from "../../engine/world/PingViews";
 import { StakeViews } from "../../engine/world/StakeViews";
 import { GrimoireController } from "../../grimoire/GrimoireController";
 import { renderIllustrations } from "../../grimoire/illustrations";
@@ -56,6 +54,7 @@ import { ensurePageFonts } from "../../grimoire/pageRenderer";
 import { ensureHudFonts, HudCanvas } from "../../hud/HudCanvas";
 import { createAnomalyModel } from "../../models/anomalies/createAnomalyModel";
 import { createCameraModel } from "../../models/cameraModel";
+import { GHOST_MATERIAL } from "../../models/MushroomModel";
 import { ModelKit } from "../../models/modelKit";
 import { createWalkieModel } from "../../models/walkieModel";
 import { getSocket } from "../../network/socket";
@@ -352,12 +351,18 @@ export async function loadSession(
 		preset.textureAnisotropy,
 		renderer.capabilities.getMaxAnisotropy(),
 	);
-	const textures = new TextureLibrary(anisotropy);
+	const textures = new TextureLibrary(
+		anisotropy,
+		surfaceQuality(settings.quality),
+	);
 	const keys = textures.keys;
+	await textures.prepare(keys, (fraction) =>
+		progress("textures", fraction * 0.7),
+	);
 	for (const [index, key] of keys.entries()) {
 		textures.build(key);
 		if (index % 8 === 7) {
-			progress("textures", (index + 1) / keys.length);
+			progress("textures", 0.7 + ((index + 1) / keys.length) * 0.3);
 			await nextFrame();
 		}
 	}
