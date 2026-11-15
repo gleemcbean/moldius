@@ -40,21 +40,8 @@ describe("grammaire Vosk des incantations", () => {
 			const grammar = voskGrammar(language, formulas);
 			expect(grammar.at(-1)).toBe("[unk]");
 			for (const phrase of grammar.slice(0, -1)) {
-				const words = phrase.split(" ").length;
 				expect(
-					formulas.some((formula) =>
-						formula.some((_, start) =>
-							[1, 2, 3].some(
-								(length) =>
-									start + length <= formula.length &&
-									words >= length &&
-									transcriptMatchesFormula(
-										phrase,
-										formula.slice(start, start + length),
-									),
-							),
-						),
-					),
+					formulas.some((formula) => transcriptMatchesFormula(phrase, formula)),
 					`${language} « ${phrase} »`,
 				).toBe(true);
 			}
@@ -62,31 +49,6 @@ describe("grammaire Vosk des incantations", () => {
 				expect(
 					grammar.some((phrase) => transcriptMatchesFormula(phrase, formula)),
 				).toBe(true);
-			}
-		}
-	});
-
-	it("accepte aussi des morceaux de formule pour une incantation hachée", () => {
-		const formulas = generateFormulas(new SeededRandom(11), 4);
-		for (const language of ["fr", "en"] as const) {
-			const grammar = voskGrammar(language, formulas);
-			for (const formula of formulas) {
-				for (const word of formula) {
-					expect(
-						grammar.some((phrase) => transcriptMatchesFormula(phrase, [word])),
-						`${language} ${word}`,
-					).toBe(true);
-				}
-				const full = grammar.findIndex((phrase) =>
-					transcriptMatchesFormula(phrase, formula),
-				);
-				const single = grammar.findIndex(
-					(phrase) =>
-						transcriptMatchesFormula(phrase, [formula[0]]) &&
-						!transcriptMatchesFormula(phrase, formula),
-				);
-				expect(full).toBeGreaterThanOrEqual(0);
-				expect(full).toBeLessThan(single);
 			}
 		}
 	});

@@ -11,6 +11,7 @@ import type { ManorLayout } from "@shared/manor/types";
 import { CollisionWorld } from "@shared/physics/collisionWorld";
 import type { MatchInit } from "@shared/protocol/game";
 import { DEFAULT_LANTERN_TINT, LANTERN_TINT_COLORS } from "@shared/rewards";
+import { TUTORIAL_DUMMY_ID } from "@shared/tutorial";
 import * as THREE from "three";
 import {
 	LANTERN_COLOR,
@@ -266,6 +267,19 @@ function requestServerLayout(init: MatchInit): Promise<ManorLayout> {
 	});
 }
 
+function withTutorialNames(init: MatchInit): MatchInit {
+	if (!init.tutorial) {
+		return init;
+	}
+	const name = currentMessages().game.tutorial.dummyName;
+	return {
+		...init,
+		players: init.players.map((player) =>
+			player.id === TUTORIAL_DUMMY_ID ? { ...player, name } : player,
+		),
+	};
+}
+
 function spawn0(init: MatchInit, selfId: string) {
 	return (
 		init.players.find((player) => player.id === selfId)?.spawn ?? {
@@ -289,7 +303,12 @@ export async function loadSession(
 	progress("manor", 1);
 
 	const world = new CollisionWorld(layout);
-	const state = new ClientWorldState(init, layout, world, selfId);
+	const state = new ClientWorldState(
+		withTutorialNames(init),
+		layout,
+		world,
+		selfId,
+	);
 	progress("collisions", 1);
 	await nextFrame();
 

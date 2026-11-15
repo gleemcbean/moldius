@@ -2,7 +2,9 @@ import { CAST_LISTEN_MAX_MS } from "@shared/config/index";
 import type { Language } from "@shared/i18n/languages";
 import { VOSK_MODEL_FILES } from "@shared/protocol/speech";
 import { currentLanguage, currentMessages } from "../../i18n";
+import { audioEngine } from "../audio/audioEngine";
 import { micManager } from "./micManager";
+import { loadVoiceWorklet } from "./voiceWorklet";
 import { voskGrammar } from "./voskGrammar";
 
 const WORKER_URL = "/vosk/worker.js";
@@ -10,6 +12,52 @@ const SETTLE_MS = 700;
 const CONCLUDE_TIMEOUT_MS = 4000;
 const CHUNK_SIZE = 4096;
 const INT16_SCALE = 0x8000;
+const MAX_SESSION_AUDIO_MS = CAST_LISTEN_MAX_MS + 2000;
+const GAP_MAX_MS = 2000;
+const SPEAKING_LEVEL = 0.12;
+const SPEECH_HOLD_MS = 500;
+const CHECK_INTERVAL_MS = 200;
+const WORKLET_RATE = 16_000;
+const WORKLET_BLOCK_SAMPLES = 1600;
+const LEVEL_MIN_DB = -62;
+const LEVEL_MAX_DB = -12;
+
+let workletState: "idle" | "loading" | "ready" | "failed" = "idle";
+
+function geckoCapture(): boolean {
+	return (
+		typeof navigator !== "undefined" && /Firefox\//.test(navigator.userAgent)
+	);
+}
+
+function prepareWorklet(): void {
+	if (workletState !== "idle") {
+		return;
+	}
+	workletState = "loading";
+	void loadVoiceWorklet().then(
+		(ok) => {
+			workletState = ok ? "ready" : "failed";
+		},
+		() => {
+			workletState = "failed";
+		},
+	);
+}
+
+function chunkLevel(samples: Float32Array): number {
+	let sum = 0;
+	for (const value of samples) {
+		const normalized = value / INT16_SCALE;
+		sum += normalized * normalized;
+	}
+	const rms = Math.sqrt(sum / Math.max(1, samples.length));
+	const db = 20 * Math.log10(Math.max(rms, 1e-7));
+	return Math.min(
+		1,
+		Math.max(0, (db - LEVEL_MIN_DB) / (LEVEL_MAX_DB - LEVEL_MIN_DB)),
+	);
+}
 
 type VoskReply =
 	| { event: "load"; result: boolean }
@@ -157,28 +205,76 @@ export function preloadVosk(): void {
 	}
 }
 
+interface Segment {
+	final: string;
+	partial: string;
+}
+
+interface Tap {
+	kind: "script" | "worklet";
+	stream: MediaStream;
+	context: AudioContext;
+	sampleRate: number;
+	source: MediaStreamAudioSourceNode;
+	processor: ScriptProcessorNode | AudioWorkletNode;
+	sink: GainNode;
+}
+
+interface ListenSession {
+	model: RecognizerBackend;
+	recognizerId: string;
+	callbacks: VoskCallbacks;
+	segments: Segment[];
+	partial: string;
+	pending: number;
+	concluding: boolean;
+	settle: number | null;
+	check: number | null;
+	giveUp: number | null;
+	fedSamples: number;
+	sampleRate: number;
+	spokeAt: number;
+}
+
+export function sessionTranscripts(
+	segments: readonly Segment[],
+	partial: string,
+): string[] {
+	const join = (parts: string[]) =>
+		parts
+			.filter((part) => part.length > 0)
+			.join(" ")
+			.trim();
+	const finals = join(segments.map((segment) => segment.final));
+	const hopeful = join([
+		...segments.map((segment) => segment.final || segment.partial),
+		partial,
+	]);
+	const partials = join([
+		...segments.map((segment) => segment.partial || segment.final),
+		partial,
+	]);
+	return [...new Set([finals, hopeful, partials])].filter(
+		(text) => text.length > 0,
+	);
+}
+
 export class VoskListener {
-	private context: AudioContext | null = null;
-	private session: {
-		model: RecognizerBackend;
-		recognizerId: string;
-		source: MediaStreamAudioSourceNode;
-		processor: ScriptProcessorNode;
-		sink: GainNode;
-		callbacks: VoskCallbacks;
-		heard: string[];
-		pending: number;
-		concluding: boolean;
-		settle: number | null;
-		timeout: number;
-		giveUp: number | null;
-	} | null = null;
+	private tap: Tap | null = null;
+	private gap: Float32Array[] = [];
+	private gapSamples = 0;
+	private gapRate = 0;
+	private session: ListenSession | null = null;
 
 	constructor(
 		private readonly backendFor: (
 			language: Language,
 		) => RecognizerBackend = modelFor,
-	) {}
+	) {
+		if (geckoCapture()) {
+			prepareWorklet();
+		}
+	}
 
 	get active(): boolean {
 		return this.session !== null;
@@ -188,7 +284,7 @@ export class VoskListener {
 		callbacks: VoskCallbacks,
 		formulas: readonly (readonly string[])[] = [],
 	): boolean {
-		this.stop();
+		this.endSession();
 		const labels = currentMessages().game.speech;
 		const language = currentLanguage();
 		const model = this.backendFor(language);
@@ -196,51 +292,43 @@ export class VoskListener {
 			callbacks.onError(model.failed ? labels.failedToStart : labels.loading);
 			return false;
 		}
-		const stream = micManager.inputStream;
-		if (!stream) {
+		const tap = this.ensureTap();
+		if (!tap) {
 			callbacks.onError(labels.failedToStart);
 			return false;
 		}
-		this.context ??= new AudioContext();
-		const context = this.context;
-		void context.resume().catch(() => undefined);
-		const source = context.createMediaStreamSource(stream);
-		const processor = context.createScriptProcessor(CHUNK_SIZE, 1, 1);
-		const sink = context.createGain();
-		sink.gain.value = 0;
+		void tap.context.resume().catch(() => undefined);
 		const recognizerId = model.open(
-			context.sampleRate,
+			tap.sampleRate,
 			(reply) => this.receive(reply),
 			voskGrammar(language, formulas),
 		);
-		const session = {
+		const session: ListenSession = {
 			model,
 			recognizerId,
-			source,
-			processor,
-			sink,
 			callbacks,
-			heard: [] as string[],
+			segments: [],
+			partial: "",
 			pending: 0,
 			concluding: false,
-			settle: null as number | null,
-			timeout: window.setTimeout(() => this.finish(), CAST_LISTEN_MAX_MS),
-			giveUp: null as number | null,
+			settle: null,
+			check: null,
+			giveUp: null,
+			fedSamples: 0,
+			sampleRate: tap.sampleRate,
+			spokeAt: 0,
 		};
-		processor.onaudioprocess = (event) => {
-			if (this.session !== session || session.concluding) {
-				return;
-			}
-			session.pending += 1;
-			model.feed(
-				recognizerId,
-				event.inputBuffer.getChannelData(0).map((value) => value * INT16_SCALE),
-				context.sampleRate,
-			);
-		};
-		source.connect(processor);
-		processor.connect(sink).connect(context.destination);
 		this.session = session;
+		for (const chunk of this.gap) {
+			this.feed(session, chunk);
+		}
+		this.gap = [];
+		this.gapSamples = 0;
+		const fedMs = (session.fedSamples / session.sampleRate) * 1000;
+		this.scheduleCheck(
+			session,
+			Math.max(CHECK_INTERVAL_MS, CAST_LISTEN_MAX_MS - fedMs),
+		);
 		return true;
 	}
 
@@ -250,7 +338,7 @@ export class VoskListener {
 			return;
 		}
 		session.concluding = true;
-		this.disconnect();
+		this.clearTimers(session);
 		session.giveUp = window.setTimeout(
 			() => this.deliver(),
 			CONCLUDE_TIMEOUT_MS,
@@ -259,12 +347,161 @@ export class VoskListener {
 	}
 
 	stop(): void {
-		const session = this.session;
-		if (!session) {
+		this.endSession();
+		this.releaseTap();
+		this.gap = [];
+		this.gapSamples = 0;
+	}
+
+	private ensureTap(): Tap | null {
+		const stream = micManager.inputStream;
+		if (!stream) {
+			this.releaseTap();
+			return null;
+		}
+		const kind =
+			geckoCapture() && workletState === "ready" ? "worklet" : "script";
+		if (this.tap?.stream === stream && this.tap.kind === kind) {
+			return this.tap;
+		}
+		this.releaseTap();
+		const tap =
+			kind === "worklet" ? this.workletTap(stream) : this.scriptTap(stream);
+		if (this.gapRate !== tap.sampleRate) {
+			this.gap = [];
+			this.gapSamples = 0;
+		}
+		this.gapRate = tap.sampleRate;
+		this.tap = tap;
+		return tap;
+	}
+
+	private scriptTap(stream: MediaStream): Tap {
+		const context = new AudioContext();
+		const source = context.createMediaStreamSource(stream);
+		const processor = context.createScriptProcessor(CHUNK_SIZE, 1, 1);
+		const sink = context.createGain();
+		sink.gain.value = 0;
+		const tap: Tap = {
+			kind: "script",
+			stream,
+			context,
+			sampleRate: context.sampleRate,
+			source,
+			processor,
+			sink,
+		};
+		processor.onaudioprocess = (event) => {
+			if (this.tap !== tap) {
+				return;
+			}
+			this.capture(
+				event.inputBuffer.getChannelData(0).map((value) => value * INT16_SCALE),
+				context.sampleRate,
+				micManager.measure(),
+			);
+		};
+		source.connect(processor);
+		processor.connect(sink).connect(context.destination);
+		return tap;
+	}
+
+	private workletTap(stream: MediaStream): Tap {
+		const context = audioEngine.ctx;
+		void context.resume().catch(() => undefined);
+		const source = context.createMediaStreamSource(stream);
+		const processor = new AudioWorkletNode(context, "voice-capture", {
+			processorOptions: { blockSamples: WORKLET_BLOCK_SAMPLES },
+		});
+		const sink = context.createGain();
+		sink.gain.value = 0;
+		const tap: Tap = {
+			kind: "worklet",
+			stream,
+			context,
+			sampleRate: WORKLET_RATE,
+			source,
+			processor,
+			sink,
+		};
+		processor.port.onmessage = (event: MessageEvent<Int16Array>) => {
+			if (this.tap !== tap) {
+				return;
+			}
+			const samples = Float32Array.from(event.data);
+			this.capture(samples, WORKLET_RATE, chunkLevel(samples));
+		};
+		source.connect(processor).connect(sink).connect(context.destination);
+		return tap;
+	}
+
+	private releaseTap(): void {
+		const tap = this.tap;
+		if (!tap) {
 			return;
 		}
-		this.disconnect();
-		this.release();
+		if (tap.kind === "worklet") {
+			(tap.processor as AudioWorkletNode).port.onmessage = null;
+		} else {
+			(tap.processor as ScriptProcessorNode).onaudioprocess = null;
+		}
+		tap.source.disconnect();
+		tap.processor.disconnect();
+		tap.sink.disconnect();
+		if (tap.kind === "script") {
+			void tap.context.close().catch(() => undefined);
+		}
+		this.tap = null;
+	}
+
+	private capture(
+		samples: Float32Array,
+		sampleRate: number,
+		level: number,
+	): void {
+		const session = this.session;
+		if (level >= SPEAKING_LEVEL && session) {
+			session.spokeAt = performance.now();
+		}
+		if (session && !session.concluding) {
+			this.feed(session, samples);
+			if (session.fedSamples / sampleRate >= MAX_SESSION_AUDIO_MS / 1000) {
+				this.finish();
+			}
+			return;
+		}
+		this.gap.push(samples);
+		this.gapSamples += samples.length;
+		while (
+			this.gap.length > 1 &&
+			this.gapSamples / sampleRate > GAP_MAX_MS / 1000
+		) {
+			this.gapSamples -= (this.gap.shift() as Float32Array).length;
+		}
+	}
+
+	private feed(session: ListenSession, samples: Float32Array): void {
+		session.pending += 1;
+		session.fedSamples += samples.length;
+		session.model.feed(session.recognizerId, samples, session.sampleRate);
+	}
+
+	private scheduleCheck(session: ListenSession, delay: number): void {
+		session.check = window.setTimeout(() => {
+			session.check = null;
+			if (this.session !== session || session.concluding) {
+				return;
+			}
+			const now = performance.now();
+			const speaking =
+				now - session.spokeAt < SPEECH_HOLD_MS ||
+				(session.partial.length > 0 && session.settle === null);
+			if (speaking) {
+				this.scheduleCheck(session, CHECK_INTERVAL_MS);
+				return;
+			}
+			this.finish();
+		}, delay);
 	}
 
 	private receive(reply: RecognizerReply): void {
@@ -284,22 +521,33 @@ export class VoskListener {
 		if (reply.event === "partialresult") {
 			const partial = withoutUnknown(reply.result.partial ?? "");
 			if (partial) {
-				this.cancelSettle();
-				session.callbacks.onInterim([...session.heard, partial].join(" "));
+				session.partial = partial;
+				this.cancelSettle(session);
+				session.callbacks.onInterim(
+					[...session.segments.map((segment) => segment.final), partial]
+						.filter((text) => text.length > 0)
+						.join(" "),
+				);
 			}
 			return;
 		}
 		const text = withoutUnknown(reply.result.text ?? "");
-		if (text) {
-			session.heard.push(text);
-			session.callbacks.onInterim(session.heard.join(" "));
+		const added = text.length > 0 || session.partial.length > 0;
+		if (added) {
+			session.segments.push({ final: text, partial: session.partial });
+			session.partial = "";
+			session.callbacks.onInterim(
+				session.segments
+					.map((segment) => segment.final || segment.partial)
+					.join(" "),
+			);
 		}
 		if (session.concluding && !fromChunk) {
 			this.deliver();
 			return;
 		}
-		if (text) {
-			this.cancelSettle();
+		if (added && !session.concluding) {
+			this.cancelSettle(session);
 			session.settle = window.setTimeout(() => this.finish(), SETTLE_MS);
 		}
 	}
@@ -309,40 +557,35 @@ export class VoskListener {
 		if (!session) {
 			return;
 		}
-		const transcript = session.heard.join(" ").trim();
-		this.disconnect();
-		this.release();
-		if (transcript) {
-			session.callbacks.onFinal([transcript]);
+		const transcripts = sessionTranscripts(session.segments, session.partial);
+		this.endSession();
+		if (transcripts.length > 0) {
+			session.callbacks.onFinal(transcripts);
 		}
 		session.callbacks.onEnd();
 	}
 
-	private cancelSettle(): void {
-		if (this.session?.settle != null) {
-			window.clearTimeout(this.session.settle);
-			this.session.settle = null;
+	private cancelSettle(session: ListenSession): void {
+		if (session.settle !== null) {
+			window.clearTimeout(session.settle);
+			session.settle = null;
 		}
 	}
 
-	private disconnect(): void {
+	private clearTimers(session: ListenSession): void {
+		this.cancelSettle(session);
+		if (session.check !== null) {
+			window.clearTimeout(session.check);
+			session.check = null;
+		}
+	}
+
+	private endSession(): void {
 		const session = this.session;
 		if (!session) {
 			return;
 		}
-		session.processor.onaudioprocess = null;
-		session.source.disconnect();
-		session.processor.disconnect();
-		session.sink.disconnect();
-	}
-
-	private release(): void {
-		const session = this.session;
-		if (!session) {
-			return;
-		}
-		this.cancelSettle();
-		window.clearTimeout(session.timeout);
+		this.clearTimers(session);
 		if (session.giveUp !== null) {
 			window.clearTimeout(session.giveUp);
 		}

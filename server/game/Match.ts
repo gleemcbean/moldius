@@ -75,7 +75,6 @@ import {
 	type MatchConfig,
 	matchDurationMs,
 	pickupTotal,
-	TUTORIAL_WOUNDED_HEALTH,
 } from "../../shared/matchConfig.js";
 import type { Vec3 } from "../../shared/math.js";
 import { NavGrid } from "../../shared/navigation/navGrid.js";
@@ -109,10 +108,10 @@ import {
 	type Tagline,
 } from "../../shared/rewards.js";
 import { teamStandings } from "../../shared/teams.js";
+import type { TutorialStage } from "../../shared/tutorial.js";
 import { AnomalyEntity } from "./ai/AnomalyEntity.js";
 import { witnessHide } from "./ai/hunter.js";
-import { clearPath, faceTowards, hoverHeight } from "./ai/locomotion.js";
-import { lureAnomalies } from "./ai/lure.js";
+import { hoverHeight } from "./ai/locomotion.js";
 import { releaseClaim } from "./ai/patrol.js";
 import type { SoundEvent } from "./ai/perception.js";
 import { separateAnomalies } from "./ai/separation.js";
@@ -151,6 +150,7 @@ import {
 	type SpawnContext,
 } from "./systems/spawning.js";
 import { StakeSystem } from "./systems/stakes.js";
+import { TutorialDirector } from "./systems/tutorial.js";
 import { ValveSystem } from "./systems/valves.js";
 import { WalkieSystem } from "./systems/walkies.js";
 
@@ -196,9 +196,6 @@ export interface MatchOptions {
 	challenges?: boolean;
 }
 
-const TUTORIAL_MONSTER_LEASH = 3.8;
-const TUTORIAL_CALM_STATES = new Set(["idle", "patrol", "travel", "search"]);
-
 export type MatchPhase = "loading" | "playing" | "voting" | "ended";
 
 const CHALLENGE_SYNC_TICKS = Math.round(2000 / SERVER_TICK_MS);
@@ -238,8 +235,7 @@ export class Match {
 	readonly possessed: PossessedSystem | null;
 	private nextChaosBrewAt = Infinity;
 	private chaosRng: SeededRandom | null = null;
-	private tutorialLured = false;
-	private tutorialFollowAt = 0;
+	readonly tutorialDirector: TutorialDirector | null;
 	readonly players = new Map<string, MatchPlayer>();
 	readonly anomalies: AnomalyEntity[];
 	readonly roster: RosterPlan;
@@ -303,12 +299,10 @@ export class Match {
 		this.walkies = new WalkieSystem(
 			this.layout.walkies.slice(0, this.walkieTotal).map((spot) => spot.id),
 		);
-		this.cameraTotal = this.tutorial
-			? 0
-			: Math.min(
-					this.layout.cameras.length,
-					cameraCount(options.participants.length),
-				);
+		this.cameraTotal = Math.min(
+			this.layout.cameras.length,
+			cameraCount(options.participants.length),
+		);
 		this.cameras = new CameraSystem(
 			this.layout.cameras.slice(0, this.cameraTotal).map((spot) => spot.id),
 		);
@@ -371,6 +365,7 @@ export class Match {
 			this.players.set(participant.id, player);
 			this.awards.addPlayer(participant.id);
 		});
+		this.tutorialDirector = this.tutorial ? new TutorialDirector(this) : null;
 		this.ghostBounds = ghostBounds(this.layout);
 		this.ghostsAllowed = !this.tutorial;
 		this.manorEvents = new ManorEventSystem(
@@ -404,21 +399,26 @@ export class Match {
 			seed: this.seed,
 			config: this.config,
 			layoutChecksum: this.checksum,
-			players: [...this.players.values()].map((player) => ({
-				id: player.id,
-				name: player.name,
-				color: player.color,
-				pattern: player.pattern,
-				lantern: player.lantern,
-				tagline: player.tagline,
-				team: player.team,
-				spawn: {
-					x: player.position.x,
-					y: player.position.y,
-					z: player.position.z,
-					yaw: player.yaw,
-				},
-			})),
+			players: [
+				...[...this.players.values()]
+					.filter((player) => !this.tutorialDirector?.isDummy(player))
+					.map((player) => ({
+						id: player.id,
+						name: player.name,
+						color: player.color,
+						pattern: player.pattern,
+						lantern: player.lantern,
+						tagline: player.tagline,
+						team: player.team,
+						spawn: {
+							x: player.position.x,
+							y: player.position.y,
+							z: player.position.z,
+							yaw: player.yaw,
+						},
+					})),
+				...(this.tutorialDirector ? [this.tutorialDirector.initEntry()] : []),
+			],
 			pool: this.roster.pool,
 			roster: this.anomalies.map((entity) => ({
 				id: entity.id,
@@ -613,7 +613,9 @@ export class Match {
 	}
 
 	ignoredByAnomalies(player: MatchPlayer): boolean {
-		return player.possessed;
+		return (
+			player.possessed || (this.tutorialDirector?.isDummy(player) ?? false)
+		);
 	}
 
 	doorsLocked(): boolean {
@@ -1126,12 +1128,12 @@ export class Match {
 	private updateAnomalies(dt: number): void {
 		this.spawnWaitingAnomalies();
 		for (const entity of this.anomalies) {
-			if (!entity.active) {
+			if (!entity.active || this.tutorialDirector?.holds(entity)) {
 				continue;
 			}
 			updateAnomaly(this, entity, dt);
 		}
-		this.keepTutorialMonsterClose();
+		this.tutorialDirector?.update();
 		separateAnomalies(this);
 		for (const entity of this.anomalies) {
 			if (entity.active) {
@@ -1254,8 +1256,10 @@ export class Match {
 		from: Vec3 | null,
 		periodic = false,
 	): boolean {
+		if (this.tutorial) {
+			return source === "pact" && this.hurtSoftly(player, amount, source);
+		}
 		if (
-			this.tutorial ||
 			!player.alive ||
 			player.hidden ||
 			player.protectedUntil > this.now ||
@@ -1292,26 +1296,36 @@ export class Match {
 	}
 
 	applyFallDamage(player: MatchPlayer, amount: number, drop = 0): void {
-		if (!this.tutorial) {
-			if (this.applyDamage(player, amount, "fall", null)) {
-				this.highlights?.fall(player.id, drop, !player.alive, this);
-			}
+		if (this.tutorial) {
+			this.hurtSoftly(player, amount, "fall");
 			return;
 		}
-		const health = Math.max(1, player.health - amount);
-		if (health < player.health && !player.devModes.immortal) {
-			const lost = player.health - health;
-			player.health = health;
-			this.emit({
-				type: "damage",
-				playerId: player.id,
-				amount: lost,
-				source: "fall",
-				hp: health,
-				from: null,
-				periodic: false,
-			});
+		if (this.applyDamage(player, amount, "fall", null)) {
+			this.highlights?.fall(player.id, drop, !player.alive, this);
 		}
+	}
+
+	hurtSoftly(
+		player: MatchPlayer,
+		amount: number,
+		source: SpeciesId | DamageCause,
+	): boolean {
+		const health = Math.max(1, player.health - amount);
+		if (!player.alive || health >= player.health || player.devModes.immortal) {
+			return false;
+		}
+		const lost = player.health - health;
+		player.health = health;
+		this.emit({
+			type: "damage",
+			playerId: player.id,
+			amount: lost,
+			source,
+			hp: health,
+			from: null,
+			periodic: false,
+		});
+		return true;
 	}
 
 	private kill(player: MatchPlayer, cause: SpeciesId | DamageCause): void {
@@ -1507,116 +1521,17 @@ export class Match {
 		});
 	}
 
-	handleTutorialSummon(playerId: string): void {
-		const player = this.players.get(playerId);
-		const entity = this.anomalies[0];
-		if (!this.tutorial || !player || !entity) {
-			return;
-		}
-		if (entity.active) {
-			this.tutorialLured = true;
-			return;
-		}
-		this.now = this.clock();
-		if (entity.occult && player.objects[entity.occult] < 1) {
-			player.objects[entity.occult] = 1;
-			this.sendInventory(player);
-		}
-		entity.resetForSpawn(this.tutorialSpawnPoint(player), player.yaw, this.now);
-		entity.spawnDueAt = Infinity;
-		this.emit({
-			type: "anomalySpawn",
-			anomalyId: entity.id,
-			gen: entity.gen,
-			species: entity.species,
-		});
-	}
-
-	handleTutorialWound(playerId: string): void {
+	handleTutorialStage(playerId: string, stage: TutorialStage): void {
 		const player = this.players.get(playerId);
 		if (
-			!this.tutorial ||
-			!player?.alive ||
-			player.health <= TUTORIAL_WOUNDED_HEALTH
+			player &&
+			this.tutorialDirector &&
+			!this.tutorialDirector.isDummy(player) &&
+			this.phase === "playing"
 		) {
-			return;
+			this.now = this.clock();
+			this.tutorialDirector.setStage(player, stage);
 		}
-		const amount = player.health - TUTORIAL_WOUNDED_HEALTH;
-		player.health = TUTORIAL_WOUNDED_HEALTH;
-		this.emit({
-			type: "damage",
-			playerId: player.id,
-			amount,
-			source: this.anomalies[0]?.species ?? "murmure",
-			hp: player.health,
-			from: null,
-			periodic: false,
-		});
-	}
-
-	private keepTutorialMonsterClose(): void {
-		const entity = this.anomalies[0];
-		const player = [...this.players.values()][0];
-		if (
-			!this.tutorialLured ||
-			!entity?.active ||
-			!player?.active ||
-			!TUTORIAL_CALM_STATES.has(entity.state)
-		) {
-			return;
-		}
-		const distance = Math.hypot(
-			entity.position.x - player.position.x,
-			entity.position.y - player.position.y,
-			entity.position.z - player.position.z,
-		);
-		if (distance > TUTORIAL_MONSTER_LEASH) {
-			if (this.now >= this.tutorialFollowAt) {
-				this.tutorialFollowAt = this.now + 1500;
-				lureAnomalies(this, player.position, player.id);
-			}
-			return;
-		}
-		if (entity.state !== "search") {
-			clearPath(entity);
-			entity.velocity = { x: 0, y: 0, z: 0 };
-			faceTowards(entity, player.position, 4, SERVER_TICK_MS / 1000);
-			if (entity.state !== "idle") {
-				entity.setState("idle", this.now);
-			}
-			entity.idleUntil = this.now + 1000;
-		}
-	}
-
-	private tutorialSpawnPoint(player: MatchPlayer): Vec3 {
-		const level = this.gridLevelOf(player.position);
-		let best: Vec3 = player.position;
-		let bestScore = -Infinity;
-		const eye = player.eyePosition();
-		for (let node = 0; node < this.grid.cellsPerLevel; node += 1) {
-			const cell = level * this.grid.cellsPerLevel + node;
-			if (!this.grid.walkable[cell] || !this.grid.isInMainComponent(cell)) {
-				continue;
-			}
-			const point = this.grid.nodePosition(cell);
-			const distance = Math.hypot(
-				point.x - player.position.x,
-				point.z - player.position.z,
-			);
-			if (distance < 5 || distance > 12) {
-				continue;
-			}
-			const hidden = !lineOfSight(this.world, eye, {
-				...point,
-				y: point.y + 1,
-			});
-			const score = (hidden ? 10 : 0) - Math.abs(distance - 8);
-			if (score > bestScore) {
-				bestScore = score;
-				best = point;
-			}
-		}
-		return best;
 	}
 
 	private interactDoor(player: MatchPlayer, doorId: number): void {
@@ -1924,12 +1839,14 @@ export class Match {
 		const player = this.players.get(playerId);
 		if (player && this.phase === "playing") {
 			this.now = this.clock();
-			this.tutorialLured ||= this.tutorial;
 			tryShout(this, player);
 		}
 	}
 
-	removeAnomaly(entity: AnomalyEntity, reason: "captured" | "exploded"): void {
+	removeAnomaly(
+		entity: AnomalyEntity,
+		reason: "captured" | "exploded" | "dismissed",
+	): void {
 		if (!entity.active) {
 			return;
 		}
@@ -2029,6 +1946,7 @@ export class Match {
 		player.connected = false;
 		player.disconnectedAt = this.now;
 		player.casting = null;
+		this.tutorialDirector?.removeDummy();
 		this.walkies.release(this, player);
 		this.cameras.release(this, player);
 		if (player.hidden) {
@@ -2130,6 +2048,7 @@ export class Match {
 		}
 		this.phase = "ended";
 		this.stop();
+		this.tutorialDirector?.removeDummy();
 		const entries = [...this.players.values()]
 			.map((player) => ({
 				playerId: player.id,

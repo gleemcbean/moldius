@@ -4,6 +4,7 @@ import { sanitizeDevModes } from "../../shared/devModes.js";
 import { type HatPattern, isHatPattern } from "../../shared/hatPatterns.js";
 import { layoutChecksum } from "../../shared/manor/generateManor.js";
 import { isPlayerColor } from "../../shared/playerColors.js";
+import { isTutorialStage } from "../../shared/tutorial.js";
 import type {
 	ClientToServerEvents,
 	ServerToClientEvents,
@@ -640,16 +641,13 @@ function registerGameHandlers(
 		});
 	});
 
-	socket.on("game:tutorialSummon", () => {
-		withMatch("game:tutorialSummon", (current, match) =>
-			match.handleTutorialSummon(current.playerId),
-		);
-	});
-
-	socket.on("game:tutorialWound", () => {
-		withMatch("game:tutorialWound", (current, match) =>
-			match.handleTutorialWound(current.playerId),
-		);
+	socket.on("game:tutorial", (payload) => {
+		withMatch("game:tutorial", (current, match) => {
+			const stage = isRecord(payload) ? payload.stage : null;
+			if (isTutorialStage(stage)) {
+				match.handleTutorialStage(current.playerId, stage);
+			}
+		});
 	});
 
 	socket.on("game:shout", () => {

@@ -67,6 +67,12 @@ export class CameraSystem {
 		}
 	}
 
+	availableIds(): number[] {
+		return [...this.states]
+			.filter(([, state]) => state.holder === null && state.returnsAt === null)
+			.map(([id]) => id);
+	}
+
 	stateEvents(): GameEvent[] {
 		return [...this.states].map(([id, state]) => ({
 			type: "camera",

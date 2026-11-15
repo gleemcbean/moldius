@@ -64,13 +64,15 @@ function standAt(
 }
 
 describe("talkies-walkies", () => {
-	it("place des talkies selon le nombre de joueurs, rien dans le tutoriel", () => {
+	it("place des talkies selon le nombre de joueurs, tutoriel compris", () => {
 		expect(walkieCount(1)).toBe(2);
 		expect(walkieCount(4)).toBe(2);
 		expect(walkieCount(8)).toBe(4);
 		const layout = generateManor(77, PUBLIC_MATCH_CONFIG);
 		expect(layout.walkies.length).toBeGreaterThanOrEqual(4);
-		expect(generateManor(77, TUTORIAL_MATCH_CONFIG).walkies).toHaveLength(0);
+		expect(
+			generateManor(77, TUTORIAL_MATCH_CONFIG).walkies.length,
+		).toBeGreaterThanOrEqual(walkieCount(1));
 		expect(layoutChecksum(layout)).toBe(
 			layoutChecksum(generateManor(77, PUBLIC_MATCH_CONFIG)),
 		);
@@ -122,7 +124,7 @@ describe("talkies-walkies", () => {
 });
 
 describe("appareil photo", () => {
-	it("en pose ailleurs que les talkies, sauf dans le tutoriel", () => {
+	it("en pose ailleurs que les talkies, tutoriel compris", () => {
 		expect(cameraCount(1)).toBe(1);
 		expect(cameraCount(8)).toBe(4);
 		for (const seed of [11, 77, 2024]) {
@@ -140,7 +142,7 @@ describe("appareil photo", () => {
 			players: 1,
 			tutorial: true,
 		});
-		expect(tutorial.match.initPayload().cameraTotal).toBe(0);
+		expect(tutorial.match.initPayload().cameraTotal).toBe(1);
 	});
 
 	it("montre aux autres l'appareil levé, seulement chez qui en tient un", () => {
@@ -300,7 +302,15 @@ describe("salles à enjeu", () => {
 			);
 			expect([...kinds].sort()).toEqual([...STAKE_KINDS].sort());
 		}
-		expect(generateManor(11, TUTORIAL_MATCH_CONFIG).stakes).toHaveLength(0);
+		expect(
+			[
+				...new Set(
+					generateManor(11, TUTORIAL_MATCH_CONFIG).stakes.map(
+						(stake) => stake.kind,
+					),
+				),
+			].sort(),
+		).toEqual([...STAKE_KINDS].sort());
 	});
 
 	it("garde les trois marchés même dans un petit manoir de plain-pied", () => {
@@ -607,7 +617,7 @@ describe("durée d'une partie", () => {
 			sanitizeMatchConfig({ ...fallback, durationMinutes: 16 }, fallback)
 				.durationMinutes,
 		).toBe(16);
-		expect(TUTORIAL_MATCH_CONFIG.durationMinutes).toBe(15);
+		expect(TUTORIAL_MATCH_CONFIG.durationMinutes).toBe(30);
 	});
 });
 

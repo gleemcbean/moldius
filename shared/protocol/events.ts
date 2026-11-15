@@ -1,6 +1,7 @@
 import type { MatchMetrics } from "../challenges.js";
 import type { DevModes } from "../devModes.js";
 import type { MatchConfig } from "../matchConfig.js";
+import type { TutorialStage } from "../tutorial.js";
 import type { FriendInvite, FriendsOverview } from "./friends.js";
 import type {
 	CastRequest,
@@ -120,8 +121,7 @@ export interface ClientToServerEvents {
 	"game:shout": () => void;
 	"game:radio": (payload: { on: boolean }) => void;
 	"game:craft": (payload: { altarId: number; object: string }) => void;
-	"game:tutorialSummon": () => void;
-	"game:tutorialWound": () => void;
+	"game:tutorial": (payload: { stage: TutorialStage }) => void;
 	"game:devModes": (payload: DevModes) => void;
 	"game:ping": (payload: PingRequest) => void;
 	"game:emote": (payload: { emote: string | null }) => void;

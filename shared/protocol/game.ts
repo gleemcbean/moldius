@@ -356,7 +356,7 @@ export type GameEvent =
 			type: "anomalyRemoved";
 			anomalyId: number;
 			gen: number;
-			reason: "captured" | "exploded";
+			reason: "captured" | "exploded" | "dismissed";
 			returnsAt: number;
 	  }
 	| {
@@ -387,6 +387,7 @@ export type GameEvent =
 	| { type: "scream"; anomalyId: number; until: number }
 	| { type: "shout"; playerId: string; x: number; y: number; z: number }
 	| { type: "push"; fromId: string; targetId: string }
+	| { type: "heard"; anomalyId: number; playerId: string }
 	| {
 			type: "castInterrupted";
 			playerId: string;

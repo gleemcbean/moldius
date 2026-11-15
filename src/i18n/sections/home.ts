@@ -22,7 +22,7 @@ export const homeFr = {
 	codeLabel: "Code du lobby privé",
 	joinFriends: "Rejoindre",
 	tutorial: "Tutoriel",
-	tutorialHint: "Dure environ 5 minutes",
+	tutorialHint: "Environ 10 minutes, plus un chapitre facultatif",
 	modes: {
 		title: "Choisir un mode de jeu",
 		dailyText: (theme: string, facts: string) =>
@@ -35,7 +35,7 @@ export const homeFr = {
 		daily: "Mode de jeu du jour",
 		tutorial: "Tutoriel",
 		tutorialText:
-			"Partie d'entraînement en solitaire. Elle présente les commandes, la lanterne, le grimoire et les objets occultes, puis guide une première capture.",
+			"Entraînement en solitaire, chapitre par chapitre : déplacements et discrétion, carte, lanterne et autel, eau verte, poussée et cri, puis une première capture. Un dernier chapitre facultatif présente les salles spéciales, les talkies-walkies et l'appareil photo.",
 		leaderboard: "Classement du jour",
 	},
 	friends: "Amis",
@@ -72,7 +72,7 @@ export const homeEn: typeof homeFr = {
 	codeLabel: "Private lobby code",
 	joinFriends: "Join",
 	tutorial: "Tutorial",
-	tutorialHint: "Takes about 5 minutes",
+	tutorialHint: "About 10 minutes, plus an optional chapter",
 	modes: {
 		title: "Choose a game mode",
 		dailyText: (theme: string, facts: string) =>
@@ -85,7 +85,7 @@ export const homeEn: typeof homeFr = {
 		daily: "Daily game mode",
 		tutorial: "Tutorial",
 		tutorialText:
-			"A solo practice game. It introduces the controls, the lantern, the grimoire and occult objects, then guides a first capture.",
+			"Solo practice, one chapter at a time: movement and stealth, map, lantern and altar, green water, pushing and shouting, then a first capture. A last optional chapter covers special rooms, walkie-talkies and the camera.",
 		leaderboard: "Today's leaderboard",
 	},
 	friends: "Friends",

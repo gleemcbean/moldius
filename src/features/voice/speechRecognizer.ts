@@ -114,8 +114,6 @@ export interface ListenCallbacks {
 }
 
 let phrasesAccepted = true;
-const SPECIFIC_HINT_BOOST = 6;
-const VOCABULARY_HINT_BOOST = 4;
 
 export class IncantationListener {
 	private recognition: Recognition | null = null;
@@ -253,17 +251,10 @@ export class IncantationListener {
 			return false;
 		}
 		try {
-			const specific = hintWords.length > 0;
-			const words = specific ? hintWords : INCANTATION_VOCABULARY;
-			recognition.phrases = [...new Set(words)]
+			const words = hintWords.length > 0 ? hintWords : INCANTATION_VOCABULARY;
+			recognition.phrases = words
 				.slice(0, 200)
-				.map(
-					(word) =>
-						new PhraseConstructor(
-							word,
-							specific ? SPECIFIC_HINT_BOOST : VOCABULARY_HINT_BOOST,
-						),
-				);
+				.map((word) => new PhraseConstructor(word, 4));
 			return true;
 		} catch {
 			return false;

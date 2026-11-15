@@ -126,6 +126,32 @@ export function perceive(
 	return { target: chooseTarget(match, entity), ...hearing };
 }
 
+export function soundMargin(
+	match: Match,
+	entity: AnomalyEntity,
+	sound: SoundEvent,
+	source: MatchPlayer,
+): number {
+	const ear = entity.eye();
+	const distance = Math.hypot(
+		sound.position.x - ear.x,
+		sound.position.y + 1.2 - ear.y,
+		sound.position.z - ear.z,
+	);
+	const reach =
+		sound.loudness * entity.definition.hearing * match.senseFactor(source);
+	if (distance > reach * 1.05) {
+		return -Infinity;
+	}
+	const walls = countWallsBetween(
+		match.world,
+		ear,
+		{ ...sound.position, y: sound.position.y + 1.2 },
+		3,
+	);
+	return reach / (1 + walls * 0.9) - distance;
+}
+
 function listen(
 	match: Match,
 	entity: AnomalyEntity,
@@ -134,7 +160,6 @@ function listen(
 	let loudestMargin = 0;
 	let hiddenNoise: SoundEvent | null = null;
 	let hiddenMargin = 0;
-	const ear = entity.eye();
 	for (const sound of match.sounds) {
 		const source = sound.playerId ? match.players.get(sound.playerId) : null;
 		if (
@@ -144,30 +169,7 @@ function listen(
 		) {
 			continue;
 		}
-		const distance = Math.hypot(
-			sound.position.x - ear.x,
-			sound.position.y + 1.2 - ear.y,
-			sound.position.z - ear.z,
-		);
-		if (
-			distance >
-			sound.loudness *
-				entity.definition.hearing *
-				1.05 *
-				match.senseFactor(source)
-		) {
-			continue;
-		}
-		const walls = countWallsBetween(
-			match.world,
-			ear,
-			{ ...sound.position, y: sound.position.y + 1.2 },
-			3,
-		);
-		const effective =
-			(sound.loudness * entity.definition.hearing * match.senseFactor(source)) /
-			(1 + walls * 0.9);
-		const margin = effective - distance;
+		const margin = soundMargin(match, entity, sound, source);
 		if (margin <= 0) {
 			continue;
 		}

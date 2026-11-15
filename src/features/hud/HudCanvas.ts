@@ -2154,83 +2154,120 @@ export class HudCanvas {
 
 	private paintTutorial(hud: HudState): void {
 		const tutorial = hud.tutorial;
-		if (!tutorial) {
+		if (!tutorial || tutorial.finished) {
 			return;
 		}
 		const messages = currentMessages().game.tutorial;
-		const width = 372;
+		const width = 404;
+		const inner = width - 32;
 		const bodyFont = `500 18px ${BODY}`;
-		const lines = this.wrap(tutorial.body, bodyFont, width - 28);
-		const goal = tutorial.goal;
-		const goalHeight = goal ? 36 + goal.steps.length * 21 : 0;
+		const checkFont = `700 16px ${UI}`;
+		const choiceFont = `700 17px ${UI}`;
+		const keyFont = `700 16px ${UI}`;
+		const lines = this.wrap(tutorial.body, bodyFont, inner);
+		const checkLines = tutorial.checks.map((check) =>
+			this.wrap(`${check.ok ? "✔" : "✘"} ${check.label}`, checkFont, inner),
+		);
+		this.context.font = keyFont;
+		const keyWidth = Math.max(
+			0,
+			...tutorial.choices.map(
+				(choice) => this.context.measureText(choice.key).width + 18,
+			),
+		);
+		const choiceLines = tutorial.choices.map((choice) =>
+			this.wrap(choice.label, choiceFont, inner - keyWidth - 12),
+		);
+		const checksHeight =
+			checkLines.length > 0
+				? 8 + checkLines.reduce((sum, rows) => sum + rows.length * 20 + 2, 0)
+				: 0;
+		const choicesHeight =
+			choiceLines.length > 0
+				? 10 +
+					choiceLines.reduce(
+						(sum, rows) => sum + Math.max(28, rows.length * 20 + 8) + 8,
+						0,
+					)
+				: 0;
+		const footer = tutorial.arrow !== null || tutorial.hint ? 36 : 12;
 		const height =
-			70 +
-			lines.length * 22 +
-			tutorial.checks.length * 22 +
-			(tutorial.checks.length > 0 ? 8 : 0) +
-			goalHeight +
-			34;
+			78 + lines.length * 22 + checksHeight + choicesHeight + footer;
 		const placed = this.place(20, 150, width, height, "left", "top");
 		const x = placed.x;
 		const y = Math.max(placed.y, this.minimapBottom + 16);
 		this.panel(x, y, width, height, "rgba(10, 12, 10, 0.88)", YELLOW);
 		this.text(
-			messages.progress(tutorial.index + 1, tutorial.total),
-			x + 14,
-			y + 18,
-			{ font: `500 16px ${UI}`, color: TEXT_MUTED, outline: false },
+			tutorial.steps > 0
+				? messages.progress(tutorial.chapter, tutorial.step, tutorial.steps)
+				: tutorial.chapter,
+			x + 16,
+			y + 20,
+			{ font: `600 16px ${UI}`, color: TEXT_MUTED, outline: false },
 		);
-		this.text(tutorial.title, x + 14, y + 42, {
+		this.paintChapterDots(
+			x + width - 16,
+			y + 20,
+			tutorial.chapterIndex,
+			tutorial.chapterCount,
+		);
+		this.text(tutorial.title, x + 16, y + 48, {
 			font: `400 28px ${TITLE}`,
 			color: YELLOW,
 			outline: false,
 		});
-		let cursor = y + 70;
+		let cursor = y + 78;
 		for (const line of lines) {
-			this.text(line, x + 14, cursor, { font: bodyFont, outline: false });
+			this.text(line, x + 16, cursor, { font: bodyFont, outline: false });
 			cursor += 22;
 		}
-		if (tutorial.checks.length > 0) {
-			cursor += 6;
-			for (const check of tutorial.checks) {
-				this.text(`${check.ok ? "✔" : "✘"} ${check.label}`, x + 14, cursor, {
-					font: `700 16px ${UI}`,
-					color: check.ok ? "#8fe388" : "#ff8a7a",
+		if (checkLines.length > 0) {
+			cursor += 8;
+			tutorial.checks.forEach((check, index) => {
+				for (const row of checkLines[index]) {
+					this.text(row, x + 16, cursor, {
+						font: checkFont,
+						color: check.ok ? OK : "#ff8a7a",
+						outline: false,
+					});
+					cursor += 20;
+				}
+				cursor += 2;
+			});
+		}
+		if (choiceLines.length > 0) {
+			cursor += 10;
+			tutorial.choices.forEach((choice, index) => {
+				const rows = choiceLines[index];
+				const rowHeight = Math.max(28, rows.length * 20 + 8);
+				const top = cursor - 10;
+				this.context.fillStyle = "rgba(220, 229, 77, 0.14)";
+				this.context.fillRect(x + 16, top, keyWidth, 26);
+				this.context.strokeStyle = YELLOW;
+				this.context.lineWidth = 1.5;
+				this.context.strokeRect(x + 16.75, top + 0.75, keyWidth - 1.5, 24.5);
+				this.text(choice.key, x + 16 + keyWidth / 2, top + 13.5, {
+					font: keyFont,
+					color: YELLOW,
+					align: "center",
 					outline: false,
 				});
-				cursor += 22;
-			}
-		}
-		if (goal) {
-			cursor += 6;
-			this.context.fillStyle = "rgba(46, 230, 214, 0.35)";
-			this.context.fillRect(x + 14, cursor - 4, width - 28, 1);
-			cursor += 14;
-			this.text(goal.title, x + 14, cursor, {
-				font: `700 16px ${UI}`,
-				color: ALTAR,
-				outline: false,
-			});
-			cursor += 22;
-			goal.steps.forEach((step, index) => {
-				this.text(
-					`${step.ok ? "✔" : `${index + 1}.`} ${step.label}`,
-					x + 22,
-					cursor,
-					{
-						font: `${step.ok ? 500 : 700} 16px ${UI}`,
-						color: step.ok ? "#8fe388" : TEXT,
+				rows.forEach((row, line) => {
+					this.text(row, x + 28 + keyWidth, top + 13.5 + line * 20, {
+						font: choiceFont,
+						color: TEXT,
 						outline: false,
-					},
-				);
-				cursor += 21;
+					});
+				});
+				cursor += rowHeight + 8;
 			});
-			cursor -= 6;
+			cursor -= 8;
 		}
+		const footerY = cursor + 12;
 		if (tutorial.arrow !== null) {
 			const context = this.context;
 			context.save();
-			context.translate(x + 26, cursor + 6);
+			context.translate(x + 28, footerY);
 			context.rotate((-tutorial.arrow * Math.PI) / 180);
 			context.fillStyle = YELLOW;
 			context.beginPath();
@@ -2244,17 +2281,45 @@ export class HudCanvas {
 			context.closePath();
 			context.fill();
 			context.restore();
-			this.text(`${tutorial.distance} m`, x + 46, cursor + 6, {
+			this.text(`${tutorial.distance} m`, x + 48, footerY, {
 				font: `700 18px ${UI}`,
 				outline: false,
 			});
 		}
-		this.text(messages.skip, x + width - 14, cursor + 6, {
-			font: `500 16px ${UI}`,
-			color: TEXT_MUTED,
-			align: "right",
-			outline: false,
-		});
+		if (tutorial.hint) {
+			this.text(tutorial.hint, x + width - 16, footerY, {
+				font: `500 16px ${UI}`,
+				color: TEXT_MUTED,
+				align: "right",
+				outline: false,
+			});
+		}
+	}
+
+	private paintChapterDots(
+		right: number,
+		y: number,
+		current: number,
+		count: number,
+	): void {
+		const context = this.context;
+		for (let index = 0; index < count; index += 1) {
+			const cx = right - (count - 1 - index) * 16 - 5;
+			context.beginPath();
+			context.arc(cx, y, index === current ? 5.5 : 4.5, 0, Math.PI * 2);
+			context.closePath();
+			if (index < current) {
+				context.fillStyle = YELLOW_DEEP;
+				context.fill();
+			} else if (index === current) {
+				context.fillStyle = YELLOW;
+				context.fill();
+			} else {
+				context.strokeStyle = TEXT_DIM;
+				context.lineWidth = 1.5;
+				context.stroke();
+			}
+		}
 	}
 
 	private paintNoise(hud: HudState, dt: number): void {

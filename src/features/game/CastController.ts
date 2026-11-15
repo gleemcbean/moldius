@@ -122,9 +122,7 @@ export class CastController {
 					}
 				},
 			},
-			this.book
-				.entries()
-				.flatMap((entry) => [entry.words.join(" "), ...entry.words]),
+			[],
 			this.book.entries().map((entry) => entry.words),
 		);
 		if (!started) {

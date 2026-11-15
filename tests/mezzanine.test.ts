@@ -15,7 +15,9 @@ import {
 	WALL_RELIEF_MAX_LOW_DEPTH,
 	wallProfile,
 } from "../shared/manor/wallRelief.js";
-import { TUTORIAL_MATCH_CONFIG, TUTORIAL_SEED } from "../shared/matchConfig.js";
+import { STAKE_KINDS } from "../shared/config/items.js";
+import { OPTIONAL_ROOM_TYPES } from "../shared/manor/roomCatalog.js";
+import { TUTORIAL_MATCH_CONFIG } from "../shared/matchConfig.js";
 import { NavGrid } from "../shared/navigation/navGrid.js";
 import { PathFinder } from "../shared/navigation/pathfinding.js";
 import {
@@ -32,6 +34,16 @@ import {
 import { MatchSimulation } from "./helpers/simulation.js";
 
 const SEEDS = [1, 7, 42, 2024, 4242, 977, 31337, 555];
+const UPSTAIRS_SEED = 2024;
+const UPSTAIRS_ROOM_TYPES = OPTIONAL_ROOM_TYPES.filter(
+	(type) => !(STAKE_KINDS as readonly string[]).includes(type),
+);
+const UPSTAIRS_CONFIG = {
+	...TUTORIAL_MATCH_CONFIG,
+	roomTypes: UPSTAIRS_ROOM_TYPES,
+	floors: 1,
+	walkies: false,
+};
 
 function manor(
 	seed: number,
@@ -39,7 +51,7 @@ function manor(
 ) {
 	return generateManor(seed, {
 		manorSize,
-		roomTypes: [...TUTORIAL_MATCH_CONFIG.roomTypes],
+		roomTypes: [...UPSTAIRS_ROOM_TYPES],
 		floors: 1,
 		upperFloorSize: "small",
 		stairCount: 1,
@@ -74,7 +86,7 @@ describe("grandes salles à mezzanine", () => {
 		expect(grandRooms(manor(7, "large")).length).toBeGreaterThanOrEqual(2);
 		const flat = generateManor(7, {
 			manorSize: "small",
-			roomTypes: [...TUTORIAL_MATCH_CONFIG.roomTypes],
+			roomTypes: [...UPSTAIRS_ROOM_TYPES],
 			floors: 0,
 			upperFloorSize: "small",
 			stairCount: 1,
@@ -473,14 +485,14 @@ describe("lumières par étage", () => {
 describe("dans une vraie partie", () => {
 	function tutorial(): MatchSimulation {
 		return new MatchSimulation({
-			seed: TUTORIAL_SEED,
+			seed: UPSTAIRS_SEED,
 			players: 1,
-			config: TUTORIAL_MATCH_CONFIG,
+			config: UPSTAIRS_CONFIG,
 			tutorial: true,
 		});
 	}
 
-	it("le tutoriel a sa grande salle", () => {
+	it("le petit manoir à étage a sa grande salle", () => {
 		expect(grandRooms(tutorial().match.layout).length).toBeGreaterThanOrEqual(
 			1,
 		);

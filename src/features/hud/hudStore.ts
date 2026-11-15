@@ -17,20 +17,24 @@ export interface TutorialCheck {
 	ok: boolean;
 }
 
-export interface TutorialGoal {
-	title: string;
-	steps: TutorialCheck[];
+export interface TutorialChoice {
+	key: string;
+	label: string;
 }
 
 export interface TutorialHud {
-	checks: TutorialCheck[];
-	goal: TutorialGoal | null;
-	index: number;
-	total: number;
+	chapter: string;
+	chapterIndex: number;
+	chapterCount: number;
+	step: number;
+	steps: number;
 	title: string;
 	body: string;
+	checks: TutorialCheck[];
+	choices: TutorialChoice[];
 	arrow: number | null;
 	distance: number | null;
+	hint: string;
 	finished: boolean;
 }
 

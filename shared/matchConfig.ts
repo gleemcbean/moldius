@@ -13,7 +13,6 @@ import {
 	MIN_SIMULTANEOUS_ANOMALIES,
 	PUBLIC_SIMULTANEOUS_ANOMALIES,
 } from "./config/index.js";
-import { STAKE_KINDS } from "./config/items.js";
 import { ENABLED_SPECIES_IDS } from "./config/monsters.js";
 import { MUTATOR_IDS, type MutatorId } from "./config/party.js";
 import type { SpeciesId } from "./config/species.js";
@@ -72,25 +71,22 @@ export const PUBLIC_MATCH_CONFIG: MatchConfig = Object.freeze({
 	bounty: true,
 }) as MatchConfig;
 
-export const TUTORIAL_SEED = 2024;
-export const TUTORIAL_WOUNDED_HEALTH = 50;
+export const TUTORIAL_SEED = 26;
 
-const TUTORIAL_MATCH_MINUTES = 15;
+const TUTORIAL_MATCH_MINUTES = 30;
 
 export const TUTORIAL_MATCH_CONFIG: MatchConfig = Object.freeze({
 	simultaneousAnomalies: 1,
 	manorSize: "small",
-	roomTypes: OPTIONAL_ROOM_TYPES.filter(
-		(type) => !(STAKE_KINDS as readonly string[]).includes(type),
-	),
-	floors: 1,
+	roomTypes: [...OPTIONAL_ROOM_TYPES],
+	floors: 0,
 	upperFloorSize: "small",
 	stairCount: 1,
 	species: ["murmure"],
 	durationMinutes: TUTORIAL_MATCH_MINUTES,
 	teamCount: 0,
 	itemsPerPlayer: 10,
-	walkies: false,
+	walkies: true,
 	mode: "classic",
 	mutators: [],
 	events: false,

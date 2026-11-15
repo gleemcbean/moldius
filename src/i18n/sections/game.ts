@@ -9,6 +9,10 @@ export interface HighlightContext {
 	value: number;
 }
 
+function lowerFirst(value: string): string {
+	return value.charAt(0).toLowerCase() + value.slice(1);
+}
+
 function seconds(ms: number): number {
 	return Math.round(ms / 1000);
 }
@@ -68,97 +72,154 @@ export const gameFr = {
 		unused: "Inutile dans cette partie",
 	},
 	tutorial: {
-		progress: (step: number, total: number) => `Étape ${step} sur ${total}`,
-		skip: "Entrée : passer cette étape",
+		dummyName: "Mannequin",
+		skip: (key: string) => `${key} : passer l'étape`,
 		stepDone: "Étape réussie !",
+		teleported: "Direction la salle d'exercice…",
+		castCompleted:
+			"Trop tard : le mannequin a achevé son incantation. Il recommence, criez plus tôt !",
+		forkHeader: "Tutoriel principal terminé",
+		endHeader: "Tutoriel terminé",
+		chapters: {
+			movement: "Déplacements",
+			items: "Objets et interface",
+			interactions: "Interactions",
+			capture: "Capture",
+			bonus: "Pour aller plus loin",
+		},
+		progress: (chapter: string, step: number, total: number) =>
+			`${chapter} · ${step}/${total}`,
+		choices: {
+			quit: "Revenir à l'accueil",
+			more: "Aller plus loin : salles spéciales, talkies-walkies et appareil photo",
+		},
+		badges: {
+			heard: "Il vous entend !",
+			quiet: "Il n'entend rien",
+			casting: "Incantation…",
+			interrupted: "Incantation brisée !",
+			completed: "Incantation achevée",
+		},
 		checks: {
-			range: (meters: number) => `À moins de ${meters} m du monstre`,
-			object: "Objet occulte en main",
-			voice: "Voix entendue par le micro",
-			valveOpen: "Vanne ouverte",
-			inJet: "Sous le jet",
-			lookAround: "Regarder tout autour de soi",
+			walk: (percent: number) => `Marcher quelques mètres (${percent} %)`,
+			sprint: (key: string, percent: number) =>
+				`Courir en maintenant ${key} (${percent} %)`,
+			jump: (key: string) => `Sauter avec ${key}`,
+			heardStanding: "Vous faire entendre en marchant debout",
+			sneak: (key: string, meters: number, percent: number) =>
+				`Avancer accroupi (${key}) à moins de ${meters} m sans être entendu (${percent} %)`,
+			mapOpened: "Carte ouverte",
+			mapClosed: "Carte refermée",
 			lanternOpened: "Lanterne ouverte",
 			lanternClosed: "Lanterne refermée",
-			grimoireOpen: "Grimoire ouvert",
-			formulaRead: "Formule et objet repérés",
-		},
-		goal: {
-			title: (name: string) => `Objectif : capturer ${name}`,
-			gather: (have: number, need: number) =>
-				`Réunir les fragments (${have}/${need})`,
-			craft: (object: string) => `Fabriquer « ${object} » à l'autel`,
-			hold: (object: string) => `Tenir « ${object} » en main`,
-			cast: "Prononcer sa formule près de lui",
+			material: (name: string, have: number, need: number) =>
+				`${name} : ${have}/${need}`,
+			crafted: (object: string) => `« ${object} » fabriqué à l'autel`,
+			held: (object: string) => `« ${object} » en main`,
+			valveOpen: "Vanne ouverte",
+			inJet: "Sous le jet",
+			healed: (health: number, target: number) => `Santé : ${health}/${target}`,
+			pushed: (key: string) => `Pousser le mannequin avec ${key}`,
+			shoutRange: (meters: number) =>
+				`À moins de ${String(meters).replace(".", ",")} m du mannequin`,
+			interrupted: (key: string) => `Briser son incantation en criant (${key})`,
+			grimoire: (key: string) => `Lire le grimoire (${key}) quelques secondes`,
+			range: (meters: number) => `À moins de ${meters} m du monstre`,
+			object: (object: string) => `« ${object} » en main`,
+			voice: "Voix entendue par le micro",
+			pact: "Pacte scellé",
+			sanctuary: "Sanctuaire allumé",
+			regained: (gained: number, target: number) =>
+				`Reprendre des forces (+${gained}/${target} PV)`,
+			reliquary: "Reliquaire pillé",
+			walkieTaken: (key: string) => `Prendre le talkie-walkie (${key})`,
+			radio: (key: string, percent: number) =>
+				`Émettre en maintenant ${key} (${percent} %)`,
+			cameraTaken: (key: string) => `Prendre l'appareil photo (${key})`,
+			cameraRaised: (key: string) => `Lever l'appareil avec ${key}`,
+			photo: (key: string) => `Prendre une photo (${key})`,
 		},
 		steps: {
-			goal: (points: number) => ({
-				title: "Votre mission",
-				body: `Le manoir est infesté de monstres. En partie, votre but est d'en capturer le plus possible avant la fin du temps : chaque capture rapporte des points (jusqu'à ${points} pour les plus redoutables) et le meilleur score l'emporte. Pour capturer un monstre, il faut toujours ces quatre étapes, rappelées ci-dessous. Regardez tout autour de vous avec la souris pour commencer.`,
-			}),
 			move: (keys: string) => ({
 				title: "Se déplacer",
-				body: `${keys} pour marcher, la souris pour regarder. La minicarte montre où vous êtes. Avancez un peu.`,
+				body: `${keys} pour marcher, la souris pour regarder autour de vous. En haut à gauche, la minicarte suit chacun de vos pas. Faites quelques mètres.`,
 			}),
-			sprint: (sprint: string, jump: string) => ({
+			run: (sprint: string, jump: string) => ({
 				title: "Courir et sauter",
-				body: `Maintenez ${sprint} en marchant pour courir, ${jump} pour sauter. Courir, sauter et garder la lanterne ouverte vident la barre jaune d'énergie. À sec, plus de course ni de saut tant qu'elle n'est pas remontée, et une chute de la mezzanine fait mal. Courez un instant.`,
+				body: `Maintenez ${sprint} en avançant pour courir, et ${jump} pour sauter. Les deux puisent dans la barre jaune d'énergie, en bas à gauche : à sec, plus de course ni de saut le temps qu'elle remonte. Elle se recharge dès que vous soufflez un peu.`,
 			}),
-			crouch: (crouch: string) => ({
+			stealth: (crouch: string, name: string) => ({
 				title: "Rester discret",
-				body: `Maintenez ${crouch} pour vous accroupir. Courir s'entend de loin, accroupi presque pas. Lanterne fermée, la jauge de bruit apparaît : votre voix au micro attire aussi les monstres.`,
-			}),
-			lantern: (key: string) => ({
-				title: "La lanterne",
-				body: `${key} ouvre ou ferme la lanterne. Elle éclaire, mais les monstres la voient de loin. Ouvrez-la, puis refermez-la.`,
-			}),
-			door: (key: string) => ({
-				title: "Les portes",
-				body: `Suivez l'étoile, visez une porte et appuyez sur ${key}.`,
+				body: `Les monstres vous voient, mais surtout ils vous entendent. ${name} est figé pour l'exercice : son badge dit s'il vous entend. Courir s'entend de très loin, marcher à quelques mètres, et accroupi (${crouch} maintenu) presque plus rien. Votre voix au micro porte aussi : accroupi et lanterne fermée, une jauge de bruit s'affiche à droite. Approchez-le debout, puis tournez autour de lui accroupi sans vous faire entendre.`,
 			}),
 			map: (key: string) => ({
 				title: "La carte",
-				body: `${key} ouvre le plan du manoir : pièces, étages, escaliers et autels. Ouvrez-le, puis refermez-le avec ${key}.`,
+				body: `${key} déplie le plan du manoir : les pièces, votre position, les autels (étoile turquoise) et les vannes d'eau verte. La molette zoome. Ouvrez-le, puis refermez-le avec ${key}.`,
 			}),
-			loot: (key: string, list: string) => ({
-				title: "Les matériaux",
-				body: `Première étape de toute capture : des fragments traînent au sol, sur les meubles, dans les coffres et les boîtes. Suivez l'étoile et ramassez avec ${key} : ${list}.`,
+			lantern: (key: string) => ({
+				title: "La lanterne",
+				body: `${key} ouvre ou ferme la lanterne. Elle éclaire les coins sombres, mais consomme de l'énergie tant qu'elle reste ouverte, et les monstres la repèrent de loin. Ouvrez-la, puis refermez-la.`,
 			}),
-			grimoire: (key: string) => ({
-				title: "Le grimoire",
-				body: `${key} ouvre le grimoire ; regardez vers le bas pour le lire. Chaque monstre a sa page : l'objet occulte qu'il craint, ses dangers et la formule qui le capture. La molette tourne les pages. Ouvrez-le et repérez la page du Murmure.`,
+			fragments: (key: string, object: string) => ({
+				title: "Les fragments",
+				body: `Pour capturer un monstre, il faut l'objet occulte qu'il craint, ici « ${object} ». Pour le fabriquer, il faut des fragments : ils traînent au sol, sur les meubles et dans les coffres. Suivez l'étoile et ramassez-les avec ${key}. Vos réserves s'affichent en haut à droite.`,
 			}),
-			altar: (key: string, name: string) => ({
+			altar: (key: string, object: string) => ({
 				title: "L'autel",
-				body: `Deuxième étape : les pupitres au livre volant, marqués d'une étoile turquoise sur la minicarte, fabriquent les objets occultes. Rejoignez-en un, appuyez sur ${key}, choisissez « ${name} » à la molette, puis ${key} de nouveau. Dans la barre du bas, un « + » turquoise signale un objet que vous pouvez fabriquer.`,
+				body: `Les pupitres au livre volant sont des autels. Suivez l'étoile, appuyez sur ${key}, choisissez « ${object} » à la molette, puis ${key} encore pour le fabriquer. Sélectionnez-le ensuite dans la barre du bas, à la molette ou avec son chiffre : pour capturer, l'objet doit être en main.`,
 			}),
-			hold: (name: string) => ({
-				title: "Tenir l'objet",
-				body: `Troisième étape : pour capturer, l'objet doit être dans votre main. Sélectionnez « ${name} » dans la barre du bas, à la molette ou avec son chiffre.`,
-			}),
-			hide: (key: string) => ({
-				title: "Se cacher",
-				body: `Armoires, malles et autres cachettes protègent des monstres. Entrez dans celle qui est indiquée avec ${key}, puis ressortez.`,
-			}),
-			valve: (key: string, flow: number, rest: number) => ({
+			water: (key: string, flow: number, rest: number) => ({
 				title: "L'eau verte",
-				body: `Vous êtes blessé : regardez la barre rouge. L'eau verte soigne. Suivez l'étoile jusqu'à une vanne, en prenant l'escalier si besoin, ouvrez-la avec ${key} et placez-vous sous le jet. Elle coule ${flow} s, puis se repose ${rest} s.`,
+				body: `Aïe, vous voilà blessé : regardez la barre rouge. L'eau verte soigne. Suivez l'étoile jusqu'à une vanne, ouvrez-la avec ${key} et placez-vous sous le jet. Elle coule ${flow} s, puis se repose ${rest} s.`,
 			}),
 			push: (key: string) => ({
 				title: "Pousser",
-				body: `${key} pousse le joueur devant vous et interrompt son incantation. Cela coûte de l'énergie et se recharge : regardez en bas à droite. Essayez.`,
+				body: `Ce mannequin joue un adversaire. ${key} pousse le joueur que vous visez de près : utile pour lui couper la route ou le jeter dans les bras d'un monstre. Une poussée coûte de l'énergie et se recharge en quelques secondes (en bas à droite). Poussez-le.`,
 			}),
-			shout: (key: string) => ({
+			shout: (key: string, name: string) => ({
 				title: "Crier",
-				body: `Un Murmure vient de s'éveiller. Un cri attire les monstres à l'endroit où vous êtes : appuyez sur ${key} pour le faire venir.`,
+				body: `Le mannequin incante pour capturer un monstre avant vous ! Approchez-vous : un cri (${key}) brise les incantations des joueurs proches, tout comme une voix très forte au micro. En partie, chaque cri porte loin et attire les monstres vers vous ; ici, seul un cri réussi réveillera ${lowerFirst(name)}, qui rôde non loin. Criez pendant qu'il incante.`,
 			}),
-			capture: (formula: string) => ({
+			goal: (points: number, key: string, name: string) => ({
+				title: "Le but du jeu",
+				body: `Votre cri a réveillé ${lowerFirst(name)} : le voilà ! En partie, le manoir grouille de monstres. Capturez-en le plus possible avant la fin du temps : chaque capture rapporte des points (jusqu'à ${points} pour les plus redoutables) et le meilleur score l'emporte. Le grimoire a une page par espèce : l'objet qu'elle craint, ses dangers et sa formule de capture. Ouvrez-le avec ${key}, regardez vers le bas et lisez-le.`,
+			}),
+			capture: (name: string, meters: number, formula: string) => ({
 				title: "Capturer",
-				body: `Dernière étape : approchez-vous à moins de 5 m, l'objet occulte en main, et prononcez à voix haute « ${formula} ». Lanterne ouverte ou fermée, peu importe, et inutile de viser.`,
+				body: `${name} est là. Approchez-vous à moins de ${meters} m, l'objet occulte en main, et prononcez à voix haute « ${formula} ». Inutile de viser. Ici, ses coups ne blessent pas ; en partie, ils font très mal.`,
 			}),
-			end: (points: number) => ({
+			fork: (points: number) => ({
+				title: "Bien joué !",
+				body: `Capture réussie : +${points} points ! Vous connaissez tout le cycle : fragments, autel, objet en main, formule. Vous pouvez revenir à l'accueil pour jouer, ou découvrir encore quelques outils du manoir.`,
+			}),
+			pact: (key: string, cost: number) => ({
+				title: "Salle spéciale : le pacte",
+				body: `Certaines pièces proposent un marché risqué. L'autel rouge du pacte échange ${cost} points de vie contre un objet occulte, sans le moindre fragment. Pratique… si vous survivez. Approchez-vous et scellez le pacte avec ${key}.`,
+			}),
+			sanctuary: (key: string, seconds: number) => ({
+				title: "Salle spéciale : le sanctuaire",
+				body: `Le feu vert du sanctuaire soigne tous ceux qui restent dans la pièce pendant ${seconds} s. Mais sa cloche appelle les monstres à intervalles réguliers. Allumez-le avec ${key} et restez le temps de vous refaire une santé.`,
+			}),
+			reliquary: (key: string, count: number) => ({
+				title: "Salle spéciale : le reliquaire",
+				body: `Le reliquaire doré renferme ${count} fragments pris au hasard. Le piller déclenche l'alarme : les portes claquent et tout le manoir l'entend. Pillez-le avec ${key}.`,
+			}),
+			walkie: (interact: string, radio: string) => ({
+				title: "Le talkie-walkie",
+				body: `Quelques talkies-walkies traînent dans le manoir. Prenez celui-ci avec ${interact}, puis maintenez ${radio} pour parler : tous ceux qui en portent un vous entendent, où qu'ils soient. Attention, le haut-parleur de ceux qui écoutent grésille, et les monstres l'entendent.`,
+			}),
+			camera: (
+				interact: string,
+				camera: string,
+				aim: string,
+				photo: string,
+			) => ({
+				title: "L'appareil photo",
+				body: `Prenez l'appareil photo avec ${interact}. ${camera} le lève ou le baisse, ${aim} maintenu pour viser, ${photo} pour déclencher. Vos clichés vous attendent à la fin de la partie, prêts à être téléchargés. Prenez une photo.`,
+			}),
+			end: () => ({
 				title: "Vous êtes prêt",
-				body: `Capture réussie : +${points} points ! En partie, répétez ce cycle (fragments, autel, objet en main, formule) pour chaque monstre : chaque espèce craint son propre objet et a sa propre formule, notées dans le grimoire. Les monstres blessent pour de vrai, et l'on revient après quelques secondes quand on tombe. Un cri ou une voix forte interrompt aussi l'incantation d'un rival. Entrée pour revenir à l'accueil.`,
+				body: "Vous savez tout. Chaque espèce a ses ruses, lisez bien sa page du grimoire avant de l'affronter. Bonne chasse !",
 			}),
 		},
 	},
@@ -532,97 +593,154 @@ export const gameEn: typeof gameFr = {
 		unused: "Useless in this game",
 	},
 	tutorial: {
-		progress: (step: number, total: number) => `Step ${step} of ${total}`,
-		skip: "Enter: skip this step",
+		dummyName: "Dummy",
+		skip: (key: string) => `${key}: skip this step`,
 		stepDone: "Step complete!",
+		teleported: "Off to the training room…",
+		castCompleted:
+			"Too late: the dummy finished its incantation. It starts again, shout sooner!",
+		forkHeader: "Main tutorial complete",
+		endHeader: "Tutorial complete",
+		chapters: {
+			movement: "Movement",
+			items: "Items and interface",
+			interactions: "Interactions",
+			capture: "Capture",
+			bonus: "Going further",
+		},
+		progress: (chapter: string, step: number, total: number) =>
+			`${chapter} · ${step}/${total}`,
+		choices: {
+			quit: "Return home",
+			more: "Go further: special rooms, walkie-talkies and camera",
+		},
+		badges: {
+			heard: "It hears you!",
+			quiet: "It hears nothing",
+			casting: "Incanting…",
+			interrupted: "Incantation broken!",
+			completed: "Incantation complete",
+		},
 		checks: {
-			range: (meters: number) => `Within ${meters} m of the monster`,
-			object: "Occult object in hand",
-			voice: "Voice heard by the microphone",
-			valveOpen: "Valve open",
-			inJet: "Under the jet",
-			lookAround: "Look all around you",
+			walk: (percent: number) => `Walk a few meters (${percent}%)`,
+			sprint: (key: string, percent: number) =>
+				`Run while holding ${key} (${percent}%)`,
+			jump: (key: string) => `Jump with ${key}`,
+			heardStanding: "Get heard while walking upright",
+			sneak: (key: string, meters: number, percent: number) =>
+				`Move crouched (${key}) within ${meters} m without being heard (${percent}%)`,
+			mapOpened: "Map opened",
+			mapClosed: "Map closed again",
 			lanternOpened: "Lantern opened",
 			lanternClosed: "Lantern closed again",
-			grimoireOpen: "Grimoire open",
-			formulaRead: "Formula and object spotted",
-		},
-		goal: {
-			title: (name: string) => `Goal: capture ${name}`,
-			gather: (have: number, need: number) =>
-				`Gather the fragments (${have}/${need})`,
-			craft: (object: string) => `Craft "${object}" at the altar`,
-			hold: (object: string) => `Hold "${object}" in your hand`,
-			cast: "Say its formula close to it",
+			material: (name: string, have: number, need: number) =>
+				`${name}: ${have}/${need}`,
+			crafted: (object: string) => `"${object}" crafted at the altar`,
+			held: (object: string) => `"${object}" in hand`,
+			valveOpen: "Valve open",
+			inJet: "Under the jet",
+			healed: (health: number, target: number) => `Health: ${health}/${target}`,
+			pushed: (key: string) => `Push the dummy with ${key}`,
+			shoutRange: (meters: number) => `Within ${meters} m of the dummy`,
+			interrupted: (key: string) =>
+				`Break its incantation with a shout (${key})`,
+			grimoire: (key: string) => `Read the grimoire (${key}) for a few seconds`,
+			range: (meters: number) => `Within ${meters} m of the monster`,
+			object: (object: string) => `"${object}" in hand`,
+			voice: "Voice heard by the microphone",
+			pact: "Pact sealed",
+			sanctuary: "Sanctuary lit",
+			regained: (gained: number, target: number) =>
+				`Recover some health (+${gained}/${target} HP)`,
+			reliquary: "Reliquary looted",
+			walkieTaken: (key: string) => `Take the walkie-talkie (${key})`,
+			radio: (key: string, percent: number) =>
+				`Transmit while holding ${key} (${percent}%)`,
+			cameraTaken: (key: string) => `Take the camera (${key})`,
+			cameraRaised: (key: string) => `Raise the camera with ${key}`,
+			photo: (key: string) => `Take a photo (${key})`,
 		},
 		steps: {
-			goal: (points: number) => ({
-				title: "Your mission",
-				body: `The manor is infested with monsters. In a game, your goal is to capture as many as you can before time runs out: each capture scores points (up to ${points} for the most fearsome) and the best score wins. Capturing a monster always takes the four steps listed below. Look all around you with the mouse to begin.`,
-			}),
 			move: (keys: string) => ({
-				title: "Moving",
-				body: `${keys} to walk, the mouse to look. The minimap shows where you are. Walk a little.`,
+				title: "Moving around",
+				body: `${keys} to walk, the mouse to look around. At the top left, the minimap follows your every step. Walk a few meters.`,
 			}),
-			sprint: (sprint: string, jump: string) => ({
+			run: (sprint: string, jump: string) => ({
 				title: "Running and jumping",
-				body: `Hold ${sprint} while walking to run, ${jump} to jump. Running, jumping and keeping the lantern open drain the yellow energy bar. Once empty, no more running or jumping until it has refilled, and a fall from a mezzanine hurts. Run for a moment.`,
+				body: `Hold ${sprint} while moving to run, and press ${jump} to jump. Both draw on the yellow energy bar at the bottom left: when it runs dry, no more running or jumping until it refills. It recovers as soon as you catch your breath.`,
 			}),
-			crouch: (crouch: string) => ({
+			stealth: (crouch: string, name: string) => ({
 				title: "Staying quiet",
-				body: `Hold ${crouch} to crouch. Running can be heard from afar, crouching hardly at all. With the lantern closed, the noise gauge appears: your voice on the mic draws monsters too.`,
-			}),
-			lantern: (key: string) => ({
-				title: "The lantern",
-				body: `${key} opens or closes the lantern. It gives light, but monsters see it from afar. Open it, then close it again.`,
-			}),
-			door: (key: string) => ({
-				title: "Doors",
-				body: `Follow the star, aim at a door and press ${key}.`,
+				body: `Monsters see you, but above all they hear you. ${name} is frozen for this exercise: its badge tells you whether it hears you. Running carries very far, walking a few meters, and crouching (hold ${crouch}) almost nothing. Your microphone voice carries too: crouched with the lantern closed, a noise gauge appears on the right. Walk up to it upright, then circle it crouched without being heard.`,
 			}),
 			map: (key: string) => ({
 				title: "The map",
-				body: `${key} opens the manor plan: rooms, floors, stairs and altars. Open it, then close it with ${key}.`,
+				body: `${key} unfolds the manor plan: rooms, your position, altars (turquoise star) and green water valves. The wheel zooms. Open it, then close it again with ${key}.`,
 			}),
-			loot: (key: string, list: string) => ({
-				title: "Materials",
-				body: `First step of every capture: fragments lie on the floor, on furniture, in chests and boxes. Follow the star and pick up with ${key}: ${list}.`,
+			lantern: (key: string) => ({
+				title: "The lantern",
+				body: `${key} opens or closes the lantern. It lights up dark corners, but drains energy while it stays open, and monsters spot it from afar. Open it, then close it again.`,
 			}),
-			grimoire: (key: string) => ({
-				title: "The grimoire",
-				body: `${key} opens the grimoire; look down to read it. Each monster has its page: the occult object it fears, its dangers and the formula that captures it. The wheel turns the pages. Open it and find the Whisper's page.`,
+			fragments: (key: string, object: string) => ({
+				title: "Fragments",
+				body: `To capture a monster you need the occult object it fears, here "${object}". Crafting it takes fragments: they lie on the floor, on furniture and in chests. Follow the star and pick them up with ${key}. Your stock is shown at the top right.`,
 			}),
-			altar: (key: string, name: string) => ({
+			altar: (key: string, object: string) => ({
 				title: "The altar",
-				body: `Second step: lecterns with a flying book, shown by a turquoise star on the minimap, craft occult objects. Reach one, press ${key}, pick "${name}" with the wheel, then ${key} again. In the bottom bar, a turquoise "+" marks an object you can craft.`,
+				body: `Lecterns with a floating book are altars. Follow the star, press ${key}, pick "${object}" with the wheel, then ${key} again to craft it. Then select it in the bottom bar, with the wheel or its number: to capture, the object must be in your hand.`,
 			}),
-			hold: (name: string) => ({
-				title: "Holding the object",
-				body: `Third step: to capture, the object must be in your hand. Select "${name}" in the bottom bar, with the wheel or its number.`,
-			}),
-			hide: (key: string) => ({
-				title: "Hiding",
-				body: `Wardrobes, trunks and other hiding places protect you from monsters. Enter the marked one with ${key}, then come back out.`,
-			}),
-			valve: (key: string, flow: number, rest: number) => ({
+			water: (key: string, flow: number, rest: number) => ({
 				title: "Green water",
-				body: `You are hurt: look at the red bar. Green water heals. Follow the star to a valve, taking the stairs if needed, open it with ${key} and stand under the jet. It flows for ${flow} s, then rests for ${rest} s.`,
+				body: `Ouch, you are hurt: look at the red bar. Green water heals. Follow the star to a valve, open it with ${key} and stand under the jet. It flows for ${flow} s, then rests for ${rest} s.`,
 			}),
 			push: (key: string) => ({
 				title: "Pushing",
-				body: `${key} pushes the player in front of you and interrupts their incantation. It costs energy and has to recharge: look at the bottom right. Try it.`,
+				body: `This dummy plays a rival. ${key} pushes the player you are aiming at up close: handy to block their way or throw them into a monster's arms. A push costs energy and recharges in a few seconds (bottom right). Push it.`,
 			}),
-			shout: (key: string) => ({
+			shout: (key: string, name: string) => ({
 				title: "Shouting",
-				body: `A Whisper has just awoken. A shout draws monsters to where you stand: press ${key} to bring it here.`,
+				body: `The dummy is incanting to capture a monster before you! Get close: a shout (${key}) breaks the incantations of nearby players, and so does a very loud voice on the microphone. In a real game, every shout carries far and draws monsters to you; here, only a successful shout will wake ${lowerFirst(name)}, lurking nearby. Shout while it is incanting.`,
 			}),
-			capture: (formula: string) => ({
+			goal: (points: number, key: string, name: string) => ({
+				title: "The goal",
+				body: `Your shout woke ${lowerFirst(name)}: here it comes! In a game, the manor swarms with monsters. Capture as many as you can before time runs out: each capture scores points (up to ${points} for the most fearsome) and the best score wins. The grimoire has one page per species: the object it fears, its dangers and its capture formula. Open it with ${key}, look down and read it.`,
+			}),
+			capture: (name: string, meters: number, formula: string) => ({
 				title: "Capturing",
-				body: `Last step: get within 5 m, with the occult object in hand, and say "${formula}" out loud. Lantern open or closed, it does not matter, and no need to aim.`,
+				body: `Get within ${meters} m of ${lowerFirst(name)}, with the occult object in hand, and say "${formula}" out loud. No need to aim. Here its blows do not hurt; in a real game, they hurt a lot.`,
 			}),
-			end: (points: number) => ({
+			fork: (points: number) => ({
+				title: "Well done!",
+				body: `Capture complete: +${points} points! You know the whole cycle: fragments, altar, object in hand, formula. You can return home to play, or discover a few more tools of the manor.`,
+			}),
+			pact: (key: string, cost: number) => ({
+				title: "Special room: the pact",
+				body: `Some rooms offer a risky deal. The red pact altar trades ${cost} health points for an occult object, no fragments needed. Handy… if you survive. Step up and seal the pact with ${key}.`,
+			}),
+			sanctuary: (key: string, seconds: number) => ({
+				title: "Special room: the sanctuary",
+				body: `The sanctuary's green fire heals everyone who stays in the room for ${seconds} s. But its bell calls monsters at regular intervals. Light it with ${key} and stay until you are back on your feet.`,
+			}),
+			reliquary: (key: string, count: number) => ({
+				title: "Special room: the reliquary",
+				body: `The golden reliquary holds ${count} random fragments. Looting it sets off the alarm: doors slam and the whole manor hears it. Loot it with ${key}.`,
+			}),
+			walkie: (interact: string, radio: string) => ({
+				title: "The walkie-talkie",
+				body: `A few walkie-talkies lie around the manor. Take this one with ${interact}, then hold ${radio} to talk: everyone carrying one hears you, wherever they are. Careful, the listeners' speakers crackle, and monsters hear it.`,
+			}),
+			camera: (
+				interact: string,
+				camera: string,
+				aim: string,
+				photo: string,
+			) => ({
+				title: "The camera",
+				body: `Take the camera with ${interact}. ${camera} raises or lowers it, hold ${aim} to aim, ${photo} to shoot. Your pictures wait for you at the end of the game, ready to download. Take a photo.`,
+			}),
+			end: () => ({
 				title: "You are ready",
-				body: `Capture complete: +${points} points! In a game, repeat this cycle (fragments, altar, object in hand, formula) for every monster: each species fears its own object and has its own formula, both written in the grimoire. Monsters really hurt, and you come back a few seconds after falling. A shout or a loud voice also interrupts a rival's incantation. Press Enter to return home.`,
+				body: "You know it all. Every species has its tricks, so read its grimoire page before facing it. Happy hunting!",
 			}),
 		},
 	},

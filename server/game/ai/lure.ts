@@ -81,6 +81,7 @@ export function lureAnomalies(
 	for (const entity of match.anomalies) {
 		if (
 			!entity.active ||
+			match.tutorialDirector?.holds(entity) ||
 			!LURED_SPECIES.has(entity.species) ||
 			!INTERRUPTIBLE.has(entity.state) ||
 			Math.hypot(

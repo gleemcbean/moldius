@@ -258,13 +258,21 @@ export class ClientWorldState {
 		this.lastTick = snapshot.tick;
 		this.latestSnapshotTime = snapshot.t;
 		this.remainingMs = snapshot.remainingMs;
+		const present = new Set<string>();
 		for (const playerSnapshot of snapshot.players) {
 			const player = this.players.get(playerSnapshot.id);
 			if (!player) {
 				continue;
 			}
+			present.add(playerSnapshot.id);
 			player.latest = playerSnapshot;
 			player.buffer.push(snapshot.t, playerSnapshot);
+		}
+		for (const player of this.players.values()) {
+			if (!present.has(player.id) && player.latest) {
+				player.latest = null;
+				player.buffer.reset();
+			}
 		}
 		const seen = new Set<number>();
 		for (const anomalySnapshot of snapshot.anomalies) {

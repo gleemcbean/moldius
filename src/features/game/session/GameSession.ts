@@ -71,6 +71,7 @@ import {
 } from "@shared/protocol/game";
 import { DEFAULT_LANTERN_TINT, LANTERN_TINT_COLORS } from "@shared/rewards";
 import { TEAM_COLORS } from "@shared/teams";
+import { TUTORIAL_DUMMY_ID } from "@shared/tutorial";
 import * as THREE from "three";
 import { keyLabel } from "../../../config/controls";
 import {
@@ -367,8 +368,7 @@ export class GameSession {
 		);
 		if (this.init.tutorial) {
 			this.tutorial = new TutorialController(this.init, loaded, {
-				summon: () => getSocket().emit("game:tutorialSummon"),
-				wound: () => getSocket().emit("game:tutorialWound"),
+				stage: (stage) => getSocket().emit("game:tutorial", { stage }),
 			});
 		}
 		this.spotted = new SpottedDetector(loaded.world);
@@ -809,9 +809,6 @@ export class GameSession {
 	}
 
 	handleCastResult(result: CastResult): void {
-		if (result.ok) {
-			this.tutorial?.notify("captured");
-		}
 		this.cast.handleResult(
 			result,
 			(anomalyId) => this.anomalyLabel(anomalyId) ?? "Anomalie",
@@ -984,10 +981,15 @@ export class GameSession {
 				z: player.character.z,
 			},
 			yaw: player.yaw,
-			hidden: this.hideSpot >= 0,
+			grounded: player.character.grounded,
 			inventory: this.inventory,
 			heldObject: this.heldObject(),
 			lanternOpen: this.lanternIntent,
+			mapOpen: this.mapOpen,
+			grimoireOpen: loaded.grimoire.isOpen,
+			cameraRaised: this.cameraUp,
+			radioOn: this.radioOn,
+			photos: photoStore.get().photos.length,
 			health: loaded.state.self?.latest?.hp ?? 100,
 			serverNow,
 			dt,
@@ -1466,7 +1468,6 @@ export class GameSession {
 		}
 		getSocket().emit("game:interact", { kind: target.kind, id: target.id });
 		if (target.kind === "door") {
-			this.tutorial?.notify("door");
 			const door = loaded.doors.doors.get(target.id);
 			if (door) {
 				const open = !door.targetOpen;
@@ -2736,6 +2737,7 @@ export class GameSession {
 			this.init.players.map((player) => [player.id, player.tagline]),
 		);
 		return [...loaded.state.players.values()]
+			.filter((player) => player.id !== TUTORIAL_DUMMY_ID)
 			.map((player) => ({
 				id: player.id,
 				name: player.name,

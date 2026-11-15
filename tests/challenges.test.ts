@@ -13,7 +13,7 @@ import {
 	sanitizeChallengeProgress,
 	withMatchMetrics,
 } from "../shared/challenges.js";
-import { MATCH_DURATION_MS } from "../shared/config/index.js";
+import { MATCH_DURATION_MS, STAKE_KINDS } from "../shared/config/index.js";
 import {
 	dailyDateKey,
 	formatDailyCountdown,
@@ -318,6 +318,8 @@ describe("salles à enjeu comme salles normales", () => {
 		expect(
 			sanitizeMatchConfig({ ...config, roomTypes }, config).roomTypes,
 		).not.toContain("pact");
-		expect(TUTORIAL_MATCH_CONFIG.roomTypes).not.toContain("sanctuary");
+		expect(TUTORIAL_MATCH_CONFIG.roomTypes).toEqual(
+			expect.arrayContaining([...STAKE_KINDS]),
+		);
 	});
 });

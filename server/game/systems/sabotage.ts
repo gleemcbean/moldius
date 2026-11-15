@@ -45,6 +45,7 @@ export function interruptCast(
   target.castBlockedUntil = match.now + CAST_INTERRUPT_MS;
   target.sabotageProtectedUntil = match.now + SABOTAGE_PROTECTION_MS;
   match.emit({ type: 'castInterrupted', playerId: target.id, byId, cause });
+  match.tutorialDirector?.onInterrupted(target, byId, cause);
   return true;
 }
 
