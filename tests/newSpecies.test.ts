@@ -30,6 +30,7 @@ import {
 	placeBot,
 	prepareCaster,
 	silenceAnomalies,
+	speak,
 } from "./helpers/scenarios.js";
 import { MatchSimulation } from "./helpers/simulation.js";
 
@@ -154,11 +155,10 @@ function dodgeScenario(talkWhileMoving: boolean) {
 	if (!spot) {
 		throw new Error("No side step found for the test.");
 	}
-	const bot = sim.bot("p1");
-	bot.voiceLevel = 0.9;
+	speak(sim, "p1", 0.9);
 	sim.run(0.3);
 	expect(entity.state).toBe("windup");
-	bot.voiceLevel = talkWhileMoving ? 0.9 : 0;
+	speak(sim, "p1", talkWhileMoving ? 0.9 : 0);
 	sim.teleportBot("p1", spot);
 	sim.run(1.6);
 	return { sim, shot: sim.transport.eventsOfType("laser")[0] };
@@ -232,12 +232,11 @@ describe("Fulgurant", () => {
 		placeBot(sim, "p1", line.origin, line.yaw);
 		sim.run(2.2);
 		const entity = installAnomaly(sim, 0, "fulgurant", line.target, line.yaw);
-		const bot = sim.bot("p1");
-		bot.voiceLevel = 0.9;
+		speak(sim, "p1", 0.9);
 		sim.run(0.6);
 		expect(entity.state).toBe("windup");
 		expect(sim.transport.eventsOfType("laserCharge")).toHaveLength(1);
-		bot.voiceLevel = 0;
+		speak(sim, "p1", 0);
 		sim.run(1.4);
 		const shot = sim.transport.eventsOfType("laser")[0];
 		expect(shot?.hits).toEqual(["p1"]);
@@ -245,7 +244,7 @@ describe("Fulgurant", () => {
 		expect(player.health).toBe(HEALTH_MAX - SPECIES.fulgurant.damage);
 		expect(entity.state).toBe("special");
 		const position = { ...entity.position };
-		bot.voiceLevel = 0.9;
+		speak(sim, "p1", 0.9);
 		sim.run(9);
 		expect(entity.state).toBe("special");
 		expect(
@@ -255,9 +254,30 @@ describe("Fulgurant", () => {
 			),
 		).toBeLessThan(0.01);
 		expect(sim.transport.eventsOfType("laser")).toHaveLength(1);
-		bot.voiceLevel = 0;
+		speak(sim, "p1", 0);
 		sim.run(1.5);
 		expect(entity.state).not.toBe("special");
+	});
+
+	it("n'entend pas un bref pic de voix", () => {
+		const sim = quietSimulation();
+		const line = findClearLine(sim, 6);
+		placeBot(sim, "p1", line.origin, line.yaw);
+		sim.run(2.2);
+		const entity = installAnomaly(sim, 0, "fulgurant", line.target, line.yaw);
+		for (let burst = 0; burst < 3; burst += 1) {
+			speak(sim, "p1", 0.95);
+			sim.run(0.15);
+			speak(sim, "p1", 0);
+			sim.run(0.6);
+		}
+		expect(entity.memoryFor("p1").lastHeardAt).toBe(-Infinity);
+		expect(entity.state).not.toBe("windup");
+		expect(sim.transport.eventsOfType("laserCharge")).toHaveLength(0);
+		speak(sim, "p1", 0.95);
+		sim.run(0.6);
+		expect(entity.memoryFor("p1").lastHeardAt).toBeGreaterThan(-Infinity);
+		expect(entity.state).toBe("windup");
 	});
 
 	it("se capture à tout moment, pas seulement en surchauffe", () => {

@@ -27,6 +27,7 @@ import {
 	curvatureZoom,
 	HUD_BEND,
 	POST_BULGE,
+	type ScreenVeil,
 } from "../engine/render/PostEffects";
 import type { ObjectArt, ObjectArtId } from "../grimoire/objectArt";
 import { MAP_MAX_ZOOM, mapStore, resetMap, zoomMap } from "../map/mapStore";
@@ -42,7 +43,7 @@ const REFERENCE_WIDTH = 1500;
 const REFERENCE_HEIGHT = 790;
 const MIN_SCALE = 1.12;
 const MAX_SCALE = 2;
-const PAINT_INTERVAL_MS = 33;
+const PAINT_INTERVAL_MS = 1000 / 240;
 const WALKIE_ICON = new Path2D(ICON_PATHS.walkie);
 const FEEDBACK_MS = 4200;
 const NOISE_SEGMENTS = 18;
@@ -96,6 +97,78 @@ const FEEDBACK_TONES: Record<string, string> = {
 	warning: YELLOW,
 	info: VOICE,
 };
+
+type VeilShape = Omit<ScreenVeil, "alpha">;
+
+function tint(
+	red: number,
+	green: number,
+	blue: number,
+	alpha: number,
+): readonly [number, number, number, number] {
+	return [red / 255, green / 255, blue / 255, alpha];
+}
+
+function screenVeil(
+	from: number,
+	inner: readonly [number, number, number, number],
+	to: number,
+	outer: readonly [number, number, number, number],
+): VeilShape {
+	return {
+		x: 0.5,
+		y: 0.5,
+		radiusX: Math.SQRT1_2,
+		radiusY: Math.SQRT1_2,
+		from,
+		to,
+		inner,
+		outer,
+	};
+}
+
+const SPOTTED_VEIL = screenVeil(0.4, tint(0, 0, 0, 0), 1, tint(40, 0, 0, 0.55));
+const GAZE_VEIL = screenVeil(0.35, tint(0, 0, 0, 0), 1, tint(20, 90, 80, 0.6));
+const DAMAGE_VEIL = screenVeil(
+	0.45,
+	tint(160, 0, 0, 0),
+	1,
+	tint(170, 10, 0, 0.7),
+);
+const WOUNDED_VEIL = screenVeil(
+	0.55,
+	tint(120, 0, 0, 0),
+	1,
+	tint(120, 0, 0, 0.35),
+);
+const SLIMED_VEIL: VeilShape = {
+	x: 0.5,
+	y: 1,
+	radiusX: Math.SQRT1_2,
+	radiusY: Math.SQRT2,
+	from: 0,
+	to: 0.45,
+	inner: tint(90, 160, 40, 0.35),
+	outer: tint(90, 160, 40, 0),
+};
+const BLOOD_MOON_VEIL = screenVeil(
+	0.5,
+	tint(120, 0, 10, 0),
+	1,
+	tint(150, 10, 20, 0.42),
+);
+const HIDDEN_VEIL = screenVeil(
+	0.25,
+	tint(0, 0, 0, 0),
+	0.75,
+	tint(0, 0, 0, 0.85),
+);
+const CARRIED_VEIL = screenVeil(
+	0,
+	tint(40, 28, 14, 0.75),
+	0.7,
+	tint(10, 6, 2, 0.97),
+);
 
 type TextAlign = "left" | "center" | "right";
 
@@ -181,11 +254,15 @@ export class HudCanvas {
 	minimapRoom = "";
 	mapLevels: readonly Level[] = [0];
 	markers: HudMarker[] = [];
+	readonly veils: ScreenVeil[] = [];
 	onMapClose: (() => void) | null = null;
 	private mapHover: string | null = null;
 	private mapButtons: MapButton[] = [];
 	private readonly canvas = document.createElement("canvas");
 	private readonly context: HudRecorder;
+	private readonly source: THREE.Texture;
+	private readonly uploadRegion = new THREE.Box2();
+	private readonly uploadAt = new THREE.Vector2();
 	private readonly hazedMinimap = document.createElement("canvas");
 	private minimapDirty = true;
 	private minimapHaze = -1;
@@ -209,7 +286,10 @@ export class HudCanvas {
 		this.context = new HudRecorder(
 			this.canvas.getContext("2d") as CanvasRenderingContext2D,
 		);
+		this.context.registerPath(WALKIE_ICON, 0, 0, 16, 16);
 		this.texture = layerTexture(this.canvas);
+		this.texture.flipY = false;
+		this.source = new THREE.Texture(this.canvas);
 		this.minimapTexture = layerTexture(this.minimap);
 	}
 
@@ -256,7 +336,7 @@ export class HudCanvas {
 		return now - this.paintedAt >= PAINT_INTERVAL_MS;
 	}
 
-	paint(now: number): void {
+	paint(now: number, renderer: THREE.WebGLRenderer): void {
 		const dt = Math.min(0.2, (now - this.paintedAt) / 1000);
 		this.paintedAt = now;
 		const settings = settingsStore.get();
@@ -265,53 +345,95 @@ export class HudCanvas {
 		const context = this.context;
 		context.begin();
 		this.minimapShown = false;
-		context.setTransform(1, 0, 0, 1, 0, 0);
-		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		context.setTransform(this.drawScale, 0, 0, this.drawScale, 0, 0);
 		context.textBaseline = "middle";
 		context.lineJoin = "round";
-		this.paintVeils(hud, now);
+		this.updateVeils(hud, now);
+		context.section();
+		this.paintLookAway(hud);
+		context.section();
 		if (hud.noMap) {
 			this.minimapBottom = 20;
 		} else {
 			this.paintMinimap(hud);
 		}
+		context.section();
 		this.paintTopBar(hud, now);
+		context.section();
 		this.paintMaterials(hud);
+		context.section();
 		if (!hud.ghost) {
 			this.paintStatus(hud, now, dt);
 		}
+		context.section();
 		this.paintBrew(hud, now);
+		context.section();
 		this.paintWalkie(hud, now);
+		context.section();
 		this.paintCamera(hud);
+		context.section();
 		this.paintAbilities(hud);
+		context.section();
 		if (!hud.ghost) {
 			this.paintHotbar(hud);
 		}
 		this.paintMarkers(hud);
+		context.section();
 		this.paintPrompt(hud);
+		context.section();
 		this.paintCast(hud, now);
+		context.section();
 		this.paintFeedback(hud, now);
+		context.section();
 		this.paintAltar(hud);
+		context.section();
 		this.paintGift(hud);
+		context.section();
 		this.paintTutorial(hud);
+		context.section();
 		this.paintNoise(hud, dt);
+		context.section();
 		this.paintDev(hud);
+		context.section();
 		this.paintStats(hud, settings.stats);
+		context.section();
 		if (hud.ghost) {
 			this.paintGhost(hud);
 		} else {
 			this.paintDeath(hud);
 		}
+		context.section();
 		this.paintWheel(hud);
+		context.section();
 		this.paintRole(hud, now);
+		context.section();
 		this.paintLeaderboard(hud, now);
+		context.section();
 		if (hud.showMap && !hud.noMap) {
 			this.paintBigMap(hud);
 			context.invalidate();
 		}
 		if (context.commit()) {
+			this.upload(renderer);
+		}
+	}
+
+	private upload(renderer: THREE.WebGLRenderer): void {
+		const context = this.context;
+		if (context.repaintedAll) {
 			this.texture.needsUpdate = true;
+			return;
+		}
+		for (const region of context.repainted) {
+			this.uploadRegion.min.set(region.left, region.top);
+			this.uploadRegion.max.set(region.right, region.bottom);
+			this.uploadAt.set(region.left, region.top);
+			renderer.copyTextureToTexture(
+				this.source,
+				this.texture,
+				this.uploadRegion,
+				this.uploadAt,
+			);
 		}
 	}
 
@@ -640,84 +762,45 @@ export class HudCanvas {
 		);
 	}
 
-	private paintVeils(hud: HudState, now: number): void {
-		const width = this.width;
-		const height = this.height;
+	private addVeil(shape: VeilShape, alpha = 1): void {
+		this.veils.push({ ...shape, alpha: Math.min(1, Math.max(0, alpha)) });
+	}
+
+	private updateVeils(hud: HudState, now: number): void {
+		this.veils.length = 0;
 		if (hud.spotted > 0.01) {
-			this.centerVeil(
-				[
-					{ at: 0.4, color: "rgba(0, 0, 0, 0)" },
-					{ at: 1, color: "rgba(40, 0, 0, 0.55)" },
-				],
-				hud.spotted,
-			);
+			this.addVeil(SPOTTED_VEIL, hud.spotted);
 		}
 		if (hud.gaze > 0.05) {
-			this.centerVeil(
-				[
-					{ at: 0.35, color: "rgba(0, 0, 0, 0)" },
-					{ at: 1, color: "rgba(20, 90, 80, 0.6)" },
-				],
-				Math.min(1, hud.gaze * 1.1),
-			);
+			this.addVeil(GAZE_VEIL, Math.min(1, hud.gaze * 1.1));
 		}
 		const damage = Math.max(0, 1 - (now - hud.damageAt) / 700);
 		if (damage > 0) {
-			this.centerVeil(
-				[
-					{ at: 0.45, color: "rgba(160, 0, 0, 0)" },
-					{ at: 1, color: "rgba(170, 10, 0, 0.7)" },
-				],
-				damage * 0.85,
-			);
+			this.addVeil(DAMAGE_VEIL, damage * 0.85);
 		}
 		if (hud.health < 30 && !hud.dead) {
-			this.centerVeil(
-				[
-					{ at: 0.55, color: "rgba(120, 0, 0, 0)" },
-					{ at: 1, color: "rgba(120, 0, 0, 0.35)" },
-				],
-				0.78 + Math.sin(now / 190) * 0.22,
-			);
+			this.addVeil(WOUNDED_VEIL, 0.78 + Math.sin(now / 190) * 0.22);
 		}
 		if (hud.slimed) {
-			this.veil(
-				width / 2,
-				height,
-				(width / 2) * Math.SQRT2,
-				height * Math.SQRT2,
-				[
-					{ at: 0, color: "rgba(90, 160, 40, 0.35)" },
-					{ at: 0.45, color: "rgba(90, 160, 40, 0)" },
-				],
-			);
+			this.addVeil(SLIMED_VEIL);
 		}
 		if (
 			hud.manorEvent?.kind === "bloodMoon" &&
 			hud.manorEvent.phase === "start"
 		) {
-			this.centerVeil(
-				[
-					{ at: 0.5, color: "rgba(120, 0, 10, 0)" },
-					{ at: 1, color: "rgba(150, 10, 20, 0.42)" },
-				],
-				0.85 + Math.sin(now / 700) * 0.15,
-			);
+			this.addVeil(BLOOD_MOON_VEIL, 0.85 + Math.sin(now / 700) * 0.15);
 		}
 		if (hud.hidden) {
-			this.centerVeil([
-				{ at: 0.25, color: "rgba(0, 0, 0, 0)" },
-				{ at: 0.75, color: "rgba(0, 0, 0, 0.85)" },
-			]);
+			this.addVeil(HIDDEN_VEIL);
 		}
 		if (hud.carried) {
-			this.centerVeil([
-				{ at: 0, color: "rgba(40, 28, 14, 0.75)" },
-				{ at: 0.7, color: "rgba(10, 6, 2, 0.97)" },
-			]);
+			this.addVeil(CARRIED_VEIL);
 		}
+	}
+
+	private paintLookAway(hud: HudState): void {
 		if (hud.gaze > 0.35) {
-			const at = this.at(width / 2, height * 0.22);
+			const at = this.at(this.width / 2, this.height * 0.22);
 			this.text(currentMessages().game.hud.lookAway, at.x, at.y, {
 				font: `400 32px ${TITLE}`,
 				color: "#b8fff0",
@@ -1474,6 +1557,7 @@ export class HudCanvas {
 		const context = this.context;
 		context.fillStyle = "rgba(5, 6, 5, 0.55)";
 		context.fillRect(0, 0, this.width, this.height);
+		context.section();
 		const x = (this.width - width) / 2;
 		const top = (this.height - height) / 2;
 		this.panel(x, top, width, height, "rgba(17, 21, 18, 0.95)", YELLOW);
@@ -2471,6 +2555,7 @@ export class HudCanvas {
 		const context = this.context;
 		context.fillStyle = "rgba(30, 0, 0, 0.55)";
 		context.fillRect(0, 0, this.width, this.height);
+		context.section();
 		const x = this.width / 2;
 		const y = this.height / 2;
 		this.text(messages.fallen, x, y - 26, {
@@ -2497,6 +2582,7 @@ export class HudCanvas {
 		const centerX = this.width / 2;
 		const centerY = this.height / 2;
 		for (const marker of this.markers) {
+			context.section();
 			const dx = Math.cos(marker.angle);
 			const dy = Math.sin(marker.angle);
 			const reach = Math.min(
@@ -2546,9 +2632,10 @@ export class HudCanvas {
 		const outer = 150;
 		const count = wheel.labels.length;
 		const step = (Math.PI * 2) / count;
-		context.save();
 		context.fillStyle = "rgba(5, 6, 5, 0.35)";
 		context.fillRect(0, 0, this.width, this.height);
+		context.section();
+		context.save();
 		wheel.labels.forEach((label, index) => {
 			const start = -Math.PI / 2 + index * step - step / 2;
 			const selected = index === wheel.selected;
@@ -2677,6 +2764,7 @@ export class HudCanvas {
 			{ at: 0.35, color: "rgba(40, 70, 110, 0)" },
 			{ at: 1, color: "rgba(40, 70, 110, 0.55)" },
 		]);
+		this.context.section();
 		const x = this.width / 2;
 		const top = this.at(x, this.height * 0.2);
 		this.text(party.title, top.x, top.y, {

@@ -11,8 +11,21 @@ export interface PostEffectsFrame {
 	nausea?: number;
 }
 
+export interface ScreenVeil {
+	x: number;
+	y: number;
+	radiusX: number;
+	radiusY: number;
+	from: number;
+	to: number;
+	inner: readonly [number, number, number, number];
+	outer: readonly [number, number, number, number];
+	alpha: number;
+}
+
 export const POST_BULGE = 0.3;
 export const HUD_BEND = 0.38;
+export const MAX_VEILS = 8;
 const HUD_SHIFT = 0.1;
 
 export function curvatureZoom(curvature: number, aspect: number): number {
@@ -37,6 +50,11 @@ uniform sampler2D minimap;
 uniform vec4 minimapRect;
 uniform vec2 minimapSize;
 uniform float minimapOn;
+uniform vec4 veilShape[${MAX_VEILS}];
+uniform vec4 veilInner[${MAX_VEILS}];
+uniform vec4 veilOuter[${MAX_VEILS}];
+uniform vec3 veilRange[${MAX_VEILS}];
+uniform int veilCount;
 uniform float desaturate;
 uniform vec2 resolution;
 uniform float lines;
@@ -84,7 +102,26 @@ vec2 crispTexel(vec2 point, vec2 size) {
 }
 
 vec2 hudTexel(vec2 point) {
-  return crispTexel(point, hudSize);
+  vec2 texel = crispTexel(point, hudSize);
+  return vec2(texel.x, 1.0 - texel.y);
+}
+
+vec4 veilLayer(vec2 point) {
+  vec4 layer = vec4(0.0);
+  for (int index = 0; index < ${MAX_VEILS}; index++) {
+    if (index >= veilCount) {
+      break;
+    }
+    vec4 shape = veilShape[index];
+    vec3 range = veilRange[index];
+    float reach = length((point - shape.xy) / shape.zw);
+    float blend = clamp((reach - range.x) / max(range.y - range.x, 0.0001), 0.0, 1.0);
+    vec4 tint = mix(veilInner[index], veilOuter[index], blend);
+    float alpha = tint.a * range.z;
+    layer.rgb = tint.rgb * alpha + layer.rgb * (1.0 - alpha);
+    layer.a = alpha + layer.a * (1.0 - alpha);
+  }
+  return layer;
 }
 
 void main() {
@@ -143,8 +180,9 @@ void main() {
     vec2 hudShift = shift * ${HUD_SHIFT.toFixed(3)};
     float hudRed = texture2D(hud, hudTexel(hudUv + hudShift)).r;
     float hudBlue = texture2D(hud, hudTexel(hudUv - hudShift)).b;
-    hudAlpha = hudMain.a;
-    vec3 under = gl_FragColor.rgb;
+    vec4 veil = veilLayer(vec2(hudUv.x, 1.0 - hudUv.y));
+    vec3 under = veil.rgb + gl_FragColor.rgb * (1.0 - veil.a);
+    hudAlpha = 1.0 - (1.0 - hudMain.a) * (1.0 - veil.a);
     if (minimapOn > 0.5) {
       vec2 local = (hudUv - minimapRect.xy) / minimapRect.zw;
       vec2 localShift = hudShift / minimapRect.zw;
@@ -217,6 +255,19 @@ export class PostEffects {
 				minimapRect: { value: new THREE.Vector4(0, 0, 1, 1) },
 				minimapSize: { value: new THREE.Vector2(1, 1) },
 				minimapOn: { value: 0 },
+				veilShape: {
+					value: Array.from({ length: MAX_VEILS }, () => new THREE.Vector4()),
+				},
+				veilInner: {
+					value: Array.from({ length: MAX_VEILS }, () => new THREE.Vector4()),
+				},
+				veilOuter: {
+					value: Array.from({ length: MAX_VEILS }, () => new THREE.Vector4()),
+				},
+				veilRange: {
+					value: Array.from({ length: MAX_VEILS }, () => new THREE.Vector3()),
+				},
+				veilCount: { value: 0 },
 				desaturate: { value: 0 },
 				resolution: { value: new THREE.Vector2(1, 1) },
 				lines: { value: 300 },
@@ -255,6 +306,25 @@ export class PostEffects {
 
 	clearHud(): void {
 		this.material.uniforms.hudOn.value = 0;
+		this.material.uniforms.veilCount.value = 0;
+	}
+
+	setVeils(veils: readonly ScreenVeil[]): void {
+		const uniforms = this.material.uniforms;
+		const count = Math.min(MAX_VEILS, veils.length);
+		for (let index = 0; index < count; index += 1) {
+			const veil = veils[index];
+			uniforms.veilShape.value[index].set(
+				veil.x,
+				veil.y,
+				veil.radiusX,
+				veil.radiusY,
+			);
+			uniforms.veilInner.value[index].set(...veil.inner);
+			uniforms.veilOuter.value[index].set(...veil.outer);
+			uniforms.veilRange.value[index].set(veil.from, veil.to, veil.alpha);
+		}
+		uniforms.veilCount.value = count;
 	}
 
 	setMinimap(

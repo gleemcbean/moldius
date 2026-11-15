@@ -7,6 +7,9 @@ import {
 	type MaterialId,
 	OCCULT_IDS,
 	type OccultId,
+	VOICE_AUDIBLE_LEVEL,
+	VOICE_AUDIBLE_SUSTAIN_MS,
+	VOICE_AUDIBLE_WINDOW_MS,
 } from "../../shared/config/index.js";
 import { type DevModes, noDevModes } from "../../shared/devModes.js";
 import {
@@ -177,6 +180,21 @@ export class MatchPlayer {
 			return 0;
 		}
 		return last.level;
+	}
+
+	audibleVoice(now: number): number | null {
+		const level = this.voiceLevelNow(now);
+		if (level < VOICE_AUDIBLE_LEVEL) {
+			return null;
+		}
+		const sustained = this.voiceActivitySince(
+			now - VOICE_AUDIBLE_WINDOW_MS,
+			VOICE_AUDIBLE_LEVEL,
+		);
+		if (sustained < VOICE_AUDIBLE_SUSTAIN_MS) {
+			return null;
+		}
+		return (level - VOICE_AUDIBLE_LEVEL) / (1 - VOICE_AUDIBLE_LEVEL);
 	}
 
 	voicePeakSince(since: number): number {

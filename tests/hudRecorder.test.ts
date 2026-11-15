@@ -4,13 +4,33 @@ interface Gradient {
 	addColorStop(offset: number, color: string): void;
 }
 
+interface Region {
+	left: number;
+	top: number;
+	right: number;
+	bottom: number;
+}
+
 interface Recorder {
 	begin(): void;
+	section(): void;
 	commit(): boolean;
 	invalidate(): void;
+	readonly repaintedAll: boolean;
+	readonly repainted: readonly Region[];
 	fillStyle: string | Gradient;
 	font: string;
 	globalAlpha: number;
+	setTransform(
+		a: number,
+		b: number,
+		c: number,
+		d: number,
+		e: number,
+		f: number,
+	): void;
+	translate(x: number, y: number): void;
+	fill(path?: unknown): void;
 	measureText(text: string): { width: number };
 	createRadialGradient(
 		x0: number,
@@ -33,10 +53,11 @@ const { HudRecorder } = (await import(
 	HudRecorder: new (target: unknown) => Recorder;
 };
 
-function fakeContext() {
+function fakeContext(canvas?: { width: number; height: number }) {
 	const calls: string[] = [];
 	let measures = 0;
 	const target: Record<string, unknown> = {
+		canvas,
 		font: "10px sans-serif",
 		measureText(text: string) {
 			measures += 1;
@@ -60,6 +81,11 @@ function fakeContext() {
 		"setTransform",
 		"clearRect",
 		"setLineDash",
+		"beginPath",
+		"rect",
+		"clip",
+		"fill",
+		"translate",
 	]) {
 		target[method] = (...args: unknown[]) => {
 			calls.push(`${method}(${args.join(",")})`);
@@ -147,5 +173,117 @@ describe("enregistreur du HUD", () => {
 		recorder.font = "500 16px serif";
 		recorder.measureText("abc");
 		expect(fake.measures()).toBe(2);
+	});
+
+	it("ne repeint que la zone de la section modifiée", () => {
+		const fake = fakeContext({ width: 1000, height: 800 });
+		const recorder = new HudRecorder(fake.context);
+		const frame = (x: number) => {
+			recorder.begin();
+			recorder.fillStyle = "red";
+			recorder.fillRect(10, 10, 50, 20);
+			recorder.section();
+			recorder.fillStyle = "blue";
+			recorder.fillRect(x, 600, 40, 40);
+		};
+		frame(500);
+		expect(recorder.commit()).toBe(true);
+		expect(recorder.repaintedAll).toBe(true);
+		fake.calls.length = 0;
+		frame(500);
+		expect(recorder.commit()).toBe(false);
+		expect(fake.calls).toEqual([]);
+		frame(520);
+		expect(recorder.commit()).toBe(true);
+		expect(recorder.repaintedAll).toBe(false);
+		expect(recorder.repainted).toHaveLength(1);
+		const [region] = recorder.repainted;
+		expect(region.left).toBeLessThanOrEqual(500);
+		expect(region.right).toBeGreaterThanOrEqual(560);
+		expect(region.top).toBeLessThanOrEqual(600);
+		expect(region.bottom).toBeGreaterThanOrEqual(640);
+		expect(region.bottom - region.top).toBeLessThan(60);
+		expect(fake.calls).not.toContain("fillRect(10,10,50,20)");
+		expect(fake.calls).toContain("fillRect(520,600,40,40)");
+		expect(fake.calls).toContain("clip()");
+	});
+
+	it("restaure l'état hérité quand une section précédente est sautée", () => {
+		const fake = fakeContext({ width: 1000, height: 800 });
+		const recorder = new HudRecorder(fake.context);
+		const frame = (y: number) => {
+			recorder.begin();
+			recorder.setTransform(2, 0, 0, 2, 0, 0);
+			recorder.fillStyle = "red";
+			recorder.fillRect(0, 0, 10, 10);
+			recorder.section();
+			recorder.fillRect(200, y, 10, 10);
+		};
+		frame(300);
+		recorder.commit();
+		fake.calls.length = 0;
+		frame(310);
+		expect(recorder.commit()).toBe(true);
+		expect(recorder.repaintedAll).toBe(false);
+		const draw = fake.calls.indexOf("fillRect(200,310,10,10)");
+		expect(draw).toBeGreaterThan(-1);
+		const before = fake.calls.slice(0, draw);
+		expect(before.lastIndexOf("fillStyle=red")).toBeGreaterThan(
+			before.lastIndexOf("fillStyle=#000000"),
+		);
+		expect(before).toContain("setTransform(2,0,0,2,0,0)");
+		const [region] = recorder.repainted;
+		expect(region.left).toBeLessThanOrEqual(400);
+		expect(region.top).toBeLessThanOrEqual(600);
+		expect(region.bottom).toBeGreaterThanOrEqual(640);
+	});
+
+	it("tient compte des translations pour situer la zone", () => {
+		const fake = fakeContext({ width: 1000, height: 800 });
+		const recorder = new HudRecorder(fake.context);
+		const frame = (size: number) => {
+			recorder.begin();
+			recorder.save();
+			recorder.translate(700, 100);
+			recorder.fillRect(0, 0, size, size);
+			recorder.restore();
+		};
+		frame(10);
+		recorder.commit();
+		frame(12);
+		expect(recorder.commit()).toBe(true);
+		const [region] = recorder.repainted;
+		expect(region.left).toBeLessThanOrEqual(700);
+		expect(region.left).toBeGreaterThan(680);
+		expect(region.top).toBeLessThanOrEqual(100);
+		expect(region.top).toBeGreaterThan(80);
+	});
+
+	it("repeint tout quand la zone modifiée est trop grande ou inconnue", () => {
+		const fake = fakeContext({ width: 1000, height: 800 });
+		const recorder = new HudRecorder(fake.context);
+		const shape = {};
+		const frame = (alpha: number, path: boolean) => {
+			recorder.begin();
+			recorder.globalAlpha = alpha;
+			recorder.fillRect(0, 0, 1000, 800);
+			recorder.section();
+			if (path) {
+				recorder.fill(shape);
+			}
+		};
+		frame(0.5, false);
+		recorder.commit();
+		frame(0.6, false);
+		expect(recorder.commit()).toBe(true);
+		expect(recorder.repaintedAll).toBe(true);
+		frame(0.6, true);
+		expect(recorder.commit()).toBe(true);
+		expect(recorder.repaintedAll).toBe(true);
+		recorder.begin();
+		recorder.section();
+		recorder.section();
+		expect(recorder.commit()).toBe(true);
+		expect(recorder.repaintedAll).toBe(true);
 	});
 });

@@ -91,11 +91,19 @@ describe("talkies-walkies", () => {
 		expect(b.walkie).toBe(second.id);
 		sim.match.handleRadio("p1", true);
 		expect(a.flags(sim.match.now) & PLAYER_FLAG.radio).not.toBe(0);
-		a.recordVoice({ t: sim.match.now, level: 0.9, activeMs: 100 });
+		const relayed = () =>
+			sim.match.sounds.filter(
+				(sound) => sound.kind === "voice" && sound.playerId === "p2",
+			);
+		const start = sim.match.now - 300;
+		a.recordVoice({ t: start, level: 0.9, activeMs: 100 });
 		sim.match.walkies.update(sim.match);
-		const heard = sim.match.sounds.filter(
-			(sound) => sound.kind === "voice" && sound.playerId === "p2",
-		);
+		expect(relayed()).toHaveLength(0);
+		for (let step = 1; step <= 6; step += 1) {
+			a.recordVoice({ t: start + step * 50, level: 0.9, activeMs: 50 });
+		}
+		sim.match.walkies.update(sim.match);
+		const heard = relayed();
 		expect(heard.length).toBeGreaterThan(0);
 		expect(heard[0].position).toMatchObject({
 			x: b.position.x,

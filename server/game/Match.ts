@@ -44,7 +44,6 @@ import {
 	STRONG_PUSH_DISTANCE_FACTOR,
 	STRONG_PUSH_ENERGY_FACTOR,
 	VALVE_INTERACT_RANGE,
-	VOICE_AUDIBLE_LEVEL,
 	walkieCount,
 } from "../../shared/config/index.js";
 import type { SpeciesId } from "../../shared/config/species.js";
@@ -1010,7 +1009,7 @@ export class Match {
 	}
 
 	private emitPlayerSounds(player: MatchPlayer): void {
-		const voice = this.audibleVoice(player);
+		const voice = player.audibleVoice(this.now);
 		if (player.hidden || player.carried) {
 			if (voice !== null) {
 				this.sounds.push({
@@ -1050,14 +1049,6 @@ export class Match {
 				kind: "voice",
 			});
 		}
-	}
-
-	private audibleVoice(player: MatchPlayer): number | null {
-		const level = player.voiceLevelNow(this.now);
-		if (level < VOICE_AUDIBLE_LEVEL) {
-			return null;
-		}
-		return (level - VOICE_AUDIBLE_LEVEL) / (1 - VOICE_AUDIBLE_LEVEL);
 	}
 
 	private updateHazards(): void {

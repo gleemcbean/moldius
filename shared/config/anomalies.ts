@@ -3,6 +3,8 @@ export const HIDE_EXTRACTION_MEMORY_MS = 1_500;
 export const HIDE_EXTRACTION_TELEGRAPH_MS = 1_100;
 export const SEARCH_DURATION_MS = 2_000;
 export const VOICE_AUDIBLE_LEVEL = 0.35;
+export const VOICE_AUDIBLE_SUSTAIN_MS = 250;
+export const VOICE_AUDIBLE_WINDOW_MS = 500;
 
 export const HOWLER_BLOCK_RADIUS = 7;
 export const HOWLER_ORBIT_MIN_MS = 45_000;

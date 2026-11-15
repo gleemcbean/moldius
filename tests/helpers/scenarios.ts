@@ -187,6 +187,16 @@ export interface CastSetup {
 	stillSeconds?: number;
 }
 
+export function speak(
+	sim: MatchSimulation,
+	playerId: string,
+	level: number,
+): void {
+	const bot = sim.bot(playerId);
+	bot.voiceLevel = level;
+	bot.voicePeakMs = level > 0 ? 50 : 0;
+}
+
 export function prepareCaster(
 	sim: MatchSimulation,
 	playerId: string,
@@ -197,8 +207,7 @@ export function prepareCaster(
 	bot.input.strafe = 0;
 	bot.input.crouch = setup.crouch ?? false;
 	bot.lantern = setup.lantern ?? false;
-	bot.voiceLevel = setup.voiceLevel ?? 0.3;
-	bot.voicePeakMs = bot.voiceLevel > 0 ? 50 : 0;
+	speak(sim, playerId, setup.voiceLevel ?? 0.3);
 	sim.run(setup.stillSeconds ?? 1.6);
 }
 

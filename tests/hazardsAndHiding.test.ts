@@ -18,6 +18,7 @@ import {
 	installAnomaly,
 	placeBot,
 	silenceAnomalies,
+	speak,
 } from "./helpers/scenarios.js";
 import { MatchSimulation } from "./helpers/simulation.js";
 
@@ -223,7 +224,7 @@ describe("cachettes", () => {
 
 	it("une anomalie qui entend le joueur caché le sort de sa cachette", () => {
 		const { sim, player } = hideScenario(false, HIDE_EXTRACTION_RANGE - 0.8);
-		sim.bot("p1").voiceLevel = 0.8;
+		speak(sim, "p1", 0.8);
 		sim.run(4);
 		expect(
 			sim.transport
@@ -241,7 +242,7 @@ describe("cachettes", () => {
 			false,
 			HIDE_EXTRACTION_RANGE - 0.8,
 		);
-		sim.bot("p1").voiceLevel = VOICE_AUDIBLE_LEVEL - 0.05;
+		speak(sim, "p1", VOICE_AUDIBLE_LEVEL - 0.05);
 		sim.run(4);
 		expect(entity.witnessed).toBeNull();
 		expect(sim.transport.eventsOfType("extractWarning")).toHaveLength(0);

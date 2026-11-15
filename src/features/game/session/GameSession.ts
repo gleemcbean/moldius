@@ -1047,12 +1047,13 @@ export class GameSession {
 			if (this.mapOpen) {
 				this.drawBigMap(player, loaded.hud);
 			}
-			loaded.hud.paint(now);
+			loaded.hud.paint(now, loaded.renderer);
 			loaded.post.setMinimap(
 				loaded.hud.minimapShown ? loaded.hud.minimapTexture : null,
 				loaded.hud.minimapRect,
 				loaded.hud.minimapPixels,
 			);
+			loaded.post.setVeils(loaded.hud.veils);
 		}
 		const wounded = alive && (self?.hp ?? 100) < 30 ? 0.5 : 0;
 		this.renderCamera(loaded);

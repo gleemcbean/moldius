@@ -3,7 +3,6 @@ import {
 	WALKIE_RECEIVER_LOUDNESS,
 	WALKIE_RETURN_MS,
 	WALKIE_VOICE_LOUDNESS,
-	VOICE_AUDIBLE_LEVEL,
 } from "../../../shared/config/index.js";
 import type { GameEvent } from "../../../shared/protocol/game.js";
 import type { Match } from "../Match.js";
@@ -80,11 +79,10 @@ export class WalkieSystem {
 			if (!speaker.radioOn) {
 				continue;
 			}
-			const level = speaker.voiceLevelNow(match.now);
-			if (level < VOICE_AUDIBLE_LEVEL) {
+			const voice = speaker.audibleVoice(match.now);
+			if (voice === null) {
 				continue;
 			}
-			const voice = (level - VOICE_AUDIBLE_LEVEL) / (1 - VOICE_AUDIBLE_LEVEL);
 			for (const receiver of holders) {
 				if (receiver === speaker) {
 					continue;
