@@ -32,7 +32,7 @@ export type ActionId = (typeof ACTION_IDS)[number];
 
 export type GraphicsQuality = "low" | "medium" | "high";
 
-export type ColorLevels = 185 | 127 | 104;
+export type ColorLevels = 185 | 127 | 104 | 86;
 
 export const POST_EFFECT_IDS = [
 	"curvature",

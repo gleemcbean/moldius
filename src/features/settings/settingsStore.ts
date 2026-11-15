@@ -128,7 +128,7 @@ export function defaultSettings(
 		brightness: 1,
 		quality: "medium",
 		shadows: false,
-		renderScale: 1,
+		renderScale: 0.85,
 		effects: true,
 		postEffects: { ...POST_EFFECT_PRESETS[DEFAULT_POST_EFFECT_PRESET] },
 		colorLevels: DEFAULT_COLOR_LEVELS,

@@ -61,9 +61,9 @@ export function renderPixelRatio(
 
 export const FPS_LIMITS = [0, 30, 60, 90, 120, 144] as const;
 
-export const COLOR_LEVELS: readonly ColorLevels[] = [185, 127, 104];
+export const COLOR_LEVELS: readonly ColorLevels[] = [185, 127, 104, 86];
 
-export const DEFAULT_COLOR_LEVELS: ColorLevels = 127;
+export const DEFAULT_COLOR_LEVELS: ColorLevels = 104;
 
 export const POST_EFFECT_PRESETS: Record<PostEffectPreset, PostEffectLevels> = {
 	clear: {
