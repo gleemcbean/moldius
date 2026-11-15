@@ -389,6 +389,7 @@
   display: grid;
   grid-template-columns: 0fr;
   margin-left: 0;
+  overflow: hidden;
   @include ui(16px);
   color: $ink;
   opacity: 0;
@@ -400,7 +401,6 @@
 
   > span {
     min-width: 0;
-    overflow: hidden;
     white-space: nowrap;
   }
 }
