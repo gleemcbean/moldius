@@ -62,7 +62,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		page: 1,
 		tier: 2,
 		name: "Le Murmure",
-		points: 100,
+		points: 250,
 		description:
 			"Silhouette voûtée drapée de lambeaux pâles. Il dérive en chuchotant, discret au repos, mais la lumière et le bruit le font se déployer et charger.",
 		danger:

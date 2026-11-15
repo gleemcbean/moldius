@@ -13,6 +13,7 @@ import {
 	type MaterialId,
 	OCCULT_IDS,
 	OCCULT_RECIPES,
+	type OccultId,
 } from "@shared/config/occult";
 import type { BrewEffect } from "@shared/manor/brews";
 import type { Level } from "@shared/manor/types";
@@ -22,7 +23,11 @@ import { ICON_PATHS } from "../../components/Icon";
 import { keyLabel } from "../../config/controls";
 import { currentMessages } from "../../i18n";
 import { formatClock, hexColor } from "../../utils/format";
-import { HUD_BEND, POST_BULGE } from "../engine/render/PostEffects";
+import {
+	curvatureZoom,
+	HUD_BEND,
+	POST_BULGE,
+} from "../engine/render/PostEffects";
 import type { ObjectArt, ObjectArtId } from "../grimoire/objectArt";
 import { MAP_MAX_ZOOM, mapStore, resetMap, zoomMap } from "../map/mapStore";
 import { settingsStore } from "../settings/settingsStore";
@@ -469,7 +474,7 @@ export class HudCanvas {
 		const bulge = POST_BULGE * this.curvature;
 		const factor =
 			(1 + bulge * ((cx * aspect) ** 2 + cy * cy)) /
-			(1 + bulge * (0.25 + 0.25 * aspect * aspect));
+			curvatureZoom(this.curvature, aspect);
 		return {
 			x: (nx + (0.5 + cx * factor - nx) * HUD_BEND) * this.width,
 			y: (ny + (0.5 + cy * factor - ny) * HUD_BEND) * this.height,
@@ -1829,16 +1834,28 @@ export class HudCanvas {
 			const slotX = x + gap + index * (slot + gap);
 			const slotY = y + gap;
 			const held = index === hud.heldSlot;
+			const used = hud.occultInPlay.includes(id);
+			const craftable = used && this.craftable(hud, id);
 			this.panel(
 				slotX,
 				slotY,
 				slot,
 				slot,
-				held ? "rgba(221, 230, 80, 0.14)" : "rgba(0, 0, 0, 0)",
-				held ? YELLOW : "rgba(239, 227, 184, 0.3)",
-				held ? 3 : 1,
+				held
+					? "rgba(221, 230, 80, 0.14)"
+					: craftable
+						? "rgba(46, 230, 214, 0.12)"
+						: "rgba(0, 0, 0, 0)",
+				held ? YELLOW : craftable ? ALTAR : "rgba(239, 227, 184, 0.3)",
+				held || craftable ? 3 : 1,
 			);
-			this.drawArt(id, slotX, slotY, slot, count > 0 ? 1 : 0.2);
+			this.drawArt(
+				id,
+				slotX,
+				slotY,
+				slot,
+				!used ? 0.1 : count > 0 ? 1 : craftable ? 0.5 : 0.2,
+			);
 			this.text(String(index + 1), slotX + 5, slotY + 9, {
 				font: `700 16px ${UI}`,
 				color: TEXT_MUTED,
@@ -1849,7 +1866,34 @@ export class HudCanvas {
 					align: "right",
 				});
 			}
+			if (craftable) {
+				this.paintCraftBadge(slotX + slot - 11, slotY + 11);
+			}
 		});
+	}
+
+	private craftable(hud: HudState, object: OccultId): boolean {
+		const materials = hud.inventory?.materials;
+		return (
+			materials !== undefined &&
+			(Object.entries(OCCULT_RECIPES[object]) as [MaterialId, number][]).every(
+				([material, count]) => materials[material] >= count,
+			)
+		);
+	}
+
+	private paintCraftBadge(x: number, y: number): void {
+		const context = this.context;
+		context.beginPath();
+		context.arc(x, y, 9, 0, Math.PI * 2);
+		context.fillStyle = ALTAR;
+		context.fill();
+		context.lineWidth = 2;
+		context.strokeStyle = BACKGROUND;
+		context.stroke();
+		context.fillStyle = BACKGROUND;
+		context.fillRect(x - 5, y - 1.5, 10, 3);
+		context.fillRect(x - 1.5, y - 5, 3, 10);
 	}
 
 	private paintPrompt(hud: HudState): void {
@@ -1968,7 +2012,7 @@ export class HudCanvas {
 		const messages = currentMessages();
 		const width = 590;
 		const rowHeight = 36;
-		const height = OCCULT_IDS.length * rowHeight + 66;
+		const height = OCCULT_IDS.length * rowHeight + 88;
 		const placed = this.place(
 			this.width / 2,
 			this.height * 0.86,
@@ -2015,7 +2059,8 @@ export class HudCanvas {
 				MaterialId,
 				number,
 			][];
-			const ready = recipe.every(([id, count]) => owned(id) >= count);
+			const used = hud.occultInPlay.includes(object);
+			const ready = used && recipe.every(([id, count]) => owned(id) >= count);
 			const selected = index === hud.altarSelected;
 			if (selected) {
 				this.panel(
@@ -2023,12 +2068,35 @@ export class HudCanvas {
 					rowY,
 					width - 16,
 					rowHeight - 2,
-					"rgba(46, 230, 214, 0.16)",
-					ALTAR,
+					used ? "rgba(46, 230, 214, 0.16)" : "rgba(255, 255, 255, 0.05)",
+					used ? ALTAR : TEXT_MUTED,
 				);
 			}
-			const alpha = ready || selected ? 1 : 0.5;
+			const alpha = !used ? 0.28 : ready || selected ? 1 : 0.5;
 			this.context.globalAlpha = alpha;
+			if (!used) {
+				this.panel(x + 16, rowY + 6, 24, 24, TEXT_MUTED);
+				this.text(String(index + 1), x + 28, rowY + 19, {
+					font: `700 16px ${UI}`,
+					color: BACKGROUND,
+					align: "center",
+					outline: false,
+				});
+				this.drawArt(object, x + 46, rowY + 1, 34, alpha);
+				this.text(messages.grimoire.objects[object], x + 92, rowY + 18, {
+					font: `700 18px ${UI}`,
+					color: TEXT_MUTED,
+					outline: false,
+				});
+				this.text(messages.game.altar.unused, x + width - 16, rowY + 18, {
+					font: `italic 500 16px ${BODY}`,
+					color: TEXT_MUTED,
+					align: "right",
+					outline: false,
+				});
+				this.context.globalAlpha = 1;
+				return;
+			}
 			this.panel(x + 16, rowY + 6, 24, 24, YELLOW);
 			this.text(String(index + 1), x + 28, rowY + 19, {
 				font: `700 16px ${UI}`,
@@ -2064,11 +2132,24 @@ export class HudCanvas {
 			);
 			this.context.globalAlpha = 1;
 		});
-		this.text(messages.game.altar.hint, x + 16, y + height - 18, {
+		this.text(messages.game.altar.hint, x + 16, y + height - 40, {
 			font: `500 16px ${BODY}`,
 			color: TEXT_MUTED,
 			outline: false,
 		});
+		const keys = settingsStore.get().keys;
+		this.text(
+			messages.game.altar.close(
+				`${keyLabel(keys.shout)} / ${keyLabel("Escape")}`,
+			),
+			x + 16,
+			y + height - 18,
+			{
+				font: `700 16px ${UI}`,
+				color: ALTAR,
+				outline: false,
+			},
+		);
 	}
 
 	private paintTutorial(hud: HudState): void {
@@ -2080,11 +2161,14 @@ export class HudCanvas {
 		const width = 372;
 		const bodyFont = `500 18px ${BODY}`;
 		const lines = this.wrap(tutorial.body, bodyFont, width - 28);
+		const goal = tutorial.goal;
+		const goalHeight = goal ? 36 + goal.steps.length * 21 : 0;
 		const height =
 			70 +
 			lines.length * 22 +
 			tutorial.checks.length * 22 +
 			(tutorial.checks.length > 0 ? 8 : 0) +
+			goalHeight +
 			34;
 		const placed = this.place(20, 150, width, height, "left", "top");
 		const x = placed.x;
@@ -2116,6 +2200,32 @@ export class HudCanvas {
 				});
 				cursor += 22;
 			}
+		}
+		if (goal) {
+			cursor += 6;
+			this.context.fillStyle = "rgba(46, 230, 214, 0.35)";
+			this.context.fillRect(x + 14, cursor - 4, width - 28, 1);
+			cursor += 14;
+			this.text(goal.title, x + 14, cursor, {
+				font: `700 16px ${UI}`,
+				color: ALTAR,
+				outline: false,
+			});
+			cursor += 22;
+			goal.steps.forEach((step, index) => {
+				this.text(
+					`${step.ok ? "✔" : `${index + 1}.`} ${step.label}`,
+					x + 22,
+					cursor,
+					{
+						font: `${step.ok ? 500 : 700} 16px ${UI}`,
+						color: step.ok ? "#8fe388" : TEXT,
+						outline: false,
+					},
+				);
+				cursor += 21;
+			});
+			cursor -= 6;
 		}
 		if (tutorial.arrow !== null) {
 			const context = this.context;

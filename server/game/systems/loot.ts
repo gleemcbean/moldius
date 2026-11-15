@@ -92,6 +92,7 @@ export class LootSystem {
 		if (
 			!altar ||
 			player.hidden ||
+			!match.occultInPlay(object) ||
 			match.altarCursed(altarId) ||
 			!within(
 				player,

@@ -5,7 +5,7 @@ import {
   CAPTURE_VOICE_WINDOW_MS,
   HOWLER_BLOCK_RADIUS,
 } from '../../../shared/config/index.js';
-import { transcriptMatchesFormula } from '../../../shared/anomalies/formulas.js';
+import { matchingFormulas, sameFormula } from '../../../shared/anomalies/formulas.js';
 import type { Vec3 } from '../../../shared/math.js';
 import { countWallsBetween, lineOfSight } from '../../../shared/physics/lineOfSight.js';
 import type { CastFailureReason, CastRequest, CastResult } from '../../../shared/protocol/game.js';
@@ -49,13 +49,13 @@ export function validateCast(match: Match, player: MatchPlayer, request: CastReq
     return failure(-1, 'no-voice');
   }
   const eye = player.eyePosition();
+  const heard = matchingFormulas(
+    request.transcripts,
+    match.anomalies.map((entity) => entity.formula),
+  );
   const candidates = match.anomalies
     .filter(
-      (entity) =>
-        entity.active &&
-        request.transcripts.some((transcript) =>
-          transcriptMatchesFormula(transcript, entity.formula),
-        ),
+      (entity) => entity.active && heard.some((formula) => sameFormula(formula, entity.formula)),
     )
     .map((entity) => ({ entity, distance: distanceTo(eye, bodyPoint(entity, 0.55)) }))
     .sort((a, b) => a.distance - b.distance);

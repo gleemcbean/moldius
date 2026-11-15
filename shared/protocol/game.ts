@@ -61,6 +61,7 @@ export interface MatchInit {
 	walkieTotal: number;
 	cameraTotal: number;
 	ritualQuota: number | null;
+	challenges: boolean;
 }
 
 export type PlayerRole = "hunter" | "possessed";
@@ -544,6 +545,7 @@ export interface MatchResults {
 	highlights: Highlight[];
 	daily: string | null;
 	metrics: Record<string, MatchMetrics>;
+	challenges?: boolean;
 	possessed?: PossessedOutcome | null;
 }
 

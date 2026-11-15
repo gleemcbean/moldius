@@ -330,26 +330,6 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 		});
 	});
 
-	socket.on("lobby:createPossessed", (payload, ack) => {
-		respond(ack, allow("lobby:join"), session(), (current) => {
-			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
-			if (!name) {
-				return {
-					ok: false,
-					error: {
-						code: "invalid-name",
-						message: "Choisissez un pseudonyme de 2 à 18 caractères.",
-					},
-				};
-			}
-			return deps.lobbies.createPossessed(
-				current,
-				name,
-				preferredLook(payload, current),
-			);
-		});
-	});
-
 	socket.on("lobby:joinPossessed", (payload, ack) => {
 		respond(ack, allow("lobby:join"), session(), (current) => {
 			const name = isRecord(payload) ? sanitizeName(payload.name) : null;

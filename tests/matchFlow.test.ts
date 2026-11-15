@@ -4,6 +4,7 @@ import { planRoster } from "../server/game/roster.js";
 import { formulaKeyWord } from "../shared/anomalies/formulas.js";
 import {
 	ANOMALY_FIRST_SPAWN_DELAY_MS,
+	ANOMALY_MIN_RETURN_DELAY_MS,
 	ANOMALY_NEXT_DELAY_MS,
 	anomalyTierCaps,
 	MATCH_DURATION_MS,
@@ -150,7 +151,7 @@ describe("cycle de partie", () => {
 		);
 	});
 
-	it("ne fait jamais coexister plus d'anomalies d'une catégorie que sa limite", () => {
+	it("respecte la limite par catégorie quand des remplaçants sont disponibles", () => {
 		for (const seed of [77, 101, 2024]) {
 			const sim = new MatchSimulation({
 				seed,
@@ -171,7 +172,7 @@ describe("cycle de partie", () => {
 				}
 				total = Math.max(total, counts[1] + counts[2] + counts[3]);
 				const active = sim.match.anomalies.filter((entity) => entity.active);
-				if (active.length > 0 && sim.match.now % 7000 < 50) {
+				if (active.length > 0 && sim.match.now % 20_000 < 50) {
 					sim.match.removeAnomaly(active[0], "captured");
 				}
 			});
@@ -179,6 +180,37 @@ describe("cycle de partie", () => {
 				expect(most[tier]).toBeLessThanOrEqual(anomalyTierCaps(3)[tier]);
 			}
 			expect(total).toBeLessThanOrEqual(3);
+		}
+	});
+
+	it("ne laisse jamais le manoir longtemps vide, même quand on capture tout ce qui apparaît", () => {
+		for (const seed of [77, 101, 2024]) {
+			const sim = new MatchSimulation({
+				seed,
+				players: 2,
+				config: { simultaneousAnomalies: 3 },
+			});
+			sim.run(ANOMALY_FIRST_SPAWN_DELAY_MS / 1000 + 1);
+			let emptySince: number | null = null;
+			let longestEmpty = 0;
+			let captures = 0;
+			sim.run(240, () => {
+				const active = sim.match.anomalies.filter((entity) => entity.active);
+				if (active.length === 0) {
+					emptySince ??= sim.match.now;
+					longestEmpty = Math.max(longestEmpty, sim.match.now - emptySince);
+				} else {
+					emptySince = null;
+				}
+				for (const entity of active) {
+					if (sim.match.now - entity.spawnedAt >= 3000) {
+						sim.match.removeAnomaly(entity, "captured");
+						captures += 1;
+					}
+				}
+			});
+			expect(captures).toBeGreaterThan(sim.match.anomalies.length);
+			expect(longestEmpty).toBeLessThan(ANOMALY_MIN_RETURN_DELAY_MS);
 		}
 	});
 

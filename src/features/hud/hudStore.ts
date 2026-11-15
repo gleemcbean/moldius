@@ -1,3 +1,4 @@
+import { OCCULT_IDS, type OccultId } from "@shared/config/occult";
 import type { ManorEventKind } from "@shared/config/party";
 import type { BrewEffect } from "@shared/manor/brews";
 import type { Level } from "@shared/manor/types";
@@ -16,8 +17,14 @@ export interface TutorialCheck {
 	ok: boolean;
 }
 
+export interface TutorialGoal {
+	title: string;
+	steps: TutorialCheck[];
+}
+
 export interface TutorialHud {
 	checks: TutorialCheck[];
+	goal: TutorialGoal | null;
 	index: number;
 	total: number;
 	title: string;
@@ -88,6 +95,7 @@ export interface HudState {
 	altarOpen: boolean;
 	altarSelected: number;
 	heldSlot: number;
+	occultInPlay: readonly OccultId[];
 	tutorial: TutorialHud | null;
 	devMode: boolean;
 	devLive: { text: string; matches: boolean };
@@ -173,6 +181,7 @@ export function initialHud(): HudState {
 		altarOpen: false,
 		altarSelected: 0,
 		heldSlot: 0,
+		occultInPlay: OCCULT_IDS,
 		tutorial: null,
 		devMode: false,
 		devLive: { text: "", matches: false },

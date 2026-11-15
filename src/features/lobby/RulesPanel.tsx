@@ -101,6 +101,9 @@ export function RulesSummary({
 					</div>
 				))}
 			</dl>
+			{lobby.challenges ? null : (
+				<p className={styles.rulesNote}>{t.challenges.privateOff}</p>
+			)}
 			<Button variant="secondary" size="small" wide onClick={onOpen}>
 				{editable ? labels.edit : labels.view}
 			</Button>

@@ -2,9 +2,12 @@ import { entryWon, type MatchMetrics } from "../../shared/challenges.js";
 import {
 	ALTAR_INTERACT_RANGE,
 	ANOMALY_FIRST_SPAWN_DELAY_MS,
+	ANOMALY_MIN_RETURN_DELAY_MS,
 	ANOMALY_NEXT_DELAY_MS,
 	ANOMALY_RETURN_DELAY_MS,
 	ANOMALY_SPAWN_RETRY_MS,
+	ANOMALY_VACANCY_GRACE_MS,
+	ANOMALY_VACANCY_RELAX_MS,
 	anomalyRosterSize,
 	anomalyTierCaps,
 	BLOOD_MOON_POINTS_FACTOR,
@@ -190,6 +193,7 @@ export interface MatchOptions {
 	dev?: boolean;
 	tutorial?: boolean;
 	daily?: string | null;
+	challenges?: boolean;
 }
 
 const TUTORIAL_MONSTER_LEASH = 3.8;
@@ -225,6 +229,7 @@ export class Match {
 	readonly highlights: HighlightRecorder | null;
 	readonly daily: string | null;
 	readonly tutorial: boolean;
+	readonly challenges: boolean;
 	readonly pickupTotal: number;
 	readonly ghostBounds: GhostBounds;
 	readonly ghostsAllowed: boolean;
@@ -248,6 +253,7 @@ export class Match {
 	endsAt = 0;
 	anomaliesStartAt = 0;
 	nextAnomalyAt = 0;
+	vacantSince: number | null = null;
 	tick = 0;
 	private readonly transport: MatchTransport;
 	private readonly clock: () => number;
@@ -272,6 +278,7 @@ export class Match {
 		this.dev = options.dev ?? false;
 		this.tutorial = options.tutorial ?? false;
 		this.daily = options.daily ?? null;
+		this.challenges = (options.challenges ?? true) && !this.tutorial;
 		this.now = this.clock();
 		this.createdAt = this.now;
 		this.pickupTotal = pickupTotal(this.config, options.participants.length);
@@ -383,6 +390,10 @@ export class Match {
 		}
 	}
 
+	occultInPlay(object: OccultId): boolean {
+		return this.roster.instances.some((instance) => instance.occult === object);
+	}
+
 	get usedFormulaWords(): Set<string> {
 		return formulaWords(this.roster);
 	}
@@ -426,6 +437,7 @@ export class Match {
 			walkieTotal: this.walkieTotal,
 			cameraTotal: this.cameraTotal,
 			ritualQuota: this.possessed?.quota ?? null,
+			challenges: this.challenges,
 		};
 	}
 
@@ -722,7 +734,7 @@ export class Match {
 	}
 
 	private syncChallenges(): void {
-		if (this.tutorial) {
+		if (!this.challenges) {
 			return;
 		}
 		for (const player of this.players.values()) {
@@ -1133,35 +1145,57 @@ export class Match {
 	}
 
 	private spawnWaitingAnomalies(): void {
-		if (this.now < this.anomaliesStartAt || this.now < this.nextAnomalyAt) {
+		if (this.now < this.anomaliesStartAt) {
 			return;
 		}
 		const running = this.anomalies.filter((entity) => entity.active);
-		let active = running.length;
+		if (running.length >= this.config.simultaneousAnomalies) {
+			this.vacantSince = null;
+			return;
+		}
+		this.vacantSince ??= this.now;
+		if (this.now < this.nextAnomalyAt) {
+			return;
+		}
+		const vacancy = this.now - this.vacantSince;
+		const overdue = vacancy >= ANOMALY_VACANCY_GRACE_MS;
+		const relaxed = vacancy >= ANOMALY_VACANCY_RELAX_MS;
 		const perTier = { 1: 0, 2: 0, 3: 0 };
 		for (const entity of running) {
 			perTier[entity.definition.tier] += 1;
 		}
+		const caps = this.tierCaps;
+		const earlyLimit =
+			this.now + ANOMALY_RETURN_DELAY_MS - ANOMALY_MIN_RETURN_DELAY_MS;
+		const due = (entity: AnomalyEntity) =>
+			this.now >= entity.spawnDueAt ||
+			(overdue && entity.spawnDueAt <= earlyLimit);
 		const waiting = this.anomalies
-			.filter((entity) => !entity.active && this.now >= entity.spawnDueAt)
+			.filter((entity) => !entity.active && due(entity))
 			.sort(
 				(first, second) =>
 					first.spawnDueAt - second.spawnDueAt || first.id - second.id,
 			);
+		const fitting = (entity: AnomalyEntity) =>
+			perTier[entity.definition.tier] < caps[entity.definition.tier];
+		const candidates = [
+			...waiting.filter(fitting),
+			...(overdue ? waiting.filter((entity) => !fitting(entity)) : []),
+		];
+		let active = running.length;
 		let attempts = 0;
-		for (const entity of waiting) {
+		for (const entity of candidates) {
 			if (active >= this.config.simultaneousAnomalies || attempts >= 2) {
 				return;
 			}
-			const tier = entity.definition.tier;
-			if (perTier[tier] >= this.tierCaps[tier]) {
+			if (entity.active || (!overdue && !fitting(entity))) {
 				continue;
 			}
 			attempts += 1;
-			if (this.placeAnomaly(entity)) {
+			if (this.placeAnomaly(entity, relaxed)) {
 				active += 1;
-				perTier[tier] += 1;
-			} else {
+				perTier[entity.definition.tier] += 1;
+			} else if (this.now >= entity.spawnDueAt) {
 				entity.spawnDueAt = this.now + ANOMALY_SPAWN_RETRY_MS;
 			}
 		}
@@ -1181,8 +1215,8 @@ export class Match {
 		return reachable >= wanted ? caps : { 1: wanted, 2: wanted, 3: wanted };
 	}
 
-	placeAnomaly(entity: AnomalyEntity): boolean {
-		const spot = pickAnomalySpawn(this.spawnContext(), entity);
+	placeAnomaly(entity: AnomalyEntity, relaxed = false): boolean {
+		const spot = pickAnomalySpawn(this.spawnContext(), entity, relaxed);
 		if (!spot) {
 			return false;
 		}
@@ -2135,6 +2169,7 @@ export class Match {
 			highlights: this.highlights?.finish() ?? [],
 			daily: this.daily,
 			metrics: {},
+			challenges: this.challenges,
 			possessed,
 		};
 		results.metrics = this.finalChallengeMetrics(results);

@@ -368,13 +368,16 @@ export function ResultsScreen() {
 	const winningTeam = results.teams.find(
 		(standing) => standing.team === results.winnerTeam,
 	);
-	const completed = newlyCompleted(
-		challengesBefore.current,
-		withMatchMetrics(
-			challengesBefore.current,
-			(selfId && results.metrics[selfId]) || {},
-		),
-	);
+	const challengesCount = results.challenges !== false;
+	const completed = challengesCount
+		? newlyCompleted(
+				challengesBefore.current,
+				withMatchMetrics(
+					challengesBefore.current,
+					(selfId && results.metrics[selfId]) || {},
+				),
+			)
+		: [];
 	const teamMode = results.teams.length > 0;
 	const possessedOutcome = results.possessed ?? null;
 	const placeCount = teamMode ? results.teams.length : results.entries.length;
@@ -501,6 +504,9 @@ export function ResultsScreen() {
 
 				<footer className={styles.footer} style={reveal(6)}>
 					<div className={styles.notes}>
+						{challengesCount ? null : (
+							<p className={styles.note}>{t.challenges.privateOff}</p>
+						)}
 						{results.daily ? (
 							<p className={styles.note}>
 								{stats ? t.daily.saved : t.daily.signInHint}{" "}

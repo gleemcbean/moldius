@@ -20,6 +20,8 @@ export interface SpawnContext {
 
 const EXCLUDED_PLAYER_ROOMS: RoomType[] = ['stairwell', 'toilets', 'closet'];
 const SPACIOUS_ANOMALY_COUNT = 3;
+const SPAWN_DISTANCE = 14;
+const RELAXED_SPAWN_DISTANCE = 9;
 const ARCHIVIST_ROOMS: RoomType[] = [
   'hall',
   'library',
@@ -189,15 +191,21 @@ export function pickRespawn(context: SpawnContext, player: MatchPlayer): SpawnPo
   return null;
 }
 
-function hiddenFromPlayers(context: SpawnContext, position: Vec3, height: number): boolean {
+function hiddenFromPlayers(
+  context: SpawnContext,
+  position: Vec3,
+  height: number,
+  relaxed = false,
+): boolean {
   const center = { x: position.x, y: position.y + height * 0.6, z: position.z };
+  const closest = relaxed ? RELAXED_SPAWN_DISTANCE : SPAWN_DISTANCE;
   for (const player of context.players) {
-    if (!player.connected) {
+    if (!player.connected || !player.alive) {
       continue;
     }
     const eye = player.eyePosition();
     const distance = Math.hypot(eye.x - center.x, eye.y - center.y, eye.z - center.z);
-    if (distance < 14) {
+    if (distance < closest) {
       return false;
     }
     if (distance > 38) {
@@ -227,7 +235,7 @@ function hiddenFromPlayers(context: SpawnContext, position: Vec3, height: number
 function playerRooms(context: SpawnContext): Set<number> {
   const rooms = new Set<number>();
   for (const player of context.players) {
-    if (player.roomId !== null) {
+    if (player.roomId !== null && player.alive) {
       rooms.add(player.roomId);
     }
   }
@@ -243,11 +251,12 @@ export interface AnomalySpawnSpot {
 export function pickAnomalySpawn(
   context: SpawnContext,
   entity: AnomalyEntity,
+  relaxed = false,
 ): AnomalySpawnSpot | null {
   const { layout, grid, rng } = context;
   const running = context.anomalies.filter((other) => other.active).length;
-  const spacing = running < SPACIOUS_ANOMALY_COUNT ? 12 : 6;
-  const occupiedRooms = playerRooms(context);
+  const spacing = relaxed ? 4 : running < SPACIOUS_ANOMALY_COUNT ? 12 : 6;
+  const occupiedRooms = relaxed ? new Set<number>() : playerRooms(context);
   const takenArchivistRooms = new Set(
     context.anomalies
       .filter((other) => other.active && other.species === 'archiviste' && other.homeRoom !== null)
@@ -271,7 +280,10 @@ export function pickAnomalySpawn(
     if (entity.species === 'archiviste') {
       const position = { x: room.labelPoint.x, y: room.floorY, z: room.labelPoint.z };
       const playerInside = context.players.some((player) => player.roomId === room.id);
-      if (!playerInside && hiddenFromPlayers(context, position, entity.definition.bodyHeight)) {
+      if (
+        !playerInside &&
+        hiddenFromPlayers(context, position, entity.definition.bodyHeight, relaxed)
+      ) {
         return { position, yaw: rng.range(-Math.PI, Math.PI), roomId: room.id };
       }
       continue;
@@ -285,7 +297,10 @@ export function pickAnomalySpawn(
           Math.abs(other.position.y - position.y) < 2.5 &&
           Math.hypot(other.position.x - position.x, other.position.z - position.z) < spacing,
       );
-      if (crowded || !hiddenFromPlayers(context, position, entity.definition.bodyHeight)) {
+      if (
+        crowded ||
+        !hiddenFromPlayers(context, position, entity.definition.bodyHeight, relaxed)
+      ) {
         continue;
       }
       return { position, yaw: roomCenterYaw(room, position), roomId: room.id };

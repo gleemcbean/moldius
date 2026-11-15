@@ -49,7 +49,10 @@ export function buildMatchRecords(
 			),
 			dailyDate: results.daily,
 			pattern: entry.pattern,
-			metrics: results.metrics[entry.playerId],
+			metrics:
+				results.challenges === false
+					? undefined
+					: results.metrics[entry.playerId],
 			teamCount: results.teams.length,
 			details: matchDetails(results, entry.playerId, rules, accounts),
 		});

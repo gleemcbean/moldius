@@ -7,7 +7,6 @@ import { useT } from "../../i18n";
 import { useDailyClock } from "../daily/useDailyClock";
 import {
 	createDailyLobby,
-	createPossessedLobby,
 	joinPossessedLobby,
 	quickJoin,
 	startTutorial,
@@ -134,21 +133,6 @@ export function ModeSelect({
 							>
 								<Icon name="crown" />
 								{labels.leaderboard}
-							</button>
-						) : null}
-						{card.mode === "possessed" ? (
-							<button
-								type="button"
-								className={styles.extra}
-								disabled={!ready}
-								onClick={() => {
-									onClose();
-									createPossessedLobby(name);
-								}}
-								data-selectable=""
-							>
-								<Icon name="lock" />
-								{t.party.possessed.privateGame}
 							</button>
 						) : null}
 					</article>

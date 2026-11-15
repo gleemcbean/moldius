@@ -452,6 +452,12 @@
   margin: 0;
 }
 
+.rulesNote {
+  margin: 8px 0;
+  @include body(14px);
+  color: $ink-muted;
+}
+
 .rulesRow {
   display: flex;
   align-items: baseline;

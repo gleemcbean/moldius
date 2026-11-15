@@ -44,6 +44,7 @@ export interface LobbyState {
 	players: LobbyPlayerInfo[];
 	config: MatchConfig;
 	configEditable: boolean;
+	challenges: boolean;
 	phase: LobbyPhase;
 	countdownEndsAt: number | null;
 	matchId: string | null;

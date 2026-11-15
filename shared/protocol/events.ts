@@ -55,7 +55,6 @@ export interface ClientToServerEvents {
 	"lobby:quickJoin": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:createPrivate": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:createDaily": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
-	"lobby:createPossessed": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:joinPossessed": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"lobby:joinPrivate": (
 		payload: JoinPrivateRequest,

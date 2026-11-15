@@ -43,9 +43,9 @@ export const OCCULT_RECIPES: Record<OccultId, OccultRecipe> = {
 export const OCCULT_CONSUMED_ON_CAPTURE = true;
 export const PICKUP_INTERACT_RANGE = 2.3;
 export const PICKUP_RESPAWN_MS = 90_000;
-export const DEFAULT_ITEMS_PER_PLAYER = 8;
+export const DEFAULT_ITEMS_PER_PLAYER = 20;
 export const MIN_ITEMS_PER_PLAYER = 2;
-export const MAX_ITEMS_PER_PLAYER = 20;
+export const MAX_ITEMS_PER_PLAYER = 38;
 export const PICKUP_MIN_PER_LEVEL = 3;
 export const PICKUP_CONTAINER_KINDS: readonly string[] = [
 	"chest",

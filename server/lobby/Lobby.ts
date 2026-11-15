@@ -369,6 +369,10 @@ export class Lobby {
 		}
 	}
 
+	get countsChallenges(): boolean {
+		return this.visibility === "public" || this.daily !== null;
+	}
+
 	toState(): LobbyState {
 		const players: LobbyPlayerInfo[] = this.members.map((member) => ({
 			id: member.id,
@@ -395,6 +399,7 @@ export class Lobby {
 			players,
 			config: this.config,
 			configEditable: this.visibility === "private" && this.daily === null,
+			challenges: this.countsChallenges,
 			phase: this.phase,
 			countdownEndsAt: this.countdownEndsAt,
 			matchId: this.matchId,

@@ -23,17 +23,33 @@ export function voskGrammar(
 		}
 	}
 	for (const formula of formulas) {
-		let spoken = [""];
-		for (const word of formula) {
-			spoken = spoken.flatMap((start) =>
-				formsOf(language, word).map((form) =>
-					start ? `${start} ${form}` : form,
-				),
-			);
-		}
-		for (const phrase of spoken) {
+		for (const phrase of spokenForms(language, formula)) {
 			phrases.add(phrase);
 		}
 	}
+	for (const formula of formulas) {
+		for (let start = 0; start < formula.length; start += 1) {
+			for (const length of [2, 1]) {
+				const part = formula.slice(start, start + length);
+				if (part.length === length && length < formula.length) {
+					for (const phrase of spokenForms(language, part)) {
+						phrases.add(phrase);
+					}
+				}
+			}
+		}
+	}
 	return [...[...phrases].slice(0, MAX_PHRASES), UNKNOWN];
+}
+
+function spokenForms(language: Language, words: readonly string[]): string[] {
+	let spoken = [""];
+	for (const word of words) {
+		spoken = spoken.flatMap((start) =>
+			formsOf(language, word).map((form) =>
+				start ? `${start} ${form}` : form,
+			),
+		);
+	}
+	return spoken;
 }

@@ -48,6 +48,8 @@ const SOLID_KINDS = new Set([
 	"secretary",
 ]);
 
+const CANOPY_THICKNESS = 0.1;
+
 interface LocalBox {
 	x: number;
 	z: number;
@@ -342,6 +344,15 @@ function bedBoxes(item: FurnitureItem): LocalBox[] {
 		const postX = width / 2 - 0.06;
 		const postZ = depth / 2 - 0.06;
 		boxes.push(
+			{
+				x: 0,
+				z: 0,
+				width: width + 0.02,
+				depth: depth + 0.02,
+				yMin: height - CANOPY_THICKNESS,
+				yMax: height,
+				walkable: false,
+			},
 			{
 				x: -postX,
 				z: postZ,

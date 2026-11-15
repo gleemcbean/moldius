@@ -47,6 +47,7 @@ export const gameFr = {
 		useAltar: "Utiliser l'autel",
 		craft: (name: string) => `Fabriquer : ${name}`,
 		missingMaterials: "Matériaux manquants : refermer",
+		objectUnused: "Aucun monstre de cette partie ne le craint : refermer",
 		takeWalkie: "Prendre le talkie-walkie",
 		takeCamera: "Prendre l'appareil photo",
 		stakeResting: "Le feu s'est éteint : revenez plus tard",
@@ -63,18 +64,38 @@ export const gameFr = {
 	altar: {
 		title: "Autel occulte",
 		hint: "Molette ou chiffre : choisir un objet. Chaque capture consomme un objet.",
+		close: (keys: string) => `${keys} : fermer`,
+		unused: "Inutile dans cette partie",
 	},
 	tutorial: {
 		progress: (step: number, total: number) => `Étape ${step} sur ${total}`,
 		skip: "Entrée : passer cette étape",
+		stepDone: "Étape réussie !",
 		checks: {
 			range: (meters: number) => `À moins de ${meters} m du monstre`,
 			object: "Objet occulte en main",
 			voice: "Voix entendue par le micro",
 			valveOpen: "Vanne ouverte",
 			inJet: "Sous le jet",
+			lookAround: "Regarder tout autour de soi",
+			lanternOpened: "Lanterne ouverte",
+			lanternClosed: "Lanterne refermée",
+			grimoireOpen: "Grimoire ouvert",
+			formulaRead: "Formule et objet repérés",
+		},
+		goal: {
+			title: (name: string) => `Objectif : capturer ${name}`,
+			gather: (have: number, need: number) =>
+				`Réunir les fragments (${have}/${need})`,
+			craft: (object: string) => `Fabriquer « ${object} » à l'autel`,
+			hold: (object: string) => `Tenir « ${object} » en main`,
+			cast: "Prononcer sa formule près de lui",
 		},
 		steps: {
+			goal: (points: number) => ({
+				title: "Votre mission",
+				body: `Le manoir est infesté de monstres. En partie, votre but est d'en capturer le plus possible avant la fin du temps : chaque capture rapporte des points (jusqu'à ${points} pour les plus redoutables) et le meilleur score l'emporte. Pour capturer un monstre, il faut toujours ces quatre étapes, rappelées ci-dessous. Regardez tout autour de vous avec la souris pour commencer.`,
+			}),
 			move: (keys: string) => ({
 				title: "Se déplacer",
 				body: `${keys} pour marcher, la souris pour regarder. La minicarte montre où vous êtes. Avancez un peu.`,
@@ -89,7 +110,7 @@ export const gameFr = {
 			}),
 			lantern: (key: string) => ({
 				title: "La lanterne",
-				body: `${key} ouvre ou ferme la lanterne. Elle éclaire, mais les monstres la voient de loin. Essayez.`,
+				body: `${key} ouvre ou ferme la lanterne. Elle éclaire, mais les monstres la voient de loin. Ouvrez-la, puis refermez-la.`,
 			}),
 			door: (key: string) => ({
 				title: "Les portes",
@@ -101,19 +122,19 @@ export const gameFr = {
 			}),
 			loot: (key: string, list: string) => ({
 				title: "Les matériaux",
-				body: `Des morceaux d'objets traînent au sol, sur les meubles, dans les coffres et les boîtes. Suivez l'étoile et ramassez avec ${key} : ${list}.`,
+				body: `Première étape de toute capture : des fragments traînent au sol, sur les meubles, dans les coffres et les boîtes. Suivez l'étoile et ramassez avec ${key} : ${list}.`,
 			}),
 			grimoire: (key: string) => ({
 				title: "Le grimoire",
-				body: `${key} ouvre le grimoire ; regardez vers le bas pour le lire. Chaque monstre a sa page : l'objet occulte à fabriquer, les conditions et la formule. La molette tourne les pages.`,
+				body: `${key} ouvre le grimoire ; regardez vers le bas pour le lire. Chaque monstre a sa page : l'objet occulte qu'il craint, ses dangers et la formule qui le capture. La molette tourne les pages. Ouvrez-le et repérez la page du Murmure.`,
 			}),
 			altar: (key: string, name: string) => ({
 				title: "L'autel",
-				body: `Les pupitres au livre volant, marqués d'une étoile turquoise sur la minicarte, fabriquent les objets occultes. Rejoignez-en un, appuyez sur ${key}, choisissez « ${name} » à la molette, puis ${key} de nouveau.`,
+				body: `Deuxième étape : les pupitres au livre volant, marqués d'une étoile turquoise sur la minicarte, fabriquent les objets occultes. Rejoignez-en un, appuyez sur ${key}, choisissez « ${name} » à la molette, puis ${key} de nouveau. Dans la barre du bas, un « + » turquoise signale un objet que vous pouvez fabriquer.`,
 			}),
 			hold: (name: string) => ({
 				title: "Tenir l'objet",
-				body: `Pour capturer, l'objet doit être dans votre main. Sélectionnez « ${name} » dans la barre du bas, à la molette ou avec son chiffre.`,
+				body: `Troisième étape : pour capturer, l'objet doit être dans votre main. Sélectionnez « ${name} » dans la barre du bas, à la molette ou avec son chiffre.`,
 			}),
 			hide: (key: string) => ({
 				title: "Se cacher",
@@ -133,11 +154,11 @@ export const gameFr = {
 			}),
 			capture: (formula: string) => ({
 				title: "Capturer",
-				body: `À moins de 5 m, l'objet occulte en main : prononcez à voix haute « ${formula} ». Lanterne ouverte ou fermée, peu importe, et inutile de viser.`,
+				body: `Dernière étape : approchez-vous à moins de 5 m, l'objet occulte en main, et prononcez à voix haute « ${formula} ». Lanterne ouverte ou fermée, peu importe, et inutile de viser.`,
 			}),
-			end: () => ({
+			end: (points: number) => ({
 				title: "Vous êtes prêt",
-				body: `En partie, les monstres blessent pour de vrai, et l'on revient après quelques secondes quand on tombe. Un cri ou une voix forte interrompt aussi l'incantation d'un rival. Entrée pour revenir à l'accueil.`,
+				body: `Capture réussie : +${points} points ! En partie, répétez ce cycle (fragments, autel, objet en main, formule) pour chaque monstre : chaque espèce craint son propre objet et a sa propre formule, notées dans le grimoire. Les monstres blessent pour de vrai, et l'on revient après quelques secondes quand on tombe. Un cri ou une voix forte interrompt aussi l'incantation d'un rival. Entrée pour revenir à l'accueil.`,
 			}),
 		},
 	},
@@ -490,6 +511,7 @@ export const gameEn: typeof gameFr = {
 		useAltar: "Use the altar",
 		craft: (name: string) => `Craft: ${name}`,
 		missingMaterials: "Materials missing: close",
+		objectUnused: "No monster in this game fears it: close",
 		takeWalkie: "Take the walkie-talkie",
 		takeCamera: "Take the camera",
 		stakeResting: "The flame is out: come back later",
@@ -506,18 +528,38 @@ export const gameEn: typeof gameFr = {
 	altar: {
 		title: "Occult altar",
 		hint: "Wheel or number: pick an object. Each capture uses up one object.",
+		close: (keys: string) => `${keys}: close`,
+		unused: "Useless in this game",
 	},
 	tutorial: {
 		progress: (step: number, total: number) => `Step ${step} of ${total}`,
 		skip: "Enter: skip this step",
+		stepDone: "Step complete!",
 		checks: {
 			range: (meters: number) => `Within ${meters} m of the monster`,
 			object: "Occult object in hand",
 			voice: "Voice heard by the microphone",
 			valveOpen: "Valve open",
 			inJet: "Under the jet",
+			lookAround: "Look all around you",
+			lanternOpened: "Lantern opened",
+			lanternClosed: "Lantern closed again",
+			grimoireOpen: "Grimoire open",
+			formulaRead: "Formula and object spotted",
+		},
+		goal: {
+			title: (name: string) => `Goal: capture ${name}`,
+			gather: (have: number, need: number) =>
+				`Gather the fragments (${have}/${need})`,
+			craft: (object: string) => `Craft "${object}" at the altar`,
+			hold: (object: string) => `Hold "${object}" in your hand`,
+			cast: "Say its formula close to it",
 		},
 		steps: {
+			goal: (points: number) => ({
+				title: "Your mission",
+				body: `The manor is infested with monsters. In a game, your goal is to capture as many as you can before time runs out: each capture scores points (up to ${points} for the most fearsome) and the best score wins. Capturing a monster always takes the four steps listed below. Look all around you with the mouse to begin.`,
+			}),
 			move: (keys: string) => ({
 				title: "Moving",
 				body: `${keys} to walk, the mouse to look. The minimap shows where you are. Walk a little.`,
@@ -532,7 +574,7 @@ export const gameEn: typeof gameFr = {
 			}),
 			lantern: (key: string) => ({
 				title: "The lantern",
-				body: `${key} opens or closes the lantern. It gives light, but monsters see it from afar. Try it.`,
+				body: `${key} opens or closes the lantern. It gives light, but monsters see it from afar. Open it, then close it again.`,
 			}),
 			door: (key: string) => ({
 				title: "Doors",
@@ -544,19 +586,19 @@ export const gameEn: typeof gameFr = {
 			}),
 			loot: (key: string, list: string) => ({
 				title: "Materials",
-				body: `Pieces of objects lie on the floor, on furniture, in chests and boxes. Follow the star and pick up with ${key}: ${list}.`,
+				body: `First step of every capture: fragments lie on the floor, on furniture, in chests and boxes. Follow the star and pick up with ${key}: ${list}.`,
 			}),
 			grimoire: (key: string) => ({
 				title: "The grimoire",
-				body: `${key} opens the grimoire; look down to read it. Each monster has its page: the occult object to craft, the conditions and the formula. The wheel turns the pages.`,
+				body: `${key} opens the grimoire; look down to read it. Each monster has its page: the occult object it fears, its dangers and the formula that captures it. The wheel turns the pages. Open it and find the Whisper's page.`,
 			}),
 			altar: (key: string, name: string) => ({
 				title: "The altar",
-				body: `Lecterns with a flying book, shown by a turquoise star on the minimap, craft occult objects. Reach one, press ${key}, pick "${name}" with the wheel, then ${key} again.`,
+				body: `Second step: lecterns with a flying book, shown by a turquoise star on the minimap, craft occult objects. Reach one, press ${key}, pick "${name}" with the wheel, then ${key} again. In the bottom bar, a turquoise "+" marks an object you can craft.`,
 			}),
 			hold: (name: string) => ({
 				title: "Holding the object",
-				body: `To capture, the object must be in your hand. Select "${name}" in the bottom bar, with the wheel or its number.`,
+				body: `Third step: to capture, the object must be in your hand. Select "${name}" in the bottom bar, with the wheel or its number.`,
 			}),
 			hide: (key: string) => ({
 				title: "Hiding",
@@ -576,11 +618,11 @@ export const gameEn: typeof gameFr = {
 			}),
 			capture: (formula: string) => ({
 				title: "Capturing",
-				body: `Within 5 m, with the occult object in hand: say "${formula}" out loud. Lantern open or closed, it does not matter, and no need to aim.`,
+				body: `Last step: get within 5 m, with the occult object in hand, and say "${formula}" out loud. Lantern open or closed, it does not matter, and no need to aim.`,
 			}),
-			end: () => ({
+			end: (points: number) => ({
 				title: "You are ready",
-				body: `In a real game, monsters really hurt, and you come back a few seconds after falling. A shout or a loud voice also interrupts a rival's incantation. Press Enter to return home.`,
+				body: `Capture complete: +${points} points! In a game, repeat this cycle (fragments, altar, object in hand, formula) for every monster: each species fears its own object and has its own formula, both written in the grimoire. Monsters really hurt, and you come back a few seconds after falling. A shout or a loud voice also interrupts a rival's incantation. Press Enter to return home.`,
 			}),
 		},
 	},

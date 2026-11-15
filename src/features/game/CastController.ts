@@ -1,4 +1,4 @@
-import { transcriptMatchesFormula } from "@shared/anomalies/formulas";
+import { matchingFormulas, sameFormula } from "@shared/anomalies/formulas";
 import { CAST_INTERRUPT_MS } from "@shared/config/index";
 import type { CastFailureReason, CastResult } from "@shared/protocol/game";
 import { currentMessages } from "../../i18n";
@@ -21,9 +21,19 @@ const EXPLAINED_FAILURES: ReadonlySet<CastFailureReason> = new Set([
 	"dead",
 	"cooldown",
 	"missing-occult",
+	"out-of-range",
+	"blocked",
+	"howler-scream",
+	"interrupted",
+	"no-voice",
+	"scattered",
 ]);
 const RESTART_DELAY_MS = 250;
 const ERROR_RETRY_MS = 3000;
+const CHAIN_WINDOW_MS = 6000;
+const CHAIN_LENGTH = 2;
+const CHAIN_TOKENS = 6;
+const MAX_SENT = 6;
 
 export interface FormulaBook {
 	entries(): { id: number; label: string; words: readonly string[] }[];
@@ -38,6 +48,7 @@ export class CastController {
 	private lastError = "";
 	private warnedUnavailable = false;
 	private devCounter = 0;
+	private heard: { text: string; at: number }[] = [];
 
 	constructor(
 		private readonly transport: CastTransport,
@@ -111,7 +122,9 @@ export class CastController {
 					}
 				},
 			},
-			[],
+			this.book
+				.entries()
+				.flatMap((entry) => [entry.words.join(" "), ...entry.words]),
 			this.book.entries().map((entry) => entry.words),
 		);
 		if (!started) {
@@ -133,16 +146,50 @@ export class CastController {
 		this.reset();
 	}
 
+	private formulas(): (readonly string[])[] {
+		return this.book.entries().map((entry) => entry.words);
+	}
+
+	private recognized(text: string): boolean {
+		return matchingFormulas([text], this.formulas()).length > 0;
+	}
+
+	private chained(fresh: string[]): string[] {
+		const now = performance.now();
+		this.heard = this.heard.filter((entry) => now - entry.at < CHAIN_WINDOW_MS);
+		if (this.heard.length === 0) {
+			return fresh;
+		}
+		const before = this.heard
+			.map((entry) => entry.text)
+			.join(" ")
+			.split(/\s+/)
+			.slice(-CHAIN_TOKENS)
+			.join(" ");
+		return [...fresh, ...fresh.slice(0, 2).map((text) => `${before} ${text}`)];
+	}
+
 	private submit(transcripts: string[]): void {
-		const sent = transcripts
+		const fresh = transcripts
 			.filter((entry) => entry.trim().length > 0)
 			.slice(0, 5);
-		const spoken = sent.some((text) =>
-			this.book
-				.entries()
-				.some((entry) => transcriptMatchesFormula(text, entry.words)),
-		);
+		const candidates = this.chained(fresh);
+		const matching = candidates.filter((text) => this.recognized(text));
+		const spoken = matching.length > 0;
+		const sent = spoken
+			? [
+					...matching,
+					...candidates.filter((text) => !matching.includes(text)),
+				].slice(0, MAX_SENT)
+			: fresh;
 		this.recordDev(sent, spoken);
+		if (fresh.length > 0) {
+			this.heard = spoken
+				? []
+				: [...this.heard, { text: fresh[0], at: performance.now() }].slice(
+						-CHAIN_LENGTH,
+					);
+		}
 		if (!spoken) {
 			if (this.phase === "listening") {
 				this.transport.cancel();
@@ -167,9 +214,7 @@ export class CastController {
 		hudStore.set({
 			devLive: {
 				text,
-				matches: this.book
-					.entries()
-					.some((entry) => transcriptMatchesFormula(text, entry.words)),
+				matches: this.recognized(text),
 			},
 		});
 	}
@@ -178,10 +223,11 @@ export class CastController {
 		if (!this.dev || transcripts.length === 0) {
 			return;
 		}
+		const heard = matchingFormulas(transcripts, this.formulas());
 		const matched = this.book
 			.entries()
 			.find((entry) =>
-				transcripts.some((text) => transcriptMatchesFormula(text, entry.words)),
+				heard.some((formula) => sameFormula(formula, entry.words)),
 			);
 		this.devCounter += 1;
 		const entry = {

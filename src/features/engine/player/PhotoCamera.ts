@@ -72,8 +72,9 @@ export class PhotoCamera {
 		const side = Math.floor(
 			Math.min(PHOTO_SIZE, this.bufferSize.x, this.bufferSize.y),
 		);
-		if (this.shot.width !== side) {
-			this.shot.setSize(side, side);
+		const detail = Math.round(side * post.squareScale);
+		if (this.shot.width !== detail) {
+			this.shot.setSize(detail, detail);
 		}
 		const previous = renderer.getRenderTarget();
 		renderer.getViewport(this.viewport);

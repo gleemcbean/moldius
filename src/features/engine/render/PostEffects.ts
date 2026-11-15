@@ -15,6 +15,10 @@ export const POST_BULGE = 0.3;
 export const HUD_BEND = 0.38;
 const HUD_SHIFT = 0.1;
 
+export function curvatureZoom(curvature: number, aspect: number): number {
+	return 1 + POST_BULGE * curvature * (0.25 + 0.25 * aspect * aspect);
+}
+
 const VERTEX = `
 varying vec2 vUv;
 
@@ -43,6 +47,7 @@ uniform float animated;
 uniform float levels;
 uniform float nausea;
 uniform float curvature;
+uniform float zoom;
 uniform float aberration;
 uniform float bleed;
 uniform float vignetteAmount;
@@ -88,7 +93,7 @@ void main() {
   vec2 radial = centered * aspect;
   float spread = dot(radial, radial);
   float bulge = ${POST_BULGE.toFixed(3)} * curvature;
-  vec2 uv = 0.5 + centered * (1.0 + bulge * spread) / (1.0 + bulge * (0.25 + 0.25 * aspect.x * aspect.x));
+  vec2 uv = 0.5 + centered * (1.0 + bulge * spread) / zoom;
   vec2 shift = centered * spread * (0.012 * aberration + 0.014 * tension);
   vec2 doubled = vec2(0.0);
   if (nausea > 0.001) {
@@ -186,6 +191,7 @@ export class PostEffects {
 	private readonly scene = new THREE.Scene();
 	private readonly camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 	private readonly size = new THREE.Vector2();
+	private supersample = 1;
 	private time = 0;
 	private tension = 0;
 	private nausea = 0;
@@ -221,6 +227,7 @@ export class PostEffects {
 				levels: { value: 127 },
 				nausea: { value: 0 },
 				curvature: { value: 0 },
+				zoom: { value: 1 },
 				aberration: { value: 0 },
 				bleed: { value: 0 },
 				vignetteAmount: { value: 0 },
@@ -270,25 +277,44 @@ export class PostEffects {
 		return this.target;
 	}
 
+	get sceneScale(): number {
+		return this.supersample;
+	}
+
+	get squareScale(): number {
+		return curvatureZoom(this.material.uniforms.curvature.value, 1);
+	}
+
 	render(frame: PostEffectsFrame, draw: () => void): void {
 		this.time += frame.dt;
 		this.tension +=
 			(Math.min(1, Math.max(0, frame.tension)) - this.tension) *
 			Math.min(1, frame.dt * 3);
+		const effects = frame.effects;
 		this.renderer.getDrawingBufferSize(this.size);
-		if (
-			this.target.width !== this.size.x ||
-			this.target.height !== this.size.y
-		) {
-			this.target.setSize(this.size.x, this.size.y);
+		const zoom = curvatureZoom(
+			effects.curvature,
+			this.size.x / Math.max(1, this.size.y),
+		);
+		const limit = this.renderer.capabilities.maxTextureSize;
+		const scale = Math.min(
+			zoom,
+			limit / Math.max(1, this.size.x),
+			limit / Math.max(1, this.size.y),
+		);
+		const width = Math.max(1, Math.round(this.size.x * scale));
+		const height = Math.max(1, Math.round(this.size.y * scale));
+		if (this.target.width !== width || this.target.height !== height) {
+			this.target.setSize(width, height);
 		}
+		this.supersample = width / Math.max(1, this.size.x);
 		const uniforms = this.material.uniforms;
+		uniforms.zoom.value = zoom;
 		const cssHeight = this.size.y / this.renderer.getPixelRatio();
 		uniforms.resolution.value.set(this.size.x, this.size.y);
 		uniforms.lines.value = Math.min(cssHeight / 3, this.size.y / 2.5);
 		uniforms.time.value = this.time;
 		uniforms.grainTime.value = Math.floor(this.time * 24) / 24;
-		const effects = frame.effects;
 		uniforms.tension.value = this.tension * effects.danger;
 		uniforms.animated.value = frame.animated ? 1 : 0;
 		uniforms.levels.value = frame.colorLevels;
@@ -323,6 +349,7 @@ export class PostEffects {
 			desaturate: uniforms.desaturate.value,
 			tension: uniforms.tension.value,
 			lines: uniforms.lines.value,
+			zoom: uniforms.zoom.value,
 			resolution: uniforms.resolution.value.clone(),
 		};
 		uniforms.scene.value = source;
@@ -331,12 +358,14 @@ export class PostEffects {
 		uniforms.tension.value = 0;
 		uniforms.resolution.value.set(side, side);
 		uniforms.lines.value = side / 3;
+		uniforms.zoom.value = this.squareScale;
 		this.renderer.render(this.scene, this.camera);
 		uniforms.scene.value = saved.scene;
 		uniforms.hudOn.value = saved.hudOn;
 		uniforms.desaturate.value = saved.desaturate;
 		uniforms.tension.value = saved.tension;
 		uniforms.lines.value = saved.lines;
+		uniforms.zoom.value = saved.zoom;
 		uniforms.resolution.value.copy(saved.resolution);
 	}
 

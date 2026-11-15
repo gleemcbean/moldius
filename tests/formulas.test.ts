@@ -3,6 +3,7 @@ import {
 	editDistance,
 	formulaKeyWord,
 	generateFormulas,
+	matchingFormulas,
 	MIN_WORD_SEPARATION,
 	normalizeSpeech,
 	phoneticKey,
@@ -83,6 +84,56 @@ describe("reconnaissance des formules latines", () => {
 				expect(transcriptMatchesFormula(spoken.join(" "), other)).toBe(
 					spoken === other,
 				);
+			}
+		}
+	});
+});
+
+describe("reconnaissance tolérante", () => {
+	const chatter = [
+		"il est là viens ici",
+		"attends je regarde la carte",
+		"j'ai trouvé un fragment de rubis",
+		"cours cours il arrive",
+		"je suis dans la bibliothèque",
+		"regarde derrière toi",
+	];
+
+	it("reconnaît une prononciation approximative quand une seule formule y ressemble", () => {
+		const formulas = [
+			FORMULA,
+			["candela", "corvus", "fortuna"],
+			["stella", "vapor", "gladius"],
+		];
+		expect(transcriptMatchesFormula("agnès ombre lumière", FORMULA)).toBe(
+			false,
+		);
+		expect(matchingFormulas(["agnès ombre lumière"], formulas)).toEqual([
+			FORMULA,
+		]);
+		expect(matchingFormulas(["candelo corvo fortune"], formulas)).toEqual([
+			formulas[1],
+		]);
+	});
+
+	it("garde la formule exacte prioritaire et refuse un ordre différent", () => {
+		const formulas = [FORMULA, ["candela", "corvus", "fortuna"]];
+		expect(matchingFormulas(["ignis umbra lumen"], formulas)).toEqual([
+			FORMULA,
+		]);
+		expect(matchingFormulas(["ombre agnès lumière"], formulas)).toEqual([]);
+	});
+
+	it("ne confond ni les formules d'une partie ni les bavardages", () => {
+		for (let seed = 1; seed <= 60; seed += 1) {
+			const formulas = generateFormulas(new SeededRandom(seed), 8);
+			for (const spoken of formulas) {
+				expect(matchingFormulas([spoken.join(" ")], formulas)).toEqual([
+					spoken,
+				]);
+			}
+			for (const text of chatter) {
+				expect(matchingFormulas([text], formulas), text).toEqual([]);
 			}
 		}
 	});

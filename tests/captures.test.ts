@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { hoverHeight } from "../server/game/ai/locomotion.js";
 import type { MatchPlayer } from "../server/game/MatchPlayer.js";
-import { ANOMALY_RETURN_DELAY_MS } from "../shared/config/index.js";
+import {
+	ANOMALY_MIN_RETURN_DELAY_MS,
+	ANOMALY_RETURN_DELAY_MS,
+} from "../shared/config/index.js";
 import { SPECIES } from "../shared/config/species.js";
 import {
 	type ClearLine,
@@ -128,6 +131,20 @@ describe("captures vocales validées par le serveur", () => {
 		expect(castAt(sim, "p1", entity).ok).toBe(true);
 	});
 
+	it("accepte une prononciation approximative sans ambiguïté", () => {
+		prepareCaster(sim, "p1", { lantern: true });
+		const entity = installAnomaly(
+			sim,
+			0,
+			"veilleur",
+			line.target,
+			line.yaw + Math.PI,
+		);
+		const result = castAt(sim, "p1", entity, ["agnès", "ombre", "lumière"]);
+		expect(result.ok).toBe(true);
+		expect(entity.active).toBe(false);
+	});
+
 	it("exige une activité vocale réelle", () => {
 		prepareCaster(sim, "p1", { lantern: true, voiceLevel: 0 });
 		const entity = installAnomaly(
@@ -229,7 +246,7 @@ describe("cri du Hurleur", () => {
 });
 
 describe("retour des anomalies capturées", () => {
-	it("revient après une minute avec une nouvelle génération", () => {
+	it("revient plus tôt quand le manoir manque de monstres, avec une nouvelle génération", () => {
 		setup();
 		prepareCaster(sim, "p1", { lantern: true });
 		const entity = installAnomaly(
@@ -244,10 +261,11 @@ describe("retour des anomalies capturées", () => {
 		const capturedAt = sim.match.now;
 		expect(entity.spawnDueAt).toBe(capturedAt + ANOMALY_RETURN_DELAY_MS);
 		sim.bot("p1").lantern = false;
-		sim.run(ANOMALY_RETURN_DELAY_MS / 1000 - 1);
+		sim.run(ANOMALY_MIN_RETURN_DELAY_MS / 1000 - 1);
 		expect(entity.active).toBe(false);
-		sim.run(20);
+		sim.run((ANOMALY_RETURN_DELAY_MS - ANOMALY_MIN_RETURN_DELAY_MS) / 1000);
 		expect(entity.active).toBe(true);
+		expect(entity.spawnedAt - capturedAt).toBeLessThan(ANOMALY_RETURN_DELAY_MS);
 		expect(entity.gen).toBe(generation + 1);
 		const spawn = sim.transport
 			.eventsOfType("anomalySpawn")

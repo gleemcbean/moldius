@@ -10,10 +10,12 @@ import {
 	GROUND_ACCELERATION,
 	JUMP_VELOCITY,
 	MAX_FALL_SPEED,
+	PLAYER_BODY_RADIUS,
 	PLAYER_HEAD_CLEARANCE,
 	PLAYER_HEIGHT_CROUCHED,
 	PLAYER_HEIGHT_STANDING,
 	PLAYER_RADIUS,
+	PLAYER_SEPARATION_SPEED,
 	RAMP_STICK_DISTANCE,
 	SPRINT_SPEED,
 	STEP_UP_HEIGHT,
@@ -385,6 +387,47 @@ export function resolveHorizontal(
 	}
 }
 
+export interface CharacterBody {
+	x: number;
+	y: number;
+	z: number;
+}
+
+export function separateFromBodies(
+	world: CollisionWorld,
+	state: CharacterState,
+	bodies: readonly CharacterBody[],
+	dt: number,
+): void {
+	const height = characterHeight(state);
+	const gap = PLAYER_BODY_RADIUS * 2;
+	let moved = false;
+	for (const body of bodies) {
+		if (
+			body.y + PLAYER_HEIGHT_STANDING <= state.y + 0.05 ||
+			state.y + height <= body.y + 0.05
+		) {
+			continue;
+		}
+		const dx = state.x - body.x;
+		const dz = state.z - body.z;
+		const distance = Math.hypot(dx, dz);
+		if (distance >= gap) {
+			continue;
+		}
+		const normal =
+			distance > 1e-4 ? { x: dx / distance, z: dz / distance } : { x: 1, z: 0 };
+		const push = Math.min(gap - distance, PLAYER_SEPARATION_SPEED * dt);
+		state.x += normal.x * push;
+		state.z += normal.z * push;
+		removeVelocityInto(state, normal);
+		moved = true;
+	}
+	if (moved) {
+		resolveHorizontal(world, state, dt);
+	}
+}
+
 function wallNormal(a: Vec2, b: Vec2): Vec2 {
 	const length = Math.hypot(b.x - a.x, b.z - a.z);
 	return { x: -(b.z - a.z) / length, z: (b.x - a.x) / length };
@@ -441,6 +484,7 @@ function updateVertical(
 	gravityFactor: number,
 ): void {
 	const wasGrounded = state.grounded;
+	const previousY = state.y;
 	state.vy = Math.max(-MAX_FALL_SPEED, state.vy - GRAVITY * gravityFactor * dt);
 	const nextY = state.y + state.vy * dt;
 	const rising = state.vy > 0;
@@ -488,16 +532,44 @@ function updateVertical(
 		return;
 	}
 
-	const ceiling = world.ceilingAt(
-		{ x: state.x, z: state.z },
-		PLAYER_RADIUS,
-		state.y,
-	);
 	const height = clearanceHeight(state);
+	const ceiling = Math.min(
+		world.ceilingAt({ x: state.x, z: state.z }, PLAYER_RADIUS, state.y),
+		boxCeiling(world, state, previousY + height),
+	);
 	if (state.y + height > ceiling) {
 		state.y = Math.max(ceiling - height, support.height ?? state.y);
 		state.vy = Math.min(0, state.vy);
 	}
+}
+
+function boxCeiling(
+	world: CollisionWorld,
+	state: CharacterState,
+	headY: number,
+): number {
+	const radius = PLAYER_RADIUS - 0.05;
+	const bounds = {
+		minX: state.x - radius,
+		maxX: state.x + radius,
+		minZ: state.z - radius,
+		maxZ: state.z + radius,
+	};
+	let ceiling = Infinity;
+	for (const id of world.queryBoxes(bounds)) {
+		const box = world.boxes[id];
+		if (
+			!box.enabled ||
+			box.soft ||
+			box.yMin < headY - 0.01 ||
+			box.yMin >= ceiling ||
+			!circleBoxPenetration(state.x, state.z, radius, box)
+		) {
+			continue;
+		}
+		ceiling = box.yMin;
+	}
+	return ceiling;
 }
 
 export function supportHeight(

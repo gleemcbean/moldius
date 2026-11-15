@@ -9,12 +9,14 @@ import type { DevModes } from "@shared/devModes";
 import { clampToGhostBounds, type GhostBounds } from "@shared/ghost";
 import { clamp, lerp, rotate2, type Vec2, type Vec3 } from "@shared/math";
 import {
+	type CharacterBody,
 	type CharacterInput,
 	type CharacterState,
 	createCharacterState,
 	isSprinting,
 	JumpAssist,
 	type MovementModifiers,
+	separateFromBodies,
 	stepCharacter,
 } from "@shared/physics/character";
 import type { CollisionWorld } from "@shared/physics/collisionWorld";
@@ -53,6 +55,7 @@ export interface LocalContext {
 	hideFacing: number;
 	devModes: DevModes;
 	ghost: GhostBounds | null;
+	bodies: readonly CharacterBody[];
 }
 
 interface ForcedAnimation {
@@ -224,6 +227,9 @@ export class LocalPlayer {
 				modifiers,
 				STEP,
 			);
+			if (!modifiers.passThrough && context.bodies.length > 0) {
+				separateFromBodies(this.world, this.character, context.bodies, STEP);
+			}
 			this.jumpAssist.settle(this.character, STEP);
 			if (jump.jump) {
 				this.jumps += 1;

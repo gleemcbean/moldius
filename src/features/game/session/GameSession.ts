@@ -55,6 +55,7 @@ import { hasMutator } from "@shared/matchConfig";
 
 import { type LiquidVolume, liquidAt } from "@shared/manor/liquids";
 import type { Level } from "@shared/manor/types";
+import type { CharacterBody } from "@shared/physics/character";
 import { pullBackToSight } from "@shared/physics/lineOfSight";
 import {
 	type CastResult,
@@ -150,6 +151,7 @@ const RADIO_GHOST_MIN_MS = 25_000;
 const RADIO_GHOST_EXTRA_MS = 30_000;
 const REPLAY_FOV = 62;
 const VOICE_CLIPS_GRACE_MS = 5_000;
+const MENU_ESCAPE_GRACE_MS = 400;
 
 function wrapIndex(index: number, length: number): number {
 	return ((index % length) + length) % length;
@@ -245,6 +247,7 @@ export class GameSession {
 	private mapDrag: { x: number; y: number } | null = null;
 	private pointerEverLocked = false;
 	private intentionalUnlock = false;
+	private menusClosedAt = -Infinity;
 	private hudPublishedAt = 0;
 	private interaction: InteractionTarget | null = null;
 	private tutorial: TutorialController | null = null;
@@ -385,7 +388,12 @@ export class GameSession {
 			anomaliesInMs: this.init.anomalySpawnDelayMs,
 			health: 100,
 			energy: 100,
+			occultInPlay: OCCULT_IDS.filter((object) => this.inPlay(object)),
 		});
+	}
+
+	private inPlay(object: OccultId): boolean {
+		return this.init.roster.some((entry) => entry.occult === object);
 	}
 
 	get layout() {
@@ -481,6 +489,11 @@ export class GameSession {
 		}
 		if (this.intentionalUnlock || this.mapOpen || this.voting) {
 			this.intentionalUnlock = false;
+			return;
+		}
+		if (this.menuOpen || this.wheel) {
+			this.closeMenus();
+			this.menusClosedAt = performance.now();
 			return;
 		}
 		if (this.pointerEverLocked) {
@@ -580,7 +593,6 @@ export class GameSession {
 		loaded.renderer.setPixelRatio(
 			renderPixelRatio(settings.quality, settings.renderScale),
 		);
-		loaded.particles.setPixelRatio(loaded.renderer.getPixelRatio());
 		loaded.renderer.setSize(width, height, false);
 		loaded.renderer.domElement.style.width = "100%";
 		loaded.renderer.domElement.style.height = "100%";
@@ -655,7 +667,8 @@ export class GameSession {
 		this.altarId = altarId;
 		if (altarId !== null) {
 			const craftable = OCCULT_IDS.findIndex((object) => this.canCraft(object));
-			this.altarSelected = Math.max(0, craftable);
+			const usable = OCCULT_IDS.findIndex((object) => this.inPlay(object));
+			this.altarSelected = Math.max(0, craftable >= 0 ? craftable : usable);
 		}
 		hudStore.set({
 			altarOpen: altarId !== null,
@@ -663,7 +676,7 @@ export class GameSession {
 		});
 	}
 
-	private canCraft(object: OccultId): boolean {
+	private hasMaterials(object: OccultId): boolean {
 		const materials = this.inventory?.materials;
 		return (
 			materials !== undefined &&
@@ -673,9 +686,24 @@ export class GameSession {
 		);
 	}
 
+	private canCraft(object: OccultId): boolean {
+		return this.inPlay(object) && this.hasMaterials(object);
+	}
+
 	private selectAltarRow(index: number): void {
 		this.altarSelected = wrapIndex(index, OCCULT_IDS.length);
 		hudStore.set({ altarSelected: this.altarSelected });
+	}
+
+	private stepAltarRow(step: number): void {
+		let index = this.altarSelected;
+		for (let tries = 0; tries < OCCULT_IDS.length; tries += 1) {
+			index = wrapIndex(index + step, OCCULT_IDS.length);
+			if (this.inPlay(OCCULT_IDS[index])) {
+				break;
+			}
+		}
+		this.selectAltarRow(index);
 	}
 
 	private craftSelected(): void {
@@ -683,6 +711,18 @@ export class GameSession {
 		if (this.altarId !== null && this.canCraft(object)) {
 			getSocket().emit("game:craft", { altarId: this.altarId, object });
 		}
+	}
+
+	private get menuOpen(): boolean {
+		return this.altarId !== null || this.gift !== null;
+	}
+
+	private closeMenus(): void {
+		if (this.altarId !== null) {
+			this.setAltar(null);
+		}
+		this.gift = null;
+		this.closeWheel();
 	}
 
 	private updateAltar(frame: FrameInput, player: LocalPlayer): void {
@@ -712,6 +752,9 @@ export class GameSession {
 	private altarPrompt(): string {
 		const object = OCCULT_IDS[this.altarSelected];
 		const messages = currentMessages();
+		if (!this.inPlay(object)) {
+			return messages.game.interaction.objectUnused;
+		}
 		return this.canCraft(object)
 			? messages.game.interaction.craft(messages.grimoire.objects[object])
 			: messages.game.interaction.missingMaterials;
@@ -751,7 +794,7 @@ export class GameSession {
 		}
 		if (this.altarId !== null) {
 			if (step !== 0 && !loaded.grimoire.isOpen) {
-				this.selectAltarRow(this.altarSelected + step);
+				this.stepAltarRow(step);
 			}
 			return;
 		}
@@ -1146,7 +1189,29 @@ export class GameSession {
 			hideFacing: spot?.facing ?? 0,
 			devModes: activeDevModes(this.init.dev),
 			ghost: alive ? null : this.ghostLimits,
+			bodies: alive ? this.otherBodies() : [],
 		};
+	}
+
+	private otherBodies(): CharacterBody[] {
+		const loaded = this.loadedWorld as LoadedWorld;
+		const bodies: CharacterBody[] = [];
+		for (const player of loaded.state.players.values()) {
+			const flags = player.latest?.flags ?? PLAYER_FLAG.dead;
+			if (
+				player.id === this.selfId ||
+				(flags &
+					(PLAYER_FLAG.dead | PLAYER_FLAG.hidden | PLAYER_FLAG.carried)) !==
+					0
+			) {
+				continue;
+			}
+			const position = loaded.remotePlayers.positionOf(player.id);
+			if (position) {
+				bodies.push({ x: position.x, y: position.y, z: position.z });
+			}
+		}
+		return bodies;
 	}
 
 	private availableEnergy(): number {
@@ -1252,7 +1317,8 @@ export class GameSession {
 			frame.escape &&
 			!escapeConsumed &&
 			this.altarId === null &&
-			!this.input?.pointerLocked
+			!this.input?.pointerLocked &&
+			performance.now() - this.menusClosedAt > MENU_ESCAPE_GRACE_MS
 		) {
 			hudStore.set({ paused: true });
 		}
@@ -1301,6 +1367,11 @@ export class GameSession {
 				this.setAltar(null);
 			}
 			return;
+		}
+		if (frame.pressed.has("shout") && this.menuOpen) {
+			frame.pressed.delete("shout");
+			this.closeMenus();
+			playUiClick();
 		}
 		const lanternEnergy =
 			this.loadedWorld?.state.self?.latest?.en ?? ENERGY_MAX;
@@ -2973,6 +3044,9 @@ export class GameSession {
 
 	private render(loaded: LoadedWorld): void {
 		const { renderer, scene, camera, rig } = loaded;
+		loaded.particles.setPixelRatio(
+			renderer.getPixelRatio() * loaded.post.sceneScale,
+		);
 		renderer.clear();
 		camera.layers.set(0);
 		renderer.render(scene, camera);

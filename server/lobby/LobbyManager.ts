@@ -138,20 +138,6 @@ export class LobbyManager {
 		return this.join(session, this.createLobby("private"), name, look);
 	}
 
-	createPossessed(
-		session: Session,
-		name: string,
-		look: LookPreference = {},
-	): LobbyResult {
-		if (this.accountBusy(session)) {
-			return { ok: false, error: ALREADY_PLAYING };
-		}
-		this.leave(session);
-		const lobby = this.createLobby("private", this.possessedMinPlayers());
-		lobby.config = possessedConfig();
-		return this.join(session, lobby, name, look);
-	}
-
 	private possessedMinPlayers(): number {
 		return this.options.dev
 			? this.options.minPlayers
@@ -587,6 +573,7 @@ export class LobbyManager {
 			transport: this.transportFor(lobby),
 			previousWords: challenge ? new Set() : lobby.previousFormulaWords,
 			daily: challenge?.date ?? null,
+			challenges: lobby.countsChallenges,
 			clock: this.clock,
 			dev: this.options.dev ?? false,
 			tutorial,

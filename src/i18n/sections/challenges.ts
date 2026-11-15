@@ -26,6 +26,10 @@ export const challengesFr = {
 		`Défi ${name}, palier ${tier} : ${task}`,
 	guestRequirement: (requirement: string) => `${requirement} (avec un compte)`,
 	resultsTitle: (names: string) => `Défis réussis : ${names}`,
+	privateOff:
+		"Partie privée : les défis ne progressent pas ici. Ils comptent en partie publique et au défi du jour.",
+	publicOnly:
+		"Les défis progressent en partie publique et au défi du jour, jamais en partie privée.",
 	units: {
 		meters: (value: string) => `${value} m`,
 		seconds: (value: string) => `${value} s`,
@@ -152,6 +156,10 @@ export const challengesEn: typeof challengesFr = {
 	requireTier: (tier, name, task) => `${name} challenge, tier ${tier}: ${task}`,
 	guestRequirement: (requirement) => `${requirement} (with an account)`,
 	resultsTitle: (names) => `Challenges completed: ${names}`,
+	privateOff:
+		"Private game: challenges do not progress here. They count in public games and in the daily challenge.",
+	publicOnly:
+		"Challenges progress in public games and in the daily challenge, never in private games.",
 	units: {
 		meters: (value) => `${value} m`,
 		seconds: (value) => `${value} s`,

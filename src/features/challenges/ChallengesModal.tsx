@@ -82,6 +82,7 @@ export function ChallengesModal({ onClose }: { onClose: () => void }) {
 			{status === "signed-in" ? null : (
 				<p className={styles.note}>{labels.signInHint}</p>
 			)}
+			<p className={styles.note}>{labels.publicOnly}</p>
 			<div className={styles.columns}>
 				<section>
 					<h3>{labels.classic}</h3>

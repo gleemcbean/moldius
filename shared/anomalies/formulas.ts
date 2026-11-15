@@ -8,6 +8,8 @@ export const MAX_FILLER_BETWEEN_WORDS = 2;
 export const MAX_EXTRA_TOKENS = 4;
 export const MAX_TOKENS_PER_WORD = 3;
 export const MIN_WORD_SEPARATION = 3;
+export const RELAXED_SLACK = 1;
+const RELAXED_MIN_KEY_LENGTH = 5;
 
 const PHONETIC_RULES: [RegExp, string][] = [
 	[/ph/g, "f"],
@@ -86,26 +88,32 @@ export function editDistance(a: string, b: string): number {
 	return previous[b.length];
 }
 
-export function phoneticTolerance(key: string): number {
+export function phoneticTolerance(key: string, slack = 0): number {
 	if (key.length <= 3) {
 		return 0;
 	}
-	return key.length <= 6 ? 1 : 2;
+	const base = key.length <= 6 ? 1 : 2;
+	return key.length >= RELAXED_MIN_KEY_LENGTH ? base + slack : base;
 }
 
-export function soundsLike(spoken: string, expectedKey: string): boolean {
+export function soundsLike(
+	spoken: string,
+	expectedKey: string,
+	slack = 0,
+): boolean {
 	const key = phoneticKey(spoken);
+	const tolerance = phoneticTolerance(expectedKey, slack);
 	return (
 		key.length > 0 &&
-		Math.abs(key.length - expectedKey.length) <=
-			phoneticTolerance(expectedKey) &&
-		editDistance(key, expectedKey) <= phoneticTolerance(expectedKey)
+		Math.abs(key.length - expectedKey.length) <= tolerance &&
+		editDistance(key, expectedKey) <= tolerance
 	);
 }
 
 export function transcriptMatchesFormula(
 	transcript: string,
 	formula: Formula,
+	slack = 0,
 ): boolean {
 	const tokens = normalizeSpeech(transcript);
 	const expected = formula.map(phoneticKey);
@@ -115,7 +123,36 @@ export function transcriptMatchesFormula(
 	) {
 		return false;
 	}
-	return matchFrom(tokens, expected, 0, 0, 0);
+	return matchFrom(tokens, expected, 0, 0, 0, slack);
+}
+
+export function sameFormula(first: Formula, second: Formula): boolean {
+	return (
+		first.length === second.length &&
+		first.every((word, index) => word === second[index])
+	);
+}
+
+export function matchingFormulas(
+	transcripts: readonly string[],
+	formulas: readonly Formula[],
+): Formula[] {
+	const distinct = formulas.filter(
+		(formula, index) =>
+			formulas.findIndex((other) => sameFormula(other, formula)) === index,
+	);
+	const heard = (slack: number) =>
+		distinct.filter((formula) =>
+			transcripts.some((transcript) =>
+				transcriptMatchesFormula(transcript, formula, slack),
+			),
+		);
+	const strict = heard(0);
+	if (strict.length > 0) {
+		return strict;
+	}
+	const relaxed = heard(RELAXED_SLACK);
+	return relaxed.length === 1 ? relaxed : [];
 }
 
 function matchFrom(
@@ -124,6 +161,7 @@ function matchFrom(
 	tokenIndex: number,
 	wordIndex: number,
 	skipped: number,
+	slack: number,
 ): boolean {
 	if (wordIndex === expected.length) {
 		return skipped + tokens.length - tokenIndex <= MAX_EXTRA_TOKENS;
@@ -144,8 +182,8 @@ function matchFrom(
 		) {
 			const spoken = tokens.slice(index, index + span).join("");
 			if (
-				soundsLike(spoken, expected[wordIndex]) &&
-				matchFrom(tokens, expected, index + span, wordIndex + 1, extra)
+				soundsLike(spoken, expected[wordIndex], slack) &&
+				matchFrom(tokens, expected, index + span, wordIndex + 1, extra, slack)
 			) {
 				return true;
 			}

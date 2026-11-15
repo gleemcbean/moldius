@@ -8,6 +8,7 @@ import {
 	VALVE_HEAL_RADIUS,
 	VALVE_JET_DURATION_MS,
 } from "@shared/config/index";
+import { SPECIES_LIST } from "@shared/config/species";
 import { TUTORIAL_WOUNDED_HEALTH } from "@shared/matchConfig";
 import type { Vec3 } from "@shared/math";
 import { wrapAngle } from "@shared/math";
@@ -15,13 +16,20 @@ import type { MatchInit, PlayerInventory } from "@shared/protocol/game";
 import * as THREE from "three";
 import { keyLabel } from "../../../config/controls";
 import { currentMessages } from "../../../i18n";
+import { playUiClick } from "../../audio/uiSounds";
 import type { FrameInput } from "../../engine/input/InputManager";
-import { hudStore, type TutorialCheck } from "../../hud/hudStore";
+import {
+	hudStore,
+	pushFeedback,
+	type TutorialCheck,
+	type TutorialGoal,
+} from "../../hud/hudStore";
 import { settingsStore } from "../../settings/settingsStore";
 import { micManager } from "../../voice/micManager";
 import type { LoadedWorld } from "./SessionLoader";
 
 export const TUTORIAL_STEPS = [
+	"goal",
 	"move",
 	"sprint",
 	"crouch",
@@ -72,29 +80,32 @@ const MOVE_ACTIONS = [
 ] as const;
 const GRIMOIRE_READ_MS = 2500;
 const SAME_FLOOR = 2;
-const STAR_SCALE = 0.035;
-const STAR_HEIGHT = 1.5;
+const STAR_SCALE = 0.075;
+const STAR_HEIGHT = 1.6;
+const LOOK_AROUND_RAD = Math.PI * 1.5;
+const GOAL_FROM_STEP = TUTORIAL_STEPS.indexOf("loot");
+const TOP_POINTS = Math.max(...SPECIES_LIST.map((species) => species.points));
 const VOICE_HEARD_LEVEL = 0.08;
 const VOICE_MEMORY_MS = 2500;
 
 function starCanvas(): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
-	canvas.width = 64;
-	canvas.height = 64;
+	canvas.width = 128;
+	canvas.height = 128;
 	const context = canvas.getContext("2d") as CanvasRenderingContext2D;
 	context.beginPath();
 	for (let index = 0; index < 10; index += 1) {
-		const radius = index % 2 === 0 ? 30 : 11;
+		const radius = index % 2 === 0 ? 58 : 23;
 		const angle = (index / 10) * Math.PI * 2 - Math.PI / 2;
 		context.lineTo(
-			32 + Math.cos(angle) * radius,
-			32 + Math.sin(angle) * radius,
+			64 + Math.cos(angle) * radius,
+			64 + Math.sin(angle) * radius,
 		);
 	}
 	context.closePath();
 	context.fillStyle = "#ffe07a";
 	context.strokeStyle = "#5a3c08";
-	context.lineWidth = 2;
+	context.lineWidth = 5;
 	context.fill();
 	context.stroke();
 	return canvas;
@@ -120,6 +131,11 @@ export class TutorialController {
 	private time = 0;
 	private voiceHeardAt = 0;
 	private inventory: PlayerInventory | null = null;
+	private turned = 0;
+	private lastYaw: number | null = null;
+	private lanternSeenOpen = false;
+	private crafted = false;
+	private heldObject: OccultId | null = null;
 
 	constructor(
 		private readonly init: MatchInit,
@@ -165,8 +181,17 @@ export class TutorialController {
 
 	update(context: TutorialFrame): void {
 		this.inventory = context.inventory;
-		if (this.isDone(context) || this.skip) {
+		this.heldObject = context.heldObject;
+		this.crafted ||=
+			this.object !== null &&
+			(context.inventory?.objects[this.object] ?? 0) > 0;
+		const done = this.isDone(context);
+		if (done || this.skip) {
 			this.skip = false;
+			if (done && this.step !== "end" && this.step !== "capture") {
+				pushFeedback(currentMessages().game.tutorial.stepDone, "success");
+				playUiClick("confirm");
+			}
 			if (this.step === "end") {
 				this.finished = true;
 			} else {
@@ -195,6 +220,12 @@ export class TutorialController {
 	private isDone(context: TutorialFrame): boolean {
 		const { frame, feet, inventory } = context;
 		switch (this.step) {
+			case "goal":
+				if (this.lastYaw !== null) {
+					this.turned += Math.abs(wrapAngle(context.yaw - this.lastYaw));
+				}
+				this.lastYaw = context.yaw;
+				return this.turned >= LOOK_AROUND_RAD;
 			case "move":
 				if (this.last) {
 					this.travelled += Math.hypot(
@@ -223,7 +254,8 @@ export class TutorialController {
 				return this.mapSeen && !open;
 			}
 			case "lantern":
-				return frame.pressed.has("lantern");
+				this.lanternSeenOpen ||= context.lanternOpen;
+				return this.lanternSeenOpen && !context.lanternOpen;
 			case "door":
 				return this.doorUsed;
 			case "loot":
@@ -264,6 +296,48 @@ export class TutorialController {
 
 	private get object(): OccultId | null {
 		return this.init.roster[0]?.occult ?? null;
+	}
+
+	private speciesName(): string {
+		const species = this.init.roster[0]?.species;
+		return species ? currentMessages().grimoire.species[species].name : "";
+	}
+
+	private speciesPoints(): number {
+		const species = this.init.roster[0]?.species;
+		return SPECIES_LIST.find((entry) => entry.id === species)?.points ?? 0;
+	}
+
+	private goal(): TutorialGoal | null {
+		if (
+			this.finished ||
+			(this.index > 0 && this.index < GOAL_FROM_STEP) ||
+			this.step === "end"
+		) {
+			return null;
+		}
+		const labels = currentMessages().game.tutorial.goal;
+		const object = this.objectName();
+		const recipe = this.recipe();
+		const need = recipe.reduce((sum, [, count]) => sum + count, 0);
+		const have = recipe.reduce(
+			(sum, [id, count]) =>
+				sum + Math.min(count, this.inventory?.materials[id] ?? 0),
+			0,
+		);
+		const holding = this.object !== null && this.heldObject === this.object;
+		return {
+			title: labels.title(this.speciesName()),
+			steps: [
+				{
+					label: labels.gather(this.crafted ? need : have, need),
+					ok: this.crafted || this.captured || have >= need,
+				},
+				{ label: labels.craft(object), ok: this.crafted || this.captured },
+				{ label: labels.hold(object), ok: holding || this.captured },
+				{ label: labels.cast, ok: this.captured },
+			],
+		};
 	}
 
 	private recipe(): [MaterialId, number][] {
@@ -353,6 +427,8 @@ export class TutorialController {
 		const label = (action: keyof typeof keys) => keyLabel(keys[action]);
 		const steps = currentMessages().game.tutorial.steps;
 		switch (this.step) {
+			case "goal":
+				return steps.goal(TOP_POINTS);
 			case "move":
 				return steps.move(
 					[
@@ -403,7 +479,7 @@ export class TutorialController {
 			case "capture":
 				return steps.capture(this.init.roster[0]?.formula.join(" · ") ?? "");
 			case "end":
-				return steps.end();
+				return steps.end(this.speciesPoints());
 		}
 	}
 
@@ -427,13 +503,40 @@ export class TutorialController {
 	}
 
 	private checks(context: TutorialFrame): TutorialCheck[] {
-		if (this.step === "valve") {
-			return this.valveChecks(context);
-		}
-		if (this.step !== "capture") {
-			return [];
-		}
 		const labels = currentMessages().game.tutorial.checks;
+		switch (this.step) {
+			case "valve":
+				return this.valveChecks(context);
+			case "goal":
+				return [
+					{
+						label: `${labels.lookAround} (${Math.min(100, Math.round((this.turned / LOOK_AROUND_RAD) * 100))} %)`,
+						ok: this.turned >= LOOK_AROUND_RAD,
+					},
+				];
+			case "lantern":
+				return [
+					{ label: labels.lanternOpened, ok: this.lanternSeenOpen },
+					{
+						label: labels.lanternClosed,
+						ok: this.lanternSeenOpen && !context.lanternOpen,
+					},
+				];
+			case "grimoire":
+				return [
+					{ label: labels.grimoireOpen, ok: this.loaded.grimoire.isOpen },
+					{
+						label: labels.formulaRead,
+						ok:
+							this.readSince > 0 &&
+							performance.now() - this.readSince >= GRIMOIRE_READ_MS,
+					},
+				];
+			case "capture":
+				break;
+			default:
+				return [];
+		}
 		const center = this.loaded.anomalies.infos()[0]?.center;
 		const range = CAPTURE_MAX_RANGE;
 		const distance = center
@@ -473,7 +576,8 @@ export class TutorialController {
 				) * 5;
 		}
 		const checks = this.checks(context);
-		const key = `${this.index}:${arrow}:${distance}:${this.finished}:${JSON.stringify(context.inventory?.materials)}:${checks.map((check) => check.ok).join()}`;
+		const goal = this.goal();
+		const key = `${this.index}:${arrow}:${distance}:${this.finished}:${JSON.stringify(context.inventory?.materials)}:${checks.map((check) => `${check.label}${check.ok}`).join()}:${goal?.steps.map((step) => `${step.label}${step.ok}`).join() ?? ""}`;
 		if (key === this.lastPublished) {
 			return;
 		}
@@ -486,6 +590,7 @@ export class TutorialController {
 				distance,
 				finished: this.finished,
 				checks,
+				goal,
 				...this.text(),
 			},
 		});
