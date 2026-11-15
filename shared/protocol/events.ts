@@ -1,11 +1,7 @@
 import type { MatchMetrics } from "../challenges.js";
 import type { DevModes } from "../devModes.js";
 import type { MatchConfig } from "../matchConfig.js";
-import type {
-	FriendInvite,
-	FriendsOverview,
-	PublicLobbyPreview,
-} from "./friends.js";
+import type { FriendInvite, FriendsOverview } from "./friends.js";
 import type {
 	CastRequest,
 	CastResult,
@@ -64,8 +60,6 @@ export interface ClientToServerEvents {
 		payload: JoinRequest & { lobbyId: string },
 		ack: Ack<LobbyState>,
 	) => void;
-	"lobby:peekPublic": (ack: Ack<PublicLobbyPreview>) => void;
-	"lobby:peekPossessed": (ack: Ack<PublicLobbyPreview>) => void;
 	"lobby:startTutorial": (payload: JoinRequest, ack: Ack<LobbyState>) => void;
 	"friends:list": (ack: Ack<FriendsOverview>) => void;
 	"friends:add": (payload: { code: string }, ack: Ack<FriendsOverview>) => void;

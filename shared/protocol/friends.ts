@@ -40,12 +40,6 @@ export interface FriendInvite {
 	code: string | null;
 }
 
-export interface PublicLobbyPreview {
-	players: { name: string; color: number; pattern: HatPattern }[];
-	capacity: number;
-	playing: number;
-}
-
 export function normalizeFriendCode(value: unknown): string | null {
 	if (typeof value !== "string") {
 		return null;

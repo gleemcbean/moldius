@@ -1,10 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Server } from "socket.io";
 import { withMatchMetrics } from "../../shared/challenges.js";
-import {
-	POSSESSED_MIN_PLAYERS,
-	PUBLIC_LOBBY_CAPACITY,
-} from "../../shared/config/index.js";
+import { POSSESSED_MIN_PLAYERS } from "../../shared/config/index.js";
 import { dailyChallenge, dailyDateKey } from "../../shared/dailyChallenge.js";
 import {
 	type GameModeId,
@@ -18,7 +15,6 @@ import type {
 	ClientToServerEvents,
 	ServerToClientEvents,
 } from "../../shared/protocol/events.js";
-import type { PublicLobbyPreview } from "../../shared/protocol/friends.js";
 import type { MatchResults } from "../../shared/protocol/game.js";
 import type {
 	LobbyError,
@@ -297,22 +293,6 @@ export class LobbyManager {
 		return lobby
 			? (this.sessions.fromPlayer(lobby.hostId)?.account?.accountId ?? null)
 			: null;
-	}
-
-	publicPreview(mode: GameModeId): PublicLobbyPreview {
-		const lobbies = [...this.lobbies.values()].filter(
-			(lobby) => lobby.visibility === "public" && lobby.config.mode === mode,
-		);
-		const open = lobbies.find((lobby) => lobby.acceptsPlayers);
-		return {
-			players: (open?.toState().players ?? [])
-				.filter((player) => player.connected)
-				.map(({ name, color, pattern }) => ({ name, color, pattern })),
-			capacity: PUBLIC_LOBBY_CAPACITY,
-			playing: lobbies
-				.filter((lobby) => !lobby.acceptsPlayers)
-				.reduce((sum, lobby) => sum + lobby.connectedCount, 0),
-		};
 	}
 
 	startTutorial(

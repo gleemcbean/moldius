@@ -17,7 +17,6 @@ import possessedArt from "./art/possessed.png";
 import tutorialArt from "./art/tutorial.png";
 import styles from "./ModeSelect.module.scss";
 import type { GameMode } from "./modeArt";
-import { PublicLobbyPreview } from "./PublicLobbyPreview";
 
 const ART: Record<GameMode, string> = {
 	classic: classicArt,
@@ -116,9 +115,6 @@ export function ModeSelect({
 							</span>
 							<span className={styles.title}>{card.title}</span>
 							<span className={styles.text}>{card.text}</span>
-							{card.mode === "classic" || card.mode === "possessed" ? (
-								<PublicLobbyPreview className={styles.lobby} mode={card.mode} />
-							) : null}
 							<span className={styles.meta}>{card.meta}</span>
 						</button>
 						{card.mode === "daily" ? (

@@ -149,7 +149,7 @@ export const partyFr = {
 		modeName: "Le Possédé",
 		modeText:
 			"Mode spécial. Un joueur est secrètement possédé : les anomalies l'ignorent et il sabote le rituel. Les autres capturent ensemble, puis votent pour le démasquer.",
-		modeMeta: (min: number) => `Partie publique, au moins ${min} joueurs`,
+		modeMeta: (min: number) => `Au moins ${min} joueurs`,
 		roleHunter: "Vous êtes Chasseur",
 		roleHunterText: (quota: number) =>
 			`Capturez ${quota} anomalies à plusieurs pour accomplir le rituel, puis démasquez le possédé au vote. Méfiez-vous de celui que les monstres épargnent.`,
@@ -404,7 +404,7 @@ export const partyEn: typeof partyFr = {
 		modeName: "The Possessed",
 		modeText:
 			"A special mode. One player is secretly possessed: anomalies ignore them and they sabotage the ritual. The others capture together, then vote to unmask them.",
-		modeMeta: (min: number) => `Public game, at least ${min} players`,
+		modeMeta: (min: number) => `At least ${min} players`,
 		roleHunter: "You are a Hunter",
 		roleHunterText: (quota: number) =>
 			`Capture ${quota} anomalies together to complete the ritual, then unmask the possessed in the vote. Beware of whoever the monsters spare.`,

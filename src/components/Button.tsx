@@ -1,13 +1,19 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import styles from "./Button.module.scss";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant =
+	| "primary"
+	| "secondary"
+	| "ghost"
+	| "danger"
+	| "dangerGhost";
 
 const VARIANT_SOUNDS: Record<ButtonVariant, string | undefined> = {
 	primary: "confirm",
 	secondary: undefined,
 	ghost: undefined,
 	danger: "danger",
+	dangerGhost: "danger",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

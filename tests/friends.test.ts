@@ -17,7 +17,6 @@ import type {
 import type {
 	FriendInvite,
 	FriendsOverview,
-	PublicLobbyPreview,
 } from "../shared/protocol/friends.js";
 import type { LobbyState } from "../shared/protocol/lobby.js";
 import { createTestDatabase } from "./helpers/testDatabase.js";
@@ -370,26 +369,6 @@ describe("amis, invitations et admin", () => {
 		);
 	});
 
-	it("montre le lobby public à tout le monde", async () => {
-		const peek = (client: Client) =>
-			new Promise<Reply<PublicLobbyPreview>>((resolve) =>
-				client.emit("lobby:peekPublic", resolve),
-			);
-		const guest = await connect();
-		expect(value(await peek(guest)).players).toEqual([]);
-		const player = await connect();
-		await new Promise((resolve) =>
-			player.emit("lobby:quickJoin", { name: "Zoé" }, resolve),
-		);
-		const preview = value(await peek(guest));
-		expect(preview.players.map((entry) => entry.name)).toEqual(["Zoé"]);
-		expect(preview.capacity).toBe(4);
-		await new Promise((resolve) =>
-			player.emit("lobby:createPrivate", { name: "Zoé" }, resolve),
-		);
-		expect(value(await peek(guest)).players).toEqual([]);
-	});
-
 	it("tient le Possédé public à part des lobbies classiques", async () => {
 		const possessed = (client: Client, name: string) =>
 			new Promise<Reply<LobbyState>>((resolve) =>
@@ -399,8 +378,6 @@ describe("amis, invitations et admin", () => {
 			new Promise<Reply<LobbyState>>((resolve) =>
 				client.emit("lobby:quickJoin", { name }, resolve),
 			);
-		const names = (preview: Reply<PublicLobbyPreview>) =>
-			value(preview).players.map((entry) => entry.name);
 		const first = value(await possessed(await connect(), "Alice"));
 		expect(first.visibility).toBe("public");
 		expect(first.config.mode).toBe("possessed");
@@ -408,21 +385,6 @@ describe("amis, invitations et admin", () => {
 		expect(other.id).not.toBe(first.id);
 		expect(other.config.mode).toBe("classic");
 		expect(value(await possessed(await connect(), "Carol")).id).toBe(first.id);
-		const guest = await connect();
-		expect(
-			names(
-				await new Promise<Reply<PublicLobbyPreview>>((resolve) =>
-					guest.emit("lobby:peekPossessed", resolve),
-				),
-			),
-		).toEqual(["Alice", "Carol"]);
-		expect(
-			names(
-				await new Promise<Reply<PublicLobbyPreview>>((resolve) =>
-					guest.emit("lobby:peekPublic", resolve),
-				),
-			),
-		).toEqual(["Bob"]);
 	});
 
 	describe("panel admin", () => {

@@ -30,8 +30,8 @@ import { sessionStore } from "../network/sessionStore";
 import { settingsStore, updateSettings } from "../settings/settingsStore";
 import { AppearancePicker } from "./AppearancePicker";
 import { HomeBackdrop } from "./HomeBackdrop";
-import { ModeSelect } from "./ModeSelect";
 import styles from "./HomeScreen.module.scss";
+import { ModeSelect } from "./ModeSelect";
 
 export function HomeScreen() {
 	const t = useT();
@@ -182,7 +182,7 @@ export function HomeScreen() {
 					</form>
 					{desktopApp ? (
 						<Button
-							variant="ghost"
+							variant="dangerGhost"
 							wide
 							icon={<Icon name="door" />}
 							onClick={() => desktopApp?.quit()}

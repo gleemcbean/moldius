@@ -117,20 +117,6 @@
   color: $ink-muted;
 }
 
-.lobby {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 2px 16px 0;
-  padding: 8px 12px;
-  @include well;
-  @include body(15px);
-
-  ul {
-    flex-wrap: wrap;
-  }
-}
-
 .meta {
   margin-top: auto;
   padding: 4px 16px 0;

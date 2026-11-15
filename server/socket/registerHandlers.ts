@@ -173,28 +173,6 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 		}
 	});
 
-	socket.on("lobby:peekPublic", (ack) => {
-		if (typeof ack !== "function") {
-			return;
-		}
-		ack(
-			allow("lobby:peek")
-				? { ok: true, value: deps.lobbies.publicPreview("classic") }
-				: { ok: false, error: RATE_LIMITED },
-		);
-	});
-
-	socket.on("lobby:peekPossessed", (ack) => {
-		if (typeof ack !== "function") {
-			return;
-		}
-		ack(
-			allow("lobby:peek")
-				? { ok: true, value: deps.lobbies.publicPreview("possessed") }
-				: { ok: false, error: RATE_LIMITED },
-		);
-	});
-
 	socket.on("lobby:joinPublic", (payload, ack) => {
 		respond(ack, allow("lobby:join"), session(), (current) => {
 			const name = isRecord(payload) ? sanitizeName(payload.name) : null;

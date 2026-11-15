@@ -262,43 +262,6 @@
   gap: 12px;
 }
 
-.publicCount {
-  font-weight: 600;
-  color: $ink;
-  font-variant-numeric: tabular-nums;
-}
-
-.publicEmpty {
-  color: $ink-muted;
-}
-
-.publicPlayers {
-  display: flex;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  li {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    max-width: 130px;
-  }
-
-  canvas {
-    flex: none;
-    width: 28px;
-    height: auto;
-  }
-
-  span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
 .hintAnchor {
   position: relative;
 }

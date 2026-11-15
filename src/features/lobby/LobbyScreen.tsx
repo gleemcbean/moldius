@@ -141,7 +141,11 @@ export function LobbyScreen() {
 					) : null}
 				</div>
 				<footer className={styles.footer}>
-					<Button variant="ghost" icon={<Icon name="door" />} onClick={quit}>
+					<Button
+						variant="dangerGhost"
+						icon={<Icon name="door" />}
+						onClick={quit}
+					>
 						{t.lobby.leave}
 					</Button>
 					<ReadyStatus
