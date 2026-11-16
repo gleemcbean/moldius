@@ -1073,6 +1073,7 @@ function AccountPanel({ account }: { account: AccountProfile }) {
 	const labels = t.account.summary;
 	const [tab, setTab] = useState<AccountTab>("history");
 	const { stats } = account;
+	const winrate = stats.gamesPlayed > 0 ? stats.wins / stats.gamesPlayed : 0;
 	return (
 		<div className={styles.account}>
 			<section className={styles.summary}>
@@ -1110,6 +1111,10 @@ function AccountPanel({ account }: { account: AccountProfile }) {
 					<div>
 						<dt>{labels.wins}</dt>
 						<dd>{stats.wins}</dd>
+					</div>
+					<div>
+						<dt>{labels.winrate}</dt>
+						<dd>{t.common.percent(winrate)}</dd>
 					</div>
 					<div>
 						<dt>{labels.best}</dt>
