@@ -3,7 +3,7 @@ import basicSsl from "@vitejs/plugin-basic-ssl";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { lanReport } from "./scripts/lanNetwork.mjs";
-import { obfuscate } from "./scripts/obfuscate";
+import { obfuscate } from "./scripts/obfuscate.js";
 
 const backendPort = Number(process.env.PORT ?? 3001);
 const backend = `http://127.0.0.1:${backendPort}`;

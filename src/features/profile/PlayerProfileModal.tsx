@@ -72,6 +72,7 @@ function PublicDetails({
 }) {
 	const t = useT();
 	const labels = t.progression.profile;
+	const winrate = stats.gamesPlayed > 0 ? stats.wins / stats.gamesPlayed : 0;
 	return (
 		<>
 			{profile.private ? (
@@ -89,6 +90,10 @@ function PublicDetails({
 				<div>
 					<dt>{labels.wins}</dt>
 					<dd>{t.common.number(stats.wins)}</dd>
+				</div>
+				<div>
+					<dt>{labels.winrate}</dt>
+					<dd>{t.common.percent(winrate)}</dd>
 				</div>
 				<div>
 					<dt>{labels.best}</dt>
