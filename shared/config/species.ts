@@ -450,7 +450,3 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 export const SPECIES_LIST: SpeciesDefinition[] = SPECIES_IDS.map(
 	(id) => SPECIES[id],
 );
-
-export function speciesIndex(id: SpeciesId): number {
-	return SPECIES_IDS.indexOf(id);
-}

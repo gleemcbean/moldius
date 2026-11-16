@@ -9,10 +9,6 @@ export type CornerTreatment =
 
 export const SQUARE: CornerTreatment = { kind: "square" };
 
-export const WALL_HEADINGS_DEGREES = [
-	0, 45, 90, 135, 180, 225, 270, 315,
-] as const;
-
 export function outlineFromVertices(
 	vertices: Vec2[],
 	treatments: CornerTreatment[],

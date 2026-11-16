@@ -1,6 +1,11 @@
 import { cauldronBrew } from "@shared/manor/brews";
 import * as THREE from "three";
-import { meterCircle, placed } from "../geometryUtils";
+import {
+	meterCircle,
+	meterCylinder,
+	meterSphere,
+	placed,
+} from "../geometryUtils";
 import type { MaterialOptions } from "../MaterialLibrary";
 import {
 	BRASS,
@@ -32,6 +37,7 @@ import {
 	potMaterial,
 	stem,
 } from "./plants";
+import { bentTube, capsuleBetween, ellipsoid, extruded } from "./sculpt";
 
 const POTION_COLORS = [0x6dff7a, 0xff4fd8, 0x4fa8ff, 0xffb84f, 0xd04040];
 
@@ -460,48 +466,90 @@ export const globe: FurnitureBuilder = ({ item, rng }) => {
 	];
 };
 
-export const harp: FurnitureBuilder = ({ item }) => {
-	const wood: MaterialOptions = { texture: "woodRed", roughness: 0.6 };
+export const harp: FurnitureBuilder = ({ item, rng }) => {
+	const wood: MaterialOptions = {
+		texture: rng.chance(0.5) ? "woodRed" : "woodMedium",
+		roughness: 0.6,
+	};
+	const gilt: MaterialOptions = {
+		texture: "brass",
+		roughness: 0.35,
+		metalness: 0.85,
+	};
 	const height = item.height;
-	const parts: Part[] = [
-		box(wood, 0.3, 0.1, 0.5, 0, 0, 0, 0, 0.03),
-		cylinderBetween(
-			wood,
-			new THREE.Vector3(0, 0.1, -0.2),
-			new THREE.Vector3(0, height, -0.25),
-			0.04,
-		),
-		cylinderBetween(
-			wood,
-			new THREE.Vector3(0, 0.1, 0.2),
-			new THREE.Vector3(0, height * 0.85, 0.42),
-			0.05,
-		),
-		cylinderBetween(
-			wood,
-			new THREE.Vector3(0, height, -0.25),
-			new THREE.Vector3(0, height * 0.85, 0.42),
-			0.035,
-		),
+	const depth = item.depth;
+	const back = -depth * 0.36;
+	const front = depth * 0.4;
+	const neck: [number, number, number][] = [
+		[0, height * 0.97, back + 0.02],
+		[0, height * 0.88, back + depth * 0.22],
+		[0, height * 0.9, back + depth * 0.45],
+		[0, height * 0.8, front - 0.02],
+		[0, height * 0.72, front + 0.03],
 	];
-	for (let index = 0; index < 9; index += 1) {
-		const t = (index + 1) / 10;
-		const bottom = new THREE.Vector3(
+	const neckCurve = new THREE.CatmullRomCurve3(
+		neck.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
+	);
+	const boardFoot = new THREE.Vector3(0, 0.16, back + 0.08);
+	const boardTop = new THREE.Vector3(0, height * 0.7, front);
+	const soundbox = meterCylinder(
+		0.03,
+		0.11,
+		boardFoot.distanceTo(boardTop),
+		16,
+	);
+	soundbox.scale(1, 1, 0.75);
+	soundbox.applyMatrix4(
+		new THREE.Matrix4().compose(
+			boardFoot.clone().add(boardTop).multiplyScalar(0.5),
+			new THREE.Quaternion().setFromUnitVectors(
+				new THREE.Vector3(0, 1, 0),
+				boardTop.clone().sub(boardFoot).normalize(),
+			),
+			new THREE.Vector3(1, 1, 1),
+		),
+	);
+	const parts: Part[] = [
+		box(wood, 0.26, 0.08, depth * 0.9, 0, 0.04, -depth * 0.02, 0, 0.02),
+		box(gilt, 0.28, 0.04, depth * 0.92, 0, 0, -depth * 0.02, 0, 0.01),
+		part(soundbox, wood),
+		lathe(
+			wood,
+			[
+				[0.001, 0.12],
+				[0.05, 0.12],
+				[0.055, 0.16],
+				[0.038, 0.2],
+				[0.03, height * 0.5],
+				[0.026, height * 0.85],
+				[0.045, height * 0.9],
+				[0.06, height * 0.95],
+				[0.05, height * 0.99],
+				[0.001, height * 1.01],
+			],
 			0,
-			0.1 + t * (height * 0.85 - 0.1),
-			0.2 + t * 0.22,
-		);
-		const top = new THREE.Vector3(
 			0,
-			height - t * 0.15 * height,
-			-0.25 + t * 0.67,
-		);
+			back,
+			18,
+		),
+		torus(gilt, 0.045, 0.008, 0, height * 0.905, back),
+		sphere(gilt, 0.03, 0, height * 1.01, back, 1, 1, 1, 10),
+		bentTube(wood, neck, (t) => 0.03 - t * 0.008, 24, 10),
+		sphere(gilt, 0.024, 0, height * 0.72, front + 0.03, 1, 1, 1, 10),
+	];
+	const strings = 22;
+	for (let index = 0; index < strings; index += 1) {
+		const t = (index + 0.5) / strings;
+		const low = boardFoot.clone().lerp(boardTop, 0.04 + t * 0.92);
+		const high = neckCurve.getPointAt(0.12 + t * 0.78);
+		const colour =
+			index % 7 === 0 ? 0xa82a22 : index % 7 === 4 ? 0x2a3a8a : 0xe8e0c0;
 		parts.push(
 			cylinderBetween(
-				{ color: 0xe8e0c0, roughness: 0.4, metalness: 0.3 },
-				bottom,
-				top,
-				0.003,
+				{ color: colour, roughness: 0.4, metalness: 0.2 },
+				low.add(new THREE.Vector3(0, 0, 0.02)),
+				high.add(new THREE.Vector3(0, -0.02, 0)),
+				0.0022,
 				4,
 			),
 		);
@@ -509,25 +557,271 @@ export const harp: FurnitureBuilder = ({ item }) => {
 	return parts;
 };
 
+function bassOutline(scale: number): THREE.Shape {
+	const shape = new THREE.Shape();
+	const s = scale;
+	shape.moveTo(0, -0.62 * s);
+	shape.bezierCurveTo(
+		0.22 * s,
+		-0.62 * s,
+		0.33 * s,
+		-0.5 * s,
+		0.33 * s,
+		-0.3 * s,
+	);
+	shape.bezierCurveTo(
+		0.33 * s,
+		-0.14 * s,
+		0.24 * s,
+		-0.08 * s,
+		0.2 * s,
+		-0.04 * s,
+	);
+	shape.bezierCurveTo(0.17 * s, 0.0, 0.19 * s, 0.06 * s, 0.24 * s, 0.1 * s);
+	shape.bezierCurveTo(
+		0.29 * s,
+		0.16 * s,
+		0.27 * s,
+		0.34 * s,
+		0.17 * s,
+		0.42 * s,
+	);
+	shape.bezierCurveTo(0.1 * s, 0.47 * s, 0.04 * s, 0.5 * s, 0, 0.5 * s);
+	shape.bezierCurveTo(
+		-0.04 * s,
+		0.5 * s,
+		-0.1 * s,
+		0.47 * s,
+		-0.17 * s,
+		0.42 * s,
+	);
+	shape.bezierCurveTo(
+		-0.27 * s,
+		0.34 * s,
+		-0.29 * s,
+		0.16 * s,
+		-0.24 * s,
+		0.1 * s,
+	);
+	shape.bezierCurveTo(-0.19 * s, 0.06 * s, -0.17 * s, 0.0, -0.2 * s, -0.04 * s);
+	shape.bezierCurveTo(
+		-0.24 * s,
+		-0.08 * s,
+		-0.33 * s,
+		-0.14 * s,
+		-0.33 * s,
+		-0.3 * s,
+	);
+	shape.bezierCurveTo(-0.33 * s, -0.5 * s, -0.22 * s, -0.62 * s, 0, -0.62 * s);
+	return shape;
+}
+
 export const cello: FurnitureBuilder = ({ item }) => {
 	const wood: MaterialOptions = { texture: "woodRed", roughness: 0.45 };
+	const ebony: MaterialOptions = { color: 0x16120f, roughness: 0.35 };
 	const height = item.height;
-	const body = new THREE.SphereGeometry(0.3, 16, 12);
-	body.scale(1, 1.55, 0.35);
-	body.translate(0, height * 0.32, 0);
-	return [
-		{ geometry: body, material: wood },
-		cylinder(DARK, 0.03, 0.03, height * 0.4, 0, height * 0.55, 0.05, 8),
-		sphere(wood, 0.04, 0, height - 0.02, 0.03, 1, 1.6, 1, 8),
+	const scale = Math.min(item.width / 0.66, height / 1.95);
+	const center = height * 0.4;
+	const ribs = 0.19 * scale;
+	const front = ribs / 2;
+	const neckTop = height * 0.93;
+	const parts: Part[] = [
+		extruded(wood, bassOutline(scale), ribs, 0.02 * scale, 0, center, 0),
+		extruded(
+			{ ...wood, color: 0xc49a7a },
+			bassOutline(scale * 0.985),
+			0.006,
+			0.002,
+			0,
+			center,
+			front + 0.001,
+		),
+		capsuleBetween(
+			wood,
+			new THREE.Vector3(0, center + 0.48 * scale, front - 0.03),
+			new THREE.Vector3(0, neckTop - 0.06, front - 0.01),
+			0.032 * scale,
+			10,
+		),
+		box(ebony, 0.055 * scale, 0.012, (neckTop - center) * 0.92, 0, 0, 0),
+		box(
+			wood,
+			0.05 * scale,
+			0.12 * scale,
+			0.07 * scale,
+			0,
+			neckTop - 0.06,
+			front - 0.035,
+		),
+		torus(
+			wood,
+			0.035 * scale,
+			0.014 * scale,
+			0,
+			neckTop + 0.06 * scale + 0.02,
+			front - 0.03,
+			0,
+			Math.PI / 2,
+		),
+		torus(
+			wood,
+			0.018 * scale,
+			0.01 * scale,
+			0,
+			neckTop + 0.06 * scale + 0.02,
+			front - 0.03,
+			0,
+			Math.PI / 2,
+		),
+		sphere(
+			wood,
+			0.012 * scale,
+			0,
+			neckTop + 0.06 * scale + 0.02,
+			front - 0.03,
+			1,
+			1,
+			1,
+			8,
+		),
+		extruded(
+			{ texture: "woodLight", roughness: 0.6 },
+			bridgeShape(scale),
+			0.008,
+			0.001,
+			0,
+			center - 0.08 * scale,
+			front + 0.004,
+		),
+		extruded(
+			ebony,
+			tailpieceShape(scale),
+			0.012,
+			0.003,
+			0,
+			center - 0.36 * scale,
+			front + 0.012,
+		),
 		cylinderBetween(
 			IRON,
 			new THREE.Vector3(0, 0, 0),
-			new THREE.Vector3(0, height * 0.1, 0),
+			new THREE.Vector3(0, center - 0.6 * scale, 0),
 			0.01,
+			8,
 		),
-		boxAt(DARK, 0.08, 0.03, 0.04, 0, height * 0.25, 0.12),
 	];
+	const fingerboard = parts[3];
+	fingerboard.geometry.applyMatrix4(
+		new THREE.Matrix4().compose(
+			new THREE.Vector3(
+				0,
+				(neckTop + center) / 2 + 0.05 * scale,
+				front + 0.022,
+			),
+			new THREE.Quaternion().setFromEuler(
+				new THREE.Euler(Math.PI / 2 - 0.02, 0, 0),
+			),
+			new THREE.Vector3(1, 1, 1),
+		),
+	);
+	for (const side of [-1, 1]) {
+		parts.push(
+			ellipsoid(
+				DARK,
+				[0.008 * scale, 0.07 * scale, 0.0015],
+				side * 0.11 * scale,
+				center - 0.06 * scale,
+				front + 0.0035,
+				0,
+				0,
+				side * 0.08,
+				8,
+			),
+			ellipsoid(
+				DARK,
+				[0.012 * scale, 0.012 * scale, 0.0015],
+				side * 0.115 * scale,
+				center + 0.015 * scale,
+				front + 0.0035,
+				0,
+				0,
+				0,
+				8,
+			),
+			ellipsoid(
+				DARK,
+				[0.012 * scale, 0.012 * scale, 0.0015],
+				side * 0.105 * scale,
+				center - 0.135 * scale,
+				front + 0.0035,
+				0,
+				0,
+				0,
+				8,
+			),
+		);
+		for (const step of [0, 1]) {
+			const y = neckTop - 0.02 - step * 0.045 * scale;
+			parts.push(
+				cylinderBetween(
+					BRASS,
+					new THREE.Vector3(side * 0.025 * scale, y, front - 0.035),
+					new THREE.Vector3(side * 0.07 * scale, y, front - 0.035),
+					0.006,
+					6,
+				),
+				ellipsoid(
+					BRASS,
+					[0.008, 0.016, 0.004],
+					side * 0.075 * scale,
+					y,
+					front - 0.035,
+					0,
+					0,
+					0,
+					8,
+				),
+			);
+		}
+	}
+	for (let index = 0; index < 4; index += 1) {
+		const x = (index - 1.5) * 0.011 * scale;
+		parts.push(
+			cylinderBetween(
+				{ color: 0xd8d0b8, roughness: 0.3, metalness: 0.5 },
+				new THREE.Vector3(x * 1.6, center - 0.33 * scale, front + 0.024),
+				new THREE.Vector3(x, neckTop - 0.03, front + 0.034),
+				0.0012 + (3 - index) * 0.0003,
+				4,
+			),
+		);
+	}
+	return parts;
 };
+
+function bridgeShape(scale: number): THREE.Shape {
+	const shape = new THREE.Shape();
+	const s = scale;
+	shape.moveTo(-0.06 * s, 0);
+	shape.lineTo(-0.035 * s, 0);
+	shape.quadraticCurveTo(0, 0.04 * s, 0.035 * s, 0);
+	shape.lineTo(0.06 * s, 0);
+	shape.lineTo(0.05 * s, 0.08 * s);
+	shape.quadraticCurveTo(0, 0.095 * s, -0.05 * s, 0.08 * s);
+	shape.closePath();
+	return shape;
+}
+
+function tailpieceShape(scale: number): THREE.Shape {
+	const shape = new THREE.Shape();
+	const s = scale;
+	shape.moveTo(-0.015 * s, 0);
+	shape.lineTo(0.015 * s, 0);
+	shape.lineTo(0.045 * s, 0.22 * s);
+	shape.quadraticCurveTo(0, 0.24 * s, -0.045 * s, 0.22 * s);
+	shape.closePath();
+	return shape;
+}
 
 export const musicStand: FurnitureBuilder = ({ item }) => [
 	cylinder(IRON, 0.18, 0.18, 0.02, 0, 0, 0, 3),
@@ -705,23 +999,98 @@ export const uprightPiano: FurnitureBuilder = ({ item, rng }) => {
 	return parts;
 };
 
-export const anvil: FurnitureBuilder = ({ item }) => [
-	box({ texture: "woodDark" }, 0.4, 0.45, 0.35, 0, 0, 0, 0, 0.03),
-	box(IRON, item.width * 0.7, 0.2, 0.22, 0, 0.45, 0, 0, 0.02),
-	box(IRON, item.width, 0.12, 0.3, 0, 0.65, 0, 0, 0.03),
-	lathe(
-		IRON,
-		[
-			[0.001, 0],
-			[0.12, 0],
-			[0.001, 0.25],
-		],
-		item.width / 2 + 0.1,
-		0.71,
-		0,
-		8,
-	),
-];
+function anvilProfile(width: number): THREE.Shape {
+	const half = width / 2;
+	const shape = new THREE.Shape();
+	shape.moveTo(-half * 0.42, 0);
+	shape.lineTo(half * 0.5, 0);
+	shape.quadraticCurveTo(half * 0.32, 0.04, half * 0.28, 0.1);
+	shape.lineTo(half * 0.26, 0.18);
+	shape.quadraticCurveTo(half * 0.5, 0.2, half * 0.62, 0.26);
+	shape.lineTo(half * 0.62, 0.32);
+	shape.lineTo(-half * 0.36, 0.32);
+	shape.quadraticCurveTo(-half * 0.36, 0.22, -half * 0.22, 0.18);
+	shape.lineTo(-half * 0.24, 0.1);
+	shape.quadraticCurveTo(-half * 0.28, 0.04, -half * 0.42, 0);
+	return shape;
+}
+
+export const anvil: FurnitureBuilder = ({ item, rng }) => {
+	const stump: MaterialOptions = { texture: "bark", roughness: 1 };
+	const top = 0.46;
+	const width = item.width;
+	const parts: Part[] = [
+		lathe(
+			stump,
+			[
+				[0.001, 0],
+				[0.22, 0],
+				[0.24, 0.03],
+				[0.21, 0.12],
+				[0.2, top - 0.02],
+				[0.19, top],
+				[0.001, top],
+			],
+			0,
+			0,
+			0,
+			18,
+		),
+		cylinder(
+			{ texture: "woodLight", roughness: 0.9 },
+			0.188,
+			0.188,
+			0.004,
+			0,
+			top - 0.002,
+			0,
+			18,
+		),
+		torus(IRON, 0.205, 0.008, 0, 0.1, 0),
+		torus(IRON, 0.2, 0.008, 0, top - 0.06, 0),
+		extruded(IRON, anvilProfile(width), 0.13, 0.008, 0, top, 0),
+		box(IRON, width * 0.45, 0.02, 0.11, width * 0.07, top + 0.31, 0, 0, 0.006),
+		lathe(
+			IRON,
+			[
+				[0.001, 0],
+				[0.062, 0],
+				[0.055, 0.06],
+				[0.035, 0.16],
+				[0.014, 0.24],
+				[0.001, 0.26],
+			],
+			0,
+			0,
+			0,
+			14,
+		),
+		box(DARK, 0.022, 0.006, 0.022, width * 0.24, top + 0.325, 0),
+	];
+	const horn = parts[6];
+	horn.geometry.applyMatrix4(
+		new THREE.Matrix4().compose(
+			new THREE.Vector3(-width * 0.18, top + 0.285, 0),
+			new THREE.Quaternion().setFromEuler(
+				new THREE.Euler(0, 0, Math.PI / 2 + 0.05),
+			),
+			new THREE.Vector3(1, 0.85, 1),
+		),
+	);
+	if (rng.chance(0.7)) {
+		parts.push(
+			capsuleBetween(
+				{ texture: "woodLight", roughness: 0.8 },
+				new THREE.Vector3(width * 0.05, top + 0.355, 0.03),
+				new THREE.Vector3(width * 0.05 + 0.28, top + 0.36, 0.14),
+				0.013,
+				8,
+			),
+			boxAt(IRON, 0.1, 0.04, 0.04, width * 0.05, top + 0.355, 0.03, 0, -0.38),
+		);
+	}
+	return parts;
+};
 
 export const rug: FurnitureBuilder = ({ item, rng }) => {
 	const round = item.variant === 2;
@@ -1113,42 +1482,135 @@ export const plateSet: FurnitureBuilder = ({ item }) => [
 	),
 ];
 
-export const skull: FurnitureBuilder = ({ item }) => [
-	sphere(
-		{ color: 0xe0d8c0, roughness: 0.8 },
-		item.width * 0.42,
-		0,
-		item.height * 0.6,
-		0,
-		1,
-		0.95,
-		1.15,
-		14,
-	),
-	box(
-		{ color: 0xe0d8c0, roughness: 0.8 },
-		item.width * 0.5,
-		item.height * 0.3,
-		item.depth * 0.4,
-		0,
-		0,
-		item.depth * 0.2,
-		0,
-		0.02,
-	),
-	sphere(
-		DARK,
-		0.025,
-		-0.04,
-		item.height * 0.6,
-		item.depth * 0.42,
-		1,
-		1,
-		0.5,
-		8,
-	),
-	sphere(DARK, 0.025, 0.04, item.height * 0.6, item.depth * 0.42, 1, 1, 0.5, 8),
-];
+function socket(
+	x: number,
+	y: number,
+	z: number,
+	centerX: number,
+	centerY: number,
+	width: number,
+	height: number,
+	depth: number,
+): number {
+	const distance = Math.hypot((x - centerX) / width, (y - centerY) / height);
+	return distance < 1 && z > 0.04 ? (1 - distance * distance) * depth : 0;
+}
+
+function skullShell(scale: number): THREE.BufferGeometry {
+	const radius = 0.08;
+	const geometry = meterSphere(radius, 48, 36);
+	geometry.rotateY(-Math.PI / 2);
+	const position = geometry.getAttribute("position") as THREE.BufferAttribute;
+	const unit = new THREE.Vector3();
+	for (let index = 0; index < position.count; index += 1) {
+		unit.fromBufferAttribute(position, index).divideScalar(radius);
+		const lower = Math.max(0, -unit.y);
+		const front = Math.max(0, unit.z);
+		let x = unit.x * 0.07 * (1 - lower * front * 0.38);
+		let y = unit.y * 0.075;
+		let z = unit.z * 0.094 - 0.008;
+		if (unit.y < -0.35) {
+			y = -0.35 * 0.075 + (unit.y + 0.35) * 0.075 * 0.45;
+		}
+		if (front > 0.2) {
+			z = Math.min(z, 0.086 - lower * 0.022);
+		}
+		z -= socket(x, y, z, -0.029, 0.006, 0.021, 0.018, 0.024);
+		z -= socket(x, y, z, 0.029, 0.006, 0.021, 0.018, 0.024);
+		z -= socket(x, y, z, 0, -0.027, 0.009, 0.015, 0.02);
+		const cheek = Math.exp(
+			-(
+				((Math.abs(x) - 0.054) / 0.016) ** 2 +
+				((y + 0.012) / 0.02) ** 2 +
+				((z - 0.045) / 0.03) ** 2
+			),
+		);
+		x += Math.sign(x) * cheek * 0.007;
+		position.setXYZ(index, x * scale, y * scale, z * scale);
+	}
+	geometry.computeVertexNormals();
+	return geometry;
+}
+
+export const skull: FurnitureBuilder = ({ item }) => {
+	const bone: MaterialOptions = { texture: "bone", roughness: 0.75 };
+	const hollow: MaterialOptions = { color: 0x120d0a, roughness: 1 };
+	const s = item.height / 0.2;
+	const lift = 0.082 * s;
+	const parts: Part[] = [
+		part(placed(skullShell(s), 0, lift, 0), bone),
+		ellipsoid(
+			hollow,
+			[0.016 * s, 0.014 * s, 0.012 * s],
+			-0.029 * s,
+			lift + 0.006 * s,
+			0.058 * s,
+			0,
+			0,
+			0,
+			10,
+		),
+		ellipsoid(
+			hollow,
+			[0.016 * s, 0.014 * s, 0.012 * s],
+			0.029 * s,
+			lift + 0.006 * s,
+			0.058 * s,
+			0,
+			0,
+			0,
+			10,
+		),
+		ellipsoid(
+			hollow,
+			[0.007 * s, 0.012 * s, 0.008 * s],
+			0,
+			lift - 0.027 * s,
+			0.07 * s,
+			0,
+			0,
+			0,
+			8,
+		),
+		bentTube(
+			bone,
+			[
+				[-0.05 * s, lift - 0.03 * s, 0.0],
+				[-0.046 * s, lift - 0.066 * s, 0.035 * s],
+				[-0.026 * s, lift - 0.075 * s, 0.068 * s],
+				[0, lift - 0.078 * s, 0.078 * s],
+				[0.026 * s, lift - 0.075 * s, 0.068 * s],
+				[0.046 * s, lift - 0.066 * s, 0.035 * s],
+				[0.05 * s, lift - 0.03 * s, 0.0],
+			],
+			(t) => (0.0075 + Math.sin(t * Math.PI) * 0.003) * s,
+			32,
+			8,
+		),
+	];
+	for (const [y, depth] of [
+		[-0.052, 0.07],
+		[-0.063, 0.066],
+	] as const) {
+		for (let index = 0; index < 8; index += 1) {
+			const angle = ((index - 3.5) / 3.5) * 0.9;
+			parts.push(
+				ellipsoid(
+					bone,
+					[0.0048 * s, 0.0062 * s, 0.0042 * s],
+					Math.sin(angle) * 0.034 * s,
+					lift + y * s,
+					(Math.cos(angle) * depth - 0.006) * s,
+					angle,
+					0,
+					0,
+					6,
+				),
+			);
+		}
+	}
+	return parts;
+};
 
 export const vase: FurnitureBuilder = ({ item, rng }) => {
 	const parts: Part[] = [

@@ -6,10 +6,6 @@ const NAMES: Record<Language, readonly string[]> = {
 	en: appearanceEn.names,
 };
 
-export function defaultNames(language: Language): readonly string[] {
-	return NAMES[language];
-}
-
 export function randomDefaultName(
 	language: Language,
 	exclude: string[] = [],

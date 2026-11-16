@@ -4,7 +4,6 @@ export const LEVEL_HEIGHT = 4.4;
 export const MAX_UPPER_FLOORS = 3;
 export const SLAB_THICKNESS = 0.35;
 export const WALL_GAP = 0.25;
-export const FURNITURE_GRID = 0.25;
 export const NAV_CELL_SIZE = 0.5;
 export const NAV_AGENT_RADIUS = 0.4;
 

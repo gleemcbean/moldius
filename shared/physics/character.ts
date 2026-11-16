@@ -21,7 +21,6 @@ import {
 	STEP_UP_HEIGHT,
 	WALK_SPEED,
 } from "../config/index.js";
-import { pointInPolygon } from "../manor/polygon.js";
 import { clamp, closestPointOnSegment, rotate2, type Vec2 } from "../math.js";
 import type { CollisionWorld } from "./collisionWorld.js";
 
@@ -615,18 +614,4 @@ export function supportHeight(
 		}
 	}
 	return { height: best, ramp };
-}
-
-export function findSafeFloorPoint(
-	world: CollisionWorld,
-	point: Vec2,
-	feetY: number,
-): boolean {
-	return world
-		.regionsAt(point)
-		.some(
-			(region) =>
-				pointInPolygon(point, region.polygon) &&
-				Math.abs(region.floorY - feetY) < 2,
-		);
 }

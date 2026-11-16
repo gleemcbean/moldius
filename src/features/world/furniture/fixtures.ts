@@ -26,6 +26,7 @@ import {
 	torus,
 } from "./parts";
 import { curvedLeaf } from "./plants";
+import { bentTube, vessel } from "./sculpt";
 
 const PIPE: MaterialOptions = {
 	texture: "pipeMetal",
@@ -174,62 +175,260 @@ export const fireplace: FurnitureBuilder = ({ item, room, rng }) => {
 
 export const stove: FurnitureBuilder = ({ item, room }) => {
 	const { width, height, depth } = item;
-	return [
-		box(IRON, width, height - 0.05, depth, 0, 0.05, 0, 0, 0.02),
+	const black: MaterialOptions = { ...IRON, color: 0x5a5a5a };
+	const nickel: MaterialOptions = {
+		texture: "brass",
+		color: 0xd6d6cc,
+		roughness: 0.3,
+		metalness: 0.85,
+	};
+	const glow: MaterialOptions = {
+		color: 0x2a1205,
+		emissive: 0xff6a20,
+		emissiveIntensity: 1.4,
+		roughness: 0.6,
+	};
+	const legs = 0.12;
+	const body = height - legs - 0.05;
+	const top = legs + body;
+	const front = depth / 2;
+	const parts: Part[] = [
+		box(IRON, width, body, depth - 0.04, 0, legs, -0.02),
+		box(nickel, width + 0.02, 0.025, depth - 0.02, 0, legs, -0.02, 0, 0.006),
+		box(black, width + 0.06, 0.045, depth + 0.02, 0, top, -0.01, 0, 0.012),
+		box(IRON, width, 0.36, 0.04, 0, top + 0.045, -depth / 2 + 0.02),
 		box(
-			{ ...IRON, color: 0x2a2a2a },
-			width + 0.04,
-			0.04,
-			depth + 0.04,
+			nickel,
+			width * 0.9,
+			0.025,
+			0.2,
 			0,
-			height - 0.04,
+			top + 0.34,
+			-depth / 2 + 0.12,
 			0,
+			0.006,
 		),
 		box(
-			{
-				color: 0x2a1205,
-				emissive: 0xff6a20,
-				emissiveIntensity: 1.4,
-				roughness: 0.6,
-			},
-			width * 0.3,
-			height * 0.28,
-			0.01,
-			-width * 0.2,
-			height * 0.3,
-			depth / 2 + 0.005,
-		),
-		box(
-			BRASS,
-			width * 0.34,
-			0.03,
-			0.03,
-			-width * 0.2,
-			height * 0.62,
-			depth / 2 + 0.02,
-		),
-		cylinder(
 			IRON,
-			0.08,
-			0.08,
-			room.ceilingY - item.y - height,
-			width * 0.3,
-			height,
-			-depth * 0.25,
-			12,
+			width * 0.42,
+			body * 0.64,
+			0.025,
+			-width * 0.24,
+			legs + body * 0.16,
+			front - 0.012,
+			0,
+			0.008,
 		),
-		cylinder(IRON, 0.13, 0.13, 0.02, width * 0.15, height, depth * 0.1, 14),
-		cylinder(
-			COPPER,
-			0.12,
-			0.11,
-			0.16,
-			width * 0.15,
-			height + 0.02,
-			depth * 0.1,
-			14,
+		box(
+			black,
+			width * 0.3,
+			body * 0.42,
+			0.012,
+			-width * 0.24,
+			legs + body * 0.27,
+			front + 0.004,
+			0,
+			0.004,
+		),
+		bentTube(
+			nickel,
+			[
+				[-width * 0.4, legs + body * 0.74, front + 0.004],
+				[-width * 0.38, legs + body * 0.74, front + 0.04],
+				[-width * 0.1, legs + body * 0.74, front + 0.04],
+				[-width * 0.08, legs + body * 0.74, front + 0.004],
+			],
+			0.009,
+			16,
+			6,
+		),
+		{
+			geometry: placed(
+				new THREE.CylinderGeometry(0.035, 0.035, 0.012, 18),
+				-width * 0.24,
+				legs + body * 0.6,
+				front + 0.012,
+				0,
+				Math.PI / 2,
+			),
+			material: nickel,
+		},
+		box(
+			IRON,
+			width * 0.3,
+			body * 0.36,
+			0.025,
+			width * 0.24,
+			legs + body * 0.42,
+			front - 0.012,
+			0,
+			0.008,
+		),
+		box(
+			IRON,
+			width * 0.3,
+			body * 0.17,
+			0.025,
+			width * 0.24,
+			legs + body * 0.14,
+			front - 0.012,
+			0,
+			0.008,
+		),
+		box(
+			nickel,
+			0.08,
+			0.018,
+			0.02,
+			width * 0.24,
+			legs + body * 0.22,
+			front + 0.012,
+			0,
+			0.004,
+		),
+		bentTube(
+			nickel,
+			[
+				[-width / 2 + 0.01, top - 0.12, front - 0.005],
+				[-width / 2 + 0.04, top - 0.12, front + 0.035],
+				[width / 2 - 0.04, top - 0.12, front + 0.035],
+				[width / 2 - 0.01, top - 0.12, front - 0.005],
+			],
+			0.011,
+			24,
+			6,
 		),
 	];
+	for (let slat = 0; slat < 4; slat += 1) {
+		parts.push(
+			box(
+				glow,
+				width * 0.22,
+				0.014,
+				0.01,
+				width * 0.24,
+				legs + body * (0.47 + slat * 0.065),
+				front + 0.003,
+			),
+		);
+	}
+	for (const sx of [-1, 1]) {
+		for (const sz of [-1, 1]) {
+			const x = sx * (width / 2 - 0.06);
+			const z = sz * (depth / 2 - 0.08) - 0.02;
+			parts.push(
+				bentTube(
+					IRON,
+					[
+						[x, legs + 0.02, z],
+						[x + sx * 0.02, legs * 0.5, z + sz * 0.015],
+						[x + sx * 0.012, 0.012, z + sz * 0.03],
+					],
+					(t) => 0.034 - t * 0.016,
+					10,
+					8,
+				),
+			);
+		}
+	}
+	for (const [bx, bz, radius] of [
+		[-width * 0.28, 0.08, 0.12],
+		[0, 0.1, 0.1],
+		[width * 0.26, 0.08, 0.12],
+		[width * 0.1, -0.16, 0.09],
+	] as const) {
+		parts.push(
+			cylinder(black, radius, radius, 0.012, bx, top + 0.045, bz, 24),
+			torus(IRON, radius * 0.62, 0.006, bx, top + 0.058, bz),
+			torus(IRON, radius * 0.3, 0.005, bx, top + 0.058, bz),
+		);
+	}
+	const flueX = width * 0.32;
+	const flueZ = -depth / 2 + 0.12;
+	const flueLength = Math.max(0.2, room.ceilingY - item.y - top - 0.36);
+	parts.push(
+		cylinder(IRON, 0.075, 0.075, flueLength, flueX, top + 0.36, flueZ, 16),
+		torus(black, 0.078, 0.012, flueX, top + 0.4, flueZ),
+		torus(black, 0.078, 0.012, flueX, top + 0.36 + flueLength * 0.55, flueZ),
+		cylinderBetween(
+			nickel,
+			new THREE.Vector3(flueX, top + 0.62, flueZ),
+			new THREE.Vector3(flueX + 0.12, top + 0.62, flueZ),
+			0.005,
+			6,
+		),
+		sphere(black, 0.018, flueX + 0.12, top + 0.62, flueZ, 1, 1, 1, 8),
+		vessel(
+			COPPER,
+			[
+				[0.001, 0],
+				[0.085, 0],
+				[0.105, 0.04],
+				[0.11, 0.08],
+				[0.09, 0.12],
+				[0.05, 0.14],
+			],
+			0.004,
+			-width * 0.28,
+			top + 0.057,
+			0.08,
+			26,
+		),
+		lathe(
+			COPPER,
+			[
+				[0.001, 0.138],
+				[0.056, 0.138],
+				[0.05, 0.15],
+				[0.012, 0.16],
+				[0.016, 0.175],
+				[0.001, 0.18],
+			],
+			-width * 0.28,
+			top + 0.057,
+			0.08,
+			16,
+		),
+		bentTube(
+			COPPER,
+			[
+				[-width * 0.28 + 0.09, top + 0.08, 0.08],
+				[-width * 0.28 + 0.15, top + 0.12, 0.08],
+				[-width * 0.28 + 0.19, top + 0.17, 0.08],
+			],
+			(t) => 0.02 - t * 0.012,
+			10,
+			8,
+		),
+		torus(BRASS, 0.075, 0.007, -width * 0.28, top + 0.2, 0.08, 0, 0, Math.PI),
+		vessel(
+			IRON,
+			[
+				[0.001, 0],
+				[0.1, 0],
+				[0.11, 0.015],
+				[0.11, 0.12],
+				[0.118, 0.13],
+			],
+			0.005,
+			width * 0.26,
+			top + 0.057,
+			0.08,
+			26,
+		),
+		bentTube(
+			IRON,
+			[
+				[width * 0.26 + 0.11, top + 0.17, 0.08],
+				[width * 0.26 + 0.2, top + 0.17, 0.08],
+				[width * 0.26 + 0.28, top + 0.175, 0.08],
+			],
+			0.009,
+			6,
+			6,
+		),
+	);
+	return parts;
 };
 
 export const sink: FurnitureBuilder = ({ item }) => {

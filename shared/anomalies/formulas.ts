@@ -244,7 +244,3 @@ export function generateFormulas(
 export function formulaKeyWord(word: string): string {
 	return phoneticKey(word);
 }
-
-export function formulaText(formula: Formula): string {
-	return formula.join(" ");
-}

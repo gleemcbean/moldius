@@ -1,10 +1,9 @@
 import { CHALLENGE_METRICS, type ChallengeMetric } from "@shared/challenges";
 import { dailyChallenge } from "@shared/dailyChallenge";
-import {
-	MATCH_HISTORY_LIMIT,
-	type MatchDetail,
-	type MatchDetailPlayer,
-	type MatchHistoryEntry,
+import type {
+	MatchDetail,
+	MatchDetailPlayer,
+	MatchHistoryEntry,
 } from "@shared/protocol/account";
 import { TEAM_COLORS } from "@shared/teams";
 import { useEffect, useState } from "react";

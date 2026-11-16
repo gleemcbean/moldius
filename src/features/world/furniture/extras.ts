@@ -26,6 +26,14 @@ import {
 	texturedPlane,
 	torus,
 } from "./parts";
+import {
+	bentTube,
+	ellipsoid,
+	extruded,
+	pleated,
+	sculptedHead,
+	vessel,
+} from "./sculpt";
 
 const VELVETS = ["velvetRed", "velvetGreen", "velvetBlue"] as const;
 const PAINTINGS = [
@@ -613,38 +621,95 @@ export const easel: FurnitureBuilder = ({ item, rng }) => {
 export const bust: FurnitureBuilder = ({ item, rng }) => {
 	const material = pickStatuary(rng);
 	const plinth = item.height - 0.55;
-	return [
-		box(material, item.width, 0.08, item.width, 0, 0, 0),
-		cylinder(
+	const w = item.width;
+	const shaftLow = 0.16;
+	const shaftHigh = plinth - 0.17;
+	const parts: Part[] = [
+		box(material, w, 0.06, w, 0, 0, 0, 0, 0.01),
+		pleated(
 			material,
-			item.width * 0.32,
-			item.width * 0.36,
-			plinth - 0.16,
+			[
+				[0.001, 0.06],
+				[w * 0.37, 0.06],
+				[w * 0.385, 0.09],
+				[w * 0.33, 0.12],
+				[w * 0.3, shaftLow],
+				[w * 0.285, plinth * 0.5],
+				[w * 0.27, shaftHigh],
+				[w * 0.31, plinth - 0.14],
+				[w * 0.37, plinth - 0.1],
+				[w * 0.375, plinth - 0.07],
+				[0.001, plinth - 0.07],
+			],
+			{
+				folds: 16,
+				depth: (t) => {
+					const height = 0.06 + t * (plinth - 0.13);
+					return height > shaftLow + 0.01 && height < shaftHigh - 0.01
+						? 0.035
+						: 0;
+				},
+				segments: 64,
+			},
 			0,
-			0.08,
 			0,
-			14,
+			0,
 		),
-		box(material, item.width, 0.08, item.width, 0, plinth - 0.08, 0),
+		box(material, w * 0.94, 0.07, w * 0.94, 0, plinth - 0.07, 0, 0, 0.01),
 		lathe(
 			material,
 			[
 				[0.001, 0],
-				[0.17, 0],
-				[0.2, 0.08],
-				[0.19, 0.2],
-				[0.07, 0.28],
-				[0.001, 0.29],
+				[0.09, 0],
+				[0.1, 0.02],
+				[0.06, 0.05],
+				[0.07, 0.07],
+				[0.001, 0.07],
 			],
 			0,
 			plinth,
 			0,
-			14,
+			20,
 		),
-		cylinder(material, 0.055, 0.065, 0.08, 0, plinth + 0.26, 0, 10),
-		sphere(material, 0.11, 0, plinth + 0.43, 0.01, 0.9, 1.15, 1, 14),
-		sphere(material, 0.03, 0, plinth + 0.42, 0.11, 0.8, 1, 0.9, 6),
+		pleated(
+			material,
+			[
+				[0.001, 0.06],
+				[0.16, 0.06],
+				[0.195, 0.12],
+				[0.205, 0.2],
+				[0.17, 0.27],
+				[0.08, 0.305],
+				[0.001, 0.31],
+			],
+			{
+				folds: 7,
+				depth: (t) => 0.07 * (1 - t) + 0.015,
+				squash: 0.62,
+				phase: rng.next() * 6,
+			},
+			0,
+			plinth,
+			0,
+		),
+		ellipsoid(
+			material,
+			[0.035, 0.03, 0.025],
+			-0.13,
+			plinth + 0.27,
+			0.06,
+			0.4,
+			0,
+			0.3,
+			10,
+		),
+		cylinder(material, 0.052, 0.062, 0.1, 0, plinth + 0.28, 0, 14),
+		...sculptedHead(material, 0, plinth + 0.45, 0.012, 1.05, {
+			hair: true,
+			beard: rng.chance(0.4),
+		}),
 	];
+	return parts;
 };
 
 export const urn: FurnitureBuilder = ({ item, rng }) => {
@@ -1136,33 +1201,49 @@ export const washstand: FurnitureBuilder = ({ item, rng }) => {
 		box(wood, width - 0.04, height - 0.24, depth - 0.04, 0, 0.2, 0),
 		...legs(wood, width, depth, 0.2, 0.022, 0.04),
 		boxAt(wood, width - 0.04, 0.12, 0.03, 0, height + 0.06, -depth / 2 + 0.02),
-		lathe(
+		vessel(
 			CERAMIC,
 			[
 				[0.001, 0],
-				[0.08, 0],
-				[0.18, 0.09],
-				[0.17, 0.1],
-				[0.07, 0.015],
+				[0.07, 0],
+				[0.08, 0.012],
+				[0.15, 0.07],
+				[0.18, 0.095],
 			],
+			0.008,
 			0,
 			height,
 			0.02,
-			18,
+			28,
 		),
-		lathe(
+		vessel(
 			CERAMIC,
 			[
 				[0.001, 0],
-				[0.06, 0],
-				[0.08, 0.12],
-				[0.04, 0.22],
-				[0.05, 0.26],
+				[0.055, 0],
+				[0.06, 0.01],
+				[0.08, 0.1],
+				[0.065, 0.17],
+				[0.042, 0.215],
+				[0.05, 0.25],
+				[0.058, 0.262],
 			],
+			0.006,
 			width * 0.32,
 			height,
 			-0.05,
-			12,
+			22,
+		),
+		bentTube(
+			CERAMIC,
+			[
+				[width * 0.32 - 0.004, height + 0.262, -0.05 + 0.058],
+				[width * 0.32 - 0.002, height + 0.275, -0.05 + 0.085],
+				[width * 0.32, height + 0.27, -0.05 + 0.1],
+			],
+			(t) => 0.006 * (1 - t * 0.7),
+			6,
+			6,
 		),
 		torus(
 			CERAMIC,
@@ -1347,18 +1428,31 @@ export const hangingPots: FurnitureBuilder = ({ item, rng }) => {
 				0.008,
 				5,
 			),
-			lathe(
+			vessel(
 				metal,
 				[
 					[0.001, 0],
-					[r, 0],
-					[r, r * 0.9],
-					[r * 1.05, r],
+					[r * 0.86, 0],
+					[r, r * 0.12],
+					[r, r * 0.88],
+					[r * 1.06, r],
 				],
+				r * 0.06,
 				x,
 				height - drop - r * 1.1 - 0.02,
 				0.08,
-				14,
+				18,
+			),
+			bentTube(
+				metal,
+				[
+					[x + r * 1.02, height - drop - r * 0.25 - 0.02, 0.08],
+					[x + r * 1.6, height - drop - r * 0.2 - 0.02, 0.08],
+					[x + r * 2.1, height - drop - r * 0.15 - 0.02, 0.08],
+				],
+				r * 0.09,
+				6,
+				6,
 			),
 		);
 	}
@@ -1377,6 +1471,7 @@ export const wallClock: FurnitureBuilder = ({ item, rng }) => {
 				[r, 0],
 				[r, 0.05],
 				[r * 0.85, 0.06],
+				[0.001, 0.06],
 			],
 			0,
 			center,
@@ -1448,24 +1543,72 @@ export const antlers: FurnitureBuilder = ({ item, rng }) => {
 	const wood = pickWood(rng);
 	const { width, height } = item;
 	const base = height * 0.35;
+	const antler: MaterialOptions = { ...BONE, color: 0xd8c8a8 };
+	const shield = new THREE.Shape();
+	shield.moveTo(-0.13, 0.17);
+	shield.quadraticCurveTo(0, 0.21, 0.13, 0.17);
+	shield.quadraticCurveTo(0.15, 0.02, 0.1, -0.1);
+	shield.quadraticCurveTo(0.05, -0.17, 0, -0.19);
+	shield.quadraticCurveTo(-0.05, -0.17, -0.1, -0.1);
+	shield.quadraticCurveTo(-0.15, 0.02, -0.13, 0.17);
 	const parts: Part[] = [
-		boxAt(wood, 0.28, 0.34, 0.03, 0, base, 0.015),
-		sphere(BONE, 0.07, 0, base + 0.02, 0.09, 1, 0.8, 1.3, 10),
+		extruded(wood, shield, 0.035, 0.008, 0, base, 0.018),
+		ellipsoid(BONE, [0.065, 0.045, 0.06], 0, base + 0.05, 0.065, 0, 0.3, 0, 14),
+		ellipsoid(BONE, [0.035, 0.03, 0.06], 0, base + 0.005, 0.1, 0, 0.6, 0, 12),
+		ellipsoid(
+			DARK,
+			[0.014, 0.011, 0.008],
+			-0.034,
+			base + 0.045,
+			0.115,
+			0.4,
+			0,
+			0,
+			8,
+		),
+		ellipsoid(
+			DARK,
+			[0.014, 0.011, 0.008],
+			0.034,
+			base + 0.045,
+			0.115,
+			-0.4,
+			0,
+			0,
+			8,
+		),
 	];
 	for (const side of [-1, 1]) {
-		const root = v(side * 0.05, base + 0.08, 0.12);
-		const tip = v(side * width * 0.45, height - 0.02, 0.18);
-		parts.push(cylinderBetween(BONE, root, tip, 0.016, 6));
-		for (let index = 1; index <= 3; index += 1) {
-			const t = index / 4;
-			const from = root.clone().lerp(tip, t);
+		const beam: [number, number, number][] = [
+			[side * 0.045, base + 0.08, 0.09],
+			[side * width * 0.16, base + 0.15, 0.12],
+			[side * width * 0.3, height * 0.72, 0.14],
+			[side * width * 0.42, height * 0.86, 0.15],
+			[side * width * 0.44, height - 0.02, 0.13],
+		];
+		parts.push(bentTube(antler, beam, (t) => 0.018 - t * 0.013, 20, 8));
+		for (const [at, reach, lift] of [
+			[1, 0.07, 0.12],
+			[2, 0.06, 0.14],
+			[3, 0.05, 0.11],
+		] as const) {
+			const [bx, by, bz] = beam[at];
+			const spread = rng.range(0.8, 1.2);
 			parts.push(
-				cylinderBetween(
-					BONE,
-					from,
-					from.clone().add(v(side * -0.04, 0.12 + rng.range(0, 0.05), 0.04)),
-					0.009,
-					5,
+				bentTube(
+					antler,
+					[
+						[bx, by, bz],
+						[
+							bx - side * reach * 0.3,
+							by + lift * 0.5 * spread,
+							bz + reach * 0.4,
+						],
+						[bx - side * reach * 0.15, by + lift * spread, bz + reach * 0.7],
+					],
+					(t) => 0.011 - t * 0.008,
+					10,
+					6,
 				),
 			);
 		}
@@ -1618,9 +1761,11 @@ export const hangingCage: FurnitureBuilder = ({ item, rng }) => {
 		lathe(
 			IRON,
 			[
+				[0.001, 0],
 				[r, 0],
 				[r * 0.6, cageHeight * 0.2],
 				[0.03, cageHeight * 0.3],
+				[0.001, cageHeight * 0.3],
 			],
 			0,
 			bottom + cageHeight,
@@ -1694,6 +1839,7 @@ export const hangingLantern: FurnitureBuilder = ({ item }) => {
 		lathe(
 			IRON,
 			[
+				[0.001, 0],
 				[0.13, 0],
 				[0.04, 0.1],
 				[0.001, 0.12],
@@ -1776,7 +1922,19 @@ export const teaSet: FurnitureBuilder = ({ item, rng }) => {
 			0,
 			14,
 		),
-		cylinderBetween(china, v(-0.0, 0.06, 0), v(0.03, 0.1, 0), 0.008, 5),
+		bentTube(
+			china,
+			[
+				[-0.0, 0.05, 0],
+				[0.02, 0.07, 0],
+				[0.035, 0.1, 0],
+				[0.045, 0.115, 0],
+			],
+			(t) => 0.011 - t * 0.005,
+			10,
+			6,
+		),
+		sphere(china, 0.014, -0.06, 0.15, 0, 1, 0.8, 1, 10),
 		torus(china, 0.03, 0.007, -0.13, 0.08, 0, 0, Math.PI / 2, Math.PI),
 	];
 	for (const [x, z] of [
@@ -1785,18 +1943,22 @@ export const teaSet: FurnitureBuilder = ({ item, rng }) => {
 	]) {
 		parts.push(
 			cylinder(china, 0.045, 0.04, 0.006, x, 0.01, z, 12),
-			lathe(
+			vessel(
 				china,
 				[
 					[0.001, 0],
-					[0.022, 0],
-					[0.032, 0.045],
+					[0.018, 0],
+					[0.021, 0.006],
+					[0.03, 0.03],
+					[0.033, 0.045],
 				],
+				0.0025,
 				x,
 				0.016,
 				z,
-				12,
+				20,
 			),
+			torus(china, 0.012, 0.003, x + 0.036, 0.04, z, 0, 0, Math.PI * 1.3),
 		);
 	}
 	return parts;

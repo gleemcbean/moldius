@@ -1,4 +1,4 @@
-import { rotate2, type Vec2 } from "../math.js";
+import type { Vec2 } from "../math.js";
 import type { DoorSpec, Opening, OrientedBox } from "./types.js";
 
 export const DOOR_THICKNESS = 0.07;
@@ -66,9 +66,4 @@ export function doorPanelBox(
 		yMin: geometry.floorY,
 		yMax: geometry.floorY + geometry.panelHeight,
 	};
-}
-
-export function doorHandlePoint(geometry: DoorGeometry, angle: number): Vec2 {
-	const offset = rotate2({ x: geometry.panelLength - 0.12, z: 0 }, angle);
-	return { x: geometry.hinge.x + offset.x, z: geometry.hinge.z + offset.z };
 }

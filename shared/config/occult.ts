@@ -9,15 +9,6 @@ export const MATERIAL_IDS = [
 
 export type MaterialId = (typeof MATERIAL_IDS)[number];
 
-export const MATERIAL_COLORS: Record<MaterialId, number> = {
-	amethyst: 0x9b5de5,
-	ruby: 0xe0263c,
-	jade: 0x2fbf71,
-	mirror: 0xbfd8e6,
-	brass: 0xd4a437,
-	bone: 0xe8e0c8,
-};
-
 export const OCCULT_IDS = [
 	"pendulum",
 	"blackMirror",

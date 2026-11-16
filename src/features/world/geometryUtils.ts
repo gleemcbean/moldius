@@ -1,5 +1,6 @@
 import { orientLatheProfile } from "@shared/latheProfile";
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 export function scaleUv(
 	geometry: THREE.BufferGeometry,
@@ -106,11 +107,22 @@ export function meterTorus(
 	tubular = 24,
 	arc = Math.PI * 2,
 ): THREE.BufferGeometry {
-	return scaleUv(
+	const ring = scaleUv(
 		new THREE.TorusGeometry(radius, tube, radial, tubular, arc),
 		arc * radius,
 		Math.PI * 2 * tube,
 	);
+	if (arc >= Math.PI * 2 - 1e-3) {
+		return ring;
+	}
+	const caps = [0, arc].map((angle) =>
+		meterSphere(
+			tube,
+			Math.max(6, radial),
+			Math.max(4, Math.round(radial * 0.75)),
+		).translate(Math.cos(angle) * radius, Math.sin(angle) * radius, 0),
+	);
+	return mergeGeometries([ring, ...caps], false) as THREE.BufferGeometry;
 }
 
 export function placed(

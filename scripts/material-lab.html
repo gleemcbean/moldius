@@ -36,17 +36,17 @@
 				surfaceQuality,
 			} from "/src/config/graphics.ts";
 			import { LightPool } from "/src/features/engine/lighting/LightPool.ts";
-			import { PostEffects } from "/src/features/engine/render/PostEffects.ts";
-			import { DoorViews } from "/src/features/engine/world/DoorViews.ts";
 			import {
 				FIRST_PERSON_LAYER,
 				FirstPersonRig,
 			} from "/src/features/engine/player/FirstPersonRig.ts";
-			import { MushroomModel } from "/src/features/models/MushroomModel.ts";
-			import { LanternModel } from "/src/features/models/LanternModel.ts";
+			import { PostEffects } from "/src/features/engine/render/PostEffects.ts";
+			import { DoorViews } from "/src/features/engine/world/DoorViews.ts";
 			import { GrimoireModel } from "/src/features/grimoire/GrimoireModel.ts";
-			import { ModelKit } from "/src/features/models/modelKit.ts";
 			import { createAnomalyModel } from "/src/features/models/anomalies/createAnomalyModel.ts";
+			import { LanternModel } from "/src/features/models/LanternModel.ts";
+			import { MushroomModel } from "/src/features/models/MushroomModel.ts";
+			import { ModelKit } from "/src/features/models/modelKit.ts";
 			import { ManorMeshBuilder } from "/src/features/world/ManorMeshBuilder.ts";
 			import { MaterialLibrary } from "/src/features/world/MaterialLibrary.ts";
 			import { TextureLibrary } from "/src/features/world/textures/TextureLibrary.ts";
@@ -109,6 +109,208 @@
 			const bakeMs = Math.round(performance.now() - bakeStart);
 			const materials = new MaterialLibrary(textures);
 			const kit = new ModelKit(materials);
+
+			if (view === "audit") {
+				const { FURNITURE_BUILDERS } = await import("/src/features/world/furniture/index.ts");
+				const { furnitureDefinition } = await import("/shared/manor/furnitureCatalog.ts");
+				const { SeededRandom } = await import("/shared/random.ts");
+				const { mergeVertices } = await import("three/addons/utils/BufferGeometryUtils.js");
+				const auditLayout = generateManor(seed, { ...PUBLIC_MATCH_CONFIG, pickupTotal: 0 });
+				const host = auditLayout.rooms.find((room) => room.type === "salon") ?? auditLayout.rooms[0];
+				const report = [];
+				for (const kind of Object.keys(FURNITURE_BUILDERS)) {
+					let definition;
+					try {
+						definition = furnitureDefinition(kind);
+					} catch {
+						continue;
+					}
+					for (const [variantIndex, variant] of definition.variants.entries()) {
+						for (const itemSeed of [11, 29, 47]) {
+							const item = { id: 0, kind, variant: variantIndex, roomId: host.id, level: host.level, x: 0, y: 0, z: 0, rotation: 0, width: variant.width, depth: variant.depth, height: variant.height, colliders: [], hideSpotId: null, valveId: null, parentId: null, seed: itemSeed };
+							const parts = FURNITURE_BUILDERS[kind]({ item, room: host, rng: new SeededRandom(item.seed) });
+							parts.forEach((piece, index) => {
+								if (piece.material.side === THREE.DoubleSide || piece.material.unlit || piece.material.transparent) {
+									return;
+								}
+								const probe = new THREE.BufferGeometry();
+								probe.setAttribute("position", piece.geometry.getAttribute("position").clone());
+								if (piece.geometry.index) {
+									probe.setIndex(piece.geometry.index.clone());
+								}
+								const welded = mergeVertices(probe, 1e-5);
+								const faces = welded.index;
+								const position = welded.getAttribute("position");
+								const edges = new Map();
+								for (let triangle = 0; triangle < faces.count; triangle += 3) {
+									const corners = [faces.getX(triangle), faces.getX(triangle + 1), faces.getX(triangle + 2)];
+									for (let side = 0; side < 3; side += 1) {
+										const a = corners[side];
+										const b = corners[(side + 1) % 3];
+										if (a === b) continue;
+										const key = a < b ? `${a}_${b}` : `${b}_${a}`;
+										edges.set(key, (edges.get(key) ?? 0) + 1);
+									}
+								}
+								let open = 0;
+								let length = 0;
+								const va = new THREE.Vector3();
+								const vb = new THREE.Vector3();
+								for (const [key, count] of edges) {
+									if (count === 1) {
+										const [a, b] = key.split("_").map(Number);
+										va.fromBufferAttribute(position, a);
+										vb.fromBufferAttribute(position, b);
+										const span = va.distanceTo(vb);
+										if (span > 1e-4) {
+											open += 1;
+											length += span;
+										}
+									}
+								}
+								const normals = piece.geometry.getAttribute("normal");
+								let planar = true;
+								if (normals) {
+									const first = new THREE.Vector3().fromBufferAttribute(normals, 0);
+									const other = new THREE.Vector3();
+									for (let vertex = 1; vertex < normals.count; vertex += 1) {
+										if (other.fromBufferAttribute(normals, vertex).dot(first) < 0.999) {
+											planar = false;
+											break;
+										}
+									}
+								}
+								if (open > 0 && !planar && length > 0.02) {
+									piece.geometry.computeBoundingBox();
+									const box = piece.geometry.boundingBox;
+									report.push({ kind, variant: variantIndex, seed: itemSeed, part: index, texture: piece.material.texture ?? piece.material.color, open, length: Math.round(length * 100) / 100, center: box.getCenter(new THREE.Vector3()).toArray().map((value) => Math.round(value * 100) / 100), size: box.getSize(new THREE.Vector3()).toArray().map((value) => Math.round(value * 100) / 100) });
+								}
+							});
+						}
+					}
+				}
+				const unique = new Map();
+				for (const entry of report) {
+					const key = `${entry.kind}#${entry.part}`;
+					if (!unique.has(key)) unique.set(key, entry);
+				}
+				window.labInfo = { findings: [...unique.values()] };
+				document.title = "lab-ready";
+				throw new Error("audit-done");
+			}
+
+			if (view === "gallery" || view === "item") {
+				const { FURNITURE_BUILDERS } = await import("/src/features/world/furniture/index.ts");
+				const { furnitureDefinition } = await import("/shared/manor/furnitureCatalog.ts");
+				const { GeometryBucket } = await import("/src/features/world/GeometryBucket.ts");
+				const { SeededRandom } = await import("/shared/random.ts");
+				const { RoomEnvironment } = await import("three/addons/environments/RoomEnvironment.js");
+				const all = Object.keys(FURNITURE_BUILDERS);
+				const start = Number(params.get("start") ?? 0);
+				const kinds = params.get("kinds")
+					? params.get("kinds").split(",")
+					: all.slice(start, start + Number(params.get("count") ?? 30));
+				const columns = view === "item" ? kinds.length : Number(params.get("columns") ?? 6);
+				const galleryLayout = generateManor(seed, { ...PUBLIC_MATCH_CONFIG, pickupTotal: 0 });
+				const host = galleryLayout.rooms.find((room) => room.type === (params.get("roomType") ?? "salon")) ?? galleryLayout.rooms[0];
+				const rows = Math.ceil(kinds.length / columns);
+				const cell = 1;
+				const placed = [];
+				kinds.forEach((kind, index) => {
+					let definition;
+					try {
+						definition = furnitureDefinition(kind);
+					} catch {
+						return;
+					}
+					const variant = definition.variants[Number(params.get("variant") ?? 0)] ?? definition.variants[0];
+					const item = {
+						id: index,
+						kind,
+						variant: 0,
+						roomId: host.id,
+						level: host.level,
+						x: 0,
+						y: 0,
+						z: 0,
+						rotation: 0,
+						width: variant.width,
+						depth: variant.depth,
+						height: variant.height,
+						colliders: [],
+						hideSpotId: null,
+						valveId: null,
+						parentId: null,
+						seed: Number(params.get("itemSeed") ?? 11) + index * 7,
+					};
+					const parts = FURNITURE_BUILDERS[kind]({ item, room: host, rng: new SeededRandom(item.seed) });
+					const bucket = new GeometryBucket(materials);
+					for (const piece of parts) {
+						bucket.add(piece.material, piece.geometry);
+					}
+					const holder = new THREE.Group();
+					for (const mesh of bucket.toMeshes()) {
+						mesh.castShadow = true;
+						mesh.receiveShadow = true;
+						holder.add(mesh);
+					}
+					const box = new THREE.Box3().setFromObject(holder);
+					const size = box.getSize(new THREE.Vector3());
+					const scale = (cell * 0.82) / Math.max(size.x, size.y, size.z, 0.05);
+					holder.scale.setScalar(scale);
+					holder.rotation.y = Number(params.get("spin") ?? 0.45);
+					const column = index % columns;
+					const row = Math.floor(index / columns);
+					holder.position.set((column - (columns - 1) / 2) * cell, (rows - 1 - row) * cell * 1.08 - box.min.y * scale, 0);
+					scene.add(holder);
+					placed.push({ kind, column, row, holder });
+				});
+				const viewWidth = columns * cell;
+				const viewHeight = rows * cell * 1.08;
+				camera.fov = view === "item" ? 30 : 18;
+				const fit = Math.max(viewHeight, viewWidth / camera.aspect) / 2 / Math.tan((camera.fov * Math.PI) / 360);
+				const tilt = Number(params.get("tilt") ?? 0.22);
+				const middle = new THREE.Vector3(0, viewHeight / 2 - 0.05, 0);
+				camera.position.set(0, middle.y + Math.sin(tilt) * fit * 1.08, Math.cos(tilt) * fit * 1.08);
+				camera.near = 0.05;
+				camera.far = 200;
+				camera.updateProjectionMatrix();
+				camera.lookAt(middle);
+				camera.updateMatrixWorld(true);
+				scene.fog = null;
+				scene.background = new THREE.Color(0x1a1714);
+				lantern.intensity = 0;
+				const pmrem = new THREE.PMREMGenerator(renderer);
+				scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+				scene.environmentIntensity = Number(params.get("env") ?? 0.35);
+				const sun = new THREE.DirectionalLight(0xfff0dc, Number(params.get("light") ?? 2.4));
+				sun.position.set(-4, 6, 8);
+				scene.add(sun);
+				const back = new THREE.DirectionalLight(0xb0c0ff, 0.6);
+				back.position.set(5, 3, -6);
+				scene.add(back);
+				scene.updateMatrixWorld(true);
+				renderer.setRenderTarget(null);
+				for (let frame = 0; frame < 3; frame += 1) {
+					renderer.setClearColor(0x1a1714, 1);
+					renderer.clear();
+					renderer.render(scene, camera);
+					await new Promise((resolve) => setTimeout(resolve, 5));
+				}
+				for (const entry of placed) {
+					const anchor = entry.holder.position.clone();
+					anchor.y -= 0.02;
+					anchor.project(camera);
+					const label = document.createElement("div");
+					label.textContent = entry.kind;
+					label.style.cssText = `position:fixed;left:${((anchor.x + 1) / 2) * innerWidth}px;top:${((1 - anchor.y) / 2) * innerHeight}px;transform:translate(-50%,0);font:600 13px system-ui;color:#f0e0a0;text-shadow:0 1px 2px #000;pointer-events:none`;
+					document.body.append(label);
+				}
+				await new Promise((resolve) => setTimeout(resolve, 500));
+				window.labInfo = { bakeMs, kinds: placed.map((entry) => entry.kind), total: all.length };
+				document.title = "lab-ready";
+				throw new Error("gallery-done");
+			}
 
 			if (view === "prop") {
 				const name = params.get("prop") ?? "lantern";
@@ -305,11 +507,13 @@
 			const wanted = params.get("room");
 			const floorStyle = params.get("floor");
 			const wallStyle = params.get("wall");
+			const focusKind = params.get("kind");
 			const candidates = layout.rooms.filter(
 				(room) =>
 					(!floorStyle || room.style.floor === floorStyle) &&
 					(!wallStyle || room.style.wall === wallStyle) &&
-					(!params.get("type") || room.type === params.get("type")),
+					(!params.get("type") || room.type === params.get("type")) &&
+					(!focusKind || layout.furniture.some((entry) => entry.roomId === room.id && entry.kind === focusKind)),
 			);
 			const room =
 				wanted !== null
@@ -376,6 +580,14 @@
 				spot.z - Math.cos(yaw + Math.PI) * back,
 			);
 			camera.rotation.set(pitch, yaw + Math.PI, 0, "YXZ");
+			const focus = focusKind ? layout.furniture.find((entry) => entry.roomId === room.id && entry.kind === focusKind) : null;
+			if (focus) {
+				const toward = new THREE.Vector3(spot.x - focus.x, 0, spot.z - focus.z);
+				if (toward.lengthSq() < 0.01) toward.set(0, 0, 1);
+				toward.normalize().multiplyScalar(Number(params.get("distance") ?? 2.2));
+				camera.position.set(focus.x + toward.x, floorY + eyeHeight, focus.z + toward.z);
+				camera.lookAt(focus.x, focus.y + focus.height * 0.5, focus.z);
+			}
 			camera.updateMatrixWorld(true);
 			lantern.position.copy(
 				camera.localToWorld(new THREE.Vector3(0.27, -0.2, -0.5)),

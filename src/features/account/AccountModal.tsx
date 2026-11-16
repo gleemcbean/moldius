@@ -9,7 +9,6 @@ import {
 	type AccountProfile,
 	DELETE_CONFIRMATIONS,
 	EMAIL_MAX_LENGTH,
-	MATCH_HISTORY_LIMIT,
 	PASSWORD_MAX_LENGTH,
 	validateEmail,
 	validatePassword,

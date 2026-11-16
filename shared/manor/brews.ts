@@ -8,13 +8,6 @@ export const BREW_EFFECTS = [
 
 export type BrewEffect = (typeof BREW_EFFECTS)[number];
 
-export function isBrewEffect(value: unknown): value is BrewEffect {
-	return (
-		typeof value === "string" &&
-		(BREW_EFFECTS as readonly string[]).includes(value)
-	);
-}
-
 export const BREW_DURATION_MS: Record<BrewEffect, number> = {
 	nausea: 15_000,
 	feather: 20_000,

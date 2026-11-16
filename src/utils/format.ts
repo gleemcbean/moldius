@@ -5,10 +5,6 @@ export function formatClock(milliseconds: number): string {
 	return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-export function formatPoints(points: number): string {
-	return points.toLocaleString("fr-FR");
-}
-
 export function romanNumeral(value: number): string {
 	const numerals: [number, string][] = [
 		[10, "X"],

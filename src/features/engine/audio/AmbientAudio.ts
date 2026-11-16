@@ -117,12 +117,13 @@ export class AmbientAudio {
 		this.drone = soundBank.play("drone-loop", {
 			bus: "ambience",
 			loop: true,
-			volume: 0.36,
+			volume: 0.01,
 		});
+
 		this.wind = soundBank.play("wind-loop", {
 			bus: "ambience",
 			loop: true,
-			volume: 0.12,
+			volume: 0.015,
 		});
 	}
 
@@ -149,8 +150,8 @@ export class AmbientAudio {
 		this.updateFire(listener);
 		this.updateWater(options.waterAt);
 		const exterior = room?.exteriorEdges.some(Boolean) ?? false;
-		this.wind?.setVolume(exterior ? 0.19 : 0.08);
-		this.drone?.setVolume(0.26 + options.tension * 0.24);
+		this.wind?.setVolume(exterior ? 0.015 : 0.005);
+		this.drone?.setVolume(0.02 + options.tension * 0.015);
 		if (
 			(options.tension > 0.5 || options.lowHealth) &&
 			this.time - this.heartbeatAt > (options.tension > 0.5 ? 0.75 : 1.1)
@@ -180,10 +181,10 @@ export class AmbientAudio {
 		}
 		this.stepDistance += options.stepSpeed * dt;
 		const stride = options.crouching
-			? 0.55
+			? 0.75
 			: options.stepSpeed > 4
-				? 0.95
-				: 0.72;
+				? 1.15
+				: 0.92;
 		if (this.stepDistance < stride) {
 			return;
 		}
@@ -194,7 +195,7 @@ export class AmbientAudio {
 				? "step-slime"
 				: footstepSound(room?.style.floor);
 		soundBank.play(id, {
-			volume: options.crouching ? 0.22 : options.stepSpeed > 4 ? 0.7 : 0.45,
+			volume: options.crouching ? 0.02 : options.stepSpeed > 4 ? 0.09 : 0.05,
 			rate: 0.9 + Math.random() * 0.2,
 		});
 	}

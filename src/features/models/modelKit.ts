@@ -223,22 +223,6 @@ export class PartList {
 	}
 }
 
-export function disposeObject(root: THREE.Object3D): void {
-	root.traverse((object) => {
-		if (object instanceof THREE.Mesh) {
-			object.geometry.dispose();
-		}
-	});
-}
-
-export function setOpacity(root: THREE.Object3D, opacity: number): void {
-	root.traverse((object) => {
-		if (object instanceof THREE.Mesh) {
-			object.visible = opacity > 0.02;
-		}
-	});
-}
-
 export function modelYaw(yaw: number): number {
 	return yaw + Math.PI;
 }

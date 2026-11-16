@@ -37,8 +37,6 @@ export interface DiscordStoreState extends DiscordBridgeState {
 
 const bridge = desktopApp?.discord ?? null;
 
-export const discordSupported = bridge !== null;
-
 export const discordStore = createStore<DiscordStoreState>({
 	available: false,
 	status: "unavailable",

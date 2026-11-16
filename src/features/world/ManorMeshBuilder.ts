@@ -2,11 +2,7 @@ import { MEZZANINE_POST_RADIUS, SLAB_THICKNESS } from "@shared/config/index";
 import { DOOR_FRAME_WIDTH, DOOR_THICKNESS } from "@shared/manor/doors";
 import { furnitureDefinition } from "@shared/manor/furnitureCatalog";
 import { openingPassage } from "@shared/manor/layoutBuilder";
-import {
-	edgeLength,
-	pointInPolygon,
-	tessellateOutline,
-} from "@shared/manor/polygon";
+import { edgeLength, pointInPolygon } from "@shared/manor/polygon";
 import type {
 	FurnitureItem,
 	ManorLayout,
@@ -1692,8 +1688,4 @@ export class ManorMeshBuilder {
 			}
 		}
 	}
-}
-
-export function roomOutlinePoints(room: Room): { x: number; z: number }[] {
-	return tessellateOutline(room.edges);
 }

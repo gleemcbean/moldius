@@ -1,10 +1,6 @@
 import { LEVEL_HEIGHT, MAX_UPPER_FLOORS } from "../config/index.js";
 import type { Level } from "./types.js";
 
-export function levelFloorY(level: Level): number {
-	return level * LEVEL_HEIGHT;
-}
-
 export function levelForHeight(
 	y: number,
 	maxLevel: number = MAX_UPPER_FLOORS,
@@ -26,8 +22,4 @@ export function floorsSeenFromEye(
 		lowest: Math.floor((feet + 0.3) / LEVEL_HEIGHT),
 		highest: Math.ceil((feet - 0.3) / LEVEL_HEIGHT) + 0,
 	};
-}
-
-export function levelAbove(level: Level): Level | null {
-	return level < MAX_UPPER_FLOORS ? ((level + 1) as Level) : null;
 }

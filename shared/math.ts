@@ -20,16 +20,8 @@ export function vec3(x: number, y: number, z: number): Vec3 {
 	return { x, y, z };
 }
 
-export function add2(a: Vec2, b: Vec2): Vec2 {
-	return { x: a.x + b.x, z: a.z + b.z };
-}
-
 export function sub2(a: Vec2, b: Vec2): Vec2 {
 	return { x: a.x - b.x, z: a.z - b.z };
-}
-
-export function scale2(a: Vec2, s: number): Vec2 {
-	return { x: a.x * s, z: a.z * s };
 }
 
 export function dot2(a: Vec2, b: Vec2): number {
@@ -48,12 +40,6 @@ export function distance2(a: Vec2, b: Vec2): number {
 	return Math.hypot(a.x - b.x, a.z - b.z);
 }
 
-export function distanceSq2(a: Vec2, b: Vec2): number {
-	const dx = a.x - b.x;
-	const dz = a.z - b.z;
-	return dx * dx + dz * dz;
-}
-
 export function normalize2(a: Vec2): Vec2 {
 	const length = length2(a);
 	if (length < EPSILON) {
@@ -62,30 +48,10 @@ export function normalize2(a: Vec2): Vec2 {
 	return { x: a.x / length, z: a.z / length };
 }
 
-export function lerp2(a: Vec2, b: Vec2, t: number): Vec2 {
-	return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
-}
-
 export function rotate2(a: Vec2, angle: number): Vec2 {
 	const cos = Math.cos(angle);
 	const sin = Math.sin(angle);
 	return { x: a.x * cos - a.z * sin, z: a.x * sin + a.z * cos };
-}
-
-export function inwardNormal(direction: Vec2): Vec2 {
-	return { x: -direction.z, z: direction.x };
-}
-
-export function outwardNormal(direction: Vec2): Vec2 {
-	return { x: direction.z, z: -direction.x };
-}
-
-export function distance3(a: Vec3, b: Vec3): number {
-	return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
-}
-
-export function horizontalDistance(a: Vec3 | Vec2, b: Vec3 | Vec2): number {
-	return Math.hypot(a.x - b.x, a.z - b.z);
 }
 
 export function clamp(value: number, min: number, max: number): number {
@@ -159,15 +125,6 @@ export function lookDirection(yaw: number, pitch: number): Vec3 {
 	};
 }
 
-export function roundTo(value: number, step: number): number {
-	return Math.round(value / step) * step;
-}
-
-export function quantize(value: number, decimals: number): number {
-	const factor = 10 ** decimals;
-	return Math.round(value * factor) / factor;
-}
-
 export function closestPointOnSegment(point: Vec2, a: Vec2, b: Vec2): Vec2 {
 	const abx = b.x - a.x;
 	const abz = b.z - a.z;
@@ -181,8 +138,4 @@ export function closestPointOnSegment(point: Vec2, a: Vec2, b: Vec2): Vec2 {
 		1,
 	);
 	return { x: a.x + abx * t, z: a.z + abz * t };
-}
-
-export function distanceToSegment(point: Vec2, a: Vec2, b: Vec2): number {
-	return distance2(point, closestPointOnSegment(point, a, b));
 }

@@ -10,7 +10,6 @@ export const HOWLER_BLOCK_RADIUS = 7;
 export const HOWLER_ORBIT_MIN_MS = 45_000;
 export const HOWLER_ORBIT_MAX_MS = 75_000;
 
-export const MELEE_RECOVERY_MS = 1_150;
 export const PLAYER_DAMAGE_INTERVAL_MS = 1_400;
 
 export const SLIME_WINDUP_MS = 1_100;

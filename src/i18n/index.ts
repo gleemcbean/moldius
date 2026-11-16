@@ -59,10 +59,6 @@ const en: Messages = {
 
 const MESSAGES: Record<Language, Messages> = { fr, en };
 
-export function messagesFor(language: Language): Messages {
-	return MESSAGES[language];
-}
-
 export function currentLanguage(): Language {
 	return settingsStore.get().language;
 }
