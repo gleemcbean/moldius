@@ -32,11 +32,11 @@ describe("application de bureau à la place de l'application web", () => {
 		expect(latestInstaller(join(directory, "absent"))).toBeNull();
 		mkdirSync(directory, { recursive: true });
 		expect(latestInstaller(directory)).toBeNull();
-		const older = join(directory, "MOLDIUS-Setup-1.0.0.exe");
-		const newer = join(directory, "MOLDIUS-Setup-1.1.0.exe");
+		const older = join(directory, "Moldius-Setup-1.0.0.exe");
+		const newer = join(directory, "Moldius-Setup-1.1.0.exe");
 		writeFileSync(older, "a");
 		writeFileSync(newer, "b");
-		writeFileSync(join(directory, "MOLDIUS-Setup-1.1.0.exe.blockmap"), "c");
+		writeFileSync(join(directory, "Moldius-Setup-1.1.0.exe.blockmap"), "c");
 		utimesSync(older, new Date(2026, 0, 2), new Date(2026, 0, 2));
 		utimesSync(newer, new Date(2026, 0, 1), new Date(2026, 0, 1));
 		expect(latestInstaller(directory)).toBe(older);

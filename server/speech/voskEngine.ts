@@ -76,7 +76,7 @@ export class VoskEngine {
 			const fail = (reason: string) => {
 				if (!this.failed && !this.disposed) {
 					console.warn(
-						`MOLDIUS : reconnaissance vocale serveur en panne (${reason})`,
+						`Moldius : reconnaissance vocale serveur en panne (${reason})`,
 					);
 				}
 				this.failed = true;

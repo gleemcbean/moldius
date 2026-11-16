@@ -188,9 +188,9 @@ export const accountFr = {
 			"Votre session a expiré : reconnectez-vous avant de lier Discord.",
 		"erreur-discord":
 			"Discord n'a pas pu confirmer votre identité. Réessayez dans un instant.",
-		"deja-lie": "Ce compte Discord est déjà lié à un autre compte MOLDIUS.",
+		"deja-lie": "Ce compte Discord est déjà lié à un autre compte Moldius.",
 		"email-existant":
-			"Un compte MOLDIUS utilise déjà l'adresse e-mail de ce compte Discord : connectez-vous avec votre mot de passe, puis liez Discord depuis « Mon compte ».",
+			"Un compte Moldius utilise déjà l'adresse e-mail de ce compte Discord : connectez-vous avec votre mot de passe, puis liez Discord depuis « Mon compte ».",
 		emailConfirmed: "Adresse confirmée : votre compte est prêt, bienvenue !",
 		appServerError:
 			"Discord a bien répondu, mais le serveur du jeu a refusé la connexion : il n'est peut-être pas à jour. Réessayez plus tard.",
@@ -380,9 +380,9 @@ export const accountEn: typeof accountFr = {
 		"erreur-discord":
 			"Discord could not confirm your identity. Please try again in a moment.",
 		"deja-lie":
-			"This Discord account is already linked to another MOLDIUS account.",
+			"This Discord account is already linked to another Moldius account.",
 		"email-existant":
-			"A MOLDIUS account already uses this Discord account's email address: sign in with your password, then link Discord from “My account”.",
+			"A Moldius account already uses this Discord account's email address: sign in with your password, then link Discord from “My account”.",
 		emailConfirmed: "Address confirmed: your account is ready, welcome!",
 		appServerError:
 			"Discord answered, but the game server refused the sign-in: it may not be up to date. Try again later.",

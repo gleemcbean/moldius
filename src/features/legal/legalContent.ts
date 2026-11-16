@@ -20,12 +20,12 @@ export const legalContent: Record<
 			title: "Conditions d'utilisation",
 			eyebrow: "TERMES DU SERVICE",
 			intro:
-				"Ces conditions encadrent votre accès à MOLDIUS, un jeu multijoueur en ligne. En utilisant le service, vous acceptez les présentes conditions, sous réserve de vos droits impératifs.",
+				"Ces conditions encadrent votre accès à Moldius, un jeu multijoueur en ligne. En utilisant le service, vous acceptez les présentes conditions, sous réserve de vos droits impératifs.",
 			sections: [
 				{
 					heading: "1. Éditeur et contact",
 					paragraphs: [
-						"MOLDIUS est exploité par Gaston Chenet, établi à Paris 75014, joignable à contact@mycelium.gacht.xyz. Ces informations doivent être complétées avant la mise en ligne.",
+						"Moldius est exploité par Gaston Chenet, établi à Paris 75014, joignable à contact@mycelium.gacht.xyz. Ces informations doivent être complétées avant la mise en ligne.",
 					],
 				},
 				{
@@ -99,12 +99,12 @@ export const legalContent: Record<
 			title: "Terms of Service",
 			eyebrow: "TERMS OF SERVICE",
 			intro:
-				"These terms govern your access to MOLDIUS, an online multiplayer game. By using the service, you agree to these terms, subject to your mandatory legal rights.",
+				"These terms govern your access to Moldius, an online multiplayer game. By using the service, you agree to these terms, subject to your mandatory legal rights.",
 			sections: [
 				{
 					heading: "1. Operator and contact",
 					paragraphs: [
-						"MOLDIUS is operated by Gaston Chenet, located at Paris 75014, and can be contacted at contact@mycelium.gacht.xyz. Complete these details before publication.",
+						"Moldius is operated by Gaston Chenet, located at Paris 75014, and can be contacted at contact@mycelium.gacht.xyz. Complete these details before publication.",
 					],
 				},
 				{
@@ -180,7 +180,7 @@ export const legalContent: Record<
 			title: "Politique de confidentialité",
 			eyebrow: "VIE PRIVÉE & DONNÉES",
 			intro:
-				"Cette politique explique quelles données peuvent être utilisées lorsque vous jouez à MOLDIUS, créez un compte ou utilisez la communication vocale.",
+				"Cette politique explique quelles données peuvent être utilisées lorsque vous jouez à Moldius, créez un compte ou utilisez la communication vocale.",
 			sections: [
 				{
 					heading: "1. Responsable du traitement",
@@ -265,7 +265,7 @@ export const legalContent: Record<
 			title: "Privacy Policy",
 			eyebrow: "PRIVACY & DATA",
 			intro:
-				"This policy explains what data may be used when you play MOLDIUS, create an account or use voice communication.",
+				"This policy explains what data may be used when you play Moldius, create an account or use voice communication.",
 			sections: [
 				{
 					heading: "1. Data controller",

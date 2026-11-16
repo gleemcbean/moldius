@@ -21,7 +21,7 @@ const lanUrls: Plugin = {
 			server.config.logger.info(
 				[
 					"",
-					"  MOLDIUS sur le réseau local (certificat auto-signé : acceptez l'avertissement du navigateur)",
+					"  Moldius sur le réseau local (certificat auto-signé : acceptez l'avertissement du navigateur)",
 					...lanReport().map((line) => `  ➜  ${line}`),
 					"",
 				].join("\n"),

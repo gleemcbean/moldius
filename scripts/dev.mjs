@@ -28,11 +28,11 @@ if (
 				? "créé"
 				: "démarré";
 		console.log(
-			`MOLDIUS : PostgreSQL de développement ${state} sur 127.0.0.1:${database.port} (données dans .dev-postgres/)`,
+			`Moldius : PostgreSQL de développement ${state} sur 127.0.0.1:${database.port} (données dans .dev-postgres/)`,
 		);
 	} catch (error) {
 		console.error(
-			`MOLDIUS : PostgreSQL de développement indisponible (${error instanceof Error ? error.message : error}). Les comptes seront désactivés.`,
+			`Moldius : PostgreSQL de développement indisponible (${error instanceof Error ? error.message : error}). Les comptes seront désactivés.`,
 		);
 	}
 }

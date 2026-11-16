@@ -715,7 +715,7 @@ export function AdminPage() {
 	}, []);
 
 	useEffect(() => {
-		document.title = "MOLDIUS";
+		document.title = "Moldius";
 		void load();
 		const timer = window.setInterval(() => void load(), REFRESH_MS);
 		return () => window.clearInterval(timer);

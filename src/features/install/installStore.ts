@@ -1,7 +1,7 @@
 import { desktopApp } from "../../app/desktopApp";
 import { createStore } from "../../utils/store";
 
-export const DESKTOP_DOWNLOAD_URL = "/download/Moldius-Setup.exe";
+export const DESKTOP_DOWNLOAD_URL = "/download/win";
 
 export const installStore = createStore({ available: false });
 

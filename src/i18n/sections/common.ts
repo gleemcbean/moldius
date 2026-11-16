@@ -9,7 +9,7 @@ export const commonFr = {
 	seconds: (value: number) => `${value} s`,
 	points: (value: number) => `${value.toLocaleString("fr-FR")} pts`,
 	number: (value: number) => value.toLocaleString("fr-FR"),
-	documentTitle: "MOLDIUS",
+	documentTitle: "Moldius",
 	language: "Langue",
 	teams: [
 		"Les Cèpes",
@@ -19,7 +19,7 @@ export const commonFr = {
 	] as readonly string[],
 	desktopOnly: {
 		title: "Clavier et souris requis",
-		text: "MOLDIUS se joue sur ordinateur, au clavier et à la souris, avec un micro. Ouvrez cette page sur un ordinateur pour rejoindre la chasse.",
+		text: "Moldius se joue sur ordinateur, au clavier et à la souris, avec un micro. Ouvrez cette page sur un ordinateur pour rejoindre la chasse.",
 		legal: "Conditions et confidentialité",
 	},
 };
@@ -35,12 +35,12 @@ export const commonEn: typeof commonFr = {
 	seconds: (value: number) => `${value} s`,
 	points: (value: number) => `${value.toLocaleString("en-GB")} pts`,
 	number: (value: number) => value.toLocaleString("en-GB"),
-	documentTitle: "MOLDIUS",
+	documentTitle: "Moldius",
 	language: "Language",
 	teams: ["The Porcini", "The Morels", "The Chanterelles", "The Truffles"],
 	desktopOnly: {
 		title: "Keyboard and mouse required",
-		text: "MOLDIUS is played on a computer, with a keyboard, a mouse and a microphone. Open this page on a computer to join the hunt.",
+		text: "Moldius is played on a computer, with a keyboard, a mouse and a microphone. Open this page on a computer to join the hunt.",
 		legal: "Terms and privacy",
 	},
 };

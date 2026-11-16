@@ -95,7 +95,7 @@ export function HomeScreen() {
 			<div className={styles.shade} />
 			<SelectorGroup className={styles.panel}>
 				<header className={styles.brand}>
-					<h1 className={styles.title}>MOLDIUS</h1>
+					<h1 className={styles.title}>Moldius</h1>
 				</header>
 
 				<section className={styles.nameBlock}>

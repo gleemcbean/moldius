@@ -146,25 +146,25 @@ export async function startServer(
 	});
 	if (dev) {
 		console.log(
-			"MOLDIUS : mode DEV actif, les parties peuvent se lancer en solo",
+			"Moldius : mode DEV actif, les parties peuvent se lancer en solo",
 		);
 	}
 	if (speech && !speech.available) {
 		console.log(
-			"MOLDIUS : modèles Vosk absents (npm run vosk:setup), pas de reconnaissance vocale serveur",
+			"Moldius : modèles Vosk absents (npm run vosk:setup), pas de reconnaissance vocale serveur",
 		);
 	}
 	if (!accounts.enabled) {
 		console.log(
-			"MOLDIUS : DATABASE_URL absent, les comptes joueurs sont désactivés",
+			"Moldius : DATABASE_URL absent, les comptes joueurs sont désactivés",
 		);
 	} else if (!mailer) {
 		console.log(
-			"MOLDIUS : SMTP non configuré, inscriptions et réinitialisations impossibles",
+			"Moldius : SMTP non configuré, inscriptions et réinitialisations impossibles",
 		);
 	} else if (mailer.kind === "file") {
 		console.log(
-			"MOLDIUS : e-mails de développement écrits dans .dev-mail/ (SMTP non configuré)",
+			"Moldius : e-mails de développement écrits dans .dev-mail/ (SMTP non configuré)",
 		);
 	}
 

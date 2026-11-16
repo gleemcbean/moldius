@@ -8,7 +8,13 @@
 	"main": "main.cjs",
 	"scripts": {
 		"start": "node scripts/prepare.mjs && electron .",
+		"dist": "npm run dist:win && npm run dist:linux",
 		"dist:win": "node scripts/dist-win.mjs",
+		"dist:linux": "node scripts/dist-linux.mjs",
+		"dist:linux:appimage": "node scripts/dist-linux.mjs AppImage",
+		"dist:linux:deb": "node scripts/dist-linux.mjs deb",
+		"dist:linux:rpm": "node scripts/dist-linux.mjs rpm",
+		"dist:linux:dir": "node scripts/dist-linux.mjs dir",
 		"dist:dir": "node scripts/dist-win.mjs dir",
 		"bridge:build": "node scripts/build-bridge.mjs"
 	},
@@ -58,6 +64,16 @@
 			"uninstallerIcon": "build/icon.ico",
 			"installerHeaderIcon": "build/icon.ico",
 			"runAfterFinish": true
+		},
+		"linux": {
+			"target": [
+				"AppImage",
+				"deb",
+				"rpm",
+				"tar.gz"
+			],
+			"category": "Utility",
+			"icon": "build/icon.png"
 		}
 	}
 }

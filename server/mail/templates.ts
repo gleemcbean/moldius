@@ -48,7 +48,7 @@ function compose(layout: Layout, language: Language): MailMessage {
 			: []),
 		layout.footnote,
 		"",
-		`, MOLDIUS`,
+		`, Moldius`,
 		chrome.automatic,
 	].join("\n");
 	const paragraphs = layout.paragraphs
@@ -60,7 +60,7 @@ function compose(layout: Layout, language: Language): MailMessage {
 	const action = layout.action
 		? `<p style="margin:24px 0;"><a href="${escapeHtml(layout.action.url)}" style="display:inline-block;padding:14px 24px;background:#dce54d;color:#111512;font-weight:bold;font-size:16px;text-decoration:none;letter-spacing:0.04em;text-transform:uppercase;">${escapeHtml(layout.action.label)}</a></p><p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#9fa894;">${escapeHtml(chrome.fallback)}<br><span style="color:#dce54d;word-break:break-all;">${escapeHtml(layout.action.url)}</span></p>`
 		: "";
-	const html = `<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(layout.subject)}</title></head><body style="margin:0;padding:0;background:#0b0d0b;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0d0b;padding:24px 12px;"><tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#191e1a;border:2px solid #dce54d;"><tr><td style="padding:28px 28px 8px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 4px;font-size:28px;font-weight:900;letter-spacing:0.06em;color:#dce54d;">MOLDIUS</p><h1 style="margin:0 0 18px;font-size:22px;color:#ecefe2;">${escapeHtml(layout.title)}</h1>${paragraphs}${action}<p style="margin:0 0 24px;font-size:13px;line-height:1.5;color:#9fa894;">${escapeHtml(layout.footnote)}</p></td></tr><tr><td style="padding:16px 28px;border-top:1px solid #2f3a31;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6c7566;">${escapeHtml(chrome.automatic)}</td></tr></table></td></tr></table></body></html>`;
+	const html = `<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(layout.subject)}</title></head><body style="margin:0;padding:0;background:#0b0d0b;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0d0b;padding:24px 12px;"><tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#191e1a;border:2px solid #dce54d;"><tr><td style="padding:28px 28px 8px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 4px;font-size:28px;font-weight:900;letter-spacing:0.06em;color:#dce54d;">Moldius</p><h1 style="margin:0 0 18px;font-size:22px;color:#ecefe2;">${escapeHtml(layout.title)}</h1>${paragraphs}${action}<p style="margin:0 0 24px;font-size:13px;line-height:1.5;color:#9fa894;">${escapeHtml(layout.footnote)}</p></td></tr><tr><td style="padding:16px 28px;border-top:1px solid #2f3a31;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6c7566;">${escapeHtml(chrome.automatic)}</td></tr></table></td></tr></table></body></html>`;
 	return { to: layout.to, subject: layout.subject, text, html };
 }
 
@@ -77,7 +77,7 @@ export function verificationEmail(
 			subject: "Confirmez votre adresse e-mail",
 			title: `Bienvenue, ${displayName} !`,
 			paragraphs: [
-				"Pour terminer la création de votre compte MOLDIUS, confirmez votre adresse e-mail. Le lien est valable 24 heures et ne sert qu'une fois.",
+				"Pour terminer la création de votre compte Moldius, confirmez votre adresse e-mail. Le lien est valable 24 heures et ne sert qu'une fois.",
 			],
 			action: { label: "Confirmer mon adresse", url },
 			footnote:
@@ -87,7 +87,7 @@ export function verificationEmail(
 			subject: "Confirm your email address",
 			title: `Welcome, ${displayName}!`,
 			paragraphs: [
-				"To finish creating your MOLDIUS account, please confirm your email address. The link is valid for 24 hours and can only be used once.",
+				"To finish creating your Moldius account, please confirm your email address. The link is valid for 24 hours and can only be used once.",
 			],
 			action: { label: "Confirm my address", url },
 			footnote:
@@ -104,24 +104,24 @@ export function alreadyRegisteredEmail(
 ): MailMessage {
 	const content: Record<Language, Content> = {
 		fr: {
-			subject: "Votre compte MOLDIUS existe déjà",
+			subject: "Votre compte Moldius existe déjà",
 			title: "Un compte utilise déjà cette adresse",
 			paragraphs: [
-				"Quelqu'un, peut-être vous, a voulu créer un compte MOLDIUS avec cette adresse, mais un compte existe déjà. Rien n'a été modifié.",
+				"Quelqu'un, peut-être vous, a voulu créer un compte Moldius avec cette adresse, mais un compte existe déjà. Rien n'a été modifié.",
 				"Vous pouvez vous connecter normalement. En cas d'oubli, utilisez « Mot de passe oublié » dans la fenêtre de connexion.",
 			],
-			action: { label: "Ouvrir MOLDIUS", url },
+			action: { label: "Ouvrir Moldius", url },
 			footnote:
 				"Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer ce message.",
 		},
 		en: {
-			subject: "Your MOLDIUS account already exists",
+			subject: "Your Moldius account already exists",
 			title: "An account already uses this address",
 			paragraphs: [
-				"Someone, perhaps you, tried to create a MOLDIUS account with this address, but an account already exists. Nothing has been changed.",
+				"Someone, perhaps you, tried to create a Moldius account with this address, but an account already exists. Nothing has been changed.",
 				"You can sign in as usual. If you forgot your password, use “Forgot password” in the sign-in window.",
 			],
-			action: { label: "Open MOLDIUS", url },
+			action: { label: "Open Moldius", url },
 			footnote:
 				"If you did not make this request, you can ignore this message.",
 		},
@@ -139,7 +139,7 @@ export function passwordResetEmail(
 			subject: "Réinitialisation de votre mot de passe",
 			title: "Choisissez un nouveau mot de passe",
 			paragraphs: [
-				"Une réinitialisation du mot de passe de votre compte MOLDIUS a été demandée. Le lien est valable 1 heure et ne sert qu'une fois.",
+				"Une réinitialisation du mot de passe de votre compte Moldius a été demandée. Le lien est valable 1 heure et ne sert qu'une fois.",
 			],
 			action: { label: "Choisir un nouveau mot de passe", url },
 			footnote:
@@ -149,7 +149,7 @@ export function passwordResetEmail(
 			subject: "Reset your password",
 			title: "Choose a new password",
 			paragraphs: [
-				"A password reset was requested for your MOLDIUS account. The link is valid for 1 hour and can only be used once.",
+				"A password reset was requested for your Moldius account. The link is valid for 1 hour and can only be used once.",
 			],
 			action: { label: "Choose a new password", url },
 			footnote:
@@ -166,22 +166,22 @@ export function passwordChangedEmail(
 ): MailMessage {
 	const content: Record<Language, Content> = {
 		fr: {
-			subject: "Votre mot de passe MOLDIUS a été modifié",
+			subject: "Votre mot de passe Moldius a été modifié",
 			title: "Mot de passe modifié",
 			paragraphs: [
-				"Le mot de passe de votre compte MOLDIUS vient d'être modifié. Les autres appareils connectés ont été déconnectés.",
+				"Le mot de passe de votre compte Moldius vient d'être modifié. Les autres appareils connectés ont été déconnectés.",
 			],
-			action: { label: "Ouvrir MOLDIUS", url },
+			action: { label: "Ouvrir Moldius", url },
 			footnote:
 				"Si vous n'êtes pas à l'origine de ce changement, utilisez immédiatement « Mot de passe oublié » pour reprendre la main sur votre compte.",
 		},
 		en: {
-			subject: "Your MOLDIUS password was changed",
+			subject: "Your Moldius password was changed",
 			title: "Password changed",
 			paragraphs: [
-				"The password of your MOLDIUS account has just been changed. Other signed-in devices have been signed out.",
+				"The password of your Moldius account has just been changed. Other signed-in devices have been signed out.",
 			],
-			action: { label: "Open MOLDIUS", url },
+			action: { label: "Open Moldius", url },
 			footnote:
 				"If you did not make this change, use “Forgot password” immediately to regain control of your account.",
 		},

@@ -153,7 +153,7 @@ export function loadServerConfig(): ServerConfig {
 			(process.env.COOKIE_SECURE !== "false" && production),
 		publicUrl: parsePublicUrl(process.env.PUBLIC_URL),
 		mailFrom:
-			process.env.MAIL_FROM?.trim() || "MOLDIUS <noreply@mycelium.gacht.xyz>",
+			process.env.MAIL_FROM?.trim() || "Moldius <noreply@mycelium.gacht.xyz>",
 		smtp: parseSmtp(),
 		devMailDir: resolve(projectRoot, ".dev-mail"),
 		discord:

@@ -24,7 +24,7 @@ export function LegalPage({ document }: { document: LegalDocument }) {
 					aria-label={lang === "fr" ? "Navigation légale" : "Legal navigation"}
 				>
 					<a className={styles.brand} href="/">
-						MOLDIUS<span className={styles.brandMark}>✳</span>
+						Moldius<span className={styles.brandMark}>✳</span>
 					</a>
 					<div className={styles.navLinks}>
 						<a
@@ -59,7 +59,7 @@ export function LegalPage({ document }: { document: LegalDocument }) {
 				<header className={styles.hero}>
 					<div className={styles.kicker}>
 						<span className={styles.dot} /> {copy.eyebrow}{" "}
-						<span className={styles.edition}>/ MOLDIUS</span>
+						<span className={styles.edition}>/ Moldius</span>
 					</div>
 					<h1>{copy.title}</h1>
 					<p className={styles.lead}>{copy.intro}</p>
@@ -103,7 +103,7 @@ export function LegalPage({ document }: { document: LegalDocument }) {
 					</article>
 				</div>
 				<footer className={styles.footer}>
-					<span>© {new Date().getFullYear()} MOLDIUS</span>
+					<span>© {new Date().getFullYear()} Moldius</span>
 				</footer>
 			</div>
 		</main>

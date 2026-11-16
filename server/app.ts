@@ -8,6 +8,13 @@ import { createAccountRouter } from "./accounts/routes.js";
 import type { ServerConfig } from "./config.js";
 import type { LobbyManager } from "./lobby/LobbyManager.js";
 
+enum InstallerType {
+	WIN = "exe",
+	APPIMAGE = "AppImage",
+	DEB = "deb",
+	RPM = "rpm",
+}
+
 const CONTENT_SECURITY_POLICY = [
 	"default-src 'self'",
 	"script-src 'self'",
@@ -82,8 +89,17 @@ export function createApp(
 		});
 	});
 
-	app.get("/download/Moldius-Setup.exe", (_request, response) => {
-		const installer = latestInstaller(config.desktopReleaseDir);
+	app.get("/download/:type", (request, response) => {
+		const installer = latestInstaller(
+			config.desktopReleaseDir,
+			{
+				win: InstallerType.WIN,
+				appimage: InstallerType.APPIMAGE,
+				deb: InstallerType.DEB,
+				rpm: InstallerType.RPM,
+			}[request.params.type] as InstallerType,
+		);
+
 		if (!installer) {
 			response.status(404).json({ error: "Installateur indisponible." });
 			return;
@@ -139,12 +155,18 @@ export function createApp(
 	return { app, dispose: accountRouter.dispose };
 }
 
-export function latestInstaller(directory: string): string | null {
+export function latestInstaller(
+	directory: string,
+	type: InstallerType,
+): string | null {
 	if (!existsSync(directory)) {
 		return null;
 	}
+
+	const regex = new RegExp(`^Moldius-Setup-.*\\.${type}$`, "i");
+
 	const candidates = readdirSync(directory)
-		.filter((name) => /^Moldius-Setup-[\w.-]+\.exe$/.test(name))
+		.filter((name) => regex.test(name))
 		.map((name) => resolve(directory, name))
 		.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
 	return candidates[0] ?? null;
