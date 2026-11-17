@@ -142,9 +142,20 @@ export function createApp(
 		const indexPath = resolve(config.clientDistDir, "index.html");
 		let indexPage: { mtimeMs: number; html: string } | null = null;
 		app.get(/^\/(?!socket\.io|api|download).*/, (request, response) => {
-			const mtimeMs = statSync(indexPath).mtimeMs;
-			if (indexPage?.mtimeMs !== mtimeMs) {
-				indexPage = { mtimeMs, html: readFileSync(indexPath, "utf8") };
+			try {
+				const mtimeMs = statSync(indexPath).mtimeMs;
+				if (indexPage?.mtimeMs !== mtimeMs) {
+					indexPage = { mtimeMs, html: readFileSync(indexPath, "utf8") };
+				}
+			} catch {
+				if (!indexPage) {
+					response.setHeader("Retry-After", "5");
+					response
+						.status(503)
+						.type("text")
+						.send("Mise à jour en cours, réessayez dans quelques secondes.");
+					return;
+				}
 			}
 			const origin =
 				config.publicUrl ?? `${request.protocol}://${request.get("host")}`;

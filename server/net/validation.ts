@@ -49,13 +49,19 @@ export function sanitizeName(value: unknown): string | null {
 	if (typeof value !== "string") {
 		return null;
 	}
-	const cleaned = value
-		.normalize("NFC")
-		.replace(/[\u0000-\u001f\u007f<>]/g, "")
-		.replace(/\s+/g, " ")
-		.trim()
-		.slice(0, PLAYER_NAME_MAX_LENGTH);
-	return cleaned.length >= 2 ? cleaned : null;
+	const characters = Array.from(
+		value
+			.normalize("NFC")
+			.replace(/[\u0000-\u001f\u007f<>]/g, "")
+			.replace(
+				/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g,
+				"",
+			)
+			.replace(/\s+/g, " ")
+			.trim(),
+	).slice(0, PLAYER_NAME_MAX_LENGTH);
+	const cleaned = characters.join("").trim();
+	return Array.from(cleaned).length >= 2 ? cleaned : null;
 }
 
 export function sanitizeToken(value: unknown): string | null {
