@@ -20,7 +20,7 @@ import type { Level } from "@shared/manor/types";
 import { TEAM_COLORS, teamStandings } from "@shared/teams";
 import * as THREE from "three";
 import { ICON_PATHS } from "../../components/Icon";
-import { keyLabel } from "../../config/controls";
+import { activeBindings, backCode, keyLabel } from "../../config/controls";
 import { currentMessages } from "../../i18n";
 import { formatClock, hexColor } from "../../utils/format";
 import {
@@ -1386,7 +1386,7 @@ export class HudCanvas {
 			? [labels.talking]
 			: speakers.length > 0
 				? speakers.map((name) => labels.hearing(name))
-				: [labels.idle(keyLabel(settingsStore.get().keys.radio))];
+				: [labels.idle(keyLabel(activeBindings().radio))];
 		const color = hud.walkieTalking ? DANGER : active ? OK : TEXT_MUTED;
 		const font = `500 18px ${UI}`;
 		const context = this.context;
@@ -1442,7 +1442,7 @@ export class HudCanvas {
 			return;
 		}
 		const labels = currentMessages().game.camera;
-		const keys = settingsStore.get().keys;
+		const keys = activeBindings();
 		const line = hud.cameraAiming
 			? labels.aiming(
 					keyLabel(keys.photo),
@@ -1769,7 +1769,7 @@ export class HudCanvas {
 	private paintAbilities(hud: HudState): void {
 		const messages = currentMessages().game.hud;
 		const party = currentMessages().party;
-		const keys = settingsStore.get().keys;
+		const keys = activeBindings();
 		const ghostEntries = [
 			{
 				label: party.ghost.knock,
@@ -1988,7 +1988,7 @@ export class HudCanvas {
 		const y = this.height / 2;
 		const font = `700 20px ${UI}`;
 		context.font = font;
-		const keyText = keyLabel(settingsStore.get().keys.interact);
+		const keyText = keyLabel(activeBindings().interact);
 		const keyWidth = Math.max(24, context.measureText(keyText).width + 8);
 		const width = context.measureText(hud.prompt).width + keyWidth + 30;
 		const left = x - width / 2;
@@ -2115,7 +2115,7 @@ export class HudCanvas {
 		if (hud.prompt) {
 			const promptFont = `700 18px ${UI}`;
 			this.context.font = promptFont;
-			const keyText = keyLabel(settingsStore.get().keys.interact);
+			const keyText = keyLabel(activeBindings().interact);
 			const keyWidth = Math.max(
 				22,
 				this.context.measureText(keyText).width + 8,
@@ -2220,10 +2220,10 @@ export class HudCanvas {
 			color: TEXT_MUTED,
 			outline: false,
 		});
-		const keys = settingsStore.get().keys;
+		const keys = activeBindings();
 		this.text(
 			messages.game.altar.close(
-				`${keyLabel(keys.shout)} / ${keyLabel("Escape")}`,
+				`${keyLabel(keys.shout)} / ${keyLabel(backCode())}`,
 			),
 			x + 16,
 			y + height - 18,
@@ -2780,7 +2780,7 @@ export class HudCanvas {
 			top.y + 36,
 			{ font: `700 20px ${UI}`, align: "center" },
 		);
-		const keys = settingsStore.get().keys;
+		const keys = activeBindings();
 		this.text(
 			party.hint(
 				keyLabel(keys.jump),
@@ -2812,7 +2812,7 @@ export class HudCanvas {
 		const width = 620;
 		const bodyFont = `500 19px ${BODY}`;
 		const body = possessed
-			? labels.rolePossessedText(keyLabel(settingsStore.get().keys.power))
+			? labels.rolePossessedText(keyLabel(activeBindings().power))
 			: labels.roleHunterText(hud.ritual?.quota ?? 0);
 		const lines = this.wrap(body, bodyFont, width - 48);
 		const height = 86 + lines.length * 25;

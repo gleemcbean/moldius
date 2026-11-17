@@ -77,7 +77,10 @@ export interface PlayerSettings {
 	playerLantern: LanternTint;
 	playerTagline: Tagline | null;
 	keys: Record<ActionId, string>;
+	padKeys: Record<ActionId, string>;
 	mouseSensitivity: number;
+	padSensitivity: number;
+	padDeadzone: number;
 	invertY: boolean;
 	fov: number;
 	brightness: number;

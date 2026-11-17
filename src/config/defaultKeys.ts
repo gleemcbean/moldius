@@ -25,3 +25,36 @@ export const DEFAULT_KEYS: Record<ActionId, string> = {
 	emote: "KeyB",
 	power: "KeyT",
 };
+
+export const PAD_MOVEMENT_ACTIONS: ReadonlySet<ActionId> = new Set([
+	"moveForward",
+	"moveBackward",
+	"moveLeft",
+	"moveRight",
+]);
+
+export const DEFAULT_PAD_KEYS: Record<ActionId, string> = {
+	moveForward: "",
+	moveBackward: "",
+	moveLeft: "",
+	moveRight: "",
+	sprint: "Pad10",
+	crouch: "Pad1",
+	jump: "Pad0",
+	grimoire: "Pad13",
+	lantern: "Pad3",
+	interact: "Pad2",
+	push: "Pad11",
+	shout: "Pad11Hold",
+	radio: "Pad4",
+	camera: "Pad12",
+	aim: "Pad6",
+	photo: "Pad7",
+	map: "Pad8",
+	leaderboard: "Pad8Hold",
+	pagePrevious: "",
+	pageNext: "",
+	ping: "Pad5",
+	emote: "Pad13Hold",
+	power: "Pad12Hold",
+};

@@ -48,6 +48,15 @@
   }
 }
 
+.padButton {
+  min-width: 112px;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+
 .listening {
   border-color: $accent;
   color: $accent;

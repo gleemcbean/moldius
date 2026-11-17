@@ -27,7 +27,7 @@ export function VoteOverlay() {
 	const seconds = Math.max(0, Math.ceil((vote.endsAt - now) / 1000));
 	const voted = vote.candidates.filter((candidate) => candidate.voted).length;
 	return (
-		<div className={styles.overlay}>
+		<div className={styles.overlay} data-pad-scope="">
 			<section className={styles.panel}>
 				<header className={styles.header}>
 					<h2>{labels.voteTitle}</h2>

@@ -72,7 +72,8 @@ import { DEFAULT_LANTERN_TINT, LANTERN_TINT_COLORS } from "@shared/rewards";
 import { TEAM_COLORS } from "@shared/teams";
 import { TUTORIAL_DUMMY_ID } from "@shared/tutorial";
 import * as THREE from "three";
-import { keyLabel } from "../../../config/controls";
+import { appStore } from "../../../app/appStore";
+import { activeBindings, keyLabel } from "../../../config/controls";
 import {
 	CLOCK_WARNING_MS,
 	HAZE_COLOR,
@@ -108,6 +109,7 @@ import { FIRST_PERSON_DEPTH } from "../../engine/render/PostEffects";
 import type { PingClientState } from "../../engine/state/ClientWorldState";
 import { PingViews } from "../../engine/world/PingViews";
 import { RoomVisibility } from "../../engine/world/RoomVisibility";
+import { padFocus } from "../../gamepad/gamepad";
 import { type HudMarker, MINIMAP_SIZE } from "../../hud/HudCanvas";
 import {
 	hudStore,
@@ -160,6 +162,7 @@ function wrapIndex(index: number, length: number): number {
 
 const RADIO_TALKING_LEVEL = 0.12;
 const WHEEL_DEADZONE = 28;
+const PAD_WHEEL_THRESHOLD = 0.5;
 const THIRD_PERSON_DISTANCE = 2.7;
 const THIRD_PERSON_PIVOT = 1.15;
 const THIRD_PERSON_SHOWN = 0.2;
@@ -422,6 +425,7 @@ export class GameSession {
 		this.input = new InputManager(canvas);
 		this.input.attach();
 		this.input.onPointerLockChange = (locked) => this.onPointerLock(locked);
+		padFocus.onMenu = () => this.padMenu();
 		window.addEventListener("keydown", this.onUserGesture);
 		window.addEventListener("pointerdown", this.onUserGesture);
 		canvas.addEventListener("pointerdown", this.onMapPointerDown);
@@ -449,6 +453,8 @@ export class GameSession {
 		window.removeEventListener("resize", this.resize);
 		this.input?.detach();
 		this.input = null;
+		padFocus.owner = "ui";
+		padFocus.onMenu = null;
 		const canvas = this.loadedWorld?.renderer.domElement;
 		window.removeEventListener("keydown", this.onUserGesture);
 		window.removeEventListener("pointerdown", this.onUserGesture);
@@ -463,6 +469,19 @@ export class GameSession {
 	resumePointer(): void {
 		hudStore.set({ paused: false });
 		this.input?.requestPointerLock();
+	}
+
+	private padMenu(): boolean {
+		if (!hudStore.get().paused || appStore.get().overlay !== null) {
+			return false;
+		}
+		this.resumePointer();
+		return true;
+	}
+
+	private pauseFromPad(): void {
+		hudStore.set({ paused: true });
+		this.input?.releasePointerLock();
 	}
 
 	private readonly onUserGesture = (event: Event) => {
@@ -513,6 +532,10 @@ export class GameSession {
 		}
 		input.freePlay =
 			!input.pointerLocked && !this.mapOpen && !paused && !this.voting;
+		padFocus.owner =
+			paused || this.voting || this.replay || appStore.get().overlay !== null
+				? "ui"
+				: "game";
 	}
 
 	private readonly onMapPointerDown = (event: PointerEvent) => {
@@ -1266,17 +1289,22 @@ export class GameSession {
 	private controls(frame: FrameInput, alive: boolean): LocalControls {
 		const active = alive && !this.mapOpen && (this.input?.capturing ?? false);
 		const held = frame.held;
-		const axis = (positive: boolean, negative: boolean) =>
-			(positive ? 1 : 0) - (negative ? 1 : 0);
+		const axis = (positive: boolean, negative: boolean, analog: number) =>
+			Math.max(
+				-1,
+				Math.min(1, (positive ? 1 : 0) - (negative ? 1 : 0) + analog),
+			);
 		return {
 			forward: active
-				? axis(held.has("moveForward"), held.has("moveBackward"))
+				? axis(held.has("moveForward"), held.has("moveBackward"), -frame.move.y)
 				: 0,
-			strafe: active ? axis(held.has("moveRight"), held.has("moveLeft")) : 0,
+			strafe: active
+				? axis(held.has("moveRight"), held.has("moveLeft"), frame.move.x)
+				: 0,
 			sprint: active && held.has("sprint"),
 			crouch: held.has("crouch"),
 			jump: active && frame.pressed.has("jump"),
-			rise: active ? axis(held.has("jump"), held.has("crouch")) : 0,
+			rise: active ? axis(held.has("jump"), held.has("crouch"), 0) : 0,
 			lookX: this.input?.capturing && !this.mapOpen ? frame.mouseX : 0,
 			lookY: this.input?.capturing && !this.mapOpen ? frame.mouseY : 0,
 		};
@@ -1323,6 +1351,9 @@ export class GameSession {
 			performance.now() - this.menusClosedAt > MENU_ESCAPE_GRACE_MS
 		) {
 			hudStore.set({ paused: true });
+		}
+		if (frame.menu && !escapeConsumed && this.altarId === null) {
+			this.pauseFromPad();
 		}
 		if (frame.pressed.has("map") && !escapeConsumed && this.noMap) {
 			pushFeedback(currentMessages().party.mutators.noMap, "info");
@@ -1427,11 +1458,10 @@ export class GameSession {
 	private handleMapInput(frame: FrameInput): void {
 		const state = mapStore.get();
 		const step = 6 / state.zoom;
-		if (frame.arrows.x !== 0 || frame.arrows.y !== 0) {
-			panMap(
-				frame.arrows.x * step * 0.08 * 3,
-				frame.arrows.y * step * 0.08 * 3,
-			);
+		const panX = frame.arrows.x + frame.move.x;
+		const panY = frame.arrows.y + frame.move.y;
+		if (panX !== 0 || panY !== 0) {
+			panMap(panX * step * 0.08 * 3, panY * step * 0.08 * 3);
 		}
 		if (frame.wheel !== 0) {
 			zoomMap(-frame.wheel);
@@ -2015,6 +2045,10 @@ export class GameSession {
 		if (this.wheel) {
 			this.wheel.x += frame.mouseX;
 			this.wheel.y += frame.mouseY;
+			if (Math.hypot(frame.padLook.x, frame.padLook.y) > PAD_WHEEL_THRESHOLD) {
+				this.wheel.x = frame.padLook.x * WHEEL_DEADZONE * 3;
+				this.wheel.y = frame.padLook.y * WHEEL_DEADZONE * 3;
+			}
 			const count =
 				this.wheel.kind === "ping" ? PING_WHEEL.length : EMOTE_IDS.length;
 			if (Math.hypot(this.wheel.x, this.wheel.y) > WHEEL_DEADZONE) {
@@ -3400,8 +3434,8 @@ export class GameSession {
 					soundBank.play("camera-shutter", { volume: 0.35 });
 					pushFeedback(
 						currentMessages().game.camera.taken(
-							keyLabel(settingsStore.get().keys.aim),
-							keyLabel(settingsStore.get().keys.camera),
+							keyLabel(activeBindings().aim),
+							keyLabel(activeBindings().camera),
 						),
 						"info",
 					);

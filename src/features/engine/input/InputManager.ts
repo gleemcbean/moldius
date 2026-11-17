@@ -1,4 +1,14 @@
+import { MOUSE_LOOK_SCALE } from "../../../config/feel";
 import { ACTION_IDS, type ActionId } from "../../../types/settings";
+import {
+	markDevice,
+	PAD_BUTTON,
+	PadButtons,
+	padCode,
+	padFocus,
+	readPad,
+	stick,
+} from "../../gamepad/gamepad";
 import { settingsStore } from "../../settings/settingsStore";
 
 export type InputMode = "game" | "map" | "paused";
@@ -14,7 +24,22 @@ export interface FrameInput {
 	arrows: { x: number; y: number };
 	zoomKeys: number;
 	escape: boolean;
+	move: { x: number; y: number };
+	padLook: { x: number; y: number };
+	menu: boolean;
+	confirm: boolean;
 }
+
+const PAD_YAW_RATE = 3.4;
+const PAD_PITCH_RATE = 2.3;
+const PAD_AIM_FACTOR = 0.5;
+const PAD_LOOK_EXPONENT = 2;
+const PAD_SPRINT_RELEASE = 0.2;
+const PAD_MENU_TAP = padCode(PAD_BUTTON.start, false);
+const PAD_MENU_HOLD = padCode(PAD_BUTTON.start, true);
+const PAD_CYCLE_PREVIOUS = padCode(PAD_BUTTON.left, false);
+const PAD_CYCLE_NEXT = padCode(PAD_BUTTON.right, false);
+const PAD_TOGGLES: ReadonlySet<ActionId> = new Set(["sprint", "crouch"]);
 
 const BROWSER_SENSITIVE = new Set([
 	"Tab",
@@ -63,6 +88,16 @@ export class InputManager {
 	private zoomKeys = 0;
 	private readonly arrowsHeld = new Set<string>();
 	private codeToAction = new Map<string, ActionId>();
+	private readonly padButtons = new PadButtons();
+	private readonly padHeld = new Set<ActionId>();
+	private padEngaged = false;
+	private padSprint = false;
+	private padCrouch = false;
+	private lastPadPoll = 0;
+	private move = { x: 0, y: 0 };
+	private padLook = { x: 0, y: 0 };
+	private menu = false;
+	private confirm = false;
 	private unsubscribe: (() => void) | null = null;
 	pointerLocked = false;
 	freePlay = false;
@@ -137,9 +172,13 @@ export class InputManager {
 	clearHeld(): void {
 		this.held.clear();
 		this.arrowsHeld.clear();
+		this.padHeld.clear();
+		this.padSprint = false;
+		this.padCrouch = false;
 	}
 
 	frame(): FrameInput {
+		this.pollPad();
 		const arrows = {
 			x:
 				(this.arrowsHeld.has("ArrowRight") ? 1 : 0) -
@@ -159,6 +198,10 @@ export class InputManager {
 			arrows,
 			zoomKeys: this.zoomKeys,
 			escape: this.escape,
+			move: { ...this.move },
+			padLook: { ...this.padLook },
+			menu: this.menu,
+			confirm: this.confirm,
 		};
 		this.pressed.clear();
 		this.released.clear();
@@ -168,14 +211,32 @@ export class InputManager {
 		this.wheel = 0;
 		this.zoomKeys = 0;
 		this.escape = false;
+		this.menu = false;
+		this.confirm = false;
 		return result;
 	}
 
 	private rebuildBindings(): void {
-		const keys = settingsStore.get().keys;
-		this.codeToAction = new Map(
-			ACTION_IDS.map((action) => [keys[action], action] as const),
-		);
+		const { keys, padKeys } = settingsStore.get();
+		this.codeToAction = new Map([
+			...ACTION_IDS.filter((action) => padKeys[action] !== "").map(
+				(action) => [padKeys[action], action] as const,
+			),
+			...ACTION_IDS.map((action) => [keys[action], action] as const),
+		]);
+	}
+
+	private pressAction(action: ActionId): void {
+		if (!this.held.has(action)) {
+			this.pressed.add(action);
+		}
+		this.held.add(action);
+	}
+
+	private releaseAction(action: ActionId): void {
+		if (this.held.delete(action)) {
+			this.released.add(action);
+		}
 	}
 
 	private press(code: string): boolean {
@@ -183,23 +244,143 @@ export class InputManager {
 		if (!action) {
 			return false;
 		}
-		if (!this.held.has(action)) {
-			this.pressed.add(action);
-		}
-		this.held.add(action);
+		this.pressAction(action);
 		return true;
 	}
 
 	private release(code: string): void {
 		const action = this.codeToAction.get(code);
-		if (action && this.held.delete(action)) {
-			this.released.add(action);
+		if (action) {
+			this.releaseAction(action);
 		}
+	}
+
+	private setPadHeld(action: ActionId, on: boolean): void {
+		if (on && !this.padHeld.has(action)) {
+			this.padHeld.add(action);
+			this.pressAction(action);
+		} else if (!on && this.padHeld.delete(action)) {
+			this.releaseAction(action);
+		}
+	}
+
+	private disengagePad(): void {
+		for (const action of [...this.padHeld]) {
+			this.setPadHeld(action, false);
+		}
+		this.padSprint = false;
+		this.padCrouch = false;
+		this.move = { x: 0, y: 0 };
+		this.padLook = { x: 0, y: 0 };
+		this.padButtons.reset();
+		this.padEngaged = false;
+	}
+
+	private pollPad(): void {
+		const now = performance.now();
+		const dt = Math.min(0.05, Math.max(0, (now - this.lastPadPoll) / 1000));
+		this.lastPadPoll = now;
+		const pad = padFocus.owner === "game" ? readPad() : null;
+		if (!pad) {
+			if (this.padEngaged) {
+				this.disengagePad();
+			}
+			return;
+		}
+		this.padEngaged = true;
+		const settings = settingsStore.get();
+		const edges = this.padButtons.update(
+			pad.buttons,
+			now,
+			(button) =>
+				button === PAD_BUTTON.start ||
+				this.codeToAction.has(padCode(button, true)),
+		);
+		for (const edge of edges) {
+			markDevice("pad");
+			this.padEdge(edge.code, edge.down);
+		}
+		const left = stick(
+			pad.axes[0] ?? 0,
+			pad.axes[1] ?? 0,
+			settings.padDeadzone,
+		);
+		const right = stick(
+			pad.axes[2] ?? 0,
+			pad.axes[3] ?? 0,
+			settings.padDeadzone,
+		);
+		if (left.magnitude > 0 || right.magnitude > 0) {
+			markDevice("pad");
+		}
+		this.move = { x: left.x, y: left.y };
+		this.padLook = { x: right.x, y: right.y };
+		if (this.padSprint && left.magnitude < PAD_SPRINT_RELEASE) {
+			this.padSprint = false;
+		}
+		this.setPadHeld("sprint", this.padSprint);
+		this.setPadHeld("crouch", this.padCrouch);
+		if (right.magnitude > 0) {
+			const curve = right.magnitude ** (PAD_LOOK_EXPONENT - 1);
+			const aiming = this.held.has("aim") ? PAD_AIM_FACTOR : 1;
+			const toPixels =
+				(settings.padSensitivity * aiming * dt) /
+				(MOUSE_LOOK_SCALE * settings.mouseSensitivity);
+			this.mouseX += right.x * curve * PAD_YAW_RATE * toPixels;
+			this.mouseY += right.y * curve * PAD_PITCH_RATE * toPixels;
+		}
+	}
+
+	private padEdge(code: string, down: boolean): void {
+		if (code === PAD_MENU_TAP) {
+			if (down) {
+				this.escape = true;
+				this.menu = true;
+			}
+			return;
+		}
+		if (code === PAD_MENU_HOLD) {
+			if (down) {
+				this.confirm = true;
+			}
+			return;
+		}
+		if (code === PAD_CYCLE_PREVIOUS || code === PAD_CYCLE_NEXT) {
+			if (down) {
+				this.wheel += code === PAD_CYCLE_NEXT ? 1 : -1;
+			}
+			return;
+		}
+		const action = this.codeToAction.get(code);
+		if (!action) {
+			return;
+		}
+		if (PAD_TOGGLES.has(action)) {
+			if (!down) {
+				return;
+			}
+			if (action === "sprint") {
+				this.padSprint = !this.padSprint;
+				if (this.padSprint) {
+					this.padCrouch = false;
+				}
+			} else {
+				this.padCrouch = !this.padCrouch;
+				if (this.padCrouch) {
+					this.padSprint = false;
+				}
+			}
+			return;
+		}
+		this.setPadHeld(action, down);
 	}
 
 	private readonly onKeyDown = (event: KeyboardEvent) => {
 		if (isTextTarget(event.target)) {
 			return;
+		}
+		if (event.isTrusted) {
+			markDevice("keyboard");
 		}
 		if (event.code === "Escape") {
 			this.escape = true;
@@ -250,6 +431,7 @@ export class InputManager {
 		if (!code || !this.capturing) {
 			return;
 		}
+		markDevice("keyboard");
 		if (this.press(code)) {
 			event.preventDefault();
 		}

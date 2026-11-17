@@ -29,7 +29,12 @@ import {
 	type TutorialStage,
 } from "@shared/tutorial";
 import * as THREE from "three";
-import { keyLabel } from "../../../config/controls";
+import {
+	activeBindings,
+	confirmCode,
+	keyLabel,
+	padActive,
+} from "../../../config/controls";
 import { currentMessages } from "../../../i18n";
 import type { ActionId } from "../../../types/settings";
 import { playUiClick } from "../../audio/uiSounds";
@@ -504,7 +509,7 @@ export class TutorialController {
 	}
 
 	private advance(context: TutorialFrame, { done }: Evaluation): void {
-		const skip = this.skip;
+		const skip = this.skip || context.frame.confirm;
 		this.skip = false;
 		if (this.step === "fork") {
 			if (skip) {
@@ -618,7 +623,7 @@ export class TutorialController {
 		const labels = currentMessages().game.tutorial.checks;
 		const { frame, feet, dt, inventory } = context;
 		const memo = this.memo;
-		const keys = settingsStore.get().keys;
+		const keys = activeBindings();
 		const label = (action: ActionId) => keyLabel(keys[action]);
 		const all = (checks: TutorialCheck[]): Evaluation => ({
 			checks,
@@ -1038,7 +1043,7 @@ export class TutorialController {
 	}
 
 	private text(): { title: string; body: string } {
-		const keys = settingsStore.get().keys;
+		const keys = activeBindings();
 		const label = (action: ActionId) => keyLabel(keys[action]);
 		const steps = currentMessages().game.tutorial.steps;
 		switch (this.step) {
@@ -1105,12 +1110,12 @@ export class TutorialController {
 
 	private choices(): TutorialChoice[] {
 		const labels = currentMessages().game.tutorial.choices;
-		const enter = keyLabel("Enter");
+		const enter = keyLabel(confirmCode());
 		if (this.step === "fork") {
 			return [
 				{ key: enter, label: labels.quit },
 				{
-					key: keyLabel(settingsStore.get().keys.interact),
+					key: keyLabel(activeBindings().interact),
 					label: labels.more,
 				},
 			];
@@ -1164,7 +1169,7 @@ export class TutorialController {
 				) * 5;
 		}
 		const choices = this.choices();
-		const key = `${this.index}:${arrow}:${distance}:${this.finished}:${settingsStore.get().language}:${checks.map((check) => `${check.label}${check.ok}`).join()}`;
+		const key = `${this.index}:${arrow}:${distance}:${this.finished}:${settingsStore.get().language}:${padActive()}:${checks.map((check) => `${check.label}${check.ok}`).join()}`;
 		if (key === this.lastPublished) {
 			return;
 		}
@@ -1179,7 +1184,7 @@ export class TutorialController {
 				choices,
 				arrow,
 				distance,
-				hint: choices.length > 0 ? "" : messages.skip(keyLabel("Enter")),
+				hint: choices.length > 0 ? "" : messages.skip(keyLabel(confirmCode())),
 				finished: this.finished,
 			},
 		});

@@ -44,6 +44,7 @@ export function Modal({
 	return (
 		<div
 			className={styles.backdrop}
+			data-pad-scope=""
 			onPointerDown={(event) =>
 				dismissible && event.target === event.currentTarget && onClose()
 			}

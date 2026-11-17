@@ -11,7 +11,7 @@ import styles from "./HudParts.module.scss";
 export function PauseOverlay({ session }: { session: GameSession }) {
 	const t = useT();
 	return (
-		<div className={styles.pause}>
+		<div className={styles.pause} data-pad-scope="">
 			<SelectorGroup className={styles.pausePanel}>
 				<h2>{t.game.pause.title}</h2>
 				<p>{t.game.pause.text}</p>

@@ -5,7 +5,11 @@ import {
 	isLanternTint,
 	isTagline,
 } from "@shared/rewards";
-import { DEFAULT_KEYS } from "../../config/defaultKeys";
+import {
+	DEFAULT_KEYS,
+	DEFAULT_PAD_KEYS,
+	PAD_MOVEMENT_ACTIONS,
+} from "../../config/defaultKeys";
 import {
 	browserLanguage,
 	isLanguage,
@@ -24,6 +28,7 @@ import {
 } from "../../types/settings";
 import { readJson, writeJson } from "../../utils/storage";
 import { createStore } from "../../utils/store";
+import { isBindablePadCode } from "../gamepad/gamepad";
 
 const STORAGE_KEY = "mycelium.settings.v1";
 const DEFAULT_FOV = 86;
@@ -112,7 +117,10 @@ export function defaultSettings(
 		playerLantern: DEFAULT_LANTERN_TINT,
 		playerTagline: null,
 		keys: { ...DEFAULT_KEYS },
+		padKeys: { ...DEFAULT_PAD_KEYS },
 		mouseSensitivity: 1,
+		padSensitivity: 1,
+		padDeadzone: 0.15,
 		invertY: false,
 		fov: DEFAULT_FOV,
 		brightness: 1,
@@ -259,6 +267,31 @@ function sanitizeStats(raw: StoredSettings): StatsOverlaySettings {
 	};
 }
 
+export function sanitizePadKeys(
+	saved: Partial<Record<ActionId, unknown>> | undefined,
+): Record<ActionId, string> {
+	const padKeys = { ...DEFAULT_PAD_KEYS };
+	if (!saved || typeof saved !== "object") {
+		return padKeys;
+	}
+	const taken = new Set<string>();
+	for (const action of ACTION_IDS) {
+		const code = saved[action];
+		if (PAD_MOVEMENT_ACTIONS.has(action)) {
+			padKeys[action] = "";
+		} else if (
+			code === "" ||
+			(typeof code === "string" && isBindablePadCode(code))
+		) {
+			padKeys[action] = code !== "" && taken.has(code) ? "" : code;
+		}
+		if (padKeys[action] !== "") {
+			taken.add(padKeys[action]);
+		}
+	}
+	return padKeys;
+}
+
 function sanitize(raw: StoredSettings | null): PlayerSettings {
 	const base = defaultSettings(
 		isLanguage(raw?.language) ? raw.language : undefined,
@@ -298,12 +331,20 @@ function sanitize(raw: StoredSettings | null): PlayerSettings {
 			? raw.playerTagline
 			: base.playerTagline,
 		keys,
+		padKeys: sanitizePadKeys(raw.padKeys),
 		mouseSensitivity: clampNumber(
 			raw.mouseSensitivity,
 			0.2,
 			3,
 			base.mouseSensitivity,
 		),
+		padSensitivity: clampNumber(
+			raw.padSensitivity,
+			0.3,
+			3,
+			base.padSensitivity,
+		),
+		padDeadzone: clampNumber(raw.padDeadzone, 0.05, 0.4, base.padDeadzone),
 		invertY: typeof raw.invertY === "boolean" ? raw.invertY : base.invertY,
 		fov:
 			raw.fov === PREVIOUS_DEFAULT_FOV
@@ -376,7 +417,10 @@ export function applyStatsPreset(preset: StatsPreset): void {
 }
 
 export function resetControls(): void {
-	settingsStore.set({ keys: { ...DEFAULT_KEYS } });
+	settingsStore.set({
+		keys: { ...DEFAULT_KEYS },
+		padKeys: { ...DEFAULT_PAD_KEYS },
+	});
 }
 
 export function resetAllSettings(): void {
@@ -405,5 +449,20 @@ export function bindKey(action: ActionId, code: string): BindingChange {
 		keys[conflict] = previous;
 	}
 	settingsStore.set({ keys });
+	return { swappedWith: conflict };
+}
+
+export function bindPad(action: ActionId, code: string): BindingChange {
+	const padKeys = { ...settingsStore.get().padKeys };
+	const previous = padKeys[action];
+	const conflict =
+		ACTION_IDS.find(
+			(other) => other !== action && code !== "" && padKeys[other] === code,
+		) ?? null;
+	padKeys[action] = code;
+	if (conflict) {
+		padKeys[conflict] = previous;
+	}
+	settingsStore.set({ padKeys });
 	return { swappedWith: conflict };
 }
