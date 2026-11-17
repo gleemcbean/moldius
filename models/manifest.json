@@ -1,0 +1,5280 @@
+{
+	"generatedAt": "2026-11-17T14:10:38.312Z",
+	"totalModels": 243,
+	"models": [
+		{
+			"path": "furniture/occultAltar.glb",
+			"category": "furniture",
+			"bytes": 522544,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.1003,
+					-0.007,
+					-1.1003
+				],
+				"max": [
+					1.1003,
+					0.7231,
+					1.1003
+				]
+			}
+		},
+		{
+			"path": "furniture/stakeSanctuary.glb",
+			"category": "furniture",
+			"bytes": 481368,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.5001,
+					0,
+					-0.3501
+				],
+				"max": [
+					0.5001,
+					0.946,
+					0.3501
+				]
+			}
+		},
+		{
+			"path": "furniture/stakeReliquary.glb",
+			"category": "furniture",
+			"bytes": 649532,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.4751,
+					0,
+					-0.3751
+				],
+				"max": [
+					0.4751,
+					0.8801,
+					0.3751
+				]
+			}
+		},
+		{
+			"path": "furniture/stakePact.glb",
+			"category": "furniture",
+			"bytes": 482216,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.4751,
+					0,
+					-0.3751
+				],
+				"max": [
+					0.4751,
+					1.1587,
+					0.3751
+				]
+			}
+		},
+		{
+			"path": "furniture/wardrobe.glb",
+			"category": "furniture",
+			"bytes": 573588,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.7003,
+					-0.001,
+					-0.3852
+				],
+				"max": [
+					0.7003,
+					2.15,
+					0.6195
+				]
+			}
+		},
+		{
+			"path": "furniture/lockers.glb",
+			"category": "furniture",
+			"bytes": 475800,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.7504,
+					-0.001,
+					-0.3003
+				],
+				"max": [
+					0.7504,
+					2.001,
+					0.571
+				]
+			}
+		},
+		{
+			"path": "furniture/confessional.glb",
+			"category": "furniture",
+			"bytes": 308316,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.7102,
+					-0.001,
+					-0.5251
+				],
+				"max": [
+					0.7102,
+					2.25,
+					0.5251
+				]
+			}
+		},
+		{
+			"path": "furniture/bookcase.glb",
+			"category": "furniture",
+			"bytes": 129168,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.6258,
+					-0.0012,
+					-0.2303
+				],
+				"max": [
+					0.6258,
+					2.34,
+					0.2303
+				]
+			}
+		},
+		{
+			"path": "furniture/bookcase_v3.glb",
+			"category": "furniture",
+			"bytes": 143496,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-1.1261,
+					-0.0013,
+					-0.2452
+				],
+				"max": [
+					1.1261,
+					2.64,
+					0.2452
+				]
+			}
+		},
+		{
+			"path": "furniture/shelf.glb",
+			"category": "furniture",
+			"bytes": 224388,
+			"dynamicMaterials": [
+				"dyn_color_tint",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_color_tint",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.6,
+					-0.0005,
+					-0.1902
+				],
+				"max": [
+					0.6,
+					1.9551,
+					0.1902
+				]
+			}
+		},
+		{
+			"path": "furniture/potionShelf.glb",
+			"category": "furniture",
+			"bytes": 330564,
+			"dynamicMaterials": [
+				"dyn_color_tint",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_color_tint",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.7,
+					-0.0005,
+					-0.2002
+				],
+				"max": [
+					0.7,
+					2.0551,
+					0.2002
+				]
+			}
+		},
+		{
+			"path": "furniture/cabinet.glb",
+			"category": "furniture",
+			"bytes": 177868,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.8254,
+					-0.0001,
+					-0.2751
+				],
+				"max": [
+					0.8254,
+					0.95,
+					0.2869
+				]
+			}
+		},
+		{
+			"path": "furniture/dresser.glb",
+			"category": "furniture",
+			"bytes": 195796,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.5703,
+					0.0599,
+					-0.2601
+				],
+				"max": [
+					0.5703,
+					0.8501,
+					0.2789
+				]
+			}
+		},
+		{
+			"path": "furniture/nightstand.glb",
+			"category": "furniture",
+			"bytes": 195796,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2701,
+					0.0599,
+					-0.2201
+				],
+				"max": [
+					0.2701,
+					0.6001,
+					0.2389
+				]
+			}
+		},
+		{
+			"path": "furniture/fileCabinet.glb",
+			"category": "furniture",
+			"bytes": 314044,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3001,
+					-0.0002,
+					-0.3101
+				],
+				"max": [
+					0.3001,
+					1.3502,
+					0.332
+				]
+			}
+		},
+		{
+			"path": "furniture/fileCabinet_v1.glb",
+			"category": "furniture",
+			"bytes": 405540,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4501,
+					-0.0002,
+					-0.3101
+				],
+				"max": [
+					0.4501,
+					1.3002,
+					0.332
+				]
+			}
+		},
+		{
+			"path": "furniture/chest.glb",
+			"category": "furniture",
+			"bytes": 369720,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4752,
+					-0.0002,
+					-0.2813
+				],
+				"max": [
+					0.4752,
+					0.55,
+					0.291
+				]
+			}
+		},
+		{
+			"path": "furniture/fireplace.glb",
+			"category": "furniture",
+			"bytes": 2923404,
+			"dynamicMaterials": [
+				"dyn_stone_variant"
+			],
+			"pivots": [
+				"dyn_stone_variant"
+			],
+			"bbox": {
+				"min": [
+					-1.0505,
+					-0.0004,
+					-0.3203
+				],
+				"max": [
+					1.0505,
+					3.7003,
+					0.7251
+				]
+			}
+		},
+		{
+			"path": "furniture/bed.glb",
+			"category": "furniture",
+			"bytes": 76144,
+			"dynamicMaterials": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.5457,
+					-0.0006,
+					-1.0251
+				],
+				"max": [
+					0.5457,
+					0.9506,
+					1.028
+				]
+			}
+		},
+		{
+			"path": "furniture/kitchenCounter.glb",
+			"category": "furniture",
+			"bytes": 518912,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.9105,
+					-0.0001,
+					-0.3352
+				],
+				"max": [
+					0.9105,
+					0.92,
+					0.3352
+				]
+			}
+		},
+		{
+			"path": "furniture/stove.glb",
+			"category": "furniture",
+			"bytes": 766640,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.6805,
+					-0.0061,
+					-0.3953
+				],
+				"max": [
+					0.6805,
+					3.7012,
+					0.4606
+				]
+			}
+		},
+		{
+			"path": "furniture/sink.glb",
+			"category": "furniture",
+			"bytes": 248196,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.4002,
+					-0.0001,
+					-0.2751
+				],
+				"max": [
+					0.4002,
+					1.1329,
+					0.2751
+				]
+			}
+		},
+		{
+			"path": "furniture/toilet.glb",
+			"category": "furniture",
+			"bytes": 452852,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2502,
+					-0.0001,
+					-0.3751
+				],
+				"max": [
+					0.2502,
+					1.7505,
+					0.2901
+				]
+			}
+		},
+		{
+			"path": "furniture/bathtub.glb",
+			"category": "furniture",
+			"bytes": 287620,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.8761,
+					0.0049,
+					-0.4104
+				],
+				"max": [
+					0.8761,
+					0.8844,
+					0.4104
+				]
+			}
+		},
+		{
+			"path": "furniture/uprightPiano.glb",
+			"category": "furniture",
+			"bytes": 122580,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.7871,
+					-0.0004,
+					-0.3102
+				],
+				"max": [
+					0.7871,
+					1.53,
+					0.3102
+				]
+			}
+		},
+		{
+			"path": "furniture/workbench.glb",
+			"category": "furniture",
+			"bytes": 317724,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-1.0002,
+					-0.0005,
+					-0.4001
+				],
+				"max": [
+					1.0002,
+					1.04,
+					0.4001
+				]
+			}
+		},
+		{
+			"path": "furniture/toolRack.glb",
+			"category": "furniture",
+			"bytes": 347372,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.7002,
+					-0.0007,
+					-0.1
+				],
+				"max": [
+					0.7002,
+					1.9007,
+					-0.015
+				]
+			}
+		},
+		{
+			"path": "furniture/wineRack.glb",
+			"category": "furniture",
+			"bytes": 383972,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.8,
+					-0.0005,
+					-0.2253
+				],
+				"max": [
+					0.8,
+					1.9505,
+					0.2253
+				]
+			}
+		},
+		{
+			"path": "furniture/valveStation.glb",
+			"category": "furniture",
+			"bytes": 503748,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.6701,
+					-0.0005,
+					-0.2401
+				],
+				"max": [
+					0.6689,
+					3.7005,
+					0.8504
+				]
+			}
+		},
+		{
+			"path": "furniture/grandfatherClock.glb",
+			"category": "furniture",
+			"bytes": 261816,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"anim_swing_0",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2752,
+					0,
+					-0.1901
+				],
+				"max": [
+					0.2752,
+					2.1002,
+					0.207
+				]
+			}
+		},
+		{
+			"path": "furniture/pottingTable.glb",
+			"category": "furniture",
+			"bytes": 396132,
+			"dynamicMaterials": [
+				"dyn_color_tint",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_color_tint",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.8002,
+					-0.0005,
+					-0.3501
+				],
+				"max": [
+					0.8002,
+					1.1403,
+					0.3501
+				]
+			}
+		},
+		{
+			"path": "furniture/table.glb",
+			"category": "furniture",
+			"bytes": 40380,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.7002,
+					-0.0005,
+					-0.4251
+				],
+				"max": [
+					0.7002,
+					0.78,
+					0.4251
+				]
+			}
+		},
+		{
+			"path": "furniture/table_round.glb",
+			"category": "furniture",
+			"bytes": 12968,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4501,
+					-0.0002,
+					-0.4501
+				],
+				"max": [
+					0.4501,
+					0.75,
+					0.4501
+				]
+			}
+		},
+		{
+			"path": "furniture/table_v3.glb",
+			"category": "furniture",
+			"bytes": 40384,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-1.6004,
+					-0.0005,
+					-0.5501
+				],
+				"max": [
+					1.6004,
+					0.78,
+					0.5501
+				]
+			}
+		},
+		{
+			"path": "furniture/desk.glb",
+			"category": "furniture",
+			"bytes": 595536,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.7502,
+					-0.0004,
+					-0.3969
+				],
+				"max": [
+					0.7502,
+					0.786,
+					0.3901
+				]
+			}
+		},
+		{
+			"path": "furniture/chair.glb",
+			"category": "furniture",
+			"bytes": 54892,
+			"dynamicMaterials": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2401,
+					-0.0002,
+					-0.2434
+				],
+				"max": [
+					0.2401,
+					0.9702,
+					0.2701
+				]
+			}
+		},
+		{
+			"path": "furniture/armchair.glb",
+			"category": "furniture",
+			"bytes": 76908,
+			"dynamicMaterials": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4453,
+					-0.0001,
+					-0.4451
+				],
+				"max": [
+					0.4453,
+					1.0502,
+					0.4104
+				]
+			}
+		},
+		{
+			"path": "furniture/armchair_v1.glb",
+			"category": "furniture",
+			"bytes": 76908,
+			"dynamicMaterials": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4704,
+					-0.0001,
+					-0.4451
+				],
+				"max": [
+					0.4704,
+					1.1502,
+					0.4104
+				]
+			}
+		},
+		{
+			"path": "furniture/sofa.glb",
+			"category": "furniture",
+			"bytes": 98944,
+			"dynamicMaterials": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-1.0001,
+					-0.0001,
+					-0.4501
+				],
+				"max": [
+					1,
+					0.9503,
+					0.4404
+				]
+			}
+		},
+		{
+			"path": "furniture/bench.glb",
+			"category": "furniture",
+			"bytes": 45888,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.7502,
+					-0.0001,
+					-0.2101
+				],
+				"max": [
+					0.7502,
+					0.46,
+					0.2101
+				]
+			}
+		},
+		{
+			"path": "furniture/pew.glb",
+			"category": "furniture",
+			"bytes": 169868,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.301,
+					-0.0006,
+					-0.33
+				],
+				"max": [
+					1.301,
+					0.9506,
+					0.3004
+				]
+			}
+		},
+		{
+			"path": "furniture/cauldron.glb",
+			"category": "furniture",
+			"bytes": 289008,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.5001,
+					-0.0001,
+					-0.5001
+				],
+				"max": [
+					0.5001,
+					0.8501,
+					0.5001
+				]
+			}
+		},
+		{
+			"path": "furniture/crate.glb",
+			"category": "furniture",
+			"bytes": 45904,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3062,
+					-0.0001,
+					-0.3062
+				],
+				"max": [
+					0.3062,
+					0.6001,
+					0.3135
+				]
+			}
+		},
+		{
+			"path": "furniture/crate_v2.glb",
+			"category": "furniture",
+			"bytes": 45908,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4563,
+					-0.0001,
+					-0.3062
+				],
+				"max": [
+					0.4563,
+					0.5501,
+					0.3135
+				]
+			}
+		},
+		{
+			"path": "furniture/barrel.glb",
+			"category": "furniture",
+			"bytes": 398496,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.366,
+					-0.0001,
+					-0.366
+				],
+				"max": [
+					0.366,
+					0.9501,
+					0.366
+				]
+			}
+		},
+		{
+			"path": "furniture/pottedPlant.glb",
+			"category": "furniture",
+			"bytes": 422596,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.5411,
+					0,
+					-0.4204
+				],
+				"max": [
+					0.3673,
+					0.8557,
+					0.4324
+				]
+			}
+		},
+		{
+			"path": "furniture/palmTree.glb",
+			"category": "furniture",
+			"bytes": 398404,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-1.3645,
+					-0.0001,
+					-1.4472
+				],
+				"max": [
+					1.6265,
+					2.5979,
+					2.0004
+				]
+			}
+		},
+		{
+			"path": "furniture/ivyWall.glb",
+			"category": "furniture",
+			"bytes": 38608,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.8566,
+					-0.2957,
+					0.0057
+				],
+				"max": [
+					0.8132,
+					2.2019,
+					0.1657
+				]
+			}
+		},
+		{
+			"path": "furniture/railVine.glb",
+			"category": "furniture",
+			"bytes": 54712,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.8833,
+					-1.8212,
+					0.014
+				],
+				"max": [
+					0.9824,
+					1.0268,
+					0.2651
+				]
+			}
+		},
+		{
+			"path": "furniture/climbingVine.glb",
+			"category": "furniture",
+			"bytes": 37104,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.3635,
+					-0.0586,
+					-0.3205
+				],
+				"max": [
+					0.3651,
+					3.1424,
+					0.3411
+				]
+			}
+		},
+		{
+			"path": "furniture/hangingFern.glb",
+			"category": "furniture",
+			"bytes": 140380,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"anim_swing_0",
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.9935,
+					-0.6874,
+					-0.7318
+				],
+				"max": [
+					0.8256,
+					1.6015,
+					1.1301
+				]
+			}
+		},
+		{
+			"path": "furniture/planterBed.glb",
+			"category": "furniture",
+			"bytes": 1148852,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-1.1003,
+					-0.0001,
+					-0.4501
+				],
+				"max": [
+					1.1003,
+					0.9128,
+					0.4501
+				]
+			}
+		},
+		{
+			"path": "furniture/floorLamp.glb",
+			"category": "furniture",
+			"bytes": 108308,
+			"dynamicMaterials": [
+				"dyn_velvet_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.1971,
+					0,
+					-0.2001
+				],
+				"max": [
+					0.1971,
+					1.6501,
+					0.2001
+				]
+			}
+		},
+		{
+			"path": "furniture/candelabra.glb",
+			"category": "furniture",
+			"bytes": 194976,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.195,
+					-0.0002,
+					-0.2
+				],
+				"max": [
+					0.2068,
+					1.5401,
+					0.2
+				]
+			}
+		},
+		{
+			"path": "furniture/pillar.glb",
+			"category": "furniture",
+			"bytes": 241912,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.3002,
+					0,
+					-0.3002
+				],
+				"max": [
+					0.3002,
+					1.0001,
+					0.3002
+				]
+			}
+		},
+		{
+			"path": "furniture/globe.glb",
+			"category": "furniture",
+			"bytes": 127176,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"anim_spin_0",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2821,
+					-0.0001,
+					-0.2401
+				],
+				"max": [
+					0.2822,
+					1.0592,
+					0.2401
+				]
+			}
+		},
+		{
+			"path": "furniture/harp.glb",
+			"category": "furniture",
+			"bytes": 306108,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1401,
+					0,
+					-0.4802
+				],
+				"max": [
+					0.1401,
+					1.747,
+					0.4528
+				]
+			}
+		},
+		{
+			"path": "furniture/cello.glb",
+			"category": "furniture",
+			"bytes": 961160,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.3183,
+					0,
+					-0.0864
+				],
+				"max": [
+					0.3183,
+					1.8396,
+					0.1294
+				]
+			}
+		},
+		{
+			"path": "furniture/musicStand.glb",
+			"category": "furniture",
+			"bytes": 242496,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2252,
+					-0.0003,
+					-0.09
+				],
+				"max": [
+					0.2252,
+					1.3521,
+					0.18
+				]
+			}
+		},
+		{
+			"path": "furniture/grandPiano.glb",
+			"category": "furniture",
+			"bytes": 63448,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.7652,
+					-0.0004,
+					-1.0153
+				],
+				"max": [
+					0.7652,
+					1.6726,
+					1.205
+				]
+			}
+		},
+		{
+			"path": "furniture/dais.glb",
+			"category": "furniture",
+			"bytes": 387080,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-2.5113,
+					0,
+					-2.011
+				],
+				"max": [
+					2.5113,
+					0.5401,
+					2.011
+				]
+			}
+		},
+		{
+			"path": "furniture/estrade.glb",
+			"category": "furniture",
+			"bytes": 947596,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.2206,
+					0,
+					-0.9205
+				],
+				"max": [
+					1.2206,
+					0.31,
+					0.9205
+				]
+			}
+		},
+		{
+			"path": "furniture/estrade_v2.glb",
+			"category": "furniture",
+			"bytes": 947564,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.0205,
+					0,
+					-1.0205
+				],
+				"max": [
+					1.0205,
+					0.23,
+					1.0205
+				]
+			}
+		},
+		{
+			"path": "furniture/altar.glb",
+			"category": "furniture",
+			"bytes": 29060,
+			"dynamicMaterials": [
+				"dyn_stone_variant"
+			],
+			"pivots": [
+				"dyn_stone_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.8404,
+					-0.0001,
+					-0.4353
+				],
+				"max": [
+					0.8404,
+					1.005,
+					0.4353
+				]
+			}
+		},
+		{
+			"path": "furniture/lectern.glb",
+			"category": "furniture",
+			"bytes": 32680,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3002,
+					0,
+					-0.2316
+				],
+				"max": [
+					0.3002,
+					1.3145,
+					0.2316
+				]
+			}
+		},
+		{
+			"path": "furniture/alchemyTable.glb",
+			"category": "furniture",
+			"bytes": 483472,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.9002,
+					-0.0005,
+					-0.4501
+				],
+				"max": [
+					0.9002,
+					1.3003,
+					0.4501
+				]
+			}
+		},
+		{
+			"path": "furniture/anvil.glb",
+			"category": "furniture",
+			"bytes": 841592,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.3558,
+					-0.0001,
+					-0.2401
+				],
+				"max": [
+					0.3303,
+					0.835,
+					0.2401
+				]
+			}
+		},
+		{
+			"path": "furniture/rug.glb",
+			"category": "furniture",
+			"bytes": 1936,
+			"dynamicMaterials": [
+				"dyn_rug_variant"
+			],
+			"pivots": [
+				"dyn_rug_variant"
+			],
+			"bbox": {
+				"min": [
+					-1.5004,
+					0.012,
+					-1.0002
+				],
+				"max": [
+					1.5004,
+					0.012,
+					1.0002
+				]
+			}
+		},
+		{
+			"path": "furniture/rug_v2.glb",
+			"category": "furniture",
+			"bytes": 13044,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.1003,
+					0.012,
+					-1.1003
+				],
+				"max": [
+					1.1003,
+					0.012,
+					1.1003
+				]
+			}
+		},
+		{
+			"path": "furniture/rug_v3.glb",
+			"category": "furniture",
+			"bytes": 13684,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.5001,
+					0.012,
+					-1.8004
+				],
+				"max": [
+					0.5001,
+					0.012,
+					1.8004
+				]
+			}
+		},
+		{
+			"path": "furniture/ritualCircle.glb",
+			"category": "furniture",
+			"bytes": 3716,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-2.0005,
+					0.015,
+					-2.0005
+				],
+				"max": [
+					2.0005,
+					0.015,
+					2.0005
+				]
+			}
+		},
+		{
+			"path": "furniture/broom.glb",
+			"category": "furniture",
+			"bytes": 136676,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1332,
+					-0.0001,
+					-0.1201
+				],
+				"max": [
+					0.1332,
+					1.4515,
+					0.1601
+				]
+			}
+		},
+		{
+			"path": "furniture/bucket.glb",
+			"category": "furniture",
+			"bytes": 384056,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1707,
+					0,
+					-0.175
+				],
+				"max": [
+					0.1707,
+					0.461,
+					0.175
+				]
+			}
+		},
+		{
+			"path": "furniture/floorBall.glb",
+			"category": "furniture",
+			"bytes": 8560,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.15,
+					0,
+					-0.1463
+				],
+				"max": [
+					0.15,
+					0.3,
+					0.1463
+				]
+			}
+		},
+		{
+			"path": "furniture/smallBox.glb",
+			"category": "furniture",
+			"bytes": 12920,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2004,
+					0,
+					-0.1506
+				],
+				"max": [
+					0.2004,
+					0.25,
+					0.1506
+				]
+			}
+		},
+		{
+			"path": "furniture/smallBox_v1.glb",
+			"category": "furniture",
+			"bytes": 12924,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.1504,
+					0,
+					-0.1504
+				],
+				"max": [
+					0.1504,
+					0.3,
+					0.1504
+				]
+			}
+		},
+		{
+			"path": "furniture/smallBox_v2.glb",
+			"category": "furniture",
+			"bytes": 12908,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2505,
+					0,
+					-0.1757
+				],
+				"max": [
+					0.2505,
+					0.2,
+					0.1757
+				]
+			}
+		},
+		{
+			"path": "furniture/bookPile.glb",
+			"category": "furniture",
+			"bytes": 89928,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.2141,
+					0,
+					-0.1981
+				],
+				"max": [
+					0.2141,
+					0.4942,
+					0.1981
+				]
+			}
+		},
+		{
+			"path": "furniture/vialCluster.glb",
+			"category": "furniture",
+			"bytes": 148240,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.211,
+					-0.0001,
+					-0.1601
+				],
+				"max": [
+					0.0726,
+					0.2177,
+					0.0938
+				]
+			}
+		},
+		{
+			"path": "furniture/floorCandles.glb",
+			"category": "furniture",
+			"bytes": 104800,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1062,
+					-0.0001,
+					-0.1528
+				],
+				"max": [
+					0.1472,
+					0.327,
+					0.1546
+				]
+			}
+		},
+		{
+			"path": "furniture/candle.glb",
+			"category": "furniture",
+			"bytes": 146316,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.0476,
+					0,
+					-0.05
+				],
+				"max": [
+					0.0476,
+					0.2451,
+					0.05
+				]
+			}
+		},
+		{
+			"path": "furniture/candle_v1.glb",
+			"category": "furniture",
+			"bytes": 174560,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.145,
+					0,
+					-0.06
+				],
+				"max": [
+					0.145,
+					0.45,
+					0.06
+				]
+			}
+		},
+		{
+			"path": "furniture/books.glb",
+			"category": "furniture",
+			"bytes": 56804,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.175,
+					-0.0001,
+					-0.1064
+				],
+				"max": [
+					0.1417,
+					0.2481,
+					0.1064
+				]
+			}
+		},
+		{
+			"path": "furniture/books_v1.glb",
+			"category": "furniture",
+			"bytes": 89856,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.25,
+					-0.0001,
+					-0.1064
+				],
+				"max": [
+					0.2209,
+					0.2183,
+					0.1064
+				]
+			}
+		},
+		{
+			"path": "furniture/openBook.glb",
+			"category": "furniture",
+			"bytes": 373496,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2101,
+					0,
+					-0.15
+				],
+				"max": [
+					0.2101,
+					0.048,
+					0.15
+				]
+			}
+		},
+		{
+			"path": "furniture/potions.glb",
+			"category": "furniture",
+			"bytes": 157172,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.1751,
+					-0.0001,
+					-0.0693
+				],
+				"max": [
+					0.1842,
+					0.1674,
+					0.0411
+				]
+			}
+		},
+		{
+			"path": "furniture/jar.glb",
+			"category": "furniture",
+			"bytes": 16360,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.0801,
+					0,
+					-0.0801
+				],
+				"max": [
+					0.0801,
+					0.27,
+					0.0801
+				]
+			}
+		},
+		{
+			"path": "furniture/plateSet.glb",
+			"category": "furniture",
+			"bytes": 219816,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1595,
+					-0.0001,
+					-0.13
+				],
+				"max": [
+					0.168,
+					0.1201,
+					0.12
+				]
+			}
+		},
+		{
+			"path": "furniture/skull.glb",
+			"category": "furniture",
+			"bytes": 151240,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.0701,
+					-0.0058,
+					-0.102
+				],
+				"max": [
+					0.0701,
+					0.157,
+					0.0878
+				]
+			}
+		},
+		{
+			"path": "furniture/vase.glb",
+			"category": "furniture",
+			"bytes": 27912,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.1007,
+					0,
+					-0.1117
+				],
+				"max": [
+					0.115,
+					0.528,
+					0.111
+				]
+			}
+		},
+		{
+			"path": "furniture/inkwell.glb",
+			"category": "furniture",
+			"bytes": 7972,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.0476,
+					0,
+					-0.05
+				],
+				"max": [
+					0.0578,
+					0.229,
+					0.05
+				]
+			}
+		},
+		{
+			"path": "furniture/alembic.glb",
+			"category": "furniture",
+			"bytes": 252500,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2025,
+					-0.0001,
+					-0.0878
+				],
+				"max": [
+					0.1916,
+					0.329,
+					0.0878
+				]
+			}
+		},
+		{
+			"path": "furniture/painting.glb",
+			"category": "furniture",
+			"bytes": 127368,
+			"dynamicMaterials": [
+				"dyn_painting_variant"
+			],
+			"pivots": [
+				"dyn_painting_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3501,
+					-0.0501,
+					0
+				],
+				"max": [
+					0.3501,
+					0.8501,
+					0.052
+				]
+			}
+		},
+		{
+			"path": "furniture/painting_v1.glb",
+			"category": "furniture",
+			"bytes": 127372,
+			"dynamicMaterials": [
+				"dyn_painting_variant"
+			],
+			"pivots": [
+				"dyn_painting_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.6502,
+					-0.0501,
+					0
+				],
+				"max": [
+					0.6502,
+					0.8501,
+					0.052
+				]
+			}
+		},
+		{
+			"path": "furniture/mirror.glb",
+			"category": "furniture",
+			"bytes": 101324,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.3501,
+					-0.0501,
+					0
+				],
+				"max": [
+					0.3501,
+					1.0501,
+					0.042
+				]
+			}
+		},
+		{
+			"path": "furniture/mirror_v1.glb",
+			"category": "furniture",
+			"bytes": 101332,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.4001,
+					-0.0501,
+					0
+				],
+				"max": [
+					0.4001,
+					0.7501,
+					0.042
+				]
+			}
+		},
+		{
+			"path": "furniture/mirror_v2.glb",
+			"category": "furniture",
+			"bytes": 101312,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.3001,
+					-0.0502,
+					0
+				],
+				"max": [
+					0.3001,
+					1.4502,
+					0.042
+				]
+			}
+		},
+		{
+			"path": "furniture/window.glb",
+			"category": "furniture",
+			"bytes": 332432,
+			"dynamicMaterials": [
+				"dyn_velvet_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.8509,
+					-0.06,
+					-0.0201
+				],
+				"max": [
+					0.8509,
+					2.2171,
+					0.1801
+				]
+			}
+		},
+		{
+			"path": "furniture/window_v2.glb",
+			"category": "furniture",
+			"bytes": 183968,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.6008,
+					-0.06,
+					-0.0201
+				],
+				"max": [
+					0.6008,
+					1.035,
+					0.1801
+				]
+			}
+		},
+		{
+			"path": "furniture/window_v4.glb",
+			"category": "furniture",
+			"bytes": 211024,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.4506,
+					-0.06,
+					-0.0201
+				],
+				"max": [
+					0.4506,
+					2.335,
+					0.1801
+				]
+			}
+		},
+		{
+			"path": "furniture/electricMeter.glb",
+			"category": "furniture",
+			"bytes": 613448,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2651,
+					-0.0401,
+					0
+				],
+				"max": [
+					0.2651,
+					3.7016,
+					0.2701
+				]
+			}
+		},
+		{
+			"path": "furniture/pipeRun.glb",
+			"category": "furniture",
+			"bytes": 376856,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.1863,
+					0.1019,
+					-0.0001
+				],
+				"max": [
+					1.1863,
+					3.7022,
+					0.2401
+				]
+			}
+		},
+		{
+			"path": "furniture/pipeRun_v1.glb",
+			"category": "furniture",
+			"bytes": 348536,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.495,
+					-0.018,
+					0.0249
+				],
+				"max": [
+					0.4951,
+					3.7014,
+					0.26
+				]
+			}
+		},
+		{
+			"path": "furniture/pipeRun_v2.glb",
+			"category": "furniture",
+			"bytes": 422520,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.5518,
+					0.0422,
+					-0.0001
+				],
+				"max": [
+					1.5518,
+					3.7023,
+					0.1808
+				]
+			}
+		},
+		{
+			"path": "furniture/sconce.glb",
+			"category": "furniture",
+			"bytes": 159544,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.05,
+					0.02,
+					0
+				],
+				"max": [
+					0.05,
+					0.37,
+					0.2
+				]
+			}
+		},
+		{
+			"path": "furniture/tapestry.glb",
+			"category": "furniture",
+			"bytes": 97892,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.6803,
+					-0.0002,
+					0.024
+				],
+				"max": [
+					0.6803,
+					1.8352,
+					0.056
+				]
+			}
+		},
+		{
+			"path": "furniture/wallShelf.glb",
+			"category": "furniture",
+			"bytes": 401904,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4501,
+					0.0089,
+					0
+				],
+				"max": [
+					0.4501,
+					0.3676,
+					0.25
+				]
+			}
+		},
+		{
+			"path": "furniture/hangingHerbs.glb",
+			"category": "furniture",
+			"bytes": 244124,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.5001,
+					0.1768,
+					0.0631
+				],
+				"max": [
+					0.5001,
+					0.619,
+					0.1781
+				]
+			}
+		},
+		{
+			"path": "furniture/chandelier.glb",
+			"category": "furniture",
+			"bytes": 486860,
+			"dynamicMaterials": [],
+			"pivots": [
+				"anim_swing_0"
+			],
+			"bbox": {
+				"min": [
+					-0.455,
+					0.0499,
+					-0.4402
+				],
+				"max": [
+					0.455,
+					0.9001,
+					0.4402
+				]
+			}
+		},
+		{
+			"path": "furniture/cobweb.glb",
+			"category": "furniture",
+			"bytes": 2792,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.4901,
+					-0.0001,
+					-0.0001
+				],
+				"max": [
+					0.4901,
+					0.7001,
+					0.4901
+				]
+			}
+		},
+		{
+			"path": "furniture/cobweb_v2.glb",
+			"category": "furniture",
+			"bytes": 2996,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2501,
+					-0.0005,
+					-0.2167
+				],
+				"max": [
+					0.2501,
+					1.2005,
+					0.2167
+				]
+			}
+		},
+		{
+			"path": "furniture/cellBars.glb",
+			"category": "furniture",
+			"bytes": 447336,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.1161,
+					0.012,
+					-0.712
+				],
+				"max": [
+					1.1161,
+					2.3715,
+					0.735
+				]
+			}
+		},
+		{
+			"path": "furniture/hangingChains.glb",
+			"category": "furniture",
+			"bytes": 352048,
+			"dynamicMaterials": [],
+			"pivots": [
+				"anim_swing_0"
+			],
+			"bbox": {
+				"min": [
+					-0.3691,
+					-0.0633,
+					-0.2694
+				],
+				"max": [
+					0.1387,
+					1.2,
+					0.1775
+				]
+			}
+		},
+		{
+			"path": "furniture/wallLantern.glb",
+			"category": "furniture",
+			"bytes": 322340,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1001,
+					0.12,
+					0
+				],
+				"max": [
+					0.1001,
+					0.4305,
+					0.2801
+				]
+			}
+		},
+		{
+			"path": "furniture/bloodStain.glb",
+			"category": "furniture",
+			"bytes": 1828,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.6002,
+					0.008,
+					-0.5001
+				],
+				"max": [
+					0.6002,
+					0.008,
+					0.5001
+				]
+			}
+		},
+		{
+			"path": "furniture/pond.glb",
+			"category": "furniture",
+			"bytes": 204012,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.8439,
+					-0.0046,
+					-1.2119
+				],
+				"max": [
+					1.8157,
+					0.195,
+					1.187
+				]
+			}
+		},
+		{
+			"path": "furniture/flowerPot.glb",
+			"category": "furniture",
+			"bytes": 469300,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.1556,
+					0,
+					-0.1452
+				],
+				"max": [
+					0.1628,
+					0.4735,
+					0.1452
+				]
+			}
+		},
+		{
+			"path": "furniture/armor.glb",
+			"category": "furniture",
+			"bytes": 763252,
+			"dynamicMaterials": [
+				"dyn_velvet_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3579,
+					0,
+					-0.2301
+				],
+				"max": [
+					0.3578,
+					2.0799,
+					0.2647
+				]
+			}
+		},
+		{
+			"path": "furniture/displayCase.glb",
+			"category": "furniture",
+			"bytes": 80448,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.6203,
+					-0.0001,
+					-0.2701
+				],
+				"max": [
+					0.6203,
+					1.95,
+					0.2701
+				]
+			}
+		},
+		{
+			"path": "furniture/boneShelf.glb",
+			"category": "furniture",
+			"bytes": 212072,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.7509,
+					-0.0007,
+					-0.2253
+				],
+				"max": [
+					0.7509,
+					2.0008,
+					0.2253
+				]
+			}
+		},
+		{
+			"path": "furniture/telescope.glb",
+			"category": "furniture",
+			"bytes": 222896,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.3287,
+					-0.0069,
+					-0.4471
+				],
+				"max": [
+					0.3287,
+					1.5183,
+					0.504
+				]
+			}
+		},
+		{
+			"path": "furniture/orrery.glb",
+			"category": "furniture",
+			"bytes": 143456,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"anim_spin_0",
+				"anim_spin_1",
+				"anim_spin_2",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3662,
+					-0.0001,
+					-0.3548
+				],
+				"max": [
+					0.4035,
+					0.9949,
+					0.3548
+				]
+			}
+		},
+		{
+			"path": "furniture/crib.glb",
+			"category": "furniture",
+			"bytes": 182160,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.385,
+					-0.0004,
+					-0.585
+				],
+				"max": [
+					0.385,
+					0.99,
+					0.585
+				]
+			}
+		},
+		{
+			"path": "furniture/rockingHorse.glb",
+			"category": "furniture",
+			"bytes": 461124,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"anim_swing_0",
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.18,
+					0.005,
+					-0.4641
+				],
+				"max": [
+					0.18,
+					0.912,
+					0.5263
+				]
+			}
+		},
+		{
+			"path": "furniture/dressForm.glb",
+			"category": "furniture",
+			"bytes": 132496,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2047,
+					-0.0108,
+					-0.2346
+				],
+				"max": [
+					0.2046,
+					1.66,
+					0.1802
+				]
+			}
+		},
+		{
+			"path": "furniture/sheetedFurniture.glb",
+			"category": "furniture",
+			"bytes": 62196,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.8911,
+					-0.0004,
+					-0.4906
+				],
+				"max": [
+					0.8911,
+					1.0002,
+					0.4906
+				]
+			}
+		},
+		{
+			"path": "furniture/sheetedFurniture_v1.glb",
+			"category": "furniture",
+			"bytes": 62216,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.5156,
+					-0.0004,
+					-0.4906
+				],
+				"max": [
+					0.5156,
+					1.1003,
+					0.4906
+				]
+			}
+		},
+		{
+			"path": "furniture/sheetedFurniture_v2.glb",
+			"category": "furniture",
+			"bytes": 29160,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.5903,
+					-0.0002,
+					-0.3652
+				],
+				"max": [
+					0.5903,
+					1.9002,
+					0.3652
+				]
+			}
+		},
+		{
+			"path": "furniture/dryingLine.glb",
+			"category": "furniture",
+			"bytes": 151220,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.13,
+					-0.0007,
+					-0.2002
+				],
+				"max": [
+					1.13,
+					1.9507,
+					0.2002
+				]
+			}
+		},
+		{
+			"path": "furniture/washtub.glb",
+			"category": "furniture",
+			"bytes": 523004,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.4092,
+					-0.0001,
+					-0.4092
+				],
+				"max": [
+					0.4092,
+					0.8123,
+					0.4092
+				]
+			}
+		},
+		{
+			"path": "furniture/laundryBasket.glb",
+			"category": "furniture",
+			"bytes": 47772,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2926,
+					0,
+					-0.3001
+				],
+				"max": [
+					0.2926,
+					0.4528,
+					0.3001
+				]
+			}
+		},
+		{
+			"path": "furniture/sarcophagus.glb",
+			"category": "furniture",
+			"bytes": 42944,
+			"dynamicMaterials": [
+				"dyn_stone_variant"
+			],
+			"pivots": [
+				"dyn_stone_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.5014,
+					0,
+					-1.0323
+				],
+				"max": [
+					0.5974,
+					0.953,
+					1.2251
+				]
+			}
+		},
+		{
+			"path": "furniture/birdcage.glb",
+			"category": "furniture",
+			"bytes": 224652,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2201,
+					0,
+					-0.2201
+				],
+				"max": [
+					0.2201,
+					1.6304,
+					0.2201
+				]
+			}
+		},
+		{
+			"path": "furniture/bellJar.glb",
+			"category": "furniture",
+			"bytes": 128068,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1073,
+					0,
+					-0.11
+				],
+				"max": [
+					0.1073,
+					0.3251,
+					0.11
+				]
+			}
+		},
+		{
+			"path": "furniture/doll.glb",
+			"category": "furniture",
+			"bytes": 113240,
+			"dynamicMaterials": [
+				"dyn_color_tint",
+				"dyn_velvet_variant"
+			],
+			"pivots": [
+				"dyn_color_tint",
+				"dyn_velvet_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.1,
+					0,
+					-0.0974
+				],
+				"max": [
+					0.0984,
+					0.3512,
+					0.149
+				]
+			}
+		},
+		{
+			"path": "furniture/trophyHead.glb",
+			"category": "furniture",
+			"bytes": 312316,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.251,
+					-0.0307,
+					-0.0576
+				],
+				"max": [
+					0.251,
+					0.8453,
+					0.4774
+				]
+			}
+		},
+		{
+			"path": "furniture/specimenFrame.glb",
+			"category": "furniture",
+			"bytes": 133240,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.3301,
+					-0.0301,
+					0
+				],
+				"max": [
+					0.3301,
+					0.4801,
+					0.058
+				]
+			}
+		},
+		{
+			"path": "furniture/starChart.glb",
+			"category": "furniture",
+			"bytes": 121356,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.5904,
+					-0.018,
+					0.002
+				],
+				"max": [
+					0.5904,
+					0.818,
+					0.038
+				]
+			}
+		},
+		{
+			"path": "furniture/starChart_v1.glb",
+			"category": "furniture",
+			"bytes": 121360,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.4403,
+					-0.018,
+					0.002
+				],
+				"max": [
+					0.4403,
+					1.118,
+					0.038
+				]
+			}
+		},
+		{
+			"path": "furniture/trunk.glb",
+			"category": "furniture",
+			"bytes": 461528,
+			"dynamicMaterials": [
+				"dyn_color_tint",
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_color_tint",
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.628,
+					0,
+					-0.3697
+				],
+				"max": [
+					0.628,
+					0.9328,
+					0.3717
+				]
+			}
+		},
+		{
+			"path": "furniture/curtainAlcove.glb",
+			"category": "furniture",
+			"bytes": 507428,
+			"dynamicMaterials": [
+				"dyn_velvet_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.6809,
+					-0.0013,
+					-0.2754
+				],
+				"max": [
+					0.6809,
+					2.4009,
+					0.3154
+				]
+			}
+		},
+		{
+			"path": "furniture/cask.glb",
+			"category": "furniture",
+			"bytes": 804864,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.6752,
+					-0.0002,
+					-0.8302
+				],
+				"max": [
+					0.6752,
+					1.4902,
+					1.0961
+				]
+			}
+		},
+		{
+			"path": "furniture/billiardTable.glb",
+			"category": "furniture",
+			"bytes": 251748,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-1.3016,
+					-0.0003,
+					-0.7251
+				],
+				"max": [
+					1.3016,
+					0.8601,
+					0.7251
+				]
+			}
+		},
+		{
+			"path": "furniture/chessTable.glb",
+			"category": "furniture",
+			"bytes": 331684,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4002,
+					-0.0001,
+					-0.4002
+				],
+				"max": [
+					0.4002,
+					0.831,
+					0.4002
+				]
+			}
+		},
+		{
+			"path": "furniture/gramophone.glb",
+			"category": "furniture",
+			"bytes": 252052,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"anim_spin_0",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2377,
+					0,
+					-0.2346
+				],
+				"max": [
+					0.3023,
+					1.3648,
+					0.3547
+				]
+			}
+		},
+		{
+			"path": "furniture/weaponRack.glb",
+			"category": "furniture",
+			"bytes": 830504,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.7304,
+					0,
+					-0.1501
+				],
+				"max": [
+					0.7304,
+					1.9101,
+					0.1501
+				]
+			}
+		},
+		{
+			"path": "furniture/shieldDisplay.glb",
+			"category": "furniture",
+			"bytes": 468308,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.445,
+					0.025,
+					0.005
+				],
+				"max": [
+					0.445,
+					0.9574,
+					0.14
+				]
+			}
+		},
+		{
+			"path": "furniture/statue.glb",
+			"category": "furniture",
+			"bytes": 247544,
+			"dynamicMaterials": [
+				"dyn_stone_variant"
+			],
+			"pivots": [
+				"dyn_stone_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4501,
+					0,
+					-0.4501
+				],
+				"max": [
+					0.4501,
+					2.6376,
+					0.4501
+				]
+			}
+		},
+		{
+			"path": "furniture/theaterSeats.glb",
+			"category": "furniture",
+			"bytes": 450652,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-1.24,
+					-0.0004,
+					-0.3789
+				],
+				"max": [
+					1.24,
+					1.1093,
+					0.2629
+				]
+			}
+		},
+		{
+			"path": "furniture/stageCurtain.glb",
+			"category": "furniture",
+			"bytes": 139072,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.5138,
+					-0.0019,
+					-0.17
+				],
+				"max": [
+					1.5138,
+					3.5501,
+					0.1701
+				]
+			}
+		},
+		{
+			"path": "furniture/spinningWheel.glb",
+			"category": "furniture",
+			"bytes": 51584,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"anim_spin_0",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.398,
+					-0.0028,
+					-0.1125
+				],
+				"max": [
+					0.4502,
+					0.9622,
+					0.1125
+				]
+			}
+		},
+		{
+			"path": "furniture/coatRack.glb",
+			"category": "furniture",
+			"bytes": 304104,
+			"dynamicMaterials": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3623,
+					-0.001,
+					-0.3194
+				],
+				"max": [
+					0.4179,
+					1.8652,
+					0.2173
+				]
+			}
+		},
+		{
+			"path": "furniture/barrelStack.glb",
+			"category": "furniture",
+			"bytes": 429796,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-1.0002,
+					0,
+					-0.427
+				],
+				"max": [
+					1.0002,
+					1.4789,
+					0.427
+				]
+			}
+		},
+		{
+			"path": "furniture/standingCoffin.glb",
+			"category": "furniture",
+			"bytes": 173164,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4066,
+					-0.0022,
+					-0.2753
+				],
+				"max": [
+					0.4002,
+					2.0532,
+					0.6631
+				]
+			}
+		},
+		{
+			"path": "furniture/umbrellaStand.glb",
+			"category": "furniture",
+			"bytes": 129148,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.13,
+					-0.0001,
+					-0.13
+				],
+				"max": [
+					0.1665,
+					0.918,
+					0.13
+				]
+			}
+		},
+		{
+			"path": "furniture/stool.glb",
+			"category": "furniture",
+			"bytes": 19184,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.19,
+					-0.0029,
+					-0.19
+				],
+				"max": [
+					0.19,
+					0.5,
+					0.19
+				]
+			}
+		},
+		{
+			"path": "furniture/stool_v1.glb",
+			"category": "furniture",
+			"bytes": 19192,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.17,
+					-0.0017,
+					-0.17
+				],
+				"max": [
+					0.17,
+					0.7,
+					0.17
+				]
+			}
+		},
+		{
+			"path": "furniture/sideTable.glb",
+			"category": "furniture",
+			"bytes": 12788,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3001,
+					-0.0056,
+					-0.3001
+				],
+				"max": [
+					0.3001,
+					0.72,
+					0.3001
+				]
+			}
+		},
+		{
+			"path": "furniture/screen.glb",
+			"category": "furniture",
+			"bytes": 135996,
+			"dynamicMaterials": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.691,
+					-0.0007,
+					-0.2226
+				],
+				"max": [
+					0.691,
+					1.7507,
+					0.0226
+				]
+			}
+		},
+		{
+			"path": "furniture/torchere.glb",
+			"category": "furniture",
+			"bytes": 297172,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.17,
+					-0.0002,
+					-0.17
+				],
+				"max": [
+					0.17,
+					1.68,
+					0.17
+				]
+			}
+		},
+		{
+			"path": "furniture/harpsichord.glb",
+			"category": "furniture",
+			"bytes": 35404,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.8002,
+					-0.0004,
+					-0.4251
+				],
+				"max": [
+					0.8004,
+					1.6093,
+					0.4251
+				]
+			}
+		},
+		{
+			"path": "furniture/chaiseLongue.glb",
+			"category": "furniture",
+			"bytes": 47972,
+			"dynamicMaterials": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.9002,
+					-0.0002,
+					-0.3601
+				],
+				"max": [
+					0.9002,
+					0.8501,
+					0.3601
+				]
+			}
+		},
+		{
+			"path": "furniture/rockingChair.glb",
+			"category": "furniture",
+			"bytes": 56156,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"anim_swing_0",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2891,
+					0,
+					-0.345
+				],
+				"max": [
+					0.2891,
+					1.103,
+					0.3051
+				]
+			}
+		},
+		{
+			"path": "furniture/ottoman.glb",
+			"category": "furniture",
+			"bytes": 230388,
+			"dynamicMaterials": [
+				"dyn_velvet_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2709,
+					0,
+					-0.2751
+				],
+				"max": [
+					0.2709,
+					0.47,
+					0.2751
+				]
+			}
+		},
+		{
+			"path": "furniture/timpani.glb",
+			"category": "furniture",
+			"bytes": 362040,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.3573,
+					-0.0082,
+					-0.3573
+				],
+				"max": [
+					0.3573,
+					0.815,
+					0.3573
+				]
+			}
+		},
+		{
+			"path": "furniture/easel.glb",
+			"category": "furniture",
+			"bytes": 20740,
+			"dynamicMaterials": [
+				"dyn_painting_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_painting_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3191,
+					-0.0039,
+					-0.3179
+				],
+				"max": [
+					0.3191,
+					1.7539,
+					0.142
+				]
+			}
+		},
+		{
+			"path": "furniture/bust.glb",
+			"category": "furniture",
+			"bytes": 118644,
+			"dynamicMaterials": [
+				"dyn_stone_variant"
+			],
+			"pivots": [
+				"dyn_stone_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2251,
+					0,
+					-0.2251
+				],
+				"max": [
+					0.2251,
+					1.7037,
+					0.2251
+				]
+			}
+		},
+		{
+			"path": "furniture/urn.glb",
+			"category": "furniture",
+			"bytes": 27924,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.2106,
+					-0.0001,
+					-0.2138
+				],
+				"max": [
+					0.2106,
+					0.9001,
+					0.2138
+				]
+			}
+		},
+		{
+			"path": "furniture/birdbath.glb",
+			"category": "furniture",
+			"bytes": 23936,
+			"dynamicMaterials": [
+				"dyn_stone_variant"
+			],
+			"pivots": [
+				"dyn_stone_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3251,
+					-0.0001,
+					-0.3251
+				],
+				"max": [
+					0.3251,
+					0.8501,
+					0.3251
+				]
+			}
+		},
+		{
+			"path": "furniture/gardenLantern.glb",
+			"category": "furniture",
+			"bytes": 128536,
+			"dynamicMaterials": [
+				"dyn_stone_variant"
+			],
+			"pivots": [
+				"dyn_stone_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2402,
+					0,
+					-0.2402
+				],
+				"max": [
+					0.2402,
+					1.3301,
+					0.2402
+				]
+			}
+		},
+		{
+			"path": "furniture/logBasket.glb",
+			"category": "furniture",
+			"bytes": 386748,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2751,
+					0,
+					-0.2
+				],
+				"max": [
+					0.2751,
+					0.502,
+					0.2
+				]
+			}
+		},
+		{
+			"path": "furniture/grainSacks.glb",
+			"category": "furniture",
+			"bytes": 64044,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.4702,
+					-0.063,
+					-0.1487
+				],
+				"max": [
+					0.4813,
+					0.5504,
+					0.2634
+				]
+			}
+		},
+		{
+			"path": "furniture/milkChurns.glb",
+			"category": "furniture",
+			"bytes": 29132,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.249,
+					-0.0002,
+					-0.1201
+				],
+				"max": [
+					0.2491,
+					0.5923,
+					0.1201
+				]
+			}
+		},
+		{
+			"path": "furniture/butterChurn.glb",
+			"category": "furniture",
+			"bytes": 260312,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.1751,
+					-0.0001,
+					-0.1751
+				],
+				"max": [
+					0.1751,
+					1.0002,
+					0.1751
+				]
+			}
+		},
+		{
+			"path": "furniture/pillory.glb",
+			"category": "furniture",
+			"bytes": 291080,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.6005,
+					-0.0002,
+					-0.2501
+				],
+				"max": [
+					0.6005,
+					1.6002,
+					0.2501
+				]
+			}
+		},
+		{
+			"path": "furniture/dollhouse.glb",
+			"category": "furniture",
+			"bytes": 229576,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4551,
+					0,
+					-0.2801
+				],
+				"max": [
+					0.4551,
+					0.9547,
+					0.2801
+				]
+			}
+		},
+		{
+			"path": "furniture/wheelchair.glb",
+			"category": "furniture",
+			"bytes": 303720,
+			"dynamicMaterials": [
+				"dyn_velvet_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.328,
+					-0.0151,
+					-0.3669
+				],
+				"max": [
+					0.328,
+					1.0723,
+					0.4351
+				]
+			}
+		},
+		{
+			"path": "furniture/ironingBoard.glb",
+			"category": "furniture",
+			"bytes": 272464,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.6502,
+					-0.0125,
+					-0.2
+				],
+				"max": [
+					0.6502,
+					0.985,
+					0.2
+				]
+			}
+		},
+		{
+			"path": "furniture/secretary.glb",
+			"category": "furniture",
+			"bytes": 158888,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.5205,
+					-0.0001,
+					-0.2752
+				],
+				"max": [
+					0.5205,
+					2,
+					0.3046
+				]
+			}
+		},
+		{
+			"path": "furniture/vanity.glb",
+			"category": "furniture",
+			"bytes": 120828,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.5501,
+					-0.0001,
+					-0.2501
+				],
+				"max": [
+					0.5501,
+					1.5003,
+					0.2501
+				]
+			}
+		},
+		{
+			"path": "furniture/washstand.glb",
+			"category": "furniture",
+			"bytes": 214956,
+			"dynamicMaterials": [
+				"dyn_stone_variant",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_stone_variant",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3751,
+					-0.0001,
+					-0.2401
+				],
+				"max": [
+					0.3751,
+					1.0979,
+					0.2401
+				]
+			}
+		},
+		{
+			"path": "furniture/woodpile.glb",
+			"category": "furniture",
+			"bytes": 443392,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.714,
+					-0.0001,
+					-0.2229
+				],
+				"max": [
+					0.6445,
+					0.6922,
+					0.2229
+				]
+			}
+		},
+		{
+			"path": "furniture/woodpile_v1.glb",
+			"category": "furniture",
+			"bytes": 435196,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.5141,
+					0,
+					-0.1982
+				],
+				"max": [
+					0.4259,
+					0.9122,
+					0.1982
+				]
+			}
+		},
+		{
+			"path": "furniture/throne.glb",
+			"category": "furniture",
+			"bytes": 269840,
+			"dynamicMaterials": [
+				"dyn_velvet_variant"
+			],
+			"pivots": [
+				"dyn_velvet_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4754,
+					-0.0001,
+					-0.4101
+				],
+				"max": [
+					0.4754,
+					2.0201,
+					0.4001
+				]
+			}
+		},
+		{
+			"path": "furniture/spiceRack.glb",
+			"category": "furniture",
+			"bytes": 249860,
+			"dynamicMaterials": [
+				"dyn_color_tint",
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_color_tint",
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.4004,
+					-0.0001,
+					-0.0001
+				],
+				"max": [
+					0.4004,
+					0.4201,
+					0.1401
+				]
+			}
+		},
+		{
+			"path": "furniture/hangingPots.glb",
+			"category": "furniture",
+			"bytes": 442100,
+			"dynamicMaterials": [],
+			"pivots": [
+				"anim_swing_0"
+			],
+			"bbox": {
+				"min": [
+					-0.5001,
+					0.2233,
+					-0.0259
+				],
+				"max": [
+					0.5936,
+					0.54,
+					0.1859
+				]
+			}
+		},
+		{
+			"path": "furniture/wallClock.glb",
+			"category": "furniture",
+			"bytes": 114336,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2101,
+					-0.0001,
+					0
+				],
+				"max": [
+					0.2101,
+					0.4201,
+					0.078
+				]
+			}
+		},
+		{
+			"path": "furniture/antlers.glb",
+			"category": "furniture",
+			"bytes": 146196,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.3568,
+					-0.0063,
+					0.0005
+				],
+				"max": [
+					0.357,
+					0.6072,
+					0.1876
+				]
+			}
+		},
+		{
+			"path": "furniture/crucifix.glb",
+			"category": "furniture",
+			"bytes": 112384,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2001,
+					-0.0001,
+					0
+				],
+				"max": [
+					0.2001,
+					0.6501,
+					0.044
+				]
+			}
+		},
+		{
+			"path": "furniture/ovalPortrait.glb",
+			"category": "furniture",
+			"bytes": 126852,
+			"dynamicMaterials": [
+				"dyn_painting_variant"
+			],
+			"pivots": [
+				"dyn_painting_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2566,
+					-0.0089,
+					-0.02
+				],
+				"max": [
+					0.2566,
+					0.6889,
+					0.044
+				]
+			}
+		},
+		{
+			"path": "furniture/oldMap.glb",
+			"category": "furniture",
+			"bytes": 8396,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.6005,
+					0.005,
+					0
+				],
+				"max": [
+					0.6005,
+					0.795,
+					0.05
+				]
+			}
+		},
+		{
+			"path": "furniture/keyRack.glb",
+			"category": "furniture",
+			"bytes": 386736,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.2501,
+					0,
+					-0.0005
+				],
+				"max": [
+					0.2501,
+					0.32,
+					0.0609
+				]
+			}
+		},
+		{
+			"path": "furniture/barometer.glb",
+			"category": "furniture",
+			"bytes": 28024,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.1201,
+					-0.0001,
+					0
+				],
+				"max": [
+					0.1201,
+					0.7441,
+					0.048
+				]
+			}
+		},
+		{
+			"path": "furniture/hangingCage.glb",
+			"category": "furniture",
+			"bytes": 268608,
+			"dynamicMaterials": [],
+			"pivots": [
+				"anim_swing_0"
+			],
+			"bbox": {
+				"min": [
+					-0.2601,
+					0.4114,
+					-0.2601
+				],
+				"max": [
+					0.2601,
+					1.6001,
+					0.2601
+				]
+			}
+		},
+		{
+			"path": "furniture/hangingLantern.glb",
+			"category": "furniture",
+			"bytes": 307556,
+			"dynamicMaterials": [],
+			"pivots": [
+				"anim_swing_0"
+			],
+			"bbox": {
+				"min": [
+					-0.1301,
+					0.15,
+					-0.1301
+				],
+				"max": [
+					0.1301,
+					1.0001,
+					0.1301
+				]
+			}
+		},
+		{
+			"path": "furniture/meatHooks.glb",
+			"category": "furniture",
+			"bytes": 306416,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.5001,
+					0.1427,
+					-0.056
+				],
+				"max": [
+					0.5001,
+					0.8,
+					0.056
+				]
+			}
+		},
+		{
+			"path": "furniture/teaSet.glb",
+			"category": "furniture",
+			"bytes": 87960,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1512,
+					0,
+					-0.1512
+				],
+				"max": [
+					0.171,
+					0.1612,
+					0.1512
+				]
+			}
+		},
+		{
+			"path": "furniture/hourglass.glb",
+			"category": "furniture",
+			"bytes": 19380,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.07,
+					0,
+					-0.07
+				],
+				"max": [
+					0.07,
+					0.26,
+					0.07
+				]
+			}
+		},
+		{
+			"path": "furniture/crystalBall.glb",
+			"category": "furniture",
+			"bytes": 109128,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.0894,
+					0,
+					-0.088
+				],
+				"max": [
+					0.0894,
+					0.25,
+					0.088
+				]
+			}
+		},
+		{
+			"path": "furniture/mortar.glb",
+			"category": "furniture",
+			"bytes": 12084,
+			"dynamicMaterials": [
+				"dyn_stone_variant"
+			],
+			"pivots": [
+				"dyn_stone_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.0829,
+					0,
+					-0.085
+				],
+				"max": [
+					0.0829,
+					0.1571,
+					0.085
+				]
+			}
+		},
+		{
+			"path": "furniture/scrolls.glb",
+			"category": "furniture",
+			"bytes": 24736,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1467,
+					0.0003,
+					-0.1089
+				],
+				"max": [
+					0.1467,
+					0.096,
+					0.1806
+				]
+			}
+		},
+		{
+			"path": "furniture/mantelClock.glb",
+			"category": "furniture",
+			"bytes": 130004,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.14,
+					0,
+					-0.07
+				],
+				"max": [
+					0.14,
+					0.322,
+					0.07
+				]
+			}
+		},
+		{
+			"path": "furniture/oilLamp.glb",
+			"category": "furniture",
+			"bytes": 254748,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.0683,
+					0,
+					-0.07
+				],
+				"max": [
+					0.086,
+					0.25,
+					0.07
+				]
+			}
+		},
+		{
+			"path": "furniture/stuffedRaven.glb",
+			"category": "furniture",
+			"bytes": 33316,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [
+				"dyn_wood_variant"
+			],
+			"bbox": {
+				"min": [
+					-0.12,
+					0,
+					-0.1777
+				],
+				"max": [
+					0.12,
+					0.298,
+					0.15
+				]
+			}
+		},
+		{
+			"path": "furniture/leatherTomes.glb",
+			"category": "furniture",
+			"bytes": 96960,
+			"dynamicMaterials": [
+				"dyn_color_tint"
+			],
+			"pivots": [
+				"dyn_color_tint"
+			],
+			"bbox": {
+				"min": [
+					-0.1624,
+					0,
+					-0.1188
+				],
+				"max": [
+					0.1449,
+					0.322,
+					0.1254
+				]
+			}
+		},
+		{
+			"path": "anomalies/murmure.glb",
+			"category": "anomalies",
+			"bytes": 186464,
+			"dynamicMaterials": [],
+			"pivots": [
+				"body",
+				"elbow",
+				"head",
+				"shoulder"
+			],
+			"bbox": {
+				"min": [
+					-0.55,
+					-0.1253,
+					-0.4182
+				],
+				"max": [
+					0.55,
+					1.4655,
+					0.9055
+				]
+			}
+		},
+		{
+			"path": "anomalies/veilleur.glb",
+			"category": "anomalies",
+			"bytes": 106156,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive",
+				"dyn_veilleur_beam"
+			],
+			"pivots": [
+				"ankle",
+				"elbow",
+				"hip",
+				"knee",
+				"lamp",
+				"neck",
+				"pelvis",
+				"shoulder",
+				"torso"
+			],
+			"bbox": {
+				"min": [
+					-1.05,
+					-0.8772,
+					-0.3918
+				],
+				"max": [
+					1.05,
+					2.7848,
+					4.5392
+				]
+			}
+		},
+		{
+			"path": "anomalies/crache-cendre.glb",
+			"category": "anomalies",
+			"bytes": 379284,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive"
+			],
+			"pivots": [
+				"body",
+				"hip",
+				"knee",
+				"thigh"
+			],
+			"bbox": {
+				"min": [
+					-0.8756,
+					-0.0019,
+					-0.7763
+				],
+				"max": [
+					0.8756,
+					1.64,
+					0.7763
+				]
+			}
+		},
+		{
+			"path": "anomalies/collecteur.glb",
+			"category": "anomalies",
+			"bytes": 210812,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive"
+			],
+			"pivots": [
+				"ankle",
+				"elbow",
+				"foot",
+				"hat",
+				"head",
+				"hip",
+				"hips",
+				"knee",
+				"neck",
+				"shoulder",
+				"torso"
+			],
+			"bbox": {
+				"min": [
+					-0.3782,
+					-0.0338,
+					-0.4867
+				],
+				"max": [
+					0.3782,
+					2.5809,
+					1.0456
+				]
+			}
+		},
+		{
+			"path": "anomalies/archiviste.glb",
+			"category": "anomalies",
+			"bytes": 711556,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive",
+				"dyn_anomaly_emissive_1"
+			],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-1.6447,
+					0.73,
+					-1.7856
+				],
+				"max": [
+					1.5943,
+					2.8392,
+					1.7712
+				]
+			}
+		},
+		{
+			"path": "anomalies/luciole.glb",
+			"category": "anomalies",
+			"bytes": 25140,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive",
+				"dyn_anomaly_emissive_1",
+				"dyn_anomaly_emissive_2"
+			],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.2414,
+					-0.5005,
+					-0.2973
+				],
+				"max": [
+					0.2303,
+					0.1665,
+					0.2303
+				]
+			}
+		},
+		{
+			"path": "anomalies/double.glb",
+			"category": "anomalies",
+			"bytes": 1603608,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive",
+				"dyn_anomaly_emissive_1",
+				"dyn_anomaly_emissive_2",
+				"dyn_anomaly_emissive_3",
+				"dyn_anomaly_emissive_4",
+				"dyn_lantern_flame",
+				"dyn_lantern_glass",
+				"dyn_player_cap"
+			],
+			"pivots": [
+				"ankle",
+				"cap",
+				"elbow",
+				"hip",
+				"hips",
+				"knee",
+				"shoulder"
+			],
+			"bbox": {
+				"min": [
+					-0.594,
+					0.0004,
+					-0.8963
+				],
+				"max": [
+					0.594,
+					2.5102,
+					0.5181
+				]
+			}
+		},
+		{
+			"path": "anomalies/hurleur.glb",
+			"category": "anomalies",
+			"bytes": 34776,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.8692,
+					-0.2475,
+					-0.5023
+				],
+				"max": [
+					0.8692,
+					0.4096,
+					0.2395
+				]
+			}
+		},
+		{
+			"path": "anomalies/suinteur.glb",
+			"category": "anomalies",
+			"bytes": 51456,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.88,
+					-0.0316,
+					-0.88
+				],
+				"max": [
+					0.88,
+					1.0748,
+					0.88
+				]
+			}
+		},
+		{
+			"path": "anomalies/boursoufle.glb",
+			"category": "anomalies",
+			"bytes": 148552,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive"
+			],
+			"pivots": [
+				"arm",
+				"knee",
+				"leg"
+			],
+			"bbox": {
+				"min": [
+					-0.4997,
+					-0.0402,
+					-0.4709
+				],
+				"max": [
+					0.5128,
+					1.1825,
+					0.4349
+				]
+			}
+		},
+		{
+			"path": "anomalies/colosse.glb",
+			"category": "anomalies",
+			"bytes": 413376,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive"
+			],
+			"pivots": [
+				"elbow",
+				"head",
+				"hip",
+				"hips",
+				"knee",
+				"shoulder",
+				"torso"
+			],
+			"bbox": {
+				"min": [
+					-1.1279,
+					-0.06,
+					-0.5254
+				],
+				"max": [
+					1.1279,
+					2.5007,
+					0.821
+				]
+			}
+		},
+		{
+			"path": "anomalies/fulgurant.glb",
+			"category": "anomalies",
+			"bytes": 275684,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive"
+			],
+			"pivots": [
+				"body",
+				"cannon",
+				"horn",
+				"leg"
+			],
+			"bbox": {
+				"min": [
+					-0.4917,
+					-0.0754,
+					-0.352
+				],
+				"max": [
+					0.4917,
+					2.1585,
+					0.7508
+				]
+			}
+		},
+		{
+			"path": "anomalies/gorgone.glb",
+			"category": "anomalies",
+			"bytes": 186800,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive"
+			],
+			"pivots": [
+				"elbow",
+				"head",
+				"shoulder",
+				"statue"
+			],
+			"bbox": {
+				"min": [
+					-0.32,
+					0,
+					-0.32
+				],
+				"max": [
+					0.32,
+					1.9543,
+					0.3586
+				]
+			}
+		},
+		{
+			"path": "anomalies/brume.glb",
+			"category": "anomalies",
+			"bytes": 79628,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive"
+			],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.3554,
+					-0.0199,
+					-0.2868
+				],
+				"max": [
+					0.326,
+					0.8899,
+					0.2413
+				]
+			}
+		},
+		{
+			"path": "anomalies/rat-roi.glb",
+			"category": "anomalies",
+			"bytes": 300544,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive"
+			],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.4946,
+					-0.0342,
+					-0.5681
+				],
+				"max": [
+					0.5729,
+					0.7099,
+					0.5219
+				]
+			}
+		},
+		{
+			"path": "player/mushroom.glb",
+			"category": "player",
+			"bytes": 1559984,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive",
+				"dyn_anomaly_emissive_1",
+				"dyn_lantern_flame",
+				"dyn_lantern_glass",
+				"dyn_player_cap"
+			],
+			"pivots": [
+				"ankle",
+				"cap",
+				"elbow",
+				"hip",
+				"hips",
+				"knee",
+				"shoulder"
+			],
+			"bbox": {
+				"min": [
+					-0.54,
+					0.0004,
+					-0.54
+				],
+				"max": [
+					0.54,
+					1.74,
+					0.54
+				]
+			}
+		},
+		{
+			"path": "player/first_person_body.glb",
+			"category": "player",
+			"bytes": 79036,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.22,
+					-0.0212,
+					0.0058
+				],
+				"max": [
+					0.22,
+					0.595,
+					0.5
+				]
+			}
+		},
+		{
+			"path": "player/first_person_arms.glb",
+			"category": "player",
+			"bytes": 9568,
+			"dynamicMaterials": [
+				"dyn_fp_arm_skin"
+			],
+			"pivots": [
+				"left_arm",
+				"right_arm"
+			],
+			"bbox": {
+				"min": [
+					-0.305,
+					-0.3,
+					-0.085
+				],
+				"max": [
+					0.305,
+					0.3,
+					0.085
+				]
+			}
+		},
+		{
+			"path": "tools/lantern.glb",
+			"category": "tools",
+			"bytes": 979516,
+			"dynamicMaterials": [
+				"dyn_anomaly_emissive_1",
+				"dyn_lantern_flame",
+				"dyn_lantern_glass"
+			],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.0821,
+					0,
+					-0.0821
+				],
+				"max": [
+					0.0821,
+					0.3273,
+					0.0821
+				]
+			}
+		},
+		{
+			"path": "tools/camera.glb",
+			"category": "tools",
+			"bytes": 23068,
+			"dynamicMaterials": [
+				"dyn_camera_flash",
+				"dyn_camera_screen"
+			],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.075,
+					0,
+					-0.082
+				],
+				"max": [
+					0.075,
+					0.13,
+					0.031
+				]
+			}
+		},
+		{
+			"path": "tools/walkie.glb",
+			"category": "tools",
+			"bytes": 15172,
+			"dynamicMaterials": [
+				"dyn_walkie_display"
+			],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.045,
+					0,
+					-0.0225
+				],
+				"max": [
+					0.045,
+					0.33,
+					0.027
+				]
+			}
+		},
+		{
+			"path": "tools/grimoire.glb",
+			"category": "tools",
+			"bytes": 968624,
+			"dynamicMaterials": [
+				"dyn_grimoire_page_left",
+				"dyn_grimoire_page_right"
+			],
+			"pivots": [
+				"page_left",
+				"page_right"
+			],
+			"bbox": {
+				"min": [
+					-0.2252,
+					-0.1831,
+					-0.0348
+				],
+				"max": [
+					0.2807,
+					0.1544,
+					0.0207
+				]
+			}
+		},
+		{
+			"path": "occult/pendulum.glb",
+			"category": "occult",
+			"bytes": 15356,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.054,
+					0,
+					-0.056
+				],
+				"max": [
+					0.054,
+					0.454,
+					0.056
+				]
+			}
+		},
+		{
+			"path": "occult/blackMirror.glb",
+			"category": "occult",
+			"bytes": 21932,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.151,
+					0,
+					-0.024
+				],
+				"max": [
+					0.151,
+					0.401,
+					0.024
+				]
+			}
+		},
+		{
+			"path": "occult/runeSkull.glb",
+			"category": "occult",
+			"bytes": 31476,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1667,
+					0.015,
+					-0.1176
+				],
+				"max": [
+					0.1667,
+					0.3356,
+					0.122
+				]
+			}
+		},
+		{
+			"path": "occult/athame.glb",
+			"category": "occult",
+			"bytes": 15304,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.063,
+					0.0045,
+					-0.0255
+				],
+				"max": [
+					0.063,
+					0.52,
+					0.0255
+				]
+			}
+		},
+		{
+			"path": "occult/jadeEye.glb",
+			"category": "occult",
+			"bytes": 250360,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.092,
+					0,
+					-0.0897
+				],
+				"max": [
+					0.092,
+					0.207,
+					0.0935
+				]
+			}
+		},
+		{
+			"path": "occult/censer.glb",
+			"category": "occult",
+			"bytes": 26076,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.112,
+					0,
+					-0.114
+				],
+				"max": [
+					0.112,
+					0.539,
+					0.114
+				]
+			}
+		},
+		{
+			"path": "pickups/amethyst.glb",
+			"category": "pickups",
+			"bytes": 143420,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1138,
+					-0.0155,
+					-0.1176
+				],
+				"max": [
+					0.1365,
+					0.2331,
+					0.1212
+				]
+			}
+		},
+		{
+			"path": "pickups/ruby.glb",
+			"category": "pickups",
+			"bytes": 21036,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1171,
+					-0.0271,
+					-0.0643
+				],
+				"max": [
+					0.118,
+					0.2077,
+					0.0393
+				]
+			}
+		},
+		{
+			"path": "pickups/jade.glb",
+			"category": "pickups",
+			"bytes": 14824,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.0882,
+					-0.0021,
+					-0.057
+				],
+				"max": [
+					0.1032,
+					0.1976,
+					0.0513
+				]
+			}
+		},
+		{
+			"path": "pickups/mirror.glb",
+			"category": "pickups",
+			"bytes": 248244,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.108,
+					0.0011,
+					-0.0645
+				],
+				"max": [
+					0.1097,
+					0.2325,
+					0.0545
+				]
+			}
+		},
+		{
+			"path": "pickups/brass.glb",
+			"category": "pickups",
+			"bytes": 452708,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.1238,
+					-0.0105,
+					-0.0589
+				],
+				"max": [
+					0.1615,
+					0.2015,
+					0.0576
+				]
+			}
+		},
+		{
+			"path": "pickups/bone.glb",
+			"category": "pickups",
+			"bytes": 66280,
+			"dynamicMaterials": [],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.197,
+					-0.0043,
+					-0.0653
+				],
+				"max": [
+					0.1771,
+					0.121,
+					0.078
+				]
+			}
+		},
+		{
+			"path": "world/door.glb",
+			"category": "world",
+			"bytes": 670256,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.018,
+					0,
+					-0.113
+				],
+				"max": [
+					0.842,
+					2.146,
+					0.113
+				]
+			}
+		},
+		{
+			"path": "world/door_3panel.glb",
+			"category": "world",
+			"bytes": 752636,
+			"dynamicMaterials": [
+				"dyn_wood_variant"
+			],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.018,
+					0,
+					-0.113
+				],
+				"max": [
+					0.842,
+					2.146,
+					0.113
+				]
+			}
+		},
+		{
+			"path": "world/altar_book.glb",
+			"category": "world",
+			"bytes": 517760,
+			"dynamicMaterials": [
+				"dyn_altar_page_left",
+				"dyn_altar_page_right"
+			],
+			"pivots": [
+				"altar_page_left",
+				"altar_page_right"
+			],
+			"bbox": {
+				"min": [
+					-0.1813,
+					-0.128,
+					-0.03
+				],
+				"max": [
+					0.1813,
+					0.128,
+					0.0653
+				]
+			}
+		},
+		{
+			"path": "world/stake_orb.glb",
+			"category": "world",
+			"bytes": 7264,
+			"dynamicMaterials": [
+				"dyn_stake_orb"
+			],
+			"pivots": [],
+			"bbox": {
+				"min": [
+					-0.09,
+					-0.09,
+					-0.09
+				],
+				"max": [
+					0.09,
+					0.09,
+					0.09
+				]
+			}
+		}
+	]
+}

@@ -23,6 +23,7 @@
 		"format": "biome format --write .",
 		"format:check": "biome .",
 		"export:source": "tsx scripts/export-source.ts",
+		"export:glb": "tsx --tsconfig tsconfig.app.json scripts/export-glb.ts",
 		"vosk:setup": "node scripts/vosk-setup.mjs",
 		"vosk:forms": "tsx scripts/vosk-forms.ts",
 		"lan:open": "node scripts/lan.mjs open",
