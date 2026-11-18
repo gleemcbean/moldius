@@ -48,6 +48,17 @@ export const GLYPH_DIM = "#4c5245";
 
 export const GLYPH_SCALE = 1.18;
 export const GLYPH_GAP = 0.14;
+export const GLYPH_BOX = 20;
+export const FACE_RING_RADIUS = 8.8;
+export const FACE_RING_WIDTH = 1.8;
+export const FACE_LETTER_WIDTH = 2.1;
+
+export const FACE_LETTERS: Record<FaceGlyph, string> = {
+	a: "M5.7 14.6L10 5.4L14.3 14.6M7.35 11.1H12.65",
+	b: "M6.7 5.4V14.6M6.7 5.4H10.5A2.2 2.2 0 0 1 10.5 9.8H6.7M6.7 9.8H11A2.4 2.4 0 0 1 11 14.6H6.7",
+	x: "M6 5.4L14 14.6M14 5.4L6 14.6",
+	y: "M6 5.4L10 10.2L14 5.4M10 10.2V14.6",
+};
 
 export function glyphChar(glyph: PadGlyph): string {
 	return GLYPH_CHARS[glyph];
@@ -83,6 +94,8 @@ export interface GlyphContext {
 	fillStyle: unknown;
 	strokeStyle: unknown;
 	lineWidth: number;
+	lineCap: CanvasLineCap;
+	lineJoin: CanvasLineJoin;
 	font: string;
 	textAlign: CanvasTextAlign;
 	textBaseline: CanvasTextBaseline;
@@ -94,7 +107,9 @@ export interface GlyphContext {
 	lineTo(x: number, y: number): void;
 	arc(x: number, y: number, radius: number, start: number, end: number): void;
 	fill(): void;
-	stroke(): void;
+	stroke(path?: Path2D): void;
+	translate(x: number, y: number): void;
+	scale(x: number, y: number): void;
 	fillRect(x: number, y: number, width: number, height: number): void;
 	fillText(text: string, x: number, y: number): void;
 }
@@ -137,26 +152,33 @@ export function drawPadGlyph(
 	cx: number,
 	cy: number,
 	size: number,
-	family: string,
 ): void {
 	context.save();
 	const radius = size / 2;
 	if (isFaceGlyph(glyph)) {
 		const color = FACE_COLORS[glyph];
+		const unit = size / GLYPH_BOX;
 		context.beginPath();
-		context.arc(cx, cy, radius, 0, Math.PI * 2);
+		context.arc(
+			cx,
+			cy,
+			(FACE_RING_RADIUS + FACE_RING_WIDTH / 2) * unit,
+			0,
+			Math.PI * 2,
+		);
 		context.fillStyle = GLYPH_BACKING;
 		context.fill();
-		context.lineWidth = Math.max(1.5, size * 0.1);
+		context.lineWidth = FACE_RING_WIDTH * unit;
 		context.strokeStyle = color;
 		context.beginPath();
-		context.arc(cx, cy, radius - context.lineWidth / 2, 0, Math.PI * 2);
+		context.arc(cx, cy, FACE_RING_RADIUS * unit, 0, Math.PI * 2);
 		context.stroke();
-		context.fillStyle = color;
-		context.font = `800 ${Math.round(size * 0.62)}px ${family}`;
-		context.textAlign = "center";
-		context.textBaseline = "middle";
-		context.fillText(glyph.toUpperCase(), cx, cy + size * 0.04);
+		context.translate(cx - radius, cy - radius);
+		context.scale(unit, unit);
+		context.lineWidth = FACE_LETTER_WIDTH;
+		context.lineCap = "round";
+		context.lineJoin = "round";
+		context.stroke(new Path2D(FACE_LETTERS[glyph]));
 		context.restore();
 		return;
 	}

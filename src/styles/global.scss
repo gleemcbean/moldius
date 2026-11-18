@@ -76,6 +76,11 @@ a {
   color: $bg;
 }
 
+html[data-pad-active],
+html[data-pad-active] * {
+  cursor: none !important;
+}
+
 :focus-visible,
 [data-pad-focus]:focus {
   outline: 2px solid $accent;

@@ -1,5 +1,9 @@
 import {
 	FACE_COLORS,
+	FACE_LETTER_WIDTH,
+	FACE_LETTERS,
+	FACE_RING_RADIUS,
+	FACE_RING_WIDTH,
 	GLYPH_BACKING,
 	GLYPH_DIM,
 	GLYPH_INK,
@@ -26,23 +30,19 @@ export function PadGlyphIcon({ glyph }: { glyph: PadGlyph }) {
 				<circle
 					cx="10"
 					cy="10"
-					r="9"
+					r={FACE_RING_RADIUS}
 					fill={GLYPH_BACKING}
 					stroke={color}
-					strokeWidth="2"
+					strokeWidth={FACE_RING_WIDTH}
 				/>
-				<text
-					x="10"
-					y="10.6"
-					fill={color}
-					fontSize="12"
-					fontWeight="800"
-					fontFamily="inherit"
-					textAnchor="middle"
-					dominantBaseline="middle"
-				>
-					{glyph.toUpperCase()}
-				</text>
+				<path
+					d={FACE_LETTERS[glyph]}
+					fill="none"
+					stroke={color}
+					strokeWidth={FACE_LETTER_WIDTH}
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				/>
 			</svg>
 		);
 	}

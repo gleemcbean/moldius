@@ -22,13 +22,6 @@ import * as THREE from "three";
 import { ICON_PATHS } from "../../components/Icon";
 import { activeBindings, backCode, keyLabel } from "../../config/controls";
 import { currentMessages } from "../../i18n";
-import {
-	drawPadGlyph,
-	GLYPH_GAP,
-	GLYPH_SCALE,
-	hasGlyph,
-	splitGlyphs,
-} from "../gamepad/padGlyphs";
 import { formatClock, hexColor } from "../../utils/format";
 import {
 	curvatureZoom,
@@ -37,6 +30,13 @@ import {
 	POST_EFFECTS,
 	type ScreenVeil,
 } from "../engine/render/PostEffects";
+import {
+	drawPadGlyph,
+	GLYPH_GAP,
+	GLYPH_SCALE,
+	hasGlyph,
+	splitGlyphs,
+} from "../gamepad/padGlyphs";
 import type { ObjectArt, ObjectArtId } from "../grimoire/objectArt";
 import { MAP_MAX_ZOOM, mapStore, resetMap, zoomMap } from "../map/mapStore";
 import { settingsStore } from "../settings/settingsStore";
@@ -185,6 +185,7 @@ interface TextStyle {
 	color?: string;
 	align?: TextAlign;
 	outline?: boolean;
+	glyphSize?: number;
 }
 
 interface Stop {
@@ -642,20 +643,57 @@ export class HudCanvas {
 		return { x: placedX, y: placedY };
 	}
 
-	private glyphMetrics(): { size: number; family: string } {
-		const match = /(\d+(?:\.\d+)?)px\s+(.+)$/.exec(this.context.font);
+	private glyphSize(limit?: number): number {
+		const match = /(\d+(?:\.\d+)?)px/.exec(this.context.font);
 		const pixels = match ? Number(match[1]) : 16;
-		return {
-			size: Math.round(pixels * GLYPH_SCALE),
-			family: match?.[2] ?? UI,
-		};
+		const size = Math.round(pixels * GLYPH_SCALE);
+		return limit === undefined ? size : Math.min(size, limit);
 	}
 
-	private measure(value: string): { width: number } {
+	private onlyGlyph(value: string): boolean {
+		const runs = splitGlyphs(value);
+		return runs.length === 1 && "glyph" in runs[0];
+	}
+
+	private keyCapWidth(value: string, minimum: number, height: number): number {
+		if (this.onlyGlyph(value)) {
+			return height;
+		}
+		return Math.max(minimum, this.measure(value, height - 6).width + 8);
+	}
+
+	private keyCap(
+		value: string,
+		x: number,
+		y: number,
+		width: number,
+		height: number,
+		font: string,
+	): void {
+		if (this.onlyGlyph(value)) {
+			this.text(value, x + width / 2, y + height / 2, {
+				font,
+				align: "center",
+				outline: false,
+				glyphSize: height,
+			});
+			return;
+		}
+		this.panel(x, y, width, height, YELLOW);
+		this.text(value, x + width / 2, y + height / 2 + 1, {
+			font,
+			color: BACKGROUND,
+			align: "center",
+			outline: false,
+			glyphSize: height - 6,
+		});
+	}
+
+	private measure(value: string, glyphLimit?: number): { width: number } {
 		if (!hasGlyph(value)) {
 			return this.context.measureText(value);
 		}
-		const { size } = this.glyphMetrics();
+		const size = this.glyphSize(glyphLimit);
 		const gap = size * GLYPH_GAP;
 		let width = 0;
 		for (const run of splitGlyphs(value)) {
@@ -689,11 +727,12 @@ export class HudCanvas {
 		align: CanvasTextAlign,
 		outline: boolean,
 		color: string,
+		glyphLimit?: number,
 	): void {
 		const context = this.context;
-		const { size, family } = this.glyphMetrics();
+		const size = this.glyphSize(glyphLimit);
 		const gap = size * GLYPH_GAP;
-		const width = this.measure(value).width;
+		const width = this.measure(value, glyphLimit).width;
 		const start =
 			align === "center"
 				? x - width / 2
@@ -724,7 +763,6 @@ export class HudCanvas {
 					cursor + gap + size / 2,
 					centerY,
 					size,
-					family,
 				);
 				cursor += size + gap * 2;
 				continue;
@@ -745,13 +783,19 @@ export class HudCanvas {
 		value: string,
 		x: number,
 		y: number,
-		{ font, color = TEXT, align = "left", outline = true }: TextStyle,
+		{
+			font,
+			color = TEXT,
+			align = "left",
+			outline = true,
+			glyphSize,
+		}: TextStyle,
 	): void {
 		const context = this.context;
 		context.font = font;
 		context.textAlign = align;
 		if (hasGlyph(value)) {
-			this.glyphText(value, x, y, align, outline, color);
+			this.glyphText(value, x, y, align, outline, color, glyphSize);
 			return;
 		}
 		if (outline) {
@@ -1955,18 +1999,15 @@ export class HudCanvas {
 		for (const entry of [...entries].reverse()) {
 			context.font = font;
 			const keyText = keyLabel(entry.key);
-			const keyWidth = Math.max(24, this.measure(keyText).width + 8);
+			const keyFont = `700 16px ${FIGURES}`;
+			context.font = keyFont;
+			const keyWidth = this.keyCapWidth(keyText, 24, 24);
+			context.font = font;
 			const width = this.measure(entry.label).width + keyWidth + 28;
 			const x = right - width;
 			const remaining = Math.max(0, entry.readyAt - hud.serverNow);
 			this.panel(x, y, width, 38, "rgba(10, 12, 10, 0.75)");
-			this.panel(x + 8, y + 7, keyWidth, 24, YELLOW);
-			this.text(keyText, x + 8 + keyWidth / 2, y + 20, {
-				font: `700 16px ${FIGURES}`,
-				color: BACKGROUND,
-				align: "center",
-				outline: false,
-			});
+			this.keyCap(keyText, x + 8, y + 7, keyWidth, 24, keyFont);
 			this.text(entry.label, x + keyWidth + 18, y + 20, {
 				font,
 				color: remaining > 0 ? TEXT_DIM : TEXT,
@@ -2093,18 +2134,12 @@ export class HudCanvas {
 		const font = `700 20px ${UI}`;
 		context.font = font;
 		const keyText = keyLabel(activeBindings().interact);
-		const keyWidth = Math.max(24, this.measure(keyText).width + 8);
+		const keyWidth = this.keyCapWidth(keyText, 24, 24);
 		const width = this.measure(hud.prompt).width + keyWidth + 30;
 		const left = x - width / 2;
 		const top = y + 34;
 		this.panel(left, top, width, 34, "rgba(10, 12, 10, 0.72)");
-		this.panel(left + 8, top + 5, keyWidth, 24, YELLOW);
-		this.text(keyText, left + 8 + keyWidth / 2, top + 18, {
-			font,
-			color: BACKGROUND,
-			align: "center",
-			outline: false,
-		});
+		this.keyCap(keyText, left + 8, top + 5, keyWidth, 24, font);
 		this.text(hud.prompt, left + keyWidth + 20, top + 18, {
 			font,
 			outline: false,
@@ -2220,16 +2255,17 @@ export class HudCanvas {
 			const promptFont = `700 18px ${UI}`;
 			this.context.font = promptFont;
 			const keyText = keyLabel(activeBindings().interact);
-			const keyWidth = Math.max(22, this.measure(keyText).width + 8);
+			const keyWidth = this.keyCapWidth(keyText, 22, 22);
 			const promptWidth = this.measure(hud.prompt).width;
 			const promptX = x + width - 14 - promptWidth;
-			this.panel(promptX - keyWidth - 8, y + 6, keyWidth, 22, YELLOW);
-			this.text(keyText, promptX - 8 - keyWidth / 2, y + 18, {
-				font: promptFont,
-				color: BACKGROUND,
-				align: "center",
-				outline: false,
-			});
+			this.keyCap(
+				keyText,
+				promptX - keyWidth - 8,
+				y + 6,
+				keyWidth,
+				22,
+				promptFont,
+			);
 			this.text(hud.prompt, promptX, y + 18, {
 				font: promptFont,
 				color: YELLOW,
@@ -2355,7 +2391,9 @@ export class HudCanvas {
 		this.context.font = keyFont;
 		const keyWidth = Math.max(
 			0,
-			...tutorial.choices.map((choice) => this.measure(choice.key).width + 18),
+			...tutorial.choices.map(
+				(choice) => this.measure(choice.key, 20).width + 18,
+			),
 		);
 		const choiceLines = tutorial.choices.map((choice) =>
 			this.wrap(choice.label, choiceFont, inner - keyWidth - 12),
@@ -2433,6 +2471,7 @@ export class HudCanvas {
 					color: YELLOW,
 					align: "center",
 					outline: false,
+					glyphSize: 20,
 				});
 				rows.forEach((row, line) => {
 					this.text(row, x + 28 + keyWidth, top + 13.5 + line * 20, {

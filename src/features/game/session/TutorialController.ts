@@ -127,6 +127,7 @@ const MOVE_ACTIONS = [
 const STEP_DONE_DELAY_MS = 1400;
 const WALK_DISTANCE = 6;
 const SPRINT_PRACTICE_S = 1.5;
+const STICK_MOVING = 0.2;
 const SNEAK_PRACTICE_S = 2.5;
 const RADIO_PRACTICE_S = 1;
 const QUIET_AFTER_HEARD_MS = 900;
@@ -616,7 +617,10 @@ export class TutorialController {
 	}
 
 	private moving(frame: FrameInput): boolean {
-		return MOVE_ACTIONS.some((action) => frame.held.has(action));
+		return (
+			MOVE_ACTIONS.some((action) => frame.held.has(action)) ||
+			Math.hypot(frame.move.x, frame.move.y) >= STICK_MOVING
+		);
 	}
 
 	private evaluate(context: TutorialFrame): Evaluation {

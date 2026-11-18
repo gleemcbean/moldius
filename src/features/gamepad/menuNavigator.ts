@@ -1,5 +1,5 @@
-import { settingsStore } from "../settings/settingsStore";
 import { createStore } from "../../utils/store";
+import { settingsStore } from "../settings/settingsStore";
 import {
 	inputDeviceStore,
 	markDevice,
@@ -20,6 +20,8 @@ const STICK_THRESHOLD = 0.55;
 const SCROLL_SPEED = 900;
 const FOCUS_ATTRIBUTE = "data-pad-focus";
 const SCOPE_CHECK_MS = 150;
+const MOUSE_TRAVEL_THRESHOLD = 12;
+const MOUSE_TRAVEL_WINDOW_MS = 250;
 const TABS = "[data-pad-tabs]";
 const RADIO = '[role="radio"]:not([disabled])';
 
@@ -41,6 +43,8 @@ let nextRepeat = 0;
 let marked: HTMLElement | null = null;
 let lastScope: HTMLElement | null = null;
 let nextScopeCheck = 0;
+let mouseTravel = 0;
+let mouseTravelAt = 0;
 
 export const padHintsStore = createStore<{ visible: boolean; tabs: boolean }>({
 	visible: false,
@@ -118,6 +122,7 @@ function pickRadio(
 	from: HTMLElement,
 	delta: number,
 	wrap: boolean,
+	select: boolean,
 ): boolean {
 	const options = radios(group);
 	if (options.length < 2) {
@@ -135,7 +140,9 @@ function pickRadio(
 		return false;
 	}
 	focus(target);
-	target.click();
+	if (select) {
+		target.click();
+	}
 	return true;
 }
 
@@ -153,7 +160,7 @@ function switchTab(delta: number): void {
 	const checked =
 		options.find((option) => option.getAttribute("aria-checked") === "true") ??
 		options[0];
-	if (checked && pickRadio(group, checked, delta, true)) {
+	if (checked && pickRadio(group, checked, delta, true, true)) {
 		rumble("tick");
 	}
 }
@@ -168,7 +175,7 @@ function nudge(element: HTMLElement, direction: Direction): boolean {
 			? element.closest('[role="radiogroup"]')
 			: null;
 	if (group) {
-		return pickRadio(group, element, delta, false);
+		return pickRadio(group, element, delta, false, false);
 	}
 	if (element instanceof HTMLInputElement && element.type === "range") {
 		if (delta > 0) {
@@ -447,6 +454,28 @@ function onConnection(): void {
 	}
 }
 
+function onDesktopInput(event: Event): void {
+	if (event.isTrusted && inputDeviceStore.get().device === "pad") {
+		markDevice("keyboard");
+	}
+}
+
+function onPointerMove(event: PointerEvent): void {
+	if (inputDeviceStore.get().device !== "pad") {
+		mouseTravel = 0;
+		return;
+	}
+	if (event.timeStamp - mouseTravelAt > MOUSE_TRAVEL_WINDOW_MS) {
+		mouseTravel = 0;
+	}
+	mouseTravelAt = event.timeStamp;
+	mouseTravel += Math.hypot(event.movementX, event.movementY);
+	if (mouseTravel > MOUSE_TRAVEL_THRESHOLD) {
+		mouseTravel = 0;
+		markDevice("keyboard");
+	}
+}
+
 export function startMenuNavigator(): void {
 	if (started || typeof window === "undefined") {
 		return;
@@ -454,20 +483,24 @@ export function startMenuNavigator(): void {
 	started = true;
 	window.addEventListener("gamepadconnected", onConnection);
 	window.addEventListener("gamepaddisconnected", onConnection);
-	window.addEventListener(
-		"pointermove",
-		(event) => {
-			if (
-				inputDeviceStore.get().device === "pad" &&
-				Math.hypot(event.movementX, event.movementY) > 6
-			) {
-				markDevice("keyboard");
-				mark(null);
-			}
-		},
-		{ passive: true },
-	);
+	window.addEventListener("pointermove", onPointerMove, { passive: true });
+	window.addEventListener("pointerdown", onDesktopInput, {
+		capture: true,
+		passive: true,
+	});
+	window.addEventListener("keydown", onDesktopInput, {
+		capture: true,
+		passive: true,
+	});
+	window.addEventListener("wheel", onDesktopInput, {
+		capture: true,
+		passive: true,
+	});
 	inputDeviceStore.subscribe((state) => {
+		document.documentElement.toggleAttribute(
+			"data-pad-active",
+			state.device === "pad",
+		);
 		if (state.device !== "pad") {
 			mark(null);
 			hideHints();

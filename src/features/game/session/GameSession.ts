@@ -109,7 +109,7 @@ import { FIRST_PERSON_DEPTH } from "../../engine/render/PostEffects";
 import type { PingClientState } from "../../engine/state/ClientWorldState";
 import { PingViews } from "../../engine/world/PingViews";
 import { RoomVisibility } from "../../engine/world/RoomVisibility";
-import { padFocus } from "../../gamepad/gamepad";
+import { inputDeviceStore, padFocus } from "../../gamepad/gamepad";
 import { rumble } from "../../gamepad/rumble";
 import { type HudMarker, MINIMAP_SIZE } from "../../hud/HudCanvas";
 import {
@@ -164,6 +164,7 @@ function wrapIndex(index: number, length: number): number {
 const RADIO_TALKING_LEVEL = 0.12;
 const WHEEL_DEADZONE = 28;
 const PAD_WHEEL_THRESHOLD = 0.5;
+const PAD_MOVE_BREAKS_EMOTE = 0.2;
 const THIRD_PERSON_DISTANCE = 2.7;
 const THIRD_PERSON_PIVOT = 1.15;
 const THIRD_PERSON_SHOWN = 0.2;
@@ -252,6 +253,7 @@ export class GameSession {
 	private mapDrag: { x: number; y: number } | null = null;
 	private pointerEverLocked = false;
 	private intentionalUnlock = false;
+	private unsubscribeDevice: (() => void) | null = null;
 	private menusClosedAt = -Infinity;
 	private hudPublishedAt = 0;
 	private interaction: InteractionTarget | null = null;
@@ -427,6 +429,11 @@ export class GameSession {
 		this.input.attach();
 		this.input.onPointerLockChange = (locked) => this.onPointerLock(locked);
 		padFocus.onMenu = () => this.padMenu();
+		this.unsubscribeDevice = inputDeviceStore.subscribe((state, previous) => {
+			if (state.device === "keyboard" && previous.device === "pad") {
+				this.reclaimPointer();
+			}
+		});
 		window.addEventListener("keydown", this.onUserGesture);
 		window.addEventListener("pointerdown", this.onUserGesture);
 		canvas.addEventListener("pointerdown", this.onMapPointerDown);
@@ -456,6 +463,8 @@ export class GameSession {
 		this.input = null;
 		padFocus.owner = "ui";
 		padFocus.onMenu = null;
+		this.unsubscribeDevice?.();
+		this.unsubscribeDevice = null;
 		const canvas = this.loadedWorld?.renderer.domElement;
 		window.removeEventListener("keydown", this.onUserGesture);
 		window.removeEventListener("pointerdown", this.onUserGesture);
@@ -478,6 +487,22 @@ export class GameSession {
 		}
 		this.resumePointer();
 		return true;
+	}
+
+	private reclaimPointer(): void {
+		const { input } = this;
+		if (
+			!input ||
+			input.pointerLocked ||
+			this.mapOpen ||
+			this.voting ||
+			this.replay ||
+			hudStore.get().paused ||
+			appStore.get().overlay !== null
+		) {
+			return;
+		}
+		input.requestPointerLock();
 	}
 
 	private pauseFromPad(): void {
@@ -1669,6 +1694,7 @@ export class GameSession {
 		}
 		const moving =
 			EMOTE_BREAKING_HOLDS.some((action) => frame.held.has(action)) ||
+			Math.hypot(frame.move.x, frame.move.y) >= PAD_MOVE_BREAKS_EMOTE ||
 			EMOTE_BREAKING_PRESSES.some((action) => frame.pressed.has(action));
 		if (
 			moving ||
