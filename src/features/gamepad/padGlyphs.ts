@@ -4,6 +4,8 @@ export type PadGlyph = "a" | "b" | "x" | "y" | "up" | "down" | "left" | "right";
 
 export type FaceGlyph = "a" | "b" | "x" | "y";
 
+export const FACE_GLYPHS: readonly FaceGlyph[] = ["a", "b", "x", "y"];
+
 export type DpadGlyph = "up" | "down" | "left" | "right";
 
 const GLYPH_CHARS: Record<PadGlyph, string> = {
@@ -59,6 +61,17 @@ export const FACE_LETTERS: Record<FaceGlyph, string> = {
 	x: "M6 5.4L14 14.6M14 5.4L6 14.6",
 	y: "M6 5.4L10 10.2L14 5.4M10 10.2V14.6",
 };
+
+const letterPaths = new Map<FaceGlyph, Path2D>();
+
+export function faceLetterPath(glyph: FaceGlyph): Path2D {
+	let path = letterPaths.get(glyph);
+	if (!path) {
+		path = new Path2D(FACE_LETTERS[glyph]);
+		letterPaths.set(glyph, path);
+	}
+	return path;
+}
 
 export function glyphChar(glyph: PadGlyph): string {
 	return GLYPH_CHARS[glyph];
@@ -178,7 +191,7 @@ export function drawPadGlyph(
 		context.lineWidth = FACE_LETTER_WIDTH;
 		context.lineCap = "round";
 		context.lineJoin = "round";
-		context.stroke(new Path2D(FACE_LETTERS[glyph]));
+		context.stroke(faceLetterPath(glyph));
 		context.restore();
 		return;
 	}

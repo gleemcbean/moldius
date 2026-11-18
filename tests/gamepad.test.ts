@@ -17,6 +17,7 @@ const gamepad = (await import(`${clientRoot}/features/gamepad/gamepad.ts`)) as {
 	PAD_HOLD_MS: number;
 	parsePadCode: (code: string) => { button: number; hold: boolean } | null;
 	isBindablePadCode: (code: string) => boolean;
+	activePad: () => { index: number } | null;
 	stick: (
 		x: number,
 		y: number,
@@ -114,5 +115,36 @@ describe("gamepad codes and sticks", () => {
 		expect(saved.lantern).toBe(DEFAULT_PAD_KEYS.lantern);
 		expect(saved.moveForward).toBe("");
 		expect(saved.pageNext).toBe("Pad4Hold");
+	});
+});
+
+function fakePad(index: number, pressed: boolean, timestamp: number) {
+	return {
+		index,
+		connected: true,
+		mapping: "standard",
+		timestamp,
+		axes: [0, 0, 0, 0],
+		buttons: Array.from({ length: 17 }, (_, button) => ({
+			pressed: pressed && button === 0,
+			value: pressed && button === 0 ? 1 : 0,
+		})),
+	};
+}
+
+describe("choix de la manette active", () => {
+	it("reste sur la manette utilisée quand un doublon se met à jour", () => {
+		let pads = [fakePad(0, false, 1), fakePad(1, true, 1)];
+		Object.defineProperty(globalThis, "navigator", {
+			value: { getGamepads: () => pads },
+			configurable: true,
+		});
+		expect(gamepad.activePad()?.index).toBe(1);
+		pads = [fakePad(0, false, 99), fakePad(1, false, 2)];
+		expect(gamepad.activePad()?.index).toBe(1);
+		pads = [fakePad(0, true, 100), fakePad(1, true, 3)];
+		expect(gamepad.activePad()?.index).toBe(1);
+		pads = [fakePad(0, true, 101), fakePad(1, false, 4)];
+		expect(gamepad.activePad()?.index).toBe(0);
 	});
 });

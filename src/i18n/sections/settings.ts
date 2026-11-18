@@ -24,6 +24,16 @@ export const settingsFr = {
 		padHintSelect: "Valider",
 		padHintBack: "Retour",
 		padHintTabs: "Onglets",
+		padKeyboard: {
+			title: "Clavier",
+			shift: "Maj",
+			symbols: "?123",
+			letters: "ABC",
+			space: "Espace",
+			erase: "Effacer",
+			done: "OK",
+			close: "Fermer",
+		},
 		padVibrationOff: "Désactivées",
 		padVibrationUnsupported:
 			"Cette manette ou ce navigateur ne gère pas les vibrations.",
@@ -215,6 +225,16 @@ export const settingsEn: typeof settingsFr = {
 		padHintSelect: "Select",
 		padHintBack: "Back",
 		padHintTabs: "Tabs",
+		padKeyboard: {
+			title: "Keyboard",
+			shift: "Shift",
+			symbols: "?123",
+			letters: "ABC",
+			space: "Space",
+			erase: "Erase",
+			done: "OK",
+			close: "Close",
+		},
 		padVibrationOff: "Off",
 		padVibrationUnsupported:
 			"This controller or browser does not support vibration.",

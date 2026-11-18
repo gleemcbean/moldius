@@ -36,6 +36,7 @@ const OP = {
 	drawImageSized: 35,
 	gradient: 36,
 	gradientStop: 37,
+	strokePath: 38,
 } as const;
 
 const NUMBER_ARITY: number[] = [];
@@ -68,6 +69,7 @@ for (const [op, numbers, refs] of [
 	[OP.fill, 0, 0],
 	[OP.fillPath, 0, 2],
 	[OP.stroke, 0, 0],
+	[OP.strokePath, 0, 1],
 	[OP.save, 0, 0],
 	[OP.restore, 0, 0],
 	[OP.translate, 2, 0],
@@ -583,10 +585,22 @@ export class HudRecorder {
 		}
 	}
 
-	stroke(): void {
-		this.numbers.push(OP.stroke);
-		this.loadPath();
-		this.grow(this.strokeSpread());
+	stroke(path?: Path2D): void {
+		if (!path) {
+			this.numbers.push(OP.stroke);
+			this.loadPath();
+			this.grow(this.strokeSpread());
+			return;
+		}
+		this.numbers.push(OP.strokePath);
+		this.refs.push(path);
+		const bounds = this.paths.get(path);
+		if (bounds) {
+			this.project(bounds.left, bounds.top, bounds.right, bounds.bottom);
+			this.grow(this.strokeSpread());
+		} else {
+			this.unbound();
+		}
 	}
 
 	save(): void {
@@ -1225,6 +1239,11 @@ export class HudRecorder {
 					case OP.stroke:
 						if (active) {
 							context.stroke();
+						}
+						break;
+					case OP.strokePath:
+						if (active) {
+							context.stroke(refs[ref] as Path2D);
 						}
 						break;
 					case OP.save:

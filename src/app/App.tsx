@@ -14,6 +14,8 @@ import { FriendsModal } from "../features/friends/FriendsModal";
 import { initFriends } from "../features/friends/friendsStore";
 import { GameScreen } from "../features/game/GameScreen";
 import { initMatchController } from "../features/game/matchController";
+import { PadHints } from "../features/gamepad/PadHints";
+import { PadKeyboard } from "../features/gamepad/PadKeyboard";
 import { HomeScreen } from "../features/home/HomeScreen";
 import { LegalPage } from "../features/legal/LegalPage";
 import { LoadingScreen } from "../features/loading/LoadingScreen";
@@ -37,7 +39,6 @@ import {
 	runTransition,
 	transitionKind,
 } from "./screenTransitions";
-import { PadHints } from "../features/gamepad/PadHints";
 import { Toasts } from "./Toasts";
 
 const ADMIN_CHECK_TIMEOUT_MS = 3000;
@@ -192,6 +193,7 @@ function GameApp() {
 			{screen === "home" || screen === "lobby" ? <FriendInvites /> : null}
 			<Toasts />
 			<PadHints />
+			<PadKeyboard />
 		</>
 	);
 }

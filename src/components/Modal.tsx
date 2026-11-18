@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef } from "react";
+import { padKeyboardOpen } from "../features/gamepad/textEntry";
 import { useT } from "../i18n";
 import { Icon } from "./Icon";
 import styles from "./Modal.module.scss";
@@ -29,7 +30,11 @@ export function Modal({
 		const token = Symbol("modal");
 		openModals.push(token);
 		const onKey = (event: KeyboardEvent) => {
-			if (event.code === "Escape" && openModals.at(-1) === token) {
+			if (
+				event.code === "Escape" &&
+				openModals.at(-1) === token &&
+				!padKeyboardOpen()
+			) {
 				event.stopPropagation();
 				closeRef.current();
 			}

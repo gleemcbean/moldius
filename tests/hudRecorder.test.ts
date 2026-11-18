@@ -85,6 +85,7 @@ function fakeContext(canvas?: { width: number; height: number }) {
 		"rect",
 		"clip",
 		"fill",
+		"stroke",
 		"translate",
 	]) {
 		target[method] = (...args: unknown[]) => {
@@ -285,5 +286,29 @@ describe("enregistreur du HUD", () => {
 		recorder.section();
 		expect(recorder.commit()).toBe(true);
 		expect(recorder.repaintedAll).toBe(true);
+	});
+
+	it("rejoue le tracé passé à stroke au lieu du tracé courant", () => {
+		const fake = fakeContext();
+		const recorder = new HudRecorder(fake.context) as unknown as Recorder & {
+			stroke(path?: unknown): void;
+			registerPath(
+				path: unknown,
+				left: number,
+				top: number,
+				right: number,
+				bottom: number,
+			): void;
+		};
+		const letter = { toString: () => "lettre" };
+		recorder.registerPath(letter, 0, 0, 10, 10);
+		recorder.begin();
+		recorder.stroke(letter);
+		recorder.stroke();
+		expect(recorder.commit()).toBe(true);
+		expect(fake.calls.filter((call) => call.startsWith("stroke("))).toEqual([
+			"stroke(lettre)",
+			"stroke()",
+		]);
 	});
 });

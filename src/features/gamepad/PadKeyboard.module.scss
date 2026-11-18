@@ -1,0 +1,113 @@
+@use '../../styles/tokens' as *;
+
+.layer {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  padding: $space-4;
+  pointer-events: none;
+}
+
+.panel {
+  width: min(720px, 100%);
+  padding: $space-4;
+  @include surface-raised;
+  pointer-events: auto;
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  margin-bottom: $space-3;
+  padding: $space-2 $space-3;
+  @include well;
+}
+
+.field {
+  @include label;
+}
+
+.value {
+  min-height: 1.4em;
+  @include mono(18px);
+  color: $ink;
+  overflow-wrap: anywhere;
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: -0.2em;
+  background: $accent;
+  animation: caret 1s steps(2) infinite;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  display: flex;
+  gap: 6px;
+}
+
+.key {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 44px;
+  @include chip;
+  @include ui(18px);
+  color: $ink;
+  text-transform: none;
+  cursor: pointer;
+
+  &:hover {
+    border-color: $accent;
+  }
+}
+
+.wide {
+  flex-grow: 1.6;
+}
+
+.space {
+  flex-grow: 4;
+}
+
+.on {
+  @include chip-on;
+}
+
+.done {
+  border-color: $accent;
+  background: $accent;
+  color: $on-accent;
+}
+
+.hints {
+  display: flex;
+  justify-content: flex-end;
+  gap: $space-4;
+  margin-top: $space-3;
+  @include ui(15px);
+  color: $ink-muted;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}

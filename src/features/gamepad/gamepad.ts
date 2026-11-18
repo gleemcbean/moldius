@@ -31,6 +31,7 @@ export const PAD_RESERVED_BUTTONS: ReadonlySet<number> = new Set([
 ]);
 
 const TRIGGER_THRESHOLD = 0.35;
+const ENGAGED_AXIS = 0.5;
 const PAD_CODE = /^Pad(\d{1,2})(Hold)?$/;
 
 export interface PadSnapshot {
@@ -54,7 +55,8 @@ export const padFocus: {
 	owner: "ui" | "game";
 	captureActive: boolean;
 	onMenu: (() => boolean) | null;
-} = { owner: "ui", captureActive: false, onMenu: null };
+	onButton: ((button: number) => boolean) | null;
+} = { owner: "ui", captureActive: false, onMenu: null, onButton: null };
 
 export function markDevice(device: InputDevice): void {
 	if (inputDeviceStore.get().device !== device) {
@@ -84,25 +86,45 @@ export function isBindablePadCode(code: string): boolean {
 	return parsed !== null && !PAD_RESERVED_BUTTONS.has(parsed.button);
 }
 
+let activeIndex: number | null = null;
+
+function engaged(pad: Gamepad): boolean {
+	return (
+		pad.buttons.some((button) => button.pressed) ||
+		pad.axes.some((axis) => Math.abs(axis) > ENGAGED_AXIS)
+	);
+}
+
 export function activePad(): Gamepad | null {
-	const pads =
+	const pads = (
 		typeof navigator !== "undefined" && navigator.getGamepads
-			? navigator.getGamepads()
-			: [];
-	let best: Gamepad | null = null;
-	for (const pad of pads) {
-		if (!pad?.connected) {
-			continue;
-		}
-		const better =
-			!best ||
-			(pad.mapping === "standard" && best.mapping !== "standard") ||
-			(pad.mapping === best.mapping && pad.timestamp > best.timestamp);
-		if (better) {
-			best = pad;
+			? [...navigator.getGamepads()]
+			: []
+	).filter((pad): pad is Gamepad => pad?.connected === true);
+	if (pads.length === 0) {
+		activeIndex = null;
+		return null;
+	}
+	const current = pads.find((pad) => pad.index === activeIndex) ?? null;
+	if (!current || !engaged(current)) {
+		const challenger = pads.find(
+			(pad) =>
+				pad !== current &&
+				engaged(pad) &&
+				(pad.mapping === "standard" || current?.mapping !== "standard"),
+		);
+		if (challenger) {
+			activeIndex = challenger.index;
+			return challenger;
 		}
 	}
-	return best;
+	if (current) {
+		return current;
+	}
+	const fallback =
+		pads.find((pad) => pad.mapping === "standard") ?? pads[0] ?? null;
+	activeIndex = fallback?.index ?? null;
+	return fallback;
 }
 
 export function readPad(): PadSnapshot | null {

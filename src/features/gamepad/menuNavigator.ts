@@ -7,10 +7,12 @@ import {
 	PadButtons,
 	padCode,
 	padFocus,
+	parsePadCode,
 	readPad,
 	stick,
 } from "./gamepad";
 import { rumble } from "./rumble";
+import { isTextTarget, openPadKeyboard } from "./textEntry";
 
 const FOCUSABLE =
 	'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -41,7 +43,6 @@ let lastTick = 0;
 let heldDirection: Direction | null = null;
 let nextRepeat = 0;
 let marked: HTMLElement | null = null;
-let lastScope: HTMLElement | null = null;
 let nextScopeCheck = 0;
 let mouseTravel = 0;
 let mouseTravelAt = 0;
@@ -67,6 +68,12 @@ function activeScope(): HTMLElement {
 	const scopes = [
 		...document.querySelectorAll<HTMLElement>("[data-pad-scope]"),
 	].filter(visible);
+	const priority = scopes.filter((scope) =>
+		scope.hasAttribute("data-pad-priority"),
+	);
+	if (priority.length > 0) {
+		return priority.at(-1) as HTMLElement;
+	}
 	if (scopes.length === 0) {
 		return document.body;
 	}
@@ -275,14 +282,15 @@ function checkScope(now: number): void {
 	}
 	nextScopeCheck = now + SCOPE_CHECK_MS;
 	const scope = activeScope();
-	const changed = scope !== lastScope;
-	lastScope = scope;
 	const usingPad = inputDeviceStore.get().device === "pad";
-	if (usingPad && (changed || !currentFocus(scope))) {
+	const current = currentFocus(scope);
+	if (usingPad && !current) {
 		const target = defaultFocus(scope);
 		if (target) {
 			focus(target);
 		}
+	} else if (usingPad && current && current !== marked) {
+		mark(current);
 	}
 	const tabs = [...scope.querySelectorAll<HTMLElement>(TABS)].some(visible);
 	const hints = padHintsStore.get();
@@ -308,14 +316,12 @@ function activate(): void {
 		return;
 	}
 	rumble("select");
-	if (
-		current instanceof HTMLInputElement &&
-		["text", "email", "password", "search", "number"].includes(current.type)
-	) {
-		current.focus();
+	if (isTextTarget(current)) {
+		openPadKeyboard(current);
 		return;
 	}
-	if (current instanceof HTMLTextAreaElement) {
+	if (current instanceof HTMLInputElement && current.type === "number") {
+		current.focus();
 		return;
 	}
 	current.click();
@@ -388,7 +394,6 @@ function tick(now: number): void {
 	if (!pad) {
 		buttons.reset();
 		heldDirection = null;
-		lastScope = null;
 		hideHints();
 		return;
 	}
@@ -397,6 +402,10 @@ function tick(now: number): void {
 			continue;
 		}
 		markDevice("pad");
+		const button = parsePadCode(edge.code)?.button;
+		if (button !== undefined && padFocus.onButton?.(button)) {
+			continue;
+		}
 		if (edge.code === padCode(PAD_BUTTON.a, false)) {
 			activate();
 		} else if (

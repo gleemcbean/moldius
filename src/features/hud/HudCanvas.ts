@@ -32,6 +32,8 @@ import {
 } from "../engine/render/PostEffects";
 import {
 	drawPadGlyph,
+	FACE_GLYPHS,
+	faceLetterPath,
 	GLYPH_GAP,
 	GLYPH_SCALE,
 	hasGlyph,
@@ -295,6 +297,9 @@ export class HudCanvas {
 			this.canvas.getContext("2d") as CanvasRenderingContext2D,
 		);
 		this.context.registerPath(WALKIE_ICON, 0, 0, 16, 16);
+		for (const glyph of FACE_GLYPHS) {
+			this.context.registerPath(faceLetterPath(glyph), 4, 4, 16, 16);
+		}
 		this.texture = layerTexture(this.canvas);
 		this.texture.flipY = false;
 		this.source = new THREE.Texture(this.canvas);

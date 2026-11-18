@@ -88,18 +88,24 @@ export function rumble(
 		strongMagnitude: Math.min(1, effect.strongMagnitude * intensity),
 		weakMagnitude: Math.min(1, effect.weakMagnitude * intensity),
 	};
-	const actuator = pad.vibrationActuator;
-	if (typeof actuator?.playEffect === "function") {
-		actuator.playEffect("dual-rumble", params).catch(() => undefined);
-		return;
-	}
-	const legacy = pad.hapticActuators?.[0];
-	if (typeof legacy?.pulse === "function") {
-		legacy
-			.pulse(
-				Math.max(params.strongMagnitude, params.weakMagnitude),
-				effect.duration,
-			)
-			.catch(() => undefined);
+	try {
+		const actuator = pad.vibrationActuator;
+		if (typeof actuator?.playEffect === "function") {
+			void Promise.resolve(actuator.playEffect("dual-rumble", params)).catch(
+				() => undefined,
+			);
+			return;
+		}
+		const legacy = pad.hapticActuators?.[0];
+		if (typeof legacy?.pulse === "function") {
+			void Promise.resolve(
+				legacy.pulse(
+					Math.max(params.strongMagnitude, params.weakMagnitude),
+					effect.duration,
+				),
+			).catch(() => undefined);
+		}
+	} catch {
+		busyUntil = 0;
 	}
 }
