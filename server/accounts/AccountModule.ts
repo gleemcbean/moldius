@@ -12,7 +12,7 @@ import { readCookie, sessionCookieName } from "./cookies.js";
 import type { Database } from "./database.js";
 import type { DiscordClient } from "./discord.js";
 import { FriendStore } from "./FriendStore.js";
-import { migrate } from "./migrations.js";
+import { migrate, serverEncoding } from "./migrations.js";
 
 const RETRY_MS = 30_000;
 const PURGE_MS = 60 * 60_000;
@@ -63,6 +63,12 @@ export class AccountModule {
 			return;
 		}
 		try {
+			const encoding = await serverEncoding(database);
+			if (encoding && encoding !== "UTF8") {
+				console.error(
+					`Comptes : la base PostgreSQL est encodée en ${encoding} au lieu de UTF8. Les longueurs de pseudonymes y sont comptées en octets : un nom accentué de 18 caractères est refusé. Recréez la base avec ENCODING 'UTF8'.`,
+				);
+			}
 			const applied = await migrate(database);
 			if (applied > 0) {
 				console.log(

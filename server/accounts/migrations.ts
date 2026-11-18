@@ -218,7 +218,27 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
 			`ALTER TABLE pending_registrations ADD COLUMN discord_avatar text`,
 		],
 	},
+	{
+		version: 15,
+		statements: [
+			`ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_display_name_check`,
+			`ALTER TABLE accounts ADD CONSTRAINT accounts_display_name_check CHECK (char_length(display_name) BETWEEN 2 AND 72)`,
+		],
+	},
 ];
+
+export async function serverEncoding(
+	database: Database,
+): Promise<string | null> {
+	try {
+		const { rows } = await database.query<{ encoding: string }>(
+			"SELECT pg_encoding_to_char(encoding) AS encoding FROM pg_database WHERE datname = current_database()",
+		);
+		return rows[0]?.encoding ?? null;
+	} catch {
+		return null;
+	}
+}
 
 export async function migrate(database: Database): Promise<number> {
 	await database.query(

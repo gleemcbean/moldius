@@ -24,6 +24,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 		<Modal title={t.settings.title} onClose={onClose} wide>
 			<div className={styles.tabs}>
 				<Segmented<Tab>
+					tabs
 					value={tab}
 					onChange={setTab}
 					options={[

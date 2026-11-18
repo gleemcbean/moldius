@@ -1,4 +1,5 @@
 import { settingsStore } from "../settings/settingsStore";
+import { createStore } from "../../utils/store";
 import {
 	inputDeviceStore,
 	markDevice,
@@ -9,6 +10,7 @@ import {
 	readPad,
 	stick,
 } from "./gamepad";
+import { rumble } from "./rumble";
 
 const FOCUSABLE =
 	'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -17,6 +19,9 @@ const REPEAT_RATE_MS = 110;
 const STICK_THRESHOLD = 0.55;
 const SCROLL_SPEED = 900;
 const FOCUS_ATTRIBUTE = "data-pad-focus";
+const SCOPE_CHECK_MS = 150;
+const TABS = "[data-pad-tabs]";
+const RADIO = '[role="radio"]:not([disabled])';
 
 type Direction = "up" | "down" | "left" | "right";
 
@@ -34,6 +39,13 @@ let lastTick = 0;
 let heldDirection: Direction | null = null;
 let nextRepeat = 0;
 let marked: HTMLElement | null = null;
+let lastScope: HTMLElement | null = null;
+let nextScopeCheck = 0;
+
+export const padHintsStore = createStore<{ visible: boolean; tabs: boolean }>({
+	visible: false,
+	tabs: false,
+});
 
 function visible(element: HTMLElement): boolean {
 	if (element.closest('[aria-hidden="true"], [inert]')) {
@@ -97,11 +109,67 @@ function currentFocus(scope: HTMLElement): HTMLElement | null {
 		: null;
 }
 
+function radios(group: Element): HTMLElement[] {
+	return [...group.querySelectorAll<HTMLElement>(RADIO)].filter(visible);
+}
+
+function pickRadio(
+	group: Element,
+	from: HTMLElement,
+	delta: number,
+	wrap: boolean,
+): boolean {
+	const options = radios(group);
+	if (options.length < 2) {
+		return false;
+	}
+	const index = options.indexOf(from);
+	let next = (index < 0 ? 0 : index) + delta;
+	if (wrap) {
+		next = (next + options.length) % options.length;
+	} else if (next < 0 || next >= options.length) {
+		return false;
+	}
+	const target = options[next];
+	if (!target || target === from) {
+		return false;
+	}
+	focus(target);
+	target.click();
+	return true;
+}
+
+function switchTab(delta: number): void {
+	const scope = activeScope();
+	const current = currentFocus(scope);
+	const group =
+		[...scope.querySelectorAll<HTMLElement>(TABS)].find(visible) ??
+		current?.closest('[role="radiogroup"]') ??
+		null;
+	if (!group) {
+		return;
+	}
+	const options = radios(group);
+	const checked =
+		options.find((option) => option.getAttribute("aria-checked") === "true") ??
+		options[0];
+	if (checked && pickRadio(group, checked, delta, true)) {
+		rumble("tick");
+	}
+}
+
 function nudge(element: HTMLElement, direction: Direction): boolean {
 	if (direction !== "left" && direction !== "right") {
 		return false;
 	}
 	const delta = direction === "right" ? 1 : -1;
+	const group =
+		element.getAttribute("role") === "radio"
+			? element.closest('[role="radiogroup"]')
+			: null;
+	if (group) {
+		return pickRadio(group, element, delta, false);
+	}
 	if (element instanceof HTMLInputElement && element.type === "range") {
 		if (delta > 0) {
 			element.stepUp();
@@ -171,13 +239,68 @@ function move(direction: Direction): void {
 	}
 }
 
+function defaultFocus(scope: HTMLElement): HTMLElement | null {
+	const preferred = scope.querySelector<HTMLElement>("[data-pad-default]");
+	if (preferred && visible(preferred)) {
+		return preferred;
+	}
+	const options = candidates(scope).sort((a, b) => {
+		const ca = center(a);
+		const cb = center(b);
+		return ca.y - cb.y || ca.x - cb.x;
+	});
+	const checkedTab = scope.querySelector<HTMLElement>(
+		`${TABS} [aria-checked="true"]`,
+	);
+	if (checkedTab && options.includes(checkedTab)) {
+		return checkedTab;
+	}
+	return (
+		options.find((option) => option.dataset.sound !== "back") ??
+		options[0] ??
+		null
+	);
+}
+
+function checkScope(now: number): void {
+	if (now < nextScopeCheck) {
+		return;
+	}
+	nextScopeCheck = now + SCOPE_CHECK_MS;
+	const scope = activeScope();
+	const changed = scope !== lastScope;
+	lastScope = scope;
+	const usingPad = inputDeviceStore.get().device === "pad";
+	if (usingPad && (changed || !currentFocus(scope))) {
+		const target = defaultFocus(scope);
+		if (target) {
+			focus(target);
+		}
+	}
+	const tabs = [...scope.querySelectorAll<HTMLElement>(TABS)].some(visible);
+	const hints = padHintsStore.get();
+	if (hints.visible !== usingPad || hints.tabs !== tabs) {
+		padHintsStore.set({ visible: usingPad, tabs });
+	}
+}
+
+function hideHints(): void {
+	if (padHintsStore.get().visible) {
+		padHintsStore.set({ visible: false });
+	}
+}
+
 function activate(): void {
 	const scope = activeScope();
 	const current = currentFocus(scope);
 	if (!current) {
-		move("down");
+		const target = defaultFocus(scope);
+		if (target) {
+			focus(target);
+		}
 		return;
 	}
+	rumble("select");
 	if (
 		current instanceof HTMLInputElement &&
 		["text", "email", "password", "search", "number"].includes(current.type)
@@ -258,6 +381,8 @@ function tick(now: number): void {
 	if (!pad) {
 		buttons.reset();
 		heldDirection = null;
+		lastScope = null;
+		hideHints();
 		return;
 	}
 	for (const edge of buttons.update(pad.buttons, now, () => false)) {
@@ -267,14 +392,22 @@ function tick(now: number): void {
 		markDevice("pad");
 		if (edge.code === padCode(PAD_BUTTON.a, false)) {
 			activate();
-		} else if (edge.code === padCode(PAD_BUTTON.b, false)) {
-			back();
-		} else if (edge.code === padCode(PAD_BUTTON.start, false)) {
+		} else if (
+			edge.code === padCode(PAD_BUTTON.b, false) ||
+			edge.code === padCode(PAD_BUTTON.start, false)
+		) {
+			rumble("back");
 			if (!padFocus.onMenu?.()) {
 				back();
 			}
+		} else if (
+			edge.code === padCode(PAD_BUTTON.lb, false) ||
+			edge.code === padCode(PAD_BUTTON.rb, false)
+		) {
+			switchTab(edge.code === padCode(PAD_BUTTON.rb, false) ? 1 : -1);
 		}
 	}
+	checkScope(now);
 	const next = direction(pad);
 	if (next !== heldDirection) {
 		heldDirection = next;
@@ -310,6 +443,7 @@ function onConnection(): void {
 		cancelAnimationFrame(frameHandle);
 		frameHandle = 0;
 		markDevice("keyboard");
+		hideHints();
 	}
 }
 
@@ -336,6 +470,7 @@ export function startMenuNavigator(): void {
 	inputDeviceStore.subscribe((state) => {
 		if (state.device !== "pad") {
 			mark(null);
+			hideHints();
 		}
 	});
 	onConnection();

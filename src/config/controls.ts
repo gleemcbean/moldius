@@ -5,6 +5,7 @@ import {
 	padCode,
 	parsePadCode,
 } from "../features/gamepad/gamepad";
+import { buttonGlyph, glyphChar } from "../features/gamepad/padGlyphs";
 import { settingsStore } from "../features/settings/settingsStore";
 import { currentMessages } from "../i18n";
 import { ACTION_IDS, type ActionId } from "../types/settings";
@@ -109,7 +110,10 @@ export function keyLabel(code: string): string {
 	}
 	const pad = parsePadCode(code);
 	if (pad) {
-		const button = labels.padButtons[pad.button] ?? code;
+		const glyph = buttonGlyph(pad.button);
+		const button = glyph
+			? glyphChar(glyph)
+			: (labels.padButtons[pad.button] ?? code);
 		return pad.hold ? labels.padHold(button) : button;
 	}
 	const named = labels.keys[code];

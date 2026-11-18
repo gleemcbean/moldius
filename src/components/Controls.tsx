@@ -112,11 +112,13 @@ export function Segmented<T extends string | number>({
 	options,
 	onChange,
 	disabled,
+	tabs = false,
 }: {
 	value: T;
 	options: SegmentedOption<T>[];
 	onChange: (value: T) => void;
 	disabled?: boolean;
+	tabs?: boolean;
 }) {
 	const labelledBy = useContext(FieldLabel);
 	return (
@@ -124,6 +126,7 @@ export function Segmented<T extends string | number>({
 			className={styles.segmented}
 			role="radiogroup"
 			aria-labelledby={labelledBy}
+			data-pad-tabs={tabs ? "" : undefined}
 		>
 			{options.map((option) => (
 				<button

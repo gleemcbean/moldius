@@ -46,6 +46,7 @@ import {
 } from "../shared/protocol/account.js";
 import type { MatchResults } from "../shared/protocol/game.js";
 import { teamStandings } from "../shared/teams.js";
+import { DEFAULT_PLAYER_NAMES } from "../shared/defaultNames.js";
 import { createTestDatabase } from "./helpers/testDatabase.js";
 
 const FAST_SCRYPT = { logN: 14, r: 8, p: 1 };
@@ -1014,7 +1015,6 @@ describe("connexion avec Discord", () => {
 		const me = await browser.send("GET", "/me");
 		expect(me.body?.account).toMatchObject({
 			email: "clyde@example.org",
-			displayName: "clyde",
 			hasPassword: false,
 			discord: {
 				username: "clyde",
@@ -1022,6 +1022,9 @@ describe("connexion avec Discord", () => {
 					"https://cdn.discordapp.com/avatars/80351110224678912/a1b2c3d4e5f60718293a4b5c6d7e8f90.png?size=64",
 			},
 		});
+		expect(DEFAULT_PLAYER_NAMES.fr).toContain(
+			(me.body?.account as { displayName: string }).displayName,
+		);
 
 		const replay = await browser.send(
 			"GET",
@@ -1142,10 +1145,10 @@ describe("connexion avec Discord", () => {
 	it("connecte et lie Discord depuis l'application avec son jeton", async () => {
 		const launched = await launch();
 		const { discord, agent } = launched;
-		discord.profiles.set(
-			"jeton-solo-0001",
-			discordProfile("333333333333333333", "solo_app", null),
-		);
+		discord.profiles.set("jeton-solo-0001", {
+			...discordProfile("333333333333333333", "solo_app", null, "en-US"),
+			displayName: "Super Kanapé Électro Accoustique",
+		});
 		discord.profiles.set(
 			"jeton-alice-001",
 			discordProfile("444444444444444444", "alice_app", null),
@@ -1165,9 +1168,13 @@ describe("connexion avec Discord", () => {
 			accessToken: "jeton-solo-0001",
 		});
 		expect(created.body).toEqual({ outcome: "cree" });
-		expect((await app.send("GET", "/me")).body?.account).toMatchObject({
+		const createdAccount = (await app.send("GET", "/me")).body?.account;
+		expect(createdAccount).toMatchObject({
 			discord: { username: "solo_app" },
 		});
+		expect(DEFAULT_PLAYER_NAMES.en).toContain(
+			(createdAccount as { displayName: string }).displayName,
+		);
 
 		const alice = agent();
 		expect(

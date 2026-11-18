@@ -37,6 +37,7 @@ import {
 	runTransition,
 	transitionKind,
 } from "./screenTransitions";
+import { PadHints } from "../features/gamepad/PadHints";
 import { Toasts } from "./Toasts";
 
 const ADMIN_CHECK_TIMEOUT_MS = 3000;
@@ -190,6 +191,7 @@ function GameApp() {
 			<PlayerProfileModal />
 			{screen === "home" || screen === "lobby" ? <FriendInvites /> : null}
 			<Toasts />
+			<PadHints />
 		</>
 	);
 }

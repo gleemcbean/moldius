@@ -275,10 +275,10 @@ export class RemotePlayers {
 			}
 			const emote = this.state.emoteOf(view.id, renderTime);
 			view.model.update(dt, {
-				speed: ghostVisible ? 0 : view.pose.speed,
-				crouch: sample.value.crouch,
-				grounded: ghostVisible || (flags & PLAYER_FLAG.airborne) === 0,
-				sprinting: (flags & PLAYER_FLAG.sprint) !== 0,
+				speed: dead ? 0 : view.pose.speed,
+				crouch: dead ? 0 : sample.value.crouch,
+				grounded: dead || (flags & PLAYER_FLAG.airborne) === 0,
+				sprinting: !dead && (flags & PLAYER_FLAG.sprint) !== 0,
 				lanternOpen,
 				grimoireOpen: (flags & PLAYER_FLAG.grimoire) !== 0,
 				dead: dead && !ghostVisible,

@@ -121,6 +121,7 @@ export function defaultSettings(
 		mouseSensitivity: 1,
 		padSensitivity: 1,
 		padDeadzone: 0.15,
+		padVibration: 0.7,
 		invertY: false,
 		fov: DEFAULT_FOV,
 		brightness: 1,
@@ -345,6 +346,7 @@ function sanitize(raw: StoredSettings | null): PlayerSettings {
 			base.padSensitivity,
 		),
 		padDeadzone: clampNumber(raw.padDeadzone, 0.05, 0.4, base.padDeadzone),
+		padVibration: clampNumber(raw.padVibration, 0, 1, base.padVibration),
 		invertY: typeof raw.invertY === "boolean" ? raw.invertY : base.invertY,
 		fov:
 			raw.fov === PREVIOUS_DEFAULT_FOV

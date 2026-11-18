@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { dailyDateKey, isDailyDateKey } from "../../shared/dailyChallenge.js";
+import { randomPlayerName } from "../../shared/defaultNames.js";
 import { DEFAULT_HAT_PATTERN, isHatPattern } from "../../shared/hatPatterns.js";
 import type {
 	AccountMessageKey,
@@ -699,10 +700,9 @@ export class AccountService {
 		) {
 			return { outcome: "email-existant", issued: null };
 		}
-		const displayName =
-			sanitizeName(discord.displayName) ??
-			sanitizeName(discord.username) ??
-			"Champignon";
+		const language =
+			parseLanguage(discord.locale ?? undefined) ?? fallbackLanguage;
+		const displayName = randomPlayerName(language);
 		const color =
 			PLAYER_COLOR_CHOICES[
 				Math.floor(Math.random() * PLAYER_COLOR_CHOICES.length)
@@ -715,7 +715,7 @@ export class AccountService {
 					: null,
 				displayName,
 				color,
-				parseLanguage(discord.locale ?? undefined) ?? fallbackLanguage,
+				language,
 				new Date(this.now()),
 			);
 			await this.store.touchLogin(account.id);

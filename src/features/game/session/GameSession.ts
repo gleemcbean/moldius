@@ -110,6 +110,7 @@ import type { PingClientState } from "../../engine/state/ClientWorldState";
 import { PingViews } from "../../engine/world/PingViews";
 import { RoomVisibility } from "../../engine/world/RoomVisibility";
 import { padFocus } from "../../gamepad/gamepad";
+import { rumble } from "../../gamepad/rumble";
 import { type HudMarker, MINIMAP_SIZE } from "../../hud/HudCanvas";
 import {
 	hudStore,
@@ -957,11 +958,15 @@ export class GameSession {
 			} else if (event.kind === "tired") {
 				hudStore.set({ energyDeniedAt: performance.now() });
 				soundBank.play("jump", { volume: 0.12, rate: 0.6 });
+				rumble("denied");
 			} else if (event.speed > 2.5) {
 				soundBank.play("land", {
 					volume: Math.min(0.9, 0.15 + event.speed * 0.08),
 					rate: 0.9 + Math.random() * 0.15,
 				});
+				if (alive) {
+					rumble("land", { scale: Math.min(1.3, (event.speed - 2) / 6) });
+				}
 			}
 		}
 		this.trackLiquid(player);
@@ -1418,6 +1423,7 @@ export class GameSession {
 		) {
 			hudStore.set({ energyDeniedAt: performance.now() });
 			soundBank.play("jump", { volume: 0.12, rate: 0.6 });
+			rumble("denied");
 		} else if (frame.pressed.has("lantern") && this.hideSpot < 0) {
 			this.lanternIntent = !this.lanternIntent;
 			this.lanternChangedAt = serverNow;
@@ -1448,6 +1454,7 @@ export class GameSession {
 			});
 			this.pushReadyAt = serverNow + this.pushCooldownMs;
 			soundBank.play("push", { volume: 0.5 });
+			rumble("push");
 		}
 		if (frame.pressed.has("shout") && serverNow >= this.shoutReadyAt) {
 			socket.emit("game:shout");
@@ -1743,6 +1750,7 @@ export class GameSession {
 		this.photoPending = false;
 		loaded.rig.flashPhoto();
 		soundBank.play("camera-shutter", { volume: 0.7 });
+		rumble("photo");
 		hudStore.set({ photoFlashAt: performance.now() });
 		void photoCamera
 			.capture(renderer, scene, camera, loaded.post)
@@ -3489,6 +3497,7 @@ export class GameSession {
 				loaded.pickups.setTaken(event.id, true);
 				if (event.playerId === this.selfId) {
 					soundBank.play("page-turn", { volume: 0.5, rate: 1.5 });
+					rumble("pickup");
 				}
 				break;
 			case "pickupBack": {
@@ -3504,6 +3513,7 @@ export class GameSession {
 				const altar = loaded.layout.altars[event.altarId];
 				if (event.playerId === this.selfId) {
 					this.setAltar(null);
+					rumble("ritual");
 				}
 				if (altar) {
 					soundBank.play("capture", { position: altar, volume: 0.5 });
@@ -3521,9 +3531,11 @@ export class GameSession {
 				if (event.playerId === this.selfId) {
 					if (event.periodic) {
 						soundBank.play("hurt", { volume: 0.25, rate: 1.25 });
+						rumble("heartbeat");
 					} else {
 						this.selfDamageAt.value = performance.now();
 						soundBank.play("hurt", { volume: 0.8 });
+						rumble("hit");
 					}
 				}
 				break;
@@ -3536,6 +3548,7 @@ export class GameSession {
 					this.carriedBy = null;
 					this.hideSpot = -1;
 					soundBank.play("death", { volume: 0.9 });
+					rumble("death");
 					if (event.fragmentsLost > 0) {
 						pushFeedback(
 							currentMessages().game.fragmentsLost(event.fragmentsLost),
@@ -3555,6 +3568,7 @@ export class GameSession {
 				if (event.playerId === this.selfId) {
 					this.carriedBy = event.active ? event.anomalyId : null;
 					if (event.active) {
+						rumble("grabbed");
 						this.cast.cancel();
 						loaded.grimoire.setOpen(false);
 						this.lanternIntent = false;
@@ -3581,11 +3595,13 @@ export class GameSession {
 			case "extractWarning":
 				if (event.playerId === this.selfId) {
 					soundBank.play("door-creak", { volume: 1, rate: 0.6 });
+					rumble("scare", { scale: 0.5 });
 				}
 				break;
 			case "explosion":
 				if (event.killed.includes(this.selfId)) {
 					this.selfDamageAt.value = performance.now();
+					rumble("scare");
 				}
 				break;
 			default:

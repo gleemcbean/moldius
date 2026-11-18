@@ -271,6 +271,7 @@ function GuestPanel() {
 		<div className={styles.guest}>
 			<div className={styles.tabs}>
 				<Segmented<"login" | "register">
+					tabs
 					value={mode === "register" ? "register" : "login"}
 					onChange={switchMode}
 					options={[
@@ -1128,6 +1129,7 @@ function AccountPanel({ account }: { account: AccountProfile }) {
 			</section>
 			<div className={styles.tabs}>
 				<Segmented<AccountTab>
+					tabs
 					value={tab}
 					onChange={setTab}
 					options={[

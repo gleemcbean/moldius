@@ -22,6 +22,13 @@ import * as THREE from "three";
 import { ICON_PATHS } from "../../components/Icon";
 import { activeBindings, backCode, keyLabel } from "../../config/controls";
 import { currentMessages } from "../../i18n";
+import {
+	drawPadGlyph,
+	GLYPH_GAP,
+	GLYPH_SCALE,
+	hasGlyph,
+	splitGlyphs,
+} from "../gamepad/padGlyphs";
 import { formatClock, hexColor } from "../../utils/format";
 import {
 	curvatureZoom,
@@ -635,6 +642,105 @@ export class HudCanvas {
 		return { x: placedX, y: placedY };
 	}
 
+	private glyphMetrics(): { size: number; family: string } {
+		const match = /(\d+(?:\.\d+)?)px\s+(.+)$/.exec(this.context.font);
+		const pixels = match ? Number(match[1]) : 16;
+		return {
+			size: Math.round(pixels * GLYPH_SCALE),
+			family: match?.[2] ?? UI,
+		};
+	}
+
+	private measure(value: string): { width: number } {
+		if (!hasGlyph(value)) {
+			return this.context.measureText(value);
+		}
+		const { size } = this.glyphMetrics();
+		const gap = size * GLYPH_GAP;
+		let width = 0;
+		for (const run of splitGlyphs(value)) {
+			width +=
+				"glyph" in run
+					? size + gap * 2
+					: this.context.measureText(run.text).width;
+		}
+		return { width };
+	}
+
+	private glyphCenterY(y: number, size: number): number {
+		switch (this.context.textBaseline) {
+			case "top":
+			case "hanging":
+				return y + size * 0.42;
+			case "bottom":
+			case "ideographic":
+				return y - size * 0.42;
+			case "alphabetic":
+				return y - size * 0.3;
+			default:
+				return y;
+		}
+	}
+
+	private glyphText(
+		value: string,
+		x: number,
+		y: number,
+		align: CanvasTextAlign,
+		outline: boolean,
+		color: string,
+	): void {
+		const context = this.context;
+		const { size, family } = this.glyphMetrics();
+		const gap = size * GLYPH_GAP;
+		const width = this.measure(value).width;
+		const start =
+			align === "center"
+				? x - width / 2
+				: align === "right" || align === "end"
+					? x - width
+					: x;
+		const runs = splitGlyphs(value);
+		const centerY = this.glyphCenterY(y, size);
+		context.textAlign = "left";
+		let cursor = start;
+		for (const run of runs) {
+			if ("glyph" in run) {
+				if (outline) {
+					context.fillStyle = "rgba(0, 0, 0, 0.8)";
+					context.beginPath();
+					context.arc(
+						cursor + gap + size / 2,
+						centerY,
+						size / 2 + 1.75,
+						0,
+						Math.PI * 2,
+					);
+					context.fill();
+				}
+				drawPadGlyph(
+					context,
+					run.glyph,
+					cursor + gap + size / 2,
+					centerY,
+					size,
+					family,
+				);
+				cursor += size + gap * 2;
+				continue;
+			}
+			if (outline) {
+				context.strokeStyle = "rgba(0, 0, 0, 0.8)";
+				context.lineWidth = 3.5;
+				context.strokeText(run.text, cursor, y);
+			}
+			context.fillStyle = color;
+			context.fillText(run.text, cursor, y);
+			cursor += context.measureText(run.text).width;
+		}
+		context.textAlign = align;
+	}
+
 	private text(
 		value: string,
 		x: number,
@@ -644,6 +750,10 @@ export class HudCanvas {
 		const context = this.context;
 		context.font = font;
 		context.textAlign = align;
+		if (hasGlyph(value)) {
+			this.glyphText(value, x, y, align, outline, color);
+			return;
+		}
 		if (outline) {
 			context.strokeStyle = "rgba(0, 0, 0, 0.8)";
 			context.lineWidth = 3.5;
@@ -689,7 +799,7 @@ export class HudCanvas {
 		let line = "";
 		for (const word of value.split(/\s+/)) {
 			const candidate = line ? `${line} ${word}` : word;
-			if (line && context.measureText(candidate).width > width) {
+			if (line && this.measure(candidate).width > width) {
 				lines.push(line);
 				line = word;
 			} else {
@@ -947,10 +1057,7 @@ export class HudCanvas {
 		const context = this.context;
 		const font = `700 18px ${UI}`;
 		context.font = font;
-		const width = Math.max(
-			38,
-			Math.ceil(context.measureText(label).width) + 24,
-		);
+		const width = Math.max(38, Math.ceil(this.measure(label).width) + 24);
 		const height = 36;
 		const x = right - width;
 		const hover = !disabled && this.mapHover === id;
@@ -1044,7 +1151,7 @@ export class HudCanvas {
 			x += icon(x) + 7;
 			this.text(label, x, y + 1, { font, color: TEXT_MUTED, outline: false });
 			context.font = font;
-			x += context.measureText(label).width + 20;
+			x += this.measure(label).width + 20;
 		}
 		const hintFont = `500 14px ${BODY}`;
 		const lines = this.wrap(
@@ -1085,7 +1192,7 @@ export class HudCanvas {
 		const clock = formatClock(hud.remainingMs);
 		const font = `700 40px ${FIGURES}`;
 		this.context.font = font;
-		const width = this.context.measureText(clock).width + 34;
+		const width = this.measure(clock).width + 34;
 		const placed = this.place(this.width / 2, 20, width, 50, "center", "top");
 		const x = placed.x + width / 2;
 		const y = placed.y;
@@ -1158,7 +1265,7 @@ export class HudCanvas {
 	private badge(value: string, x: number, y: number, color: string): void {
 		const font = `700 17px ${UI}`;
 		this.context.font = font;
-		const width = this.context.measureText(value).width + 26;
+		const width = this.measure(value).width + 26;
 		this.panel(x - width / 2, y - 13, width, 28, DARK_PANEL, color);
 		this.text(value, x, y + 1, {
 			font,
@@ -1299,9 +1406,9 @@ export class HudCanvas {
 		const nameFont = `600 18px ${UI}`;
 		const timeFont = `700 24px ${FIGURES}`;
 		context.font = nameFont;
-		const nameWidth = context.measureText(name).width;
+		const nameWidth = this.measure(name).width;
 		context.font = timeFont;
-		const timeWidth = context.measureText(seconds).width;
+		const timeWidth = this.measure(seconds).width;
 		const width = 14 + 14 + 10 + nameWidth + 12 + timeWidth + 14;
 		const height = BREW_PANEL_HEIGHT;
 		const { x, y } = this.place(
@@ -1392,7 +1499,7 @@ export class HudCanvas {
 		const context = this.context;
 		context.font = font;
 		const textWidth = Math.max(
-			...lines.map((line) => context.measureText(line).width),
+			...lines.map((line) => this.measure(line).width),
 		);
 		const iconSize = 26;
 		const waves = 22;
@@ -1462,7 +1569,7 @@ export class HudCanvas {
 		const context = this.context;
 		context.font = font;
 		const iconSize = 24;
-		const width = 14 + iconSize + 12 + context.measureText(line).width + 16;
+		const width = 14 + iconSize + 12 + this.measure(line).width + 16;
 		const height = 44;
 		const below = hud.walkieHeld ? this.walkieHeight(hud) + 8 : 0;
 		const { x, y } = this.place(
@@ -1498,14 +1605,11 @@ export class HudCanvas {
 	private fitText(value: string, font: string, width: number): string {
 		const context = this.context;
 		context.font = font;
-		if (context.measureText(value).width <= width) {
+		if (this.measure(value).width <= width) {
 			return value;
 		}
 		let end = value.length;
-		while (
-			end > 1 &&
-			context.measureText(`${value.slice(0, end)}…`).width > width
-		) {
+		while (end > 1 && this.measure(`${value.slice(0, end)}…`).width > width) {
 			end -= 1;
 		}
 		return `${value.slice(0, end)}…`;
@@ -1610,7 +1714,7 @@ export class HudCanvas {
 			const name = this.fitText(row.name, names, nameLimit - swatch - 10);
 			this.text(name, cursor, middle(), { font: names });
 			context.font = names;
-			cursor += context.measureText(name).width + 12;
+			cursor += this.measure(name).width + 12;
 			if (row.tagline) {
 				const taglineFont = `italic 500 ${Math.round(rowHeight * 0.4)}px ${BODY}`;
 				const room = nameX + nameLimit - cursor - 60;
@@ -1625,7 +1729,7 @@ export class HudCanvas {
 						color: YELLOW_DEEP,
 					});
 					context.font = taglineFont;
-					cursor += context.measureText(tagline).width + 12;
+					cursor += this.measure(tagline).width + 12;
 				}
 			}
 			if (row.walkie) {
@@ -1644,7 +1748,7 @@ export class HudCanvas {
 				const bountyFont = `700 14px ${UI}`;
 				const bountyLabel = messages.party.bounty.tag;
 				context.font = bountyFont;
-				const bountyWidth = context.measureText(bountyLabel).width + 12;
+				const bountyWidth = this.measure(bountyLabel).width + 12;
 				this.panel(
 					cursor,
 					y + (rowHeight - 20) / 2,
@@ -1663,7 +1767,7 @@ export class HudCanvas {
 			if (tag) {
 				const tagFont = `700 14px ${UI}`;
 				context.font = tagFont;
-				const tagWidth = context.measureText(tag).width + 12;
+				const tagWidth = this.measure(tag).width + 12;
 				this.panel(
 					cursor,
 					y + (rowHeight - 20) / 2,
@@ -1833,8 +1937,8 @@ export class HudCanvas {
 		const total = entries.reduce(
 			(sum, entry) =>
 				sum +
-				Math.max(24, context.measureText(keyLabel(entry.key)).width + 8) +
-				context.measureText(entry.label).width +
+				Math.max(24, this.measure(keyLabel(entry.key)).width + 8) +
+				this.measure(entry.label).width +
 				36,
 			-8,
 		);
@@ -1851,8 +1955,8 @@ export class HudCanvas {
 		for (const entry of [...entries].reverse()) {
 			context.font = font;
 			const keyText = keyLabel(entry.key);
-			const keyWidth = Math.max(24, context.measureText(keyText).width + 8);
-			const width = context.measureText(entry.label).width + keyWidth + 28;
+			const keyWidth = Math.max(24, this.measure(keyText).width + 8);
+			const width = this.measure(entry.label).width + keyWidth + 28;
 			const x = right - width;
 			const remaining = Math.max(0, entry.readyAt - hud.serverNow);
 			this.panel(x, y, width, 38, "rgba(10, 12, 10, 0.75)");
@@ -1989,8 +2093,8 @@ export class HudCanvas {
 		const font = `700 20px ${UI}`;
 		context.font = font;
 		const keyText = keyLabel(activeBindings().interact);
-		const keyWidth = Math.max(24, context.measureText(keyText).width + 8);
-		const width = context.measureText(hud.prompt).width + keyWidth + 30;
+		const keyWidth = Math.max(24, this.measure(keyText).width + 8);
+		const width = this.measure(hud.prompt).width + keyWidth + 30;
 		const left = x - width / 2;
 		const top = y + 34;
 		this.panel(left, top, width, 34, "rgba(10, 12, 10, 0.72)");
@@ -2014,7 +2118,7 @@ export class HudCanvas {
 			const at = this.at(this.width / 2, 110);
 			const font = `700 18px ${UI}`;
 			context.font = font;
-			const width = context.measureText(messages.howler).width + 28;
+			const width = this.measure(messages.howler).width + 28;
 			context.globalAlpha = Math.floor(now / 250) % 2 === 1 ? 0.55 : 1;
 			this.panel(at.x - width / 2, at.y, width, 32, "rgba(120, 20, 20, 0.75)");
 			this.text(messages.howler, at.x, at.y + 16, {
@@ -2028,7 +2132,7 @@ export class HudCanvas {
 			const at = this.at(this.width / 2, this.height * 0.84);
 			const font = `500 16px ${UI}`;
 			context.font = font;
-			const width = context.measureText(messages.sent).width + 36;
+			const width = this.measure(messages.sent).width + 36;
 			this.panel(
 				at.x - width / 2,
 				at.y - 20,
@@ -2071,7 +2175,7 @@ export class HudCanvas {
 		const context = this.context;
 		context.font = font;
 		const width =
-			Math.max(...lines.map((line) => context.measureText(line).width)) + 36;
+			Math.max(...lines.map((line) => this.measure(line).width)) + 36;
 		const height = lines.length * 26 + 18;
 		context.globalAlpha = alpha;
 		this.panel(at.x - width / 2, at.y, width, height, "rgba(10, 12, 10, 0.82)");
@@ -2116,11 +2220,8 @@ export class HudCanvas {
 			const promptFont = `700 18px ${UI}`;
 			this.context.font = promptFont;
 			const keyText = keyLabel(activeBindings().interact);
-			const keyWidth = Math.max(
-				22,
-				this.context.measureText(keyText).width + 8,
-			);
-			const promptWidth = this.context.measureText(hud.prompt).width;
+			const keyWidth = Math.max(22, this.measure(keyText).width + 8);
+			const promptWidth = this.measure(hud.prompt).width;
 			const promptX = x + width - 14 - promptWidth;
 			this.panel(promptX - keyWidth - 8, y + 6, keyWidth, 22, YELLOW);
 			this.text(keyText, promptX - 8 - keyWidth / 2, y + 18, {
@@ -2254,9 +2355,7 @@ export class HudCanvas {
 		this.context.font = keyFont;
 		const keyWidth = Math.max(
 			0,
-			...tutorial.choices.map(
-				(choice) => this.context.measureText(choice.key).width + 18,
-			),
+			...tutorial.choices.map((choice) => this.measure(choice.key).width + 18),
 		);
 		const choiceLines = tutorial.choices.map((choice) =>
 			this.wrap(choice.label, choiceFont, inner - keyWidth - 12),

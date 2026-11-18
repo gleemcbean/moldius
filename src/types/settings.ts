@@ -81,6 +81,7 @@ export interface PlayerSettings {
 	mouseSensitivity: number;
 	padSensitivity: number;
 	padDeadzone: number;
+	padVibration: number;
 	invertY: boolean;
 	fov: number;
 	brightness: number;

@@ -20,12 +20,19 @@ export const settingsFr = {
 		gamepad: "Manette",
 		padSensitivity: "Sensibilité du joystick",
 		padDeadzone: "Zone morte des joysticks",
+		padVibration: "Vibrations",
+		padHintSelect: "Valider",
+		padHintBack: "Retour",
+		padHintTabs: "Onglets",
+		padVibrationOff: "Désactivées",
+		padVibrationUnsupported:
+			"Cette manette ou ce navigateur ne gère pas les vibrations.",
 		padListening: "Bouton… (maintenir : appui long)",
 		padReserved:
 			"Ce bouton est réservé : Start met en pause, la croix ←/→ change d'objet.",
 		padUnbound: "—",
 		padHint:
-			"Joystick gauche : se déplacer. Joystick droit : regarder et choisir dans les roues. Croix ←/→ : changer d'objet tenu, tourner les pages, zoomer sur la carte. Start : pause (maintenir : valider dans le tutoriel). La course (L3) et l'accroupissement (B) fonctionnent en bascule. Un appui long sur un bouton peut déclencher une seconde action. Dans les menus : croix ou joystick pour naviguer, A pour valider, B pour revenir.",
+			"Joystick gauche : se déplacer. Joystick droit : regarder et choisir dans les roues. Croix ←/→ : changer d'objet tenu, tourner les pages, zoomer sur la carte. Start : pause (maintenir : valider dans le tutoriel). La course (L3) et l'accroupissement (B) fonctionnent en bascule. Un appui long sur un bouton peut déclencher une seconde action. Dans les menus : croix ou joystick pour naviguer (←/→ change directement la valeur d'un sélecteur), A pour valider, B pour revenir ou reprendre la partie, LB/RB pour changer d'onglet, joystick droit pour faire défiler.",
 		padStick: "Joystick gauche",
 		padButtons: [
 			"A",
@@ -204,12 +211,19 @@ export const settingsEn: typeof settingsFr = {
 		gamepad: "Controller",
 		padSensitivity: "Stick sensitivity",
 		padDeadzone: "Stick dead zone",
+		padVibration: "Vibration",
+		padHintSelect: "Select",
+		padHintBack: "Back",
+		padHintTabs: "Tabs",
+		padVibrationOff: "Off",
+		padVibrationUnsupported:
+			"This controller or browser does not support vibration.",
 		padListening: "Button… (hold: long press)",
 		padReserved:
 			"This button is reserved: Start pauses, D-pad ←/→ switches items.",
 		padUnbound: "—",
 		padHint:
-			"Left stick: move. Right stick: look around and pick in the wheels. D-pad ←/→: switch the held item, turn pages, zoom the map. Start: pause (hold: confirm in the tutorial). Sprint (L3) and crouch (B) are toggles. A long press on a button can trigger a second action. In menus: D-pad or stick to move, A to confirm, B to go back.",
+			"Left stick: move. Right stick: look around and pick in the wheels. D-pad ←/→: switch the held item, turn pages, zoom the map. Start: pause (hold: confirm in the tutorial). Sprint (L3) and crouch (B) are toggles. A long press on a button can trigger a second action. In menus: D-pad or stick to move (←/→ changes a selector's value directly), A to confirm, B to go back or resume the match, LB/RB to switch tabs, right stick to scroll.",
 		padStick: "Left stick",
 		padButtons: [
 			"A",

@@ -1,3 +1,4 @@
+import { DEFAULT_PLAYER_NAMES } from "@shared/defaultNames";
 import type { HatPattern } from "@shared/hatPatterns";
 import type { LanternTint, Tagline } from "@shared/rewards";
 
@@ -162,26 +163,7 @@ export const appearanceFr = {
 		elder: "Ancien",
 		legend: "Légende",
 	} satisfies Record<Tagline, string>,
-	names: [
-		"Morille Hardie",
-		"Cèpe Bougon",
-		"Girolle Vive",
-		"Amanite Rieuse",
-		"Pleurote Lunaire",
-		"Trompette Noire",
-		"Truffe Discrète",
-		"Coulemelle",
-		"Vesse-de-Loup",
-		"Pied-Bleu",
-		"Russule Rouge",
-		"Mousseron Futé",
-		"Lactaire Doux",
-		"Clavaire Dorée",
-		"Bolet Bai",
-		"Craterelle",
-		"Shiitaké Pressé",
-		"Hydne Hérissé",
-	],
+	names: DEFAULT_PLAYER_NAMES.fr,
 };
 
 export const appearanceEn: typeof appearanceFr = {
@@ -245,24 +227,5 @@ export const appearanceEn: typeof appearanceFr = {
 		elder: "Elder",
 		legend: "Legend",
 	},
-	names: [
-		"Bold Morel",
-		"Grumpy Porcini",
-		"Lively Chanterelle",
-		"Giggling Amanita",
-		"Moonlit Oyster",
-		"Black Trumpet",
-		"Shy Truffle",
-		"Parasol",
-		"Puffball",
-		"Wood Blewit",
-		"Red Brittlegill",
-		"Clever Miller",
-		"Mild Milkcap",
-		"Golden Coral",
-		"Bay Bolete",
-		"Horn of Plenty",
-		"Hasty Shiitake",
-		"Hedgehog Hydnum",
-	],
+	names: DEFAULT_PLAYER_NAMES.en,
 };

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components/Button";
 import { Field, Slider, Toggle } from "../../components/Controls";
+import { KeyText } from "../../components/KeyText";
 import { ACTION_GROUPS, keyLabel, RESERVED_CODES } from "../../config/controls";
 import { PAD_MOVEMENT_ACTIONS } from "../../config/defaultKeys";
 import { useStore } from "../../hooks/useStore";
@@ -14,6 +15,7 @@ import {
 	padFocus,
 	readPad,
 } from "../gamepad/gamepad";
+import { rumble, rumbleSupported } from "../gamepad/rumble";
 import styles from "./SettingsModal.module.scss";
 import {
 	bindKey,
@@ -97,7 +99,7 @@ function KeyCapture({ action }: { action: ActionId }) {
 				onContextMenu={(event) => event.preventDefault()}
 				data-selectable=""
 			>
-				{listening ? labels.listening : keyLabel(code)}
+				{listening ? labels.listening : <KeyText text={keyLabel(code)} />}
 			</button>
 			{message ? <span className={styles.hint}>{message}</span> : null}
 		</>
@@ -182,7 +184,7 @@ function PadCapture({ action }: { action: ActionId }) {
 				className={[styles.keyButton, styles.padButton].join(" ")}
 				disabled
 			>
-				{keyLabel(PAD_STICK_CODE)}
+				<KeyText text={keyLabel(PAD_STICK_CODE)} />
 			</button>
 		);
 	}
@@ -201,11 +203,13 @@ function PadCapture({ action }: { action: ActionId }) {
 				}}
 				data-selectable=""
 			>
-				{listening
-					? labels.padListening
-					: code
-						? keyLabel(code)
-						: labels.padUnbound}
+				{listening ? (
+					labels.padListening
+				) : code ? (
+					<KeyText text={keyLabel(code)} />
+				) : (
+					labels.padUnbound
+				)}
 			</button>
 			{message ? <span className={styles.hint}>{message}</span> : null}
 		</>
@@ -225,6 +229,7 @@ export function ControlsSettings() {
 		(state) => state.padSensitivity,
 	);
 	const padDeadzone = useStore(settingsStore, (state) => state.padDeadzone);
+	const padVibration = useStore(settingsStore, (state) => state.padVibration);
 	return (
 		<div>
 			<h3 className={styles.section}>{labels.mouse}</h3>
@@ -263,6 +268,26 @@ export function ControlsSettings() {
 					step={0.01}
 					onChange={(value) => updateSettings({ padDeadzone: value })}
 					format={(value) => `${Math.round(value * 100)} %`}
+				/>
+			</Field>
+			<Field
+				label={labels.padVibration}
+				hint={rumbleSupported() ? undefined : labels.padVibrationUnsupported}
+			>
+				<Slider
+					value={padVibration}
+					min={0}
+					max={1}
+					step={0.05}
+					onChange={(value) => {
+						updateSettings({ padVibration: value });
+						rumble("tick", { force: true });
+					}}
+					format={(value) =>
+						value === 0
+							? labels.padVibrationOff
+							: `${Math.round(value * 100)} %`
+					}
 				/>
 			</Field>
 			<p className={styles.hint}>{labels.padHint}</p>

@@ -84,7 +84,7 @@ export function isBindablePadCode(code: string): boolean {
 	return parsed !== null && !PAD_RESERVED_BUTTONS.has(parsed.button);
 }
 
-export function readPad(): PadSnapshot | null {
+export function activePad(): Gamepad | null {
 	const pads =
 		typeof navigator !== "undefined" && navigator.getGamepads
 			? navigator.getGamepads()
@@ -102,6 +102,11 @@ export function readPad(): PadSnapshot | null {
 			best = pad;
 		}
 	}
+	return best;
+}
+
+export function readPad(): PadSnapshot | null {
+	const best = activePad();
 	if (!best) {
 		return null;
 	}

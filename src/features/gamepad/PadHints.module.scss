@@ -1,0 +1,37 @@
+@use '../../styles/tokens' as *;
+
+.bar {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 14px;
+  background: rgba(10, 12, 10, 0.82);
+  box-shadow: inset 0 0 0 1px $line-hi;
+  @include ui(15px);
+  color: $ink;
+  pointer-events: none;
+}
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shoulder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1em;
+  height: 1.25em;
+  padding: 0 0.35em;
+  border-radius: 0.3em 0.3em 0.15em 0.15em;
+  background: #121410;
+  box-shadow: inset 0 0 0 1.5px $ink-muted;
+  font-size: 0.8em;
+  color: $ink;
+}
