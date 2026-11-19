@@ -4,6 +4,7 @@ import { AccountModal } from "../features/account/AccountModal";
 import { initAccount } from "../features/account/accountStore";
 import { audioEngine } from "../features/audio/audioEngine";
 import { music } from "../features/audio/music";
+import { soundBank } from "../features/audio/soundBank";
 import { installHoverSounds } from "../features/audio/uiSounds";
 import { BestiaryModal } from "../features/bestiary/BestiaryModal";
 import { ChallengesModal } from "../features/challenges/ChallengesModal";
@@ -77,7 +78,10 @@ function useGlobalSetup(): void {
 		applyScreen();
 		const stopScreen = appStore.subscribe(applyScreen);
 		const unlockAudio = () =>
-			void audioEngine.resume().then(() => music.start());
+			void audioEngine.resume().then(() => {
+				music.start();
+				void soundBank.load();
+			});
 		window.addEventListener("pointerdown", unlockAudio);
 		window.addEventListener("keydown", unlockAudio);
 		const stopHoverSounds = installHoverSounds();

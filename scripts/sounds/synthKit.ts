@@ -6,6 +6,7 @@ import type {
 	AudioParam,
 	BiquadFilterNode,
 	BiquadFilterType,
+	DelayNode,
 	GainNode,
 	OfflineAudioContext,
 	OscillatorNode,
@@ -106,6 +107,13 @@ export class SynthKit {
 		node.type = type;
 		node.frequency.value = frequency;
 		node.Q.value = q;
+		node.connect(destination);
+		return node;
+	}
+
+	delay(seconds: number, destination: AudioNode): DelayNode {
+		const node = this.ctx.createDelay(seconds);
+		node.delayTime.value = seconds;
 		node.connect(destination);
 		return node;
 	}

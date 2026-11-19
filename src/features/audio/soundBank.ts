@@ -1,18 +1,33 @@
-import { hashString } from "@shared/random";
+import loops from "../../assets/sounds/loops.json";
 import { type AudioBus, audioEngine, setPannerPosition } from "./audioEngine";
-import { AMBIENCE_SOUNDS } from "./recipes/ambienceSounds";
-import { ANOMALY_SOUNDS } from "./recipes/anomalySounds";
-import { PARTY_SOUNDS } from "./recipes/partySounds";
-import { PLAYER_SOUNDS } from "./recipes/playerSounds";
-import type { SoundRecipe } from "./recipes/types";
-import { SynthKit } from "./synthKit";
 
-export const ALL_RECIPES: SoundRecipe[] = [
-	...PLAYER_SOUNDS,
-	...ANOMALY_SOUNDS,
-	...AMBIENCE_SOUNDS,
-	...PARTY_SOUNDS,
-];
+const SOUND_URLS = import.meta.glob<string>("../../assets/sounds/*.ogg", {
+	eager: true,
+	query: "?url&no-inline",
+	import: "default",
+});
+const SOUND_NAME = /([^/]+?)(?:\.(\d+))?\.ogg$/;
+const LOOP_ENDS: Record<string, number> = loops;
+const LOAD_CONCURRENCY = 6;
+const LOAD_PRIORITY = ["ui-", "music-chord", "music-note"];
+
+interface SoundFile {
+	id: string;
+	variant: number;
+	url: string;
+}
+
+const SOUND_FILES: SoundFile[] = Object.entries(SOUND_URLS)
+	.flatMap(([path, url]) => {
+		const match = SOUND_NAME.exec(path);
+		return match ? [{ id: match[1], variant: Number(match[2] ?? 0), url }] : [];
+	})
+	.sort((a, b) => priorityOf(a.id) - priorityOf(b.id));
+
+function priorityOf(id: string): number {
+	const index = LOAD_PRIORITY.findIndex((prefix) => id.startsWith(prefix));
+	return index === -1 ? LOAD_PRIORITY.length : index;
+}
 
 export interface PlayOptions {
 	bus?: AudioBus;
@@ -45,67 +60,88 @@ class SoundBank {
 	private readonly buffers = new Map<string, AudioBuffer[]>();
 	private readonly active = new Set<SoundHandle>();
 	private readonly lastPlayed = new Map<string, number>();
-	private readonly loopEnds = new Map<AudioBuffer, number>();
-	private loaded = false;
+	private readonly loadedFiles = new Set<SoundFile>();
+	private readonly listeners = new Set<(fraction: number) => void>();
+	private loading: Promise<void> | null = null;
 
 	get isLoaded(): boolean {
-		return this.loaded;
+		return this.loadedFiles.size === SOUND_FILES.length;
 	}
 
-	async load(onProgress: (fraction: number) => void): Promise<void> {
-		if (this.loaded) {
-			onProgress(1);
-			return;
+	private get progress(): number {
+		return SOUND_FILES.length === 0
+			? 1
+			: this.loadedFiles.size / SOUND_FILES.length;
+	}
+
+	load(onProgress?: (fraction: number) => void): Promise<void> {
+		if (onProgress) {
+			onProgress(this.progress);
+			this.listeners.add(onProgress);
 		}
-		const sampleRate = audioEngine.ctx.sampleRate;
-		const total = ALL_RECIPES.reduce((sum, recipe) => sum + recipe.variants, 0);
-		let done = 0;
-		for (const recipe of ALL_RECIPES) {
-			const variants: AudioBuffer[] = [];
-			for (let variant = 0; variant < recipe.variants; variant += 1) {
-				const context = new OfflineAudioContext(
-					1,
-					Math.ceil(sampleRate * recipe.duration),
-					sampleRate,
-				);
-				recipe.render(
-					new SynthKit(context, hashString(`${recipe.id}:${variant}`)),
-					variant,
-				);
-				const buffer = await context.startRendering();
-				if (recipe.loop) {
-					this.loopEnds.set(buffer, smoothLoop(buffer));
+		this.loading ??= this.fetchMissing().finally(() => {
+			this.loading = null;
+			this.listeners.clear();
+		});
+		return this.loading;
+	}
+
+	private async fetchMissing(): Promise<void> {
+		const queue = SOUND_FILES.filter((file) => !this.loadedFiles.has(file));
+		const worker = async () => {
+			for (let file = queue.shift(); file; file = queue.shift()) {
+				const buffer = await decode(file.url);
+				if (!buffer) {
+					continue;
 				}
-				variants.push(buffer);
-				done += 1;
-				onProgress(done / total);
+				const variants = this.buffers.get(file.id) ?? [];
+				variants[file.variant] = buffer;
+				this.buffers.set(file.id, variants);
+				this.loadedFiles.add(file);
+				for (const listener of this.listeners) {
+					listener(this.progress);
+				}
 			}
-			this.buffers.set(recipe.id, variants);
-		}
-		this.loaded = true;
+		};
+		await Promise.all(Array.from({ length: LOAD_CONCURRENCY }, worker));
 	}
 
 	has(id: string): boolean {
 		return this.buffers.has(id);
 	}
 
-	play(id: string, options: PlayOptions = {}): SoundHandle | null {
+	buffer(id: string, variant?: number): AudioBuffer | null {
 		const variants = this.buffers.get(id);
-		if (!variants || variants.length === 0 || !audioEngine.ready) {
+		if (!variants || variants.length === 0) {
 			return null;
 		}
-		if (!options.loop && this.active.size >= MAX_ONE_SHOTS) {
+		return (
+			variants[variant ?? Math.floor(Math.random() * variants.length)] ?? null
+		);
+	}
+
+	play(id: string, options: PlayOptions = {}): SoundHandle | null {
+		if (!audioEngine.ready) {
+			return null;
+		}
+		if (
+			!options.loop &&
+			options.bus !== "ui" &&
+			this.active.size >= MAX_ONE_SHOTS
+		) {
+			return null;
+		}
+		const buffer = this.buffer(id, options.variant);
+		if (!buffer) {
 			return null;
 		}
 		const context = audioEngine.ctx;
-		const buffer =
-			variants[options.variant ?? Math.floor(Math.random() * variants.length)];
 		const source = context.createBufferSource();
 		source.buffer = buffer;
 		source.loop = options.loop ?? false;
 		if (source.loop) {
 			source.loopStart = 0;
-			source.loopEnd = this.loopEnds.get(buffer) ?? buffer.duration;
+			source.loopEnd = LOOP_ENDS[id] ?? buffer.duration;
 		}
 		source.playbackRate.value = options.rate ?? 1;
 		const gain = context.createGain();
@@ -205,19 +241,15 @@ class SoundBank {
 	}
 }
 
-function smoothLoop(buffer: AudioBuffer): number {
-	const data = buffer.getChannelData(0);
-	const fade = Math.min(
-		Math.floor(buffer.sampleRate * 0.25),
-		Math.floor(data.length / 4),
-	);
-	for (let index = 0; index < fade; index += 1) {
-		const t = index / fade;
-		const head = data[index];
-		const tail = data[data.length - fade + index];
-		data[index] = head * t + tail * (1 - t);
+async function decode(url: string): Promise<AudioBuffer | null> {
+	try {
+		const response = await fetch(url);
+		return response.ok
+			? await audioEngine.ctx.decodeAudioData(await response.arrayBuffer())
+			: null;
+	} catch {
+		return null;
 	}
-	return (data.length - fade) / buffer.sampleRate;
 }
 
 export const soundBank = new SoundBank();
