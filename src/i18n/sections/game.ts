@@ -495,7 +495,7 @@ export const gameFr = {
 		steps: {
 			manor: "Génération du manoir",
 			collisions: "Collisions et plan",
-			textures: "Textures et matières",
+			textures: "Textures et modèles 3D",
 			architecture: "Maçonnerie et mobilier",
 			models: "Champignons et anomalies",
 			grimoire: "Grimoire et illustrations",
@@ -1005,7 +1005,7 @@ export const gameEn: typeof gameFr = {
 		steps: {
 			manor: "Generating the manor",
 			collisions: "Collisions and map",
-			textures: "Textures and materials",
+			textures: "Textures and 3D models",
 			architecture: "Masonry and furniture",
 			models: "Mushrooms and anomalies",
 			grimoire: "Grimoire and illustrations",

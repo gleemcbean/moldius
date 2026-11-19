@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { meterTorus, placed } from "../geometryUtils";
-import type { MaterialOptions } from "../MaterialLibrary";
+import { meterTorus, placed } from "../../../src/features/world/geometryUtils";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
 import {
 	BRASS,
 	box,

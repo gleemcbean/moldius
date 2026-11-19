@@ -1,6 +1,6 @@
 import { DAIS_STEP_RISE, DAIS_STEP_RUN } from "@shared/config/index";
 import * as THREE from "three";
-import type { MaterialOptions } from "../MaterialLibrary";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
 import {
 	BRASS,
 	box,
@@ -9,12 +9,14 @@ import {
 	cylinder,
 	cylinderBetween,
 	type FurnitureBuilder,
+	type FurnitureSurface,
 	IRON,
 	LINEN,
 	lathe,
 	type Part,
 	pickCarved,
 	pickWood,
+	sacredFloor,
 	sphere,
 } from "./parts";
 import { leafMaterial, leafyBush, potMaterial } from "./plants";
@@ -593,9 +595,9 @@ export const pottingTable: FurnitureBuilder = (context) => {
 };
 
 export const dais: FurnitureBuilder = ({ item, room, rng }) => {
-	const surface = rng.chance(0.5)
-		? carvedForSeed(room.seed)
-		: { texture: room.style.floor, roughness: 0.85 };
+	const surface: FurnitureSurface = rng.chance(0.5)
+		? { ...carvedForSeed(room.seed), bind: "roomCarved" }
+		: { texture: room.style.floor, roughness: 0.85, bind: "roomFloor" };
 	const nosing = rng.chance(0.5) ? TRIM_WOOD : BRASS;
 	const tiers = Math.round(item.height / DAIS_STEP_RISE);
 	const parts: Part[] = [];
@@ -619,10 +621,10 @@ export const dais: FurnitureBuilder = ({ item, room, rng }) => {
 };
 
 export const estrade: FurnitureBuilder = ({ item, room }) => {
-	const material: MaterialOptions =
-		room.type === "chapel" || room.type === "ritual"
-			? { texture: "stoneFlags", roughness: 0.95 }
-			: { texture: "parquet", roughness: 0.85 };
+	const material: FurnitureSurface = {
+		...sacredFloor(room.type),
+		bind: "sacredFloor",
+	};
 	const { width, height, depth } = item;
 	return [
 		box(material, width, height, depth, 0, 0, 0, 0, 0.015),

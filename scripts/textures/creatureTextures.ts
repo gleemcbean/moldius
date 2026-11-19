@@ -1,9 +1,6 @@
-import {
-	DEFAULT_HAT_PATTERN,
-	HAT_PATTERNS,
-	type HatPattern,
-} from "@shared/hatPatterns";
-import { colorHex, PLAYER_COLOR_CHOICES } from "@shared/playerColors";
+import { HAT_PATTERNS, type HatPattern } from "@shared/hatPatterns";
+import { PLAYER_COLOR_CHOICES } from "@shared/playerColors";
+import { capTextureKey } from "../../src/features/world/textures/textureKeys";
 import {
 	hexToRgb,
 	mix,
@@ -260,13 +257,6 @@ export function capRecipe(color: number, pattern: HatPattern): TextureRecipe {
 			PATTERN_PAINTERS[pattern](p, hexToRgb(CREAM), base);
 		},
 	};
-}
-
-export function capTextureKey(
-	color: number,
-	pattern: HatPattern = DEFAULT_HAT_PATTERN,
-): string {
-	return `cap-${colorHex(color)}-${pattern}`;
 }
 
 const CAP_TEXTURES: Record<string, TextureRecipe> = Object.fromEntries(

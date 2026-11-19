@@ -6,8 +6,12 @@ import {
 } from "@shared/manor/hideProfiles";
 import { plankDisc } from "@shared/plankDisc";
 import * as THREE from "three";
-import { meterBox, meterCircle, meterLathe } from "../geometryUtils";
-import type { MaterialOptions } from "../MaterialLibrary";
+import {
+	meterBox,
+	meterCircle,
+	meterLathe,
+} from "../../../src/features/world/geometryUtils";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
 import {
 	BRASS,
 	box,

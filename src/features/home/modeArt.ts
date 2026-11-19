@@ -31,11 +31,13 @@ import { PostEffects } from "../engine/render/PostEffects";
 import { DoorViews } from "../engine/world/DoorViews";
 import type { AnomalyModel } from "../models/anomalies/AnomalyModel";
 import { createAnomalyModel } from "../models/anomalies/createAnomalyModel";
+import { modelLibrary } from "../models/ModelLibrary";
 import { MushroomModel } from "../models/MushroomModel";
 import { ModelKit, modelYaw } from "../models/modelKit";
 import { ManorMeshBuilder } from "../world/ManorMeshBuilder";
 import { MaterialLibrary } from "../world/MaterialLibrary";
 import { TextureLibrary } from "../world/textures/TextureLibrary";
+import { preloadSpecialTextures } from "../world/textures/textureFiles";
 
 export type GameMode = "classic" | "daily" | "tutorial" | "possessed";
 export type PresenceArt = "menu" | "lobby" | "match" | "daily";
@@ -687,7 +689,11 @@ async function drawPlates<Name extends string>(
 		),
 		surfaceQuality("high"),
 	);
-	await textures.prepare();
+	await Promise.all([
+		textures.prepare(),
+		modelLibrary.load(),
+		preloadSpecialTextures(),
+	]);
 	const materials = new MaterialLibrary(textures);
 	const kit = new ModelKit(materials);
 	const layout = generateManor(ART_SEED, {

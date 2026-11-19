@@ -5,6 +5,7 @@ import {
 	type LanternTint,
 } from "@shared/rewards";
 import {
+	type ChaseCourse,
 	ChaseDirector,
 	randomChaseCourse,
 } from "@shared/showcase/chaseDirector";
@@ -15,14 +16,26 @@ import { LightPool } from "../engine/lighting/LightPool";
 import { PostEffects } from "../engine/render/PostEffects";
 import { DoorViews } from "../engine/world/DoorViews";
 import { ReverbereModel } from "../models/anomalies/bipeds";
+import { modelLibrary } from "../models/ModelLibrary";
 import { MushroomModel } from "../models/MushroomModel";
 import { ModelKit, modelYaw } from "../models/modelKit";
 import { settingsStore } from "../settings/settingsStore";
+import { furnitureModelIds } from "../world/furniture/furnitureModels";
 import { ManorMeshBuilder } from "../world/ManorMeshBuilder";
 import { MaterialLibrary } from "../world/MaterialLibrary";
 import { TextureLibrary } from "../world/textures/TextureLibrary";
+import { preloadSpecialTextures } from "../world/textures/textureFiles";
 
 const STRIDE_SPEED = 4.6;
+const HOME_MODELS = [
+	"world/door",
+	"world/door_3panel",
+	"player/mushroom",
+	"tools/lantern",
+	"tools/camera",
+	"tools/walkie",
+	"anomalies/veilleur",
+];
 const DEFAULT_LANTERN_LIGHT = 0xffb060;
 
 function lanternTint(tint: LanternTint): number | null {
@@ -60,8 +73,29 @@ export class HomeScene {
 	private last = performance.now();
 	private readonly observer: ResizeObserver;
 
-	constructor(
+	static async create(
+		host: HTMLElement,
+		color: number,
+		pattern: HatPattern = DEFAULT_HAT_PATTERN,
+		tint: LanternTint = DEFAULT_LANTERN_TINT,
+	): Promise<HomeScene> {
+		const course = randomChaseCourse();
+		const visible = new Set(course.visibleRooms);
+		await Promise.all([
+			modelLibrary.require([
+				...HOME_MODELS,
+				...furnitureModelIds(
+					course.layout.furniture.filter((item) => visible.has(item.roomId)),
+				),
+			]),
+			preloadSpecialTextures(),
+		]);
+		return new HomeScene(host, course, color, pattern, tint);
+	}
+
+	private constructor(
 		private readonly host: HTMLElement,
+		course: ChaseCourse,
 		private color: number,
 		private pattern: HatPattern = DEFAULT_HAT_PATTERN,
 		private tint: LanternTint = DEFAULT_LANTERN_TINT,
@@ -83,7 +117,6 @@ export class HomeScene {
 		this.scene.add(new THREE.HemisphereLight(0xa4907c, 0x44301e, 2.1));
 		this.scene.add(this.motes.points);
 
-		const course = randomChaseCourse();
 		this.director = new ChaseDirector(course);
 		const { layout } = course;
 		const builder = new ManorMeshBuilder(layout, this.materials);

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MaterialOptions } from "../../world/MaterialLibrary";
+import { specialTexture } from "../../world/textures/textureFiles";
 import type { ModelKit } from "../modelKit";
 import {
 	AnomalyModel,
@@ -7,99 +7,18 @@ import {
 	easeOut,
 	type GlowSpec,
 } from "./AnomalyModel";
-import { claws, hoodGeometry, normalizeHeightUv, SOCKET } from "./parts";
-
-const BRASS: MaterialOptions = {
-	texture: "brass",
-	color: 0x8a7a5c,
-	roughness: 0.45,
-	metalness: 0.75,
-};
-const BONE: MaterialOptions = { color: 0xbfb08e, roughness: 0.5 };
-
-const REVERBERE_HIP = 1.0;
-const REVERBERE_THIGH = 0.52;
-const REVERBERE_SHIN = 0.6;
-const REVERBERE_TORSO: [number, number][] = [
-	[0.001, 0],
-	[0.17, 0.04],
-	[0.2, 0.18],
-	[0.26, 0.38],
-	[0.26, 0.5],
-	[0.15, 0.62],
-	[0.001, 0.64],
-];
-const REVERBERE_SHADE: [number, number][] = [
-	[0.001, -0.2],
-	[0.09, -0.19],
-	[0.16, -0.13],
-	[0.21, -0.02],
-	[0.24, 0.08],
-	[0.27, 0.13],
-];
-const REVERBERE_BEAMS: [number, number, number][] = [
-	[1.05, 3.6, 0.1],
-	[0.5, 3.1, 0.14],
-];
-
-const COLLECTEUR_COAT: [number, number][] = [
-	[0.001, 0.84],
-	[0.11, 0.82],
-	[0.2, 0.74],
-	[0.215, 0.5],
-	[0.23, 0.15],
-	[0.265, -0.15],
-	[0.31, -0.42],
-];
-
-const SACK_PROFILE: [number, number][] = [
-	[0.001, 0],
-	[0.18, 0.03],
-	[0.32, 0.18],
-	[0.36, 0.4],
-	[0.3, 0.6],
-	[0.14, 0.74],
-	[0.075, 0.8],
-	[0.11, 0.9],
-	[0.001, 0.88],
-];
-
-const MURMURE_CLOAK: [number, number][] = [
-	[0.41, 0.02],
-	[0.36, 0.35],
-	[0.3, 0.8],
-	[0.255, 1.15],
-	[0.24, 1.35],
-	[0.17, 1.42],
-	[0.001, 1.44],
-];
-const ROD_HEIGHT = 1.37;
+import { COLLECTEUR_HIPS, REVERBERE_BEAMS, REVERBERE_HIP } from "./dimensions";
+import { basePositions } from "./parts";
 
 interface Leg {
-	hip: THREE.Group;
-	knee: THREE.Group;
-	ankle: THREE.Group;
+	hip: THREE.Object3D;
+	knee: THREE.Object3D;
+	ankle: THREE.Object3D;
 }
 
 interface Arm {
-	shoulder: THREE.Group;
-	elbow: THREE.Group;
-}
-
-function hand(
-	kit: ModelKit,
-	skin: MaterialOptions,
-	nails: MaterialOptions,
-	side: number,
-	length: number,
-): THREE.Group {
-	const wrist = new THREE.Group();
-	wrist.add(kit.sphere(length * 0.24, skin, [1, 1.1, 0.7], 10));
-	const fingers = claws(kit, nails, 3, length, length * 0.11, 0.32, 0.45);
-	fingers.position.y = -length * 0.12;
-	wrist.add(fingers);
-	wrist.rotation.y = (-side * Math.PI) / 2;
-	return wrist;
+	shoulder: THREE.Object3D;
+	elbow: THREE.Object3D;
 }
 
 function saccade(time: number, rate: number, seed: number): number {
@@ -108,46 +27,16 @@ function saccade(time: number, rate: number, seed: number): number {
 	return (noise - Math.floor(noise)) * 2 - 1;
 }
 
-let beamFade: THREE.DataTexture | null = null;
-
-function beamFadeTexture(): THREE.DataTexture {
-	if (!beamFade) {
-		const size = 32;
-		const data = new Uint8Array(size * 4);
-		for (let row = 0; row < size; row += 1) {
-			const along = row / (size - 1);
-			const value = Math.round(255 * along ** 1.6 * Math.min(1, row / 3));
-			data.set([value, value, value, 255], row * 4);
-		}
-		beamFade = new THREE.DataTexture(data, 1, size);
-		beamFade.needsUpdate = true;
-	}
-	return beamFade;
-}
-
-function beamCone(
-	radius: number,
-	length: number,
-	material: THREE.Material,
-): THREE.Mesh {
-	const geometry = new THREE.ConeGeometry(radius, length, 24, 1, true)
-		.translate(0, -length / 2, 0)
-		.rotateX(-Math.PI / 2);
-	const mesh = new THREE.Mesh(geometry, material);
-	mesh.renderOrder = 2;
-	return mesh;
-}
-
 export class ReverbereModel extends AnomalyModel {
-	private readonly pelvis: THREE.Group;
-	private readonly torso: THREE.Group;
-	private readonly neck: THREE.Group;
-	private readonly lamp: THREE.Group;
+	private readonly pelvis: THREE.Object3D;
+	private readonly torso: THREE.Object3D;
+	private readonly neck: THREE.Object3D;
+	private readonly lamp: THREE.Object3D;
 	private readonly flame: THREE.MeshBasicMaterial;
 	private readonly beams: THREE.MeshBasicMaterial[] = [];
-	private readonly cones: THREE.Mesh[] = [];
-	private readonly beamEnd = new THREE.Object3D();
-	private readonly wick = new THREE.Object3D();
+	private readonly cones: THREE.Mesh[];
+	private readonly beamEnd: THREE.Object3D;
+	private readonly wick: THREE.Object3D;
 	private readonly light: GlowSpec;
 	private readonly rage = new THREE.Color();
 	private readonly legs: Leg[] = [];
@@ -156,94 +45,40 @@ export class ReverbereModel extends AnomalyModel {
 
 	constructor(kit: ModelKit) {
 		super(kit);
-		const soot: MaterialOptions = { color: 0x1d1917, roughness: 0.75 };
-		const iron: MaterialOptions = {
-			color: 0x15110f,
-			roughness: 0.5,
-			metalness: 0.55,
-		};
-		const shade: MaterialOptions = { ...iron, side: THREE.DoubleSide };
-		this.pelvis = kit.pivot("pelvis", 0, REVERBERE_HIP, 0);
-		this.root.add(this.pelvis);
-		this.pelvis.add(kit.sphere(0.19, soot, [1.15, 0.75, 0.95], 12));
-		this.torso = kit.pivot("torso", 0, 0.05, 0);
-		this.pelvis.add(this.torso);
-		const chest = kit.lathe(REVERBERE_TORSO, soot, 14);
-		chest.scale.z = 0.82;
-		this.torso.add(chest);
-
-		this.neck = kit.pivot("neck", 0, 0.6, 0.02);
-		this.torso.add(this.neck);
-		this.neck.add(
-			kit.tube(
-				[
-					[0, -0.06, 0],
-					[0, 0.26, -0.02],
-					[0, 0.5, 0.12],
-					[0, 0.55, 0.35],
-					[0, 0.44, 0.5],
-				],
-				(t) => 0.085 - t * 0.025,
-				iron,
-				20,
-				8,
-			),
-		);
-		this.lamp = kit.pivot("lamp", 0, 0.41, 0.53);
-		this.neck.add(this.lamp);
-		const hood = kit.lathe(REVERBERE_SHADE, shade, 18);
-		hood.rotation.x = Math.PI / 2;
-		this.lamp.add(hood);
-		this.flame = this.own(new THREE.MeshBasicMaterial({ color: 0xd0d0d0 }));
-		const bulb = kit.sphere(0.11, this.flame, [1, 1, 0.8], 12);
-		bulb.position.z = 0.02;
-		this.lamp.add(bulb);
-		for (const [radius, length, opacity] of REVERBERE_BEAMS) {
+		const rig = this.load("anomalies/veilleur");
+		this.pelvis = rig.node("pelvis");
+		this.torso = rig.node("torso");
+		this.neck = rig.node("neck");
+		this.lamp = rig.node("lamp");
+		this.flame = rig.material<THREE.MeshBasicMaterial>("flame");
+		this.cones = rig.meshes("beam");
+		this.cones.forEach((cone, index) => {
 			const material = this.own(
 				new THREE.MeshBasicMaterial({
 					color: 0xffffff,
 					transparent: true,
-					opacity,
-					alphaMap: beamFadeTexture(),
+					opacity: REVERBERE_BEAMS[index][2],
+					alphaMap: specialTexture("beamFade"),
 					blending: THREE.AdditiveBlending,
 					depthWrite: false,
 					side: THREE.DoubleSide,
 				}),
 			);
-			const beam = beamCone(radius, length, material);
-			beam.position.z = 0.04;
-			this.lamp.add(beam);
+			cone.material = material;
 			this.beams.push(material);
-			this.cones.push(beam);
-		}
-		this.beamEnd.position.set(0, 0, 2.2);
-		this.wick.position.set(0, 0, 0.16);
-		this.lamp.add(this.beamEnd, this.wick);
-
-		for (const side of [-1, 1]) {
-			const hip = kit.pivot("hip", side * 0.15, -0.02, 0);
-			this.pelvis.add(hip);
-			hip.add(kit.limb(0.09, REVERBERE_THIGH, soot, 10));
-			const knee = kit.pivot("knee", 0, -REVERBERE_THIGH, 0);
-			hip.add(knee);
-			knee.add(kit.limb(0.07, REVERBERE_SHIN, soot, 10));
-			const ankle = kit.pivot("ankle", 0, -REVERBERE_SHIN, 0);
-			knee.add(ankle);
-			const foot = kit.sphere(0.09, iron, [0.9, 0.45, 2.1], 10);
-			foot.position.set(0, -0.02, 0.1);
-			ankle.add(foot);
-			this.legs.push({ hip, knee, ankle });
-
-			const shoulder = kit.pivot("shoulder", side * 0.25, 0.5, 0.02);
-			this.torso.add(shoulder);
-			shoulder.add(kit.limb(0.085, 0.56, soot, 10));
-			const elbow = kit.pivot("elbow", 0, -0.56, 0);
-			shoulder.add(elbow);
-			elbow.add(kit.limb(0.07, 0.52, soot, 10));
-			const fist = kit.sphere(0.105, iron, [0.75, 1.45, 0.62], 10);
-			fist.position.y = -0.62;
-			elbow.add(fist);
-			this.arms.push({ shoulder, elbow });
+		});
+		this.beamEnd = rig.node("beam_end");
+		this.wick = rig.node("wick");
+		for (let index = 0; index < 2; index += 1) {
+			this.legs.push({
+				hip: rig.node(`hip_${index}`),
+				knee: rig.node(`knee_${index}`),
+				ankle: rig.node(`ankle_${index}`),
+			});
+			this.arms.push({
+				shoulder: rig.node(`shoulder_${index}`),
+				elbow: rig.node(`elbow_${index}`),
+			});
 		}
 		this.light = {
 			color: 0xd0d0d0,
@@ -340,166 +175,38 @@ export class ReverbereModel extends AnomalyModel {
 }
 
 export class CollecteurModel extends AnomalyModel {
-	private readonly hips: THREE.Group;
-	private readonly torso: THREE.Group;
-	private readonly neck: THREE.Group;
-	private readonly head: THREE.Group;
-	private readonly sack: THREE.Mesh;
-	private readonly gaze = new THREE.Object3D();
+	private readonly hips: THREE.Object3D;
+	private readonly torso: THREE.Object3D;
+	private readonly neck: THREE.Object3D;
+	private readonly head: THREE.Object3D;
+	private readonly sack: THREE.Object3D;
+	private readonly gaze: THREE.Object3D;
 	private readonly embers: THREE.MeshBasicMaterial;
 	private readonly light: GlowSpec;
-	private readonly legs: (Leg & { foot: THREE.Group })[] = [];
+	private readonly legs: (Leg & { foot: THREE.Object3D })[] = [];
 	private readonly arms: Arm[] = [];
 
 	constructor(kit: ModelKit) {
 		super(kit);
-		const coat: MaterialOptions = {
-			color: 0x17111a,
-			roughness: 0.95,
-			side: THREE.DoubleSide,
-		};
-		const skin: MaterialOptions = { color: 0x3a3430, roughness: 0.75 };
-		const scaly: MaterialOptions = { color: 0x241c18, roughness: 0.6 };
-		const skull: MaterialOptions = { color: 0xcfc4ac, roughness: 0.55 };
-		const felt: MaterialOptions = { color: 0x0e0b0c, roughness: 0.85 };
-		const burlap: MaterialOptions = {
-			texture: "burlap",
-			color: 0x9a8466,
-			roughness: 1,
-		};
-		this.embers = this.own(new THREE.MeshBasicMaterial({ color: 0xffd040 }));
-
-		this.hips = kit.pivot("hips", 0, 1.2, 0);
-		this.root.add(this.hips);
-		for (const side of [-1, 1]) {
-			const hip = kit.pivot("hip", side * 0.1, 0, 0);
-			this.hips.add(hip);
-			hip.add(kit.limb(0.065, 0.3, coat, 8));
-			const knee = kit.pivot("knee", 0, -0.3, 0);
-			hip.add(knee);
-			knee.add(kit.sphere(0.056, scaly, [1, 1, 1], 8));
-			knee.add(kit.limb(0.042, 0.5, scaly, 8));
-			const ankle = kit.pivot("ankle", 0, -0.5, 0);
-			knee.add(ankle);
-			ankle.add(kit.sphere(0.046, scaly, [1, 1, 1], 8));
-			ankle.add(kit.limb(0.035, 0.5, scaly, 8));
-			const foot = kit.pivot("foot", 0, -0.5, 0);
-			ankle.add(foot);
-			foot.add(kit.sphere(0.048, scaly, [1, 0.7, 1], 8));
-			for (const angle of [-0.5, 0, 0.5, Math.PI]) {
-				const length = angle === Math.PI ? 0.1 : 0.18;
-				const toe = kit.mesh(
-					new THREE.ConeGeometry(0.028, length, 6).translate(0, length / 2, 0),
-					scaly,
-				);
-				toe.rotation.set(Math.PI / 2 - 0.12, 0, angle);
-				toe.position.y = -0.02;
-				foot.add(toe);
-			}
-			this.legs.push({ hip, knee, ankle, foot });
-		}
-
-		this.torso = kit.pivot("torso", 0, 0.02, 0);
-		this.hips.add(this.torso);
-		this.torso.add(
-			kit.pleatedLathe(
-				COLLECTEUR_COAT,
-				coat,
-				8,
-				(_radius, height) => Math.max(0, 0.2 - height) * 0.16,
-				24,
-			),
-		);
-		const collar = kit.cylinder(0.095, 0.13, 0.12, coat, 14);
-		collar.position.y = 0.84;
-		this.torso.add(collar);
-		this.sack = kit.pleatedLathe(
-			SACK_PROFILE,
-			burlap,
-			7,
-			(_radius, height) => (height > 0.6 ? (height - 0.6) * 0.5 : 0.03),
-			18,
-		);
-		this.sack.position.set(0, -0.05, -0.36);
-		this.sack.rotation.x = -0.25;
-		this.torso.add(this.sack);
-		const tie = kit.mesh(new THREE.TorusGeometry(0.085, 0.024, 6, 12), {
-			...burlap,
-			color: 0x5a4a38,
-		});
-		tie.rotation.x = Math.PI / 2;
-		tie.position.y = 0.8;
-		this.sack.add(tie);
-		const stain = kit.sphere(
-			0.2,
-			{ color: 0x2a0c0a, roughness: 0.9 },
-			[1.25, 0.35, 1.25],
-		);
-		stain.position.y = 0.06;
-		this.sack.add(stain);
-
-		this.neck = kit.pivot("neck", 0, 0.82, 0.04);
-		this.torso.add(this.neck);
-		this.neck.add(
-			kit.tube(
-				[
-					[0, -0.04, 0],
-					[0, 0.1, 0.06],
-					[0, 0.2, 0.18],
-				],
-				(t) => 0.045 - t * 0.008,
-				skin,
-				8,
-				7,
-			),
-		);
-		this.head = kit.pivot("head", 0, 0.24, 0.22);
-		this.neck.add(this.head);
-		this.head.add(kit.sphere(0.1, skull, [0.8, 0.95, 1.15], 14));
-		this.head.add(
-			kit.tube(
-				[
-					[0, -0.02, 0.07],
-					[0, -0.045, 0.24],
-					[0, -0.13, 0.36],
-				],
-				(t) => 0.048 * (1 - t) + 0.005,
-				skull,
-				10,
-				8,
-			),
-		);
-		for (const side of [-1, 1]) {
-			const eye = kit.sphere(0.038, this.embers, [1, 0.9, 0.5], 10);
-			eye.position.set(side * 0.05, 0.035, 0.075);
-			eye.rotation.y = side * 0.5;
-			this.head.add(eye);
-		}
-		this.gaze.position.set(0, 0.03, 0.26);
-		this.head.add(this.gaze);
-		const hat = kit.pivot("hat", 0, 0.085, -0.01);
-		hat.rotation.x = -0.12;
-		this.head.add(hat);
-		hat.add(kit.cylinder(0.19, 0.19, 0.026, felt, 18));
-		const crown = kit.cylinder(0.1, 0.112, 0.34, felt, 14);
-		crown.position.y = 0.18;
-		hat.add(crown);
-		const band = kit.cylinder(0.115, 0.115, 0.065, { color: 0x4a0c0c }, 14);
-		band.position.y = 0.05;
-		hat.add(band);
-
-		for (const side of [-1, 1]) {
-			const shoulder = kit.pivot("shoulder", side * 0.21, 0.72, 0.02);
-			this.torso.add(shoulder);
-			shoulder.add(kit.sphere(0.068, coat, [1, 1, 1], 10));
-			shoulder.add(kit.limb(0.05, 0.5, coat, 8));
-			const elbow = kit.pivot("elbow", 0, -0.5, 0);
-			shoulder.add(elbow);
-			elbow.add(kit.limb(0.042, 0.44, coat, 8));
-			const fist = hand(kit, skin, BONE, side, 0.28);
-			fist.position.y = -0.47;
-			elbow.add(fist);
-			this.arms.push({ shoulder, elbow });
+		const rig = this.load("anomalies/collecteur");
+		this.embers = rig.material<THREE.MeshBasicMaterial>("embers");
+		this.hips = rig.node("hips");
+		this.torso = rig.node("torso");
+		this.neck = rig.node("neck");
+		this.head = rig.node("head");
+		this.sack = rig.node("sack");
+		this.gaze = rig.node("gaze");
+		for (let index = 0; index < 2; index += 1) {
+			this.legs.push({
+				hip: rig.node(`hip_${index}`),
+				knee: rig.node(`knee_${index}`),
+				ankle: rig.node(`ankle_${index}`),
+				foot: rig.node(`foot_${index}`),
+			});
+			this.arms.push({
+				shoulder: rig.node(`shoulder_${index}`),
+				elbow: rig.node(`elbow_${index}`),
+			});
 		}
 		this.light = {
 			color: 0xffc040,
@@ -527,7 +234,9 @@ export class CollecteurModel extends AnomalyModel {
 				lift * 0.35;
 		}
 		this.hips.position.y =
-			1.2 + Math.abs(Math.sin(phase)) * 0.04 * moving - windup * 0.08;
+			COLLECTEUR_HIPS +
+			Math.abs(Math.sin(phase)) * 0.04 * moving -
+			windup * 0.08;
 		this.torso.rotation.x = 0.5 + windup * 0.3 - strike * 0.2;
 		this.neck.rotation.x =
 			-0.35 + Math.sin(input.time * 0.8) * 0.08 - windup * 0.3;
@@ -559,115 +268,30 @@ export class CollecteurModel extends AnomalyModel {
 }
 
 export class MurmureModel extends AnomalyModel {
-	private readonly body: THREE.Group;
+	private readonly body: THREE.Object3D;
 	private readonly cloak: THREE.Mesh;
 	private readonly basePositions: Float32Array;
-	private readonly head: THREE.Group;
-	private readonly face = new THREE.Object3D();
-	private readonly dust = new THREE.Object3D();
+	private readonly head: THREE.Object3D;
+	private readonly face: THREE.Object3D;
+	private readonly dust: THREE.Object3D;
 	private readonly light: GlowSpec;
 	private readonly arms: Arm[] = [];
 
 	constructor(kit: ModelKit) {
 		super(kit);
-		const cloth: MaterialOptions = {
-			texture: "curtainPale",
-			color: 0xa89e8c,
-			roughness: 1,
-			side: THREE.DoubleSide,
-			fixedRepeat: true,
-		};
-		const dark: MaterialOptions = { color: 0x120d0e, roughness: 0.9 };
-		this.body = kit.pivot("body", 0, 0, 0);
-		this.root.add(this.body);
-		this.cloak = kit.pleatedLathe(
-			MURMURE_CLOAK,
-			cloth,
-			7,
-			(_radius, height) => 0.04 + Math.max(0, 1.2 - height) * 0.08,
-			28,
-		);
-		normalizeHeightUv(this.cloak);
-		this.body.add(this.cloak);
-		this.basePositions = new Float32Array(
-			(this.cloak.geometry.getAttribute("position") as THREE.BufferAttribute)
-				.array,
-		);
-
-		const rod = kit.cylinder(0.032, 0.032, 0.8, BRASS, 10);
-		rod.rotation.z = Math.PI / 2;
-		rod.position.set(0, ROD_HEIGHT, -0.02);
-		this.body.add(rod);
-		for (const side of [-1, 1]) {
-			const finial = kit.cone(0.06, 0.16, BRASS, 8);
-			finial.rotation.z = (-side * Math.PI) / 2;
-			finial.position.set(side * 0.47, ROD_HEIGHT, -0.02);
-			this.body.add(finial);
-			const ring = kit.mesh(new THREE.TorusGeometry(0.06, 0.017, 6, 14), BRASS);
-			ring.rotation.y = Math.PI / 2;
-			ring.position.set(side * 0.31, ROD_HEIGHT - 0.02, -0.02);
-			this.body.add(ring);
-		}
-		this.dust.position.set(0, ROD_HEIGHT, 0.1);
-		this.body.add(this.dust);
-
-		this.head = kit.pivot("head", 0, 1.52, 0.06);
-		this.body.add(this.head);
-		const hood = kit.mesh(hoodGeometry(0.2, 0.95), cloth);
-		hood.scale.set(0.88, 1.1, 1);
-		hood.rotation.x = 0.12;
-		this.head.add(hood);
-		const tip = kit.cone(0.08, 0.24, cloth, 10);
-		tip.position.set(0, 0.16, -0.1);
-		tip.rotation.x = -1.1;
-		this.head.add(tip);
-		const hollow = kit.sphere(0.18, SOCKET, [0.9, 1.05, 0.85], 14);
-		hollow.position.z = -0.045;
-		this.head.add(hollow);
-		const mask = kit.sphere(0.12, cloth, [0.84, 1.3, 0.55], 14);
-		mask.position.set(0, -0.035, 0.07);
-		this.head.add(mask);
-		for (const side of [-1, 1]) {
-			const socket = kit.sphere(0.036, SOCKET, [0.75, 1.4, 0.55], 10);
-			socket.position.set(side * 0.044, 0.012, 0.12);
-			socket.rotation.y = side * 0.25;
-			this.head.add(socket);
-		}
-		this.face.position.z = 0.3;
-		this.head.add(this.face);
-
-		for (const side of [-1, 1]) {
-			const shoulder = kit.pivot("shoulder", side * 0.35, ROD_HEIGHT - 0.03, 0);
-			this.body.add(shoulder);
-			shoulder.add(
-				kit.tube(
-					[
-						[0, 0.03, 0],
-						[0, -0.2, 0.01],
-						[0, -0.42, 0.02],
-					],
-					(t) => 0.045 + t * 0.03,
-					cloth,
-					8,
-					10,
-				),
-			);
-			const elbow = kit.pivot("elbow", 0, -0.4, 0.02);
-			shoulder.add(elbow);
-			elbow.add(
-				kit.tube(
-					[
-						[0, 0.02, 0],
-						[0, -0.26, 0.02],
-						[0, -0.54, 0.07],
-					],
-					(t) => 0.032 * (1 - t) + 0.005,
-					dark,
-					8,
-					6,
-				),
-			);
-			this.arms.push({ shoulder, elbow });
+		const rig = this.load("anomalies/murmure");
+		this.body = rig.node("body");
+		this.cloak = rig.mesh("cloak");
+		rig.ownGeometry(this.cloak);
+		this.basePositions = basePositions(this.cloak);
+		this.dust = rig.node("dust");
+		this.head = rig.node("head");
+		this.face = rig.node("face");
+		for (let index = 0; index < 2; index += 1) {
+			this.arms.push({
+				shoulder: rig.node(`shoulder_${index}`),
+				elbow: rig.node(`elbow_${index}`),
+			});
 		}
 		this.light = {
 			color: 0xb8c8ff,

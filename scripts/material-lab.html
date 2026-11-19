@@ -49,6 +49,8 @@
 			import { ModelKit } from "/src/features/models/modelKit.ts";
 			import { ManorMeshBuilder } from "/src/features/world/ManorMeshBuilder.ts";
 			import { MaterialLibrary } from "/src/features/world/MaterialLibrary.ts";
+			import { modelLibrary } from "/src/features/models/ModelLibrary.ts";
+			import { preloadSpecialTextures } from "/src/features/world/textures/textureFiles.ts";
 			import { TextureLibrary } from "/src/features/world/textures/TextureLibrary.ts";
 
 			const params = new URLSearchParams(location.search);
@@ -105,13 +107,17 @@
 			);
 			const textures = new TextureLibrary(anisotropy, surfaceQuality(quality));
 			const bakeStart = performance.now();
-			await textures.prepare();
+			await Promise.all([
+				textures.prepare(),
+				modelLibrary.load(),
+				preloadSpecialTextures(),
+			]);
 			const bakeMs = Math.round(performance.now() - bakeStart);
 			const materials = new MaterialLibrary(textures);
 			const kit = new ModelKit(materials);
 
 			if (view === "audit") {
-				const { FURNITURE_BUILDERS } = await import("/src/features/world/furniture/index.ts");
+				const { FURNITURE_BUILDERS } = await import("/scripts/models/furniture/index.ts");
 				const { furnitureDefinition } = await import("/shared/manor/furnitureCatalog.ts");
 				const { SeededRandom } = await import("/shared/random.ts");
 				const { mergeVertices } = await import("three/addons/utils/BufferGeometryUtils.js");
@@ -200,7 +206,7 @@
 			}
 
 			if (view === "gallery" || view === "item") {
-				const { FURNITURE_BUILDERS } = await import("/src/features/world/furniture/index.ts");
+				const { FURNITURE_BUILDERS } = await import("/scripts/models/furniture/index.ts");
 				const { furnitureDefinition } = await import("/shared/manor/furnitureCatalog.ts");
 				const { GeometryBucket } = await import("/src/features/world/GeometryBucket.ts");
 				const { SeededRandom } = await import("/shared/random.ts");

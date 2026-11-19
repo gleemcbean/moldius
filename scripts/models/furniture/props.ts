@@ -5,8 +5,8 @@ import {
 	meterCylinder,
 	meterSphere,
 	placed,
-} from "../geometryUtils";
-import type { MaterialOptions } from "../MaterialLibrary";
+} from "../../../src/features/world/geometryUtils";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
 import {
 	BRASS,
 	box,
@@ -18,6 +18,7 @@ import {
 	cylinderBetween,
 	DARK,
 	type FurnitureBuilder,
+	type FurnitureSurface,
 	GLASS,
 	IRON,
 	lathe,
@@ -398,7 +399,10 @@ export const planterBed: FurnitureBuilder = ({ item, rng }) => {
 export const pillar: FurnitureBuilder = ({ item, room }) => {
 	const radius = item.width / 2 - 0.04;
 	const height = item.height;
-	const material = carvedForSeed(room.seed);
+	const material: FurnitureSurface = {
+		...carvedForSeed(room.seed),
+		bind: "roomCarved",
+	};
 	return [
 		box(material, item.width, 0.2, item.depth, 0, 0, 0, 0, 0.02),
 		lathe(

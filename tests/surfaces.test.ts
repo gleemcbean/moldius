@@ -30,7 +30,7 @@ interface HerringboneHit {
 	edge: number;
 }
 
-const surfaceRoot = "../src/features/world/textures/surface";
+const surfaceRoot = "../scripts/textures/surface";
 
 const recipes = (await import(`${surfaceRoot}/recipes.ts`)) as {
 	FINE_RECIPES: Record<string, Recipe>;

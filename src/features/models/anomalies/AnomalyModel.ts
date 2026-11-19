@@ -1,6 +1,7 @@
 import type { AnomalyState } from "@shared/protocol/game";
 import * as THREE from "three";
 import type { ModelKit } from "../modelKit";
+import type { Rig } from "../rig";
 
 export interface AnomalyPoseInput {
 	state: AnomalyState;
@@ -37,8 +38,16 @@ export abstract class AnomalyModel {
 	readonly emitters: EmitterSpec[] = [];
 	protected walkPhase = Math.random() * Math.PI * 2;
 	private readonly owned: THREE.Material[] = [];
+	private readonly rigs: Rig[] = [];
 
 	constructor(protected readonly kit: ModelKit) {}
+
+	protected load(id: string, parent: THREE.Object3D = this.root): Rig {
+		const rig = this.kit.rig(id);
+		parent.add(rig.root);
+		this.rigs.push(rig);
+		return rig;
+	}
 
 	abstract update(input: AnomalyPoseInput): void;
 
@@ -77,11 +86,9 @@ export abstract class AnomalyModel {
 	}
 
 	dispose(): void {
-		this.root.traverse((object) => {
-			if (object instanceof THREE.Mesh) {
-				object.geometry.dispose();
-			}
-		});
+		for (const rig of this.rigs) {
+			rig.dispose();
+		}
 		for (const material of this.owned) {
 			material.dispose();
 		}

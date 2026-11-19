@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { placed } from "../geometryUtils";
-import type { MaterialOptions } from "../MaterialLibrary";
+import { placed } from "../../../src/features/world/geometryUtils";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
 import {
 	BRASS,
 	box,
@@ -946,7 +946,7 @@ export const window: FurnitureBuilder = ({ item, room, rng }) => {
 	} else {
 		parts.push(plane(GLASS, width - 0.06, height - 0.06, 0, height / 2, 0.02));
 	}
-	if (item.variant <= 1 && room.type !== "greenhouse") {
+	if (item.variant <= 1) {
 		const curtain: MaterialOptions = {
 			texture: rng.pick([
 				"velvetRed",
@@ -959,8 +959,9 @@ export const window: FurnitureBuilder = ({ item, room, rng }) => {
 		};
 		const bottom = room.floorY - item.y + 0.05;
 		const curtainHeight = height + 0.3 - bottom;
+		const drapes: Part[] = [];
 		for (const side of [-1, 1]) {
-			parts.push(
+			drapes.push(
 				box(
 					curtain,
 					0.28,
@@ -973,7 +974,7 @@ export const window: FurnitureBuilder = ({ item, room, rng }) => {
 					0.03,
 				),
 			);
-			parts.push(
+			drapes.push(
 				box(
 					{ texture: "brass", roughness: 0.4 },
 					0.3,
@@ -985,7 +986,7 @@ export const window: FurnitureBuilder = ({ item, room, rng }) => {
 				),
 			);
 		}
-		parts.push(
+		drapes.push(
 			cylinderBetween(
 				BRASS,
 				new THREE.Vector3(-width / 2 - 0.35, height + 0.3, 0.12),
@@ -993,6 +994,10 @@ export const window: FurnitureBuilder = ({ item, room, rng }) => {
 				0.018,
 			),
 		);
+		for (const drape of drapes) {
+			drape.when = "notGreenhouse";
+			parts.push(drape);
+		}
 	}
 	return parts;
 };

@@ -1,8 +1,16 @@
 import type { ManorLayout } from "@shared/manor/types";
 import * as THREE from "three";
 import type { ParticleSystem } from "../engine/effects/Particles";
-import type { PartAnimation } from "./furniture/parts";
 import { decorTime } from "./MaterialLibrary";
+
+export interface PartAnimation {
+	kind: "swing" | "spin";
+	pivot: [number, number, number];
+	axis: [number, number, number];
+	speed: number;
+	amplitude: number;
+	phase: number;
+}
 
 export interface AnimatedDecor {
 	holder: THREE.Object3D;

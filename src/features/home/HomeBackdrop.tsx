@@ -17,20 +17,34 @@ export function HomeBackdrop() {
 			return;
 		}
 		const release = holdBoot();
-		try {
-			const settings = settingsStore.get();
-			scene.current = new HomeScene(
-				element,
-				settings.playerColor,
-				settings.playerPattern,
-				settings.playerLantern,
-			);
-			scene.current.onFirstFrame = release;
-		} catch {
-			scene.current = null;
-			release();
-		}
+		let cancelled = false;
+		const settings = settingsStore.get();
+		HomeScene.create(
+			element,
+			settings.playerColor,
+			settings.playerPattern,
+			settings.playerLantern,
+		)
+			.then((created) => {
+				if (cancelled) {
+					created.dispose();
+					return;
+				}
+				scene.current = created;
+				const current = settingsStore.get();
+				created.setAppearance(
+					current.playerColor,
+					current.playerPattern,
+					current.playerLantern,
+				);
+				created.onFirstFrame = release;
+			})
+			.catch(() => {
+				scene.current = null;
+				release();
+			});
 		return () => {
+			cancelled = true;
 			release();
 			scene.current?.dispose();
 			scene.current = null;

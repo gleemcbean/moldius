@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { meterTorus, scaleUv } from "../geometryUtils";
-import type { MaterialOptions } from "../MaterialLibrary";
+import { meterTorus, scaleUv } from "../../../src/features/world/geometryUtils";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
 import {
 	cylinder,
 	type FurnitureBuilder,

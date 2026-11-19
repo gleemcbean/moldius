@@ -54,6 +54,7 @@ import { ensurePageFonts } from "../../grimoire/pageRenderer";
 import { ensureHudFonts, HudCanvas } from "../../hud/HudCanvas";
 import { createAnomalyModel } from "../../models/anomalies/createAnomalyModel";
 import { createCameraModel } from "../../models/cameraModel";
+import { modelLibrary } from "../../models/ModelLibrary";
 import { GHOST_MATERIAL } from "../../models/MushroomModel";
 import { ModelKit } from "../../models/modelKit";
 import { createWalkieModel } from "../../models/walkieModel";
@@ -66,6 +67,7 @@ import {
 } from "../../world/ManorMeshBuilder";
 import { MaterialLibrary } from "../../world/MaterialLibrary";
 import { TextureLibrary } from "../../world/textures/TextureLibrary";
+import { preloadSpecialTextures } from "../../world/textures/textureFiles";
 
 export type { LoadStepId };
 
@@ -356,13 +358,24 @@ export async function loadSession(
 		surfaceQuality(settings.quality),
 	);
 	const keys = textures.keys;
-	await textures.prepare(keys, (fraction) =>
-		progress("textures", fraction * 0.7),
-	);
+	const shares = { textures: 0, models: 0 };
+	const report = () =>
+		progress("textures", (shares.textures + shares.models) * 0.45);
+	await Promise.all([
+		textures.prepare(keys, (fraction) => {
+			shares.textures = fraction;
+			report();
+		}),
+		modelLibrary.load((fraction) => {
+			shares.models = fraction;
+			report();
+		}),
+		preloadSpecialTextures(),
+	]);
 	for (const [index, key] of keys.entries()) {
 		textures.build(key);
-		if (index % 8 === 7) {
-			progress("textures", 0.7 + ((index + 1) / keys.length) * 0.3);
+		if (index % 32 === 31) {
+			progress("textures", 0.9 + ((index + 1) / keys.length) * 0.1);
 			await nextFrame();
 		}
 	}

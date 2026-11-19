@@ -2,7 +2,7 @@ import type { MaterialId } from "@shared/config/index";
 import type { ManorLayout } from "@shared/manor/types";
 import * as THREE from "three";
 import type { ModelKit } from "../../models/modelKit";
-import { createMaterialModel, disposeModel } from "../../models/occultModels";
+import { createMaterialModel } from "../../models/occultModels";
 
 const VISIBLE_RANGE = 26;
 
@@ -90,8 +90,6 @@ export class PickupViews {
 	}
 
 	dispose(): void {
-		for (const template of this.templates.values()) {
-			disposeModel(template);
-		}
+		this.templates.clear();
 	}
 }

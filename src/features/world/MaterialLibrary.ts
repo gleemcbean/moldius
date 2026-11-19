@@ -225,25 +225,6 @@ function addSheen(material: THREE.MeshStandardMaterial): void {
 	};
 }
 
-function retiled(texture: THREE.Texture | null): THREE.Texture | null {
-	if (!texture) {
-		return null;
-	}
-	const copy = texture.clone();
-	copy.repeat.set(1, 1);
-	copy.needsUpdate = true;
-	return copy;
-}
-
-function fixedSurface(surface: SurfaceMaps): SurfaceMaps {
-	return {
-		...surface,
-		map: retiled(surface.map) as THREE.Texture,
-		normalMap: retiled(surface.normalMap),
-		ormMap: retiled(surface.ormMap),
-	};
-}
-
 export class MaterialLibrary {
 	private readonly materials = new Map<string, THREE.Material>();
 
@@ -287,13 +268,9 @@ export class MaterialLibrary {
 	}
 
 	private create(options: MaterialOptions): THREE.Material {
-		let surface: SurfaceMaps | null = null;
-		if (options.texture) {
-			surface = this.textures.surface(options.texture);
-			if (options.fixedRepeat) {
-				surface = fixedSurface(surface);
-			}
-		}
+		const surface: SurfaceMaps | null = options.texture
+			? this.textures.surface(options.texture, options.fixedRepeat)
+			: null;
 		const map = surface?.map ?? null;
 		const shared = {
 			map,

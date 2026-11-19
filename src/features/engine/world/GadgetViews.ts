@@ -1,6 +1,5 @@
 import type { WalkieSpot } from "@shared/manor/types";
 import * as THREE from "three";
-import { disposeModel } from "../../models/occultModels";
 import type { DynamicLight } from "../lighting/LightPool";
 
 const VISIBLE_RANGE = 26;
@@ -8,7 +7,7 @@ const BLINK_SECONDS = 1.1;
 
 export class GadgetViews {
 	readonly group = new THREE.Group();
-	private readonly template: THREE.Group;
+	private readonly template: THREE.Object3D;
 	private readonly models = new Map<number, THREE.Object3D>();
 	private readonly lights = new Map<number, DynamicLight>();
 	private readonly taken = new Set<number>();
@@ -16,7 +15,7 @@ export class GadgetViews {
 
 	constructor(
 		spots: readonly WalkieSpot[],
-		template: THREE.Group,
+		template: THREE.Object3D,
 		total: number,
 		private readonly color: number,
 		prefix: string,
@@ -70,6 +69,6 @@ export class GadgetViews {
 	}
 
 	dispose(): void {
-		disposeModel(this.template);
+		this.models.clear();
 	}
 }

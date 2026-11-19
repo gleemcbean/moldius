@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import type { MaterialOptions } from "../world/MaterialLibrary";
-import type { ModelKit } from "./modelKit";
+import type { Rig } from "./rig";
 
 export interface HandPose {
 	curl: number;
@@ -11,27 +10,24 @@ export const RELAXED_HAND: HandPose = { curl: 0.15, thumb: 0.2 };
 export const GRIP_HAND: HandPose = { curl: 1, thumb: 0.9 };
 export const SUPPORT_HAND: HandPose = { curl: 0.05, thumb: -0.4 };
 
-const MITT_RADIUS = 0.056;
-const MITT_CENTER = -0.06;
+export const MITT_RADIUS = 0.056;
+export const MITT_CENTER = -0.06;
 
 export class MittenHand {
-	readonly root = new THREE.Group();
-	private readonly mitt: THREE.Mesh;
-	private readonly thumb: THREE.Mesh;
-
 	constructor(
-		kit: ModelKit,
-		skin: MaterialOptions,
+		readonly root: THREE.Object3D,
+		private readonly mitt: THREE.Object3D,
+		private readonly thumb: THREE.Object3D,
 		private readonly thumbSide: 1 | -1,
-		size = 1,
-	) {
-		this.mitt = kit.sphere(MITT_RADIUS, skin, [1, 1.2, 0.85], 14);
-		this.mitt.position.y = MITT_CENTER;
-		this.root.add(this.mitt);
-		this.thumb = kit.sphere(0.024, skin, [1, 1.35, 1], 10);
-		this.root.add(this.thumb);
-		this.root.scale.setScalar(size);
-		this.setPose(RELAXED_HAND);
+	) {}
+
+	static from(rig: Rig, name: string, thumbSide: 1 | -1): MittenHand {
+		return new MittenHand(
+			rig.node(name),
+			rig.node(`${name}_mitt`),
+			rig.node(`${name}_thumb`),
+			thumbSide,
+		);
 	}
 
 	setPose(pose: HandPose): void {

@@ -1,18 +1,20 @@
 import { STAKE_COLORS } from "@shared/config/index";
 import type { ManorLayout } from "@shared/manor/types";
 import * as THREE from "three";
+import { modelLibrary } from "../../models/ModelLibrary";
 import type { DynamicLight } from "../lighting/LightPool";
 import type { ClientWorldState } from "../state/ClientWorldState";
 
 const VISIBLE_RANGE = 30;
-const ORB_RADIUS = 0.09;
 
 export class StakeViews {
 	readonly group = new THREE.Group();
-	private readonly geometry = new THREE.SphereGeometry(ORB_RADIUS, 12, 10);
+	private readonly geometry = (
+		modelLibrary.template("world/stake_orb") as THREE.Mesh
+	).geometry;
 	private readonly orbs: {
 		id: number;
-		mesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
+		mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 		light: DynamicLight;
 		y: number;
 		color: THREE.Color;
@@ -87,7 +89,6 @@ export class StakeViews {
 	}
 
 	dispose(): void {
-		this.geometry.dispose();
 		for (const orb of this.orbs) {
 			orb.mesh.material.dispose();
 		}

@@ -51,10 +51,7 @@ export interface RigInput {
 	aspect: number;
 }
 
-const ARM_ELBOW_RADIUS = 0.085;
-const ARM_HAND_RADIUS = 0.062;
 const ARM_LENGTH = 0.6;
-const ARM_TIP_STEPS = 6;
 const ARM_DARK = new THREE.Color(0x4e4a44);
 const ARM_LIT = new THREE.Color(0xa58a6a);
 const ARM_VERTEX_SHADER = `
@@ -179,8 +176,8 @@ export class FirstPersonRig {
 		this.photoCamera = createCameraModel(kit, cameraScreen);
 		this.photoCamera.root.visible = false;
 		this.root.add(this.photoCamera.root);
-		this.rightArm = this.createArm();
-		this.leftArm = this.createArm();
+		this.rightArm = this.createArm(kit, "right_arm");
+		this.leftArm = this.createArm(kit, "left_arm");
 		this.fpLight = new THREE.PointLight(lanternTint ?? 0xffb468, 0, 1.6, 2);
 		this.root.add(this.fpLight);
 		this.fpAmbient = new THREE.HemisphereLight(0xaaaaae, 0x4c4c4e, 1.25);
@@ -329,24 +326,10 @@ export class FirstPersonRig {
 		);
 	}
 
-	private createArm(): ArmMesh {
-		const half = ARM_LENGTH / 2;
-		const tipHeight = ARM_HAND_RADIUS * 0.8;
-		const profile = [
-			new THREE.Vector2(0.001, -half),
-			new THREE.Vector2(ARM_ELBOW_RADIUS, -half + 0.03),
-		];
-		for (let step = 0; step <= ARM_TIP_STEPS; step += 1) {
-			const angle = (step / ARM_TIP_STEPS) * (Math.PI / 2);
-			profile.push(
-				new THREE.Vector2(
-					Math.max(0.001, Math.cos(angle) * ARM_HAND_RADIUS),
-					half - tipHeight + Math.sin(angle) * tipHeight,
-				),
-			);
-		}
+	private createArm(kit: ModelKit, name: string): ArmMesh {
+		const mesh = kit.rig("player/first_person_arms").mesh(name);
 		const arm: ArmMesh = new THREE.Mesh(
-			new THREE.LatheGeometry(profile, 20),
+			mesh.geometry,
 			new THREE.ShaderMaterial({
 				uniforms: { color: { value: ARM_DARK.clone() } },
 				vertexShader: ARM_VERTEX_SHADER,

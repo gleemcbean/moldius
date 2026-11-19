@@ -7,11 +7,7 @@ import {
 import * as THREE from "three";
 import { createStore } from "../../utils/store";
 import type { ModelKit } from "../models/modelKit";
-import {
-	createMaterialModel,
-	createOccultModel,
-	disposeModel,
-} from "../models/occultModels";
+import { createMaterialModel, createOccultModel } from "../models/occultModels";
 
 export type ObjectArtId = MaterialId | OccultId;
 export type ObjectArt = Map<ObjectArtId, HTMLCanvasElement>;
@@ -117,7 +113,6 @@ export function renderObjectArt(
 		renderer.readRenderTargetPixels(target, 0, 0, SIZE, SIZE, pixels);
 		result.set(id, stylize(pixels));
 		scene.remove(model);
-		disposeModel(model);
 	}
 	renderer.setRenderTarget(previousTarget);
 	renderer.setClearColor(previousClear, previousAlpha);

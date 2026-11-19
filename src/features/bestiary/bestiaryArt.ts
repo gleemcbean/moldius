@@ -3,6 +3,7 @@ import type { SpeciesId } from "@shared/config/species";
 import * as THREE from "three";
 import { surfaceQuality } from "../../config/graphics";
 import { renderIllustrations } from "../grimoire/illustrations";
+import { modelLibrary } from "../models/ModelLibrary";
 import { ModelKit } from "../models/modelKit";
 import { MaterialLibrary } from "../world/MaterialLibrary";
 import { TextureLibrary } from "../world/textures/TextureLibrary";
@@ -30,7 +31,7 @@ async function drawAll(): Promise<BestiaryArt> {
 	const textures = new TextureLibrary(1, surfaceQuality("medium"));
 	const materials = new MaterialLibrary(textures);
 	try {
-		await textures.prepare();
+		await Promise.all([textures.prepare(), modelLibrary.load()]);
 		const canvases = await renderIllustrations(
 			renderer,
 			new ModelKit(materials),

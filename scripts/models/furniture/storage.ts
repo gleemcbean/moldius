@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MaterialOptions } from "../MaterialLibrary";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
 import {
 	BRASS,
 	box,

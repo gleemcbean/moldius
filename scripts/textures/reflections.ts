@@ -1,6 +1,6 @@
-import * as THREE from "three";
+import type { PixelData } from "./PixelPainter";
 
-const FACE_SIZE = 32;
+export const REFLECTION_FACE_SIZE = 32;
 const CEILING = [84, 70, 56];
 const FLOOR = [20, 15, 12];
 const HORIZON = [58, 47, 37];
@@ -22,50 +22,58 @@ const FACE_GLINTS: Glint[][] = [
 	],
 ];
 
-function mixChannel(a: number[], b: number[], t: number): string {
-	return `rgb(${a.map((value, index) => Math.round(value + (b[index] - value) * t)).join(",")})`;
+function mixChannel(a: number[], b: number[], t: number): number[] {
+	return a.map((value, index) => Math.round(value + (b[index] - value) * t));
 }
 
-function paintFace(index: number): HTMLCanvasElement {
-	const canvas = document.createElement("canvas");
-	canvas.width = FACE_SIZE;
-	canvas.height = FACE_SIZE;
-	const context = canvas.getContext("2d") as CanvasRenderingContext2D;
+function paintFace(index: number): PixelData {
+	const size = REFLECTION_FACE_SIZE;
+	const data = new Uint8ClampedArray(size * size * 4);
+	const rect = (
+		x: number,
+		y: number,
+		width: number,
+		height: number,
+		color: number[],
+	) => {
+		for (let py = y; py < y + height; py += 1) {
+			for (let px = x; px < x + width; px += 1) {
+				const offset = (py * size + px) * 4;
+				data[offset] = color[0];
+				data[offset + 1] = color[1];
+				data[offset + 2] = color[2];
+				data[offset + 3] = 255;
+			}
+		}
+	};
 	if (index === 2) {
-		context.fillStyle = mixChannel(CEILING, CEILING, 0);
-		context.fillRect(0, 0, FACE_SIZE, FACE_SIZE);
-		context.fillStyle = "rgb(112,92,72)";
-		context.fillRect(8, 8, 16, 16);
-		context.fillStyle = "rgb(150,122,90)";
-		context.fillRect(13, 13, 6, 6);
-		return canvas;
+		rect(0, 0, size, size, CEILING);
+		rect(8, 8, 16, 16, [112, 92, 72]);
+		rect(13, 13, 6, 6, [150, 122, 90]);
+		return { width: size, height: size, data };
 	}
 	if (index === 3) {
-		context.fillStyle = mixChannel(FLOOR, FLOOR, 0);
-		context.fillRect(0, 0, FACE_SIZE, FACE_SIZE);
-		return canvas;
+		rect(0, 0, size, size, FLOOR);
+		return { width: size, height: size, data };
 	}
-	for (let y = 0; y < FACE_SIZE; y += 1) {
-		const t = y / (FACE_SIZE - 1);
-		context.fillStyle =
+	for (let y = 0; y < size; y += 1) {
+		const t = y / (size - 1);
+		rect(
+			0,
+			y,
+			size,
+			1,
 			t < 0.5
 				? mixChannel(CEILING, HORIZON, t * 2)
-				: mixChannel(HORIZON, FLOOR, (t - 0.5) * 2);
-		context.fillRect(0, y, FACE_SIZE, 1);
+				: mixChannel(HORIZON, FLOOR, (t - 0.5) * 2),
+		);
 	}
 	for (const [x, y, width, height, r, g, b] of FACE_GLINTS[index]) {
-		context.fillStyle = `rgb(${r},${g},${b})`;
-		context.fillRect(x, y, width, height);
+		rect(x, y, width, height, [r, g, b]);
 	}
-	return canvas;
+	return { width: size, height: size, data };
 }
 
-export function createReflections(): THREE.CubeTexture {
-	const texture = new THREE.CubeTexture(
-		Array.from({ length: 6 }, (_, index) => paintFace(index)),
-	);
-	texture.colorSpace = THREE.SRGBColorSpace;
-	texture.magFilter = THREE.NearestFilter;
-	texture.needsUpdate = true;
-	return texture;
+export function reflectionFaces(): PixelData[] {
+	return Array.from({ length: 6 }, (_, index) => paintFace(index));
 }

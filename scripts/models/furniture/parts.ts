@@ -2,6 +2,18 @@ import type { FurnitureItem, Room } from "@shared/manor/types";
 import type { SeededRandom } from "@shared/random";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import type { PartAnimation } from "../../../src/features/world/DecorAnimator";
+import {
+	type RoomBind,
+	type RoomCondition,
+	sacredFloor,
+} from "../../../src/features/world/furniture/furnitureFormat";
+import {
+	CARVED_STONES,
+	carvedForSeed,
+	MARBLE,
+	STONE,
+} from "../../../src/features/world/furniture/stones";
 import {
 	meterBox,
 	meterCylinder,
@@ -10,24 +22,22 @@ import {
 	meterTorus,
 	placed,
 	scaleUv,
-} from "../geometryUtils";
-import type { MaterialOptions } from "../MaterialLibrary";
-import { isFineTexture } from "../textures/surface/recipes";
+} from "../../../src/features/world/geometryUtils";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
+import { isFineTexture } from "../../textures/surface/recipes";
 
-export interface PartAnimation {
-	kind: "swing" | "spin";
-	pivot: [number, number, number];
-	axis: [number, number, number];
-	speed: number;
-	amplitude: number;
-	phase: number;
-}
+export type { PartAnimation };
+
+export type FurnitureSurface = MaterialOptions & { bind?: RoomBind };
 
 export interface Part {
 	geometry: THREE.BufferGeometry;
-	material: MaterialOptions;
+	material: FurnitureSurface;
 	animation?: PartAnimation;
+	when?: RoomCondition;
 }
+
+export { sacredFloor };
 
 export interface FurnitureContext {
 	item: FurnitureItem;
@@ -84,7 +94,7 @@ export function roundedBox(
 
 export function part(
 	geometry: THREE.BufferGeometry,
-	material: MaterialOptions,
+	material: FurnitureSurface,
 ): Part {
 	return { geometry, material };
 }
@@ -340,24 +350,8 @@ export const GLASS: MaterialOptions = {
 	depthWrite: false,
 };
 export const CERAMIC: MaterialOptions = { texture: "ceramic", roughness: 0.35 };
-export const STONE: MaterialOptions = {
-	texture: "stoneSmooth",
-	roughness: 0.95,
-};
-export const MARBLE: MaterialOptions = { texture: "marble", roughness: 0.5 };
-const CARVED_STONES: readonly MaterialOptions[] = [
-	MARBLE,
-	{ texture: "marbleBlack", roughness: 0.3 },
-	{ texture: "marbleRose", roughness: 0.42 },
-	{ texture: "marbleGreen", roughness: 0.36 },
-	{ texture: "marbleGold", roughness: 0.44 },
-	STONE,
-	{ texture: "limestone", roughness: 0.98 },
-	{ texture: "sandstone", roughness: 1 },
-	{ texture: "granite", roughness: 0.7 },
-	{ texture: "basalt", roughness: 0.85 },
-	{ texture: "slate", roughness: 0.8 },
-];
+export { carvedForSeed, MARBLE, STONE };
+
 const CAST_STATUARY: readonly MaterialOptions[] = [
 	{ texture: "copper", color: 0x7fb098, roughness: 0.55, metalness: 0.45 },
 	{ texture: "brass", color: 0x8a6c3e, roughness: 0.5, metalness: 0.5 },
@@ -375,10 +369,6 @@ export function pickStatuary(rng: {
 	pick<T>(items: readonly T[]): T;
 }): MaterialOptions {
 	return rng.pick([...CARVED_STONES, ...CAST_STATUARY]);
-}
-
-export function carvedForSeed(seed: number): MaterialOptions {
-	return CARVED_STONES[Math.abs(seed) % CARVED_STONES.length];
 }
 
 export const LINEN: MaterialOptions = { texture: "linen", roughness: 0.95 };

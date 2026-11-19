@@ -17,15 +17,13 @@ import {
 	type ReliefNode,
 	wallProfile,
 } from "@shared/manor/wallRelief";
-import { SeededRandom } from "@shared/random";
 import * as THREE from "three";
-import type { AnimatedDecor } from "./DecorAnimator";
-import { builderFor } from "./furniture";
+import type { AnimatedDecor, PartAnimation } from "./DecorAnimator";
 import {
-	carvedForSeed,
-	type Part,
-	type PartAnimation,
-} from "./furniture/parts";
+	type FurniturePiece,
+	furnitureParts,
+} from "./furniture/furnitureModels";
+import { carvedForSeed } from "./furniture/stones";
 import { GeometryBucket } from "./GeometryBucket";
 import { meterBox, meterCylinder } from "./geometryUtils";
 import type { MaterialLibrary, MaterialOptions } from "./MaterialLibrary";
@@ -53,7 +51,6 @@ const CEILING_TEXTURES: Record<string, string> = {
 	planks: "darkPlanks",
 };
 
-const COPLANAR_SEPARATION = 0.00025;
 const ROOF_CHANCE = 42;
 const ROOF_MIN_EAVES = 2.7;
 const ROOF_DECK_CLEARANCE = 2.75;
@@ -99,20 +96,6 @@ function clipPolygon(
 		}
 	});
 	return kept;
-}
-
-function separateCoplanarFaces(
-	geometry: THREE.BufferGeometry,
-	index: number,
-): void {
-	geometry.computeBoundingBox();
-	const center = (geometry.boundingBox as THREE.Box3).getCenter(
-		new THREE.Vector3(),
-	);
-	const scale = 1 + COPLANAR_SEPARATION * ((index % 5) + 1);
-	geometry.translate(-center.x, -center.y, -center.z);
-	geometry.scale(scale, scale, scale);
-	geometry.translate(center.x, center.y, center.z);
 }
 
 export interface RoomMeshes {
@@ -1645,47 +1628,71 @@ export class ManorMeshBuilder {
 			(item) => item.roomId === room.id,
 		);
 		for (const item of items) {
-			const builder = builderFor(item.kind);
-			const parts = builder({ item, room, rng: new SeededRandom(item.seed) });
+			const parts = furnitureParts(item, room);
 			const quaternion = new THREE.Quaternion().setFromEuler(
 				new THREE.Euler(0, -item.rotation, 0),
 			);
 			const position = new THREE.Vector3(item.x, item.y, item.z);
+			const place = { position, quaternion, scale: parts.scale };
+			const whole = wholeItemAnimation(item);
+			if (whole) {
+				const [px, py, pz] = whole.pivot;
+				const pieces = [
+					...parts.pieces,
+					...parts.animated.flatMap(({ animation, pieces: moved }) =>
+						moved.map((piece) => ({
+							...piece,
+							geometry: piece.geometry.translate(...animation.pivot),
+						})),
+					),
+				];
+				for (const piece of pieces) {
+					piece.geometry.translate(-px, -py, -pz);
+				}
+				this.addMoving(group, animated, whole, pieces, place);
+				continue;
+			}
 			const matrix = new THREE.Matrix4().compose(
 				position,
 				quaternion,
-				new THREE.Vector3(1, 1, 1),
+				parts.scale,
 			);
-			const whole = wholeItemAnimation(item);
-			const moving = new Map<PartAnimation, Part[]>();
-			parts.forEach((part, index) => {
-				separateCoplanarFaces(part.geometry, index);
-				const animation = whole ?? part.animation;
-				if (animation) {
-					moving.set(animation, [...(moving.get(animation) ?? []), part]);
-				} else {
-					bucket.add(part.material, part.geometry, matrix);
-				}
-			});
-			for (const [animation, moved] of moving) {
-				const [px, py, pz] = animation.pivot;
-				const assembly = new GeometryBucket(this.materials);
-				for (const part of moved) {
-					part.geometry.translate(-px, -py, -pz);
-					assembly.add(part.material, part.geometry);
-				}
-				const holder = new THREE.Group();
-				holder.position
-					.set(px, py, pz)
-					.applyQuaternion(quaternion)
-					.add(position);
-				holder.quaternion.copy(quaternion);
-				for (const mesh of assembly.toMeshes()) {
-					holder.add(mesh);
-				}
-				group.add(holder);
-				animated.push({ holder, base: quaternion.clone(), animation });
+			for (const piece of parts.pieces) {
+				bucket.add(piece.material, piece.geometry, matrix);
+			}
+			for (const { animation, pieces } of parts.animated) {
+				this.addMoving(group, animated, animation, pieces, place);
 			}
 		}
+	}
+
+	private addMoving(
+		group: THREE.Group,
+		animated: AnimatedDecor[],
+		animation: PartAnimation,
+		pieces: FurniturePiece[],
+		place: {
+			position: THREE.Vector3;
+			quaternion: THREE.Quaternion;
+			scale: THREE.Vector3;
+		},
+	): void {
+		const assembly = new GeometryBucket(this.materials);
+		for (const piece of pieces) {
+			assembly.add(piece.material, piece.geometry);
+		}
+		const holder = new THREE.Group();
+		holder.position
+			.fromArray(animation.pivot)
+			.multiply(place.scale)
+			.applyQuaternion(place.quaternion)
+			.add(place.position);
+		holder.quaternion.copy(place.quaternion);
+		holder.scale.copy(place.scale);
+		for (const mesh of assembly.toMeshes()) {
+			holder.add(mesh);
+		}
+		group.add(holder);
+		animated.push({ holder, base: place.quaternion.clone(), animation });
 	}
 }

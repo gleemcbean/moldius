@@ -18,7 +18,7 @@ type Builder = (context: {
 	rng: SeededRandom;
 }) => BuiltPart[];
 
-const furnitureRoot = "../src/features/world/furniture";
+const furnitureRoot = "../scripts/models/furniture";
 
 const { FURNITURE_BUILDERS } = (await import(`${furnitureRoot}/index.ts`)) as {
 	FURNITURE_BUILDERS: Record<string, Builder>;

@@ -1,7 +1,12 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { meterLathe, meterSphere, placed, scaleUv } from "../geometryUtils";
-import type { MaterialOptions } from "../MaterialLibrary";
+import {
+	meterLathe,
+	meterSphere,
+	placed,
+	scaleUv,
+} from "../../../src/features/world/geometryUtils";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
 import { type Part, part } from "./parts";
 
 export type Profile = [number, number][];

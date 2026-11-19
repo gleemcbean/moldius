@@ -9,5 +9,6 @@
     "allowJs": true,
     "noEmit": true
   },
-  "include": ["tests", "server", "shared", "scripts", "vite.config.ts", "vitest.config.ts"]
+  "include": ["tests", "server", "shared", "scripts", "vite.config.ts", "vitest.config.ts"],
+  "exclude": ["scripts/models", "scripts/textures", "scripts/export-glb.ts", "scripts/export-textures.ts"]
 }

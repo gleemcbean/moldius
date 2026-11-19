@@ -26,9 +26,14 @@ function clampByte(value: number): number {
 	return value < 0 ? 0 : value > 255 ? 255 : Math.round(value);
 }
 
+export interface PixelData {
+	readonly width: number;
+	readonly height: number;
+	readonly data: Uint8ClampedArray;
+}
+
 export class PixelPainter {
-	readonly canvas: HTMLCanvasElement;
-	readonly data: ImageData;
+	readonly data: PixelData;
 	readonly rng: SeededRandom;
 
 	constructor(
@@ -36,18 +41,12 @@ export class PixelPainter {
 		readonly height: number,
 		seed: number,
 	) {
-		this.canvas = document.createElement("canvas");
-		this.canvas.width = width;
-		this.canvas.height = height;
-		const context = this.canvas.getContext("2d", {
-			willReadFrequently: true,
-		}) as CanvasRenderingContext2D;
-		this.data = context.createImageData(width, height);
+		this.data = {
+			width,
+			height,
+			data: new Uint8ClampedArray(width * height * 4),
+		};
 		this.rng = new SeededRandom(seed);
-	}
-
-	get context(): CanvasRenderingContext2D {
-		return this.canvas.getContext("2d") as CanvasRenderingContext2D;
 	}
 
 	set(x: number, y: number, color: RGB, alpha = 255): void {
@@ -219,10 +218,5 @@ export class PixelPainter {
 				}
 			}
 		}
-	}
-
-	commit(): HTMLCanvasElement {
-		this.context.putImageData(this.data, 0, 0);
-		return this.canvas;
 	}
 }

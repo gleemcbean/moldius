@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MaterialOptions } from "../MaterialLibrary";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
 import { cylinderBetween, type Part, sphere } from "./parts";
 
 const LEAF_TINTS = [0xffffff, 0xc6dca6, 0xe6dc8e, 0xa8cda0] as const;

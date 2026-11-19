@@ -1,6 +1,10 @@
 import * as THREE from "three";
-import { meterCircle, meterLathe, placed } from "../geometryUtils";
-import type { MaterialOptions } from "../MaterialLibrary";
+import {
+	meterCircle,
+	meterLathe,
+	placed,
+} from "../../../src/features/world/geometryUtils";
+import type { MaterialOptions } from "../../../src/features/world/MaterialLibrary";
 import {
 	BRASS,
 	box,

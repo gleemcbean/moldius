@@ -1,7 +1,7 @@
 import type { MaterialId, OccultId } from "@shared/config/occult";
 import * as THREE from "three";
-import type { MaterialOptions } from "../world/MaterialLibrary";
-import type { ModelKit } from "./modelKit";
+import type { MaterialOptions } from "../../src/features/world/MaterialLibrary";
+import type { BuildKit } from "./kit";
 
 type Add = (
 	geometry: THREE.BufferGeometry,
@@ -728,7 +728,7 @@ const OCCULT_BUILDERS: Record<OccultId, (add: Add) => void> = {
 	censer,
 };
 
-function assemble(kit: ModelKit, build: (add: Add) => void): THREE.Group {
+function assemble(kit: BuildKit, build: (add: Add) => void): THREE.Group {
 	const group = new THREE.Group();
 	build((geometry, material, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
 		const mesh = kit.mesh(geometry, material);
@@ -740,20 +740,12 @@ function assemble(kit: ModelKit, build: (add: Add) => void): THREE.Group {
 }
 
 export function createMaterialModel(
-	kit: ModelKit,
+	kit: BuildKit,
 	id: MaterialId,
 ): THREE.Group {
 	return assemble(kit, MATERIAL_BUILDERS[id]);
 }
 
-export function createOccultModel(kit: ModelKit, id: OccultId): THREE.Group {
+export function createOccultModel(kit: BuildKit, id: OccultId): THREE.Group {
 	return assemble(kit, OCCULT_BUILDERS[id]);
-}
-
-export function disposeModel(root: THREE.Object3D): void {
-	root.traverse((object) => {
-		if (object instanceof THREE.Mesh) {
-			object.geometry.dispose();
-		}
-	});
 }

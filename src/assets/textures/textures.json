@@ -1,0 +1,3707 @@
+{
+	"lowDetail": 0.5,
+	"surfaces": {
+		"redCarpet": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				64,
+				64
+			],
+			"tile": [
+				2,
+				2
+			],
+			"normal": true
+		},
+		"wallpaperGreen": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"wallpaperRed": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"wallpaperBlue": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"wallpaperOchre": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"wallpaperPurple": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"wallpaperFloral": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"wallpaperTrellis": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"wallpaperStripes": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"wallpaperFleur": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"skyNight": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				128,
+				64
+			],
+			"tile": [
+				8,
+				4
+			],
+			"normal": false
+		},
+		"velvetRed": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"normal": true
+		},
+		"velvetGreen": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"normal": true
+		},
+		"velvetBlue": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"normal": true
+		},
+		"velvetPurple": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"normal": true
+		},
+		"linen": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"normal": true
+		},
+		"burlap": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"normal": true
+		},
+		"books": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				0.8,
+				0.4
+			],
+			"normal": true
+		},
+		"paper": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.4,
+				0.4
+			],
+			"normal": true
+		},
+		"leafBlade": {
+			"category": "plants",
+			"fine": false,
+			"size": [
+				16,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"palmFrond": {
+			"category": "plants",
+			"fine": false,
+			"size": [
+				48,
+				96
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"leafSprig": {
+			"category": "plants",
+			"fine": false,
+			"size": [
+				48,
+				48
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"foliage": {
+			"category": "plants",
+			"fine": false,
+			"size": [
+				48,
+				48
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"normal": true
+		},
+		"foliageDark": {
+			"category": "plants",
+			"fine": false,
+			"size": [
+				48,
+				48
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"normal": true
+		},
+		"foliageWarm": {
+			"category": "plants",
+			"fine": false,
+			"size": [
+				48,
+				48
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"normal": true
+		},
+		"slime": {
+			"category": "effects",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"windowNight": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				64
+			],
+			"tile": [
+				1,
+				2
+			],
+			"normal": false
+		},
+		"flame": {
+			"category": "effects",
+			"fine": false,
+			"size": [
+				16,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"flameNeutral": {
+			"category": "effects",
+			"fine": false,
+			"size": [
+				16,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"cobweb": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				64,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"mirror": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				16,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"rugPersian": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				48,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"rugBlue": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				48,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"rugGreen": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				48,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"rugRound": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				48,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"rugRunner": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				48,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"paintingLandscape": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				40
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"paintingPortrait": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				40
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"paintingMushroom": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				40
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"paintingStillLife": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				40
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"paintingStorm": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				40
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"paintingAbstract": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				40
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"tapestry": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				32,
+				48
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"ritualCircle": {
+			"category": "occult",
+			"fine": false,
+			"size": [
+				96,
+				96
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"archivistCircle": {
+			"category": "occult",
+			"fine": false,
+			"size": [
+				128,
+				128
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"occultCircle": {
+			"category": "occult",
+			"fine": false,
+			"size": [
+				128,
+				128
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"bloodStain": {
+			"category": "effects",
+			"fine": false,
+			"size": [
+				64,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"bloodSmear": {
+			"category": "effects",
+			"fine": false,
+			"size": [
+				64,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"pondWater": {
+			"category": "effects",
+			"fine": false,
+			"size": [
+				64,
+				64
+			],
+			"tile": [
+				2,
+				2
+			],
+			"normal": false
+		},
+		"cap-d8442f-spots": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-plain": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-speckles": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-stripes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-rings": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-stars": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-scales": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-swirl": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-web": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-flames": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-skull": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-crown": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-lightning": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-eyes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-laurel": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-hearts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-spots": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-plain": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-speckles": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-stripes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-rings": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-stars": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-scales": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-swirl": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-web": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-flames": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-skull": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-crown": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-lightning": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-eyes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-laurel": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-hearts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-spots": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-plain": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-speckles": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-stripes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-rings": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-stars": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-scales": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-swirl": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-web": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-flames": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-skull": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-crown": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-lightning": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-eyes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-laurel": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-hearts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-spots": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-plain": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-speckles": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-stripes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-rings": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-stars": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-scales": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-swirl": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-web": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-flames": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-skull": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-crown": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-lightning": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-eyes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-laurel": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-hearts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-spots": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-plain": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-speckles": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-stripes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-rings": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-stars": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-scales": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-swirl": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-web": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-flames": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-skull": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-crown": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-lightning": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-eyes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-laurel": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-hearts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-spots": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-plain": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-speckles": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-stripes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-rings": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-stars": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-scales": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-swirl": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-web": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-flames": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-skull": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-crown": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-lightning": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-eyes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-laurel": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-hearts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-spots": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-plain": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-speckles": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-stripes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-rings": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-stars": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-scales": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-swirl": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-web": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-flames": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-skull": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-crown": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-lightning": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-eyes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-laurel": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-hearts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-spots": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-plain": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-speckles": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-stripes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-rings": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-stars": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-scales": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-swirl": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-web": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-flames": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-skull": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-crown": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-lightning": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-eyes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-laurel": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-hearts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"mushroomSkin": {
+			"category": "creatures",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.35,
+				0.35
+			],
+			"normal": true
+		},
+		"stem": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"mushroomStem": {
+			"category": "creatures",
+			"fine": false,
+			"size": [
+				32,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"tanLeather": {
+			"category": "creatures",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.4,
+				0.4
+			],
+			"normal": true
+		},
+		"gills": {
+			"category": "creatures",
+			"fine": false,
+			"size": [
+				64,
+				8
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"clothPale": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				32,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"eyeball": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"mossDrape": {
+			"category": "plants",
+			"fine": false,
+			"size": [
+				32,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"curtainPale": {
+			"category": "creatures",
+			"fine": false,
+			"size": [
+				32,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"iris": {
+			"category": "creatures",
+			"fine": false,
+			"size": [
+				48,
+				16
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"paperPages": {
+			"category": "creatures",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"wallpaperNursery": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"wallpaperStars": {
+			"category": "architecture",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"armorPlate": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"normal": true
+		},
+		"curiosityShelves": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				48,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"ossuary": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				48,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"starChart": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				48,
+				36
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"specimens": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				40,
+				30
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"sheetCloth": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"sheetHanging": {
+			"category": "fabrics",
+			"fine": false,
+			"size": [
+				32,
+				48
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"wicker": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				16,
+				16
+			],
+			"tile": [
+				0.25,
+				0.25
+			],
+			"normal": true
+		},
+		"horsePaint": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				0.6,
+				0.6
+			],
+			"normal": true
+		},
+		"dollFace": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				16
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"sarcophagusLid": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cageBars": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"spindles": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				32,
+				16
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"fur": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				16,
+				16
+			],
+			"tile": [
+				0.3,
+				0.3
+			],
+			"normal": true
+		},
+		"bone": {
+			"category": "decor",
+			"fine": false,
+			"size": [
+				16,
+				16
+			],
+			"tile": [
+				0.3,
+				0.3
+			],
+			"normal": true
+		},
+		"occultPentacle": {
+			"category": "occult",
+			"fine": false,
+			"size": [
+				64,
+				64
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"occultIris": {
+			"category": "occult",
+			"fine": false,
+			"size": [
+				32,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": false
+		},
+		"oakPlanks": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.006,
+			"parallax": true
+		},
+		"darkPlanks": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.006,
+			"parallax": true
+		},
+		"parquet": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.004,
+			"parallax": true
+		},
+		"stoneFlags": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.022,
+			"parallax": true
+		},
+		"cobble": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.04,
+			"parallax": true
+		},
+		"checkerTiles": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.004,
+			"parallax": true
+		},
+		"tiles": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.004,
+			"parallax": true
+		},
+		"mosaic": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.004,
+			"parallax": true
+		},
+		"greenhouseTiles": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.01,
+			"parallax": true
+		},
+		"stoneBlocks": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.024,
+			"parallax": true
+		},
+		"vaultStone": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.018,
+			"parallax": true
+		},
+		"rubbleStone": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.045,
+			"parallax": true
+		},
+		"brick": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				256
+			],
+			"lowSize": [
+				256,
+				128
+			],
+			"tile": [
+				2,
+				1
+			],
+			"metallic": false,
+			"depth": 0.018,
+			"parallax": true
+		},
+		"mossyBrick": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				256
+			],
+			"lowSize": [
+				256,
+				128
+			],
+			"tile": [
+				2,
+				1
+			],
+			"metallic": false,
+			"depth": 0.018,
+			"parallax": true
+		},
+		"greenhouseBrick": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				256
+			],
+			"lowSize": [
+				256,
+				128
+			],
+			"tile": [
+				2,
+				1
+			],
+			"metallic": false,
+			"depth": 0.018,
+			"parallax": true
+		},
+		"plaster": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.0035,
+			"parallax": false
+		},
+		"ceilingPlaster": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				2,
+				2
+			],
+			"metallic": false,
+			"depth": 0.0035,
+			"parallax": false
+		},
+		"woodPanels": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.006,
+			"parallax": true
+		},
+		"wainscot": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.018,
+			"parallax": true
+		},
+		"coffer": {
+			"category": "architecture",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				1.5,
+				1.5
+			],
+			"metallic": false,
+			"depth": 0.07,
+			"parallax": true
+		},
+		"pageEdges": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				128
+			],
+			"lowSize": [
+				128,
+				64
+			],
+			"tile": [
+				0.25,
+				0.02
+			],
+			"metallic": false,
+			"depth": 0.0006,
+			"parallax": false
+		},
+		"woodDark": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": false,
+			"depth": 0.0012,
+			"parallax": false
+		},
+		"woodMedium": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": false,
+			"depth": 0.0012,
+			"parallax": false
+		},
+		"woodLight": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": false,
+			"depth": 0.0012,
+			"parallax": false
+		},
+		"woodRed": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": false,
+			"depth": 0.0012,
+			"parallax": false
+		},
+		"woodPainted": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": false,
+			"depth": 0.0018,
+			"parallax": false
+		},
+		"iron": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": true,
+			"depth": 0.0025,
+			"parallax": false
+		},
+		"brass": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": true,
+			"depth": 0.0012,
+			"parallax": false
+		},
+		"copper": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": true,
+			"depth": 0.0012,
+			"parallax": false
+		},
+		"pipeMetal": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": true,
+			"depth": 0.002,
+			"parallax": false
+		},
+		"leather": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": false,
+			"depth": 0.0016,
+			"parallax": false
+		},
+		"stoneSmooth": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.6,
+				0.6
+			],
+			"metallic": false,
+			"depth": 0.0018,
+			"parallax": false
+		},
+		"marble": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.0008,
+			"parallax": false
+		},
+		"marbleBlack": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.0008,
+			"parallax": false
+		},
+		"marbleRose": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.0008,
+			"parallax": false
+		},
+		"marbleGreen": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.0008,
+			"parallax": false
+		},
+		"marbleGold": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				512,
+				512
+			],
+			"lowSize": [
+				256,
+				256
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.0008,
+			"parallax": false
+		},
+		"limestone": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.75,
+				0.75
+			],
+			"metallic": false,
+			"depth": 0.0018,
+			"parallax": false
+		},
+		"granite": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.75,
+				0.75
+			],
+			"metallic": false,
+			"depth": 0.0018,
+			"parallax": false
+		},
+		"basalt": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.75,
+				0.75
+			],
+			"metallic": false,
+			"depth": 0.0018,
+			"parallax": false
+		},
+		"sandstone": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.004,
+			"parallax": false
+		},
+		"slate": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				1,
+				1
+			],
+			"metallic": false,
+			"depth": 0.004,
+			"parallax": false
+		},
+		"terracotta": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				192,
+				128
+			],
+			"lowSize": [
+				96,
+				64
+			],
+			"tile": [
+				0.6,
+				0.4
+			],
+			"metallic": false,
+			"depth": 0.0015,
+			"parallax": false
+		},
+		"ceramic": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": false,
+			"depth": 0.0005,
+			"parallax": false
+		},
+		"wax": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				128,
+				128
+			],
+			"lowSize": [
+				64,
+				64
+			],
+			"tile": [
+				0.2,
+				0.2
+			],
+			"metallic": false,
+			"depth": 0.0012,
+			"parallax": false
+		},
+		"bark": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.5,
+				0.5
+			],
+			"metallic": false,
+			"depth": 0.012,
+			"parallax": true
+		},
+		"soil": {
+			"category": "materials",
+			"fine": true,
+			"size": [
+				256,
+				256
+			],
+			"lowSize": [
+				128,
+				128
+			],
+			"tile": [
+				0.6,
+				0.6
+			],
+			"metallic": false,
+			"depth": 0.01,
+			"parallax": true
+		}
+	},
+	"special": {
+		"beamFade": {
+			"category": "effects",
+			"color": false
+		},
+		"altarPageLeft": {
+			"category": "occult",
+			"color": true
+		},
+		"altarPageRight": {
+			"category": "occult",
+			"color": true
+		}
+	}
+}

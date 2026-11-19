@@ -1,11 +1,10 @@
 import type { HatPattern } from "@shared/hatPatterns";
-import { hashString } from "@shared/random";
 import { useEffect, useRef } from "react";
 import {
-	capRecipe,
-	capTextureKey,
-} from "../features/world/textures/creatureTextures";
-import { PixelPainter } from "../features/world/textures/PixelPainter";
+	loadImage,
+	surfaceAlbedoFile,
+} from "../features/world/textures/textureFiles";
+import { capTextureKey } from "../features/world/textures/textureKeys";
 import styles from "./HatPreview.module.scss";
 
 const WIDTH = 64;
@@ -84,36 +83,17 @@ export function HatPreview({
 		if (!target || !context) {
 			return;
 		}
-		const painter = new PixelPainter(
-			64,
-			32,
-			hashString(capTextureKey(color, pattern)),
+		let cancelled = false;
+		void loadImage(surfaceAlbedoFile(capTextureKey(color, pattern))).then(
+			(image) => {
+				if (!cancelled) {
+					drawHat(context, image, pattern);
+				}
+			},
 		);
-		capRecipe(color, pattern).draw(painter);
-		const source = painter.commit();
-		context.clearRect(0, 0, WIDTH, HEIGHT);
-		if (DOME_PATTERNS.has(pattern)) {
-			drawOnDome(context, source);
-			return;
-		}
-		context.save();
-		context.beginPath();
-		context.ellipse(
-			WIDTH / 2,
-			HEIGHT - 4,
-			WIDTH / 2 - 1,
-			HEIGHT - 5,
-			0,
-			Math.PI,
-			Math.PI * 2,
-		);
-		context.lineTo(WIDTH - 1, HEIGHT - 1);
-		context.lineTo(1, HEIGHT - 1);
-		context.closePath();
-		context.clip();
-		context.imageSmoothingEnabled = false;
-		context.drawImage(source, 0, 0, WIDTH, HEIGHT);
-		context.restore();
+		return () => {
+			cancelled = true;
+		};
 	}, [color, pattern]);
 
 	return (
@@ -124,4 +104,38 @@ export function HatPreview({
 			className={[styles.hat, className ?? ""].join(" ")}
 		/>
 	);
+}
+
+function drawHat(
+	context: CanvasRenderingContext2D,
+	image: HTMLImageElement,
+	pattern: HatPattern,
+): void {
+	const source = document.createElement("canvas");
+	source.width = 64;
+	source.height = 32;
+	source.getContext("2d")?.drawImage(image, 0, 0);
+	context.clearRect(0, 0, WIDTH, HEIGHT);
+	if (DOME_PATTERNS.has(pattern)) {
+		drawOnDome(context, source);
+		return;
+	}
+	context.save();
+	context.beginPath();
+	context.ellipse(
+		WIDTH / 2,
+		HEIGHT - 4,
+		WIDTH / 2 - 1,
+		HEIGHT - 5,
+		0,
+		Math.PI,
+		Math.PI * 2,
+	);
+	context.lineTo(WIDTH - 1, HEIGHT - 1);
+	context.lineTo(1, HEIGHT - 1);
+	context.closePath();
+	context.clip();
+	context.imageSmoothingEnabled = false;
+	context.drawImage(source, 0, 0, WIDTH, HEIGHT);
+	context.restore();
 }
