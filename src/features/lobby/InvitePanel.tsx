@@ -46,6 +46,7 @@ export function InvitePanel({
 				<Button
 					variant="secondary"
 					size="small"
+					wide
 					icon={<Icon name={copied ? "check" : "copy"} />}
 					title={t.lobby.copyCode}
 					onClick={copy}

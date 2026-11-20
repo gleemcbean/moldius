@@ -1,128 +1,174 @@
 @use '../../styles/tokens' as *;
 
 .loading {
+  position: relative;
   width: 100%;
   height: 100%;
-  display: grid;
-  place-items: center;
-  background: var(--screen-backdrop, $bg);
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 70% 18%, rgba(150, 170, 230, 0.16) 0, rgba(150, 170, 230, 0) 40%),
+    linear-gradient(180deg, #060915 0%, #121a30 70%, #0b0e14 100%);
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 900ms ease;
+
+  &[data-ready] {
+    opacity: 1;
+  }
+
+  canvas {
+    display: block;
+  }
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, rgba(4, 6, 12, 0.88) 0%, rgba(4, 6, 12, 0.35) 26%, rgba(4, 6, 12, 0) 46%),
+    radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.45) 100%);
 }
 
 .panel {
-  width: min(620px, calc(100% - 40px));
+  position: absolute;
+  left: clamp(20px, 5vw, 72px);
+  bottom: clamp(24px, 6vh, 64px);
+  width: min(560px, calc(100% - 40px));
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .kicker {
   margin: 0;
   @include label;
   color: $accent;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 
 .title {
   margin: 0;
   @include display(40px);
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.6),
+    0 6px 24px rgba(0, 0, 0, 0.7);
 }
 
 .bar {
   position: relative;
-  height: 26px;
-  background: rgba(0, 0, 0, 0.5);
-  box-shadow: inset 0 0 0 2px $line-hi;
+  height: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .fill {
   position: absolute;
-  inset: 3px auto 3px 3px;
-  max-width: calc(100% - 6px);
-  background: repeating-linear-gradient(90deg, $accent 0 10px, $accent-lo 10px 12px);
-  transition: width 160ms linear;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, $accent-lo, $accent);
+  box-shadow: 0 0 12px $accent;
+  transition: width 400ms $ease;
 }
 
-.percent {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-variant-numeric: tabular-nums;
-  font-size: 16px;
-  color: $ink;
-  mix-blend-mode: difference;
+.tip {
+  margin: 6px 0 0;
+  max-width: 52ch;
+  @include body(17px);
+  font-style: italic;
+  color: $ink-muted;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
 
-.steps {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  @include heading(18px);
+.tipLabel {
+  margin-right: 10px;
+  @include label;
+  font-style: normal;
   color: $ink-dim;
+}
+
+.party {
+  position: absolute;
+  top: clamp(20px, 5vh, 48px);
+  right: clamp(20px, 4vw, 56px);
+  min-width: 180px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
 
   li {
     display: flex;
-    gap: 12px;
     align-items: center;
+    gap: 10px;
+    @include ui(18px);
+    color: $ink;
   }
 }
 
-.check {
-  width: 16px;
-  color: $accent;
+.partyTitle {
+  margin: 0 0 8px;
+  @include label;
+  color: $ink-dim;
 }
 
-.stepPercent {
+.dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.partyName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.you {
   margin-left: auto;
-  font-variant-numeric: tabular-nums;
-  font-size: 14px;
-}
-
-.done {
-  color: $ink-muted;
-}
-
-.active {
-  color: $ink;
+  @include label;
+  color: $accent;
 }
 
 .error {
   padding: 12px 16px;
   box-shadow: inset 4px 0 0 $danger;
-  background: tint($danger, 0.1);
+  background: rgba(20, 6, 8, 0.75);
 
   p {
     margin: 0 0 12px;
   }
 }
 
-.hint {
-  margin: 8px 0 0;
-  @include body(16px);
-  font-style: italic;
-  color: $ink-muted;
-}
-
 @include enter-keyframes;
 
 .kicker {
-  @include enter(fade, 60ms);
+  @include enter(fade, 300ms);
 }
 
 .title {
-  @include enter(left, 120ms);
+  @include enter(left, 400ms);
 }
 
 .bar {
-  @include enter(up, 220ms);
+  @include enter(fade, 500ms);
 }
 
-.steps li {
-  @include enter-stagger(left, 300ms, 50ms, 8);
+.tip {
+  @include enter(fade, 200ms, 700ms);
 }
 
-.hint {
-  @include enter(fade, 700ms);
+.party {
+  @include enter(fade, 600ms);
 }

@@ -1,0 +1,103 @@
+@use '../../styles/tokens' as *;
+
+.title {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(48px, 14vh, 160px) 24px clamp(24px, 5vh, 48px);
+  background: radial-gradient(ellipse at 50% 40%, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.6) 100%);
+  cursor: pointer;
+  animation: title-in 1200ms ease both;
+}
+
+.logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.name {
+  margin: 0;
+  @include display(clamp(88px, 13vw, 184px));
+  line-height: 0.9;
+  color: $accent;
+  text-shadow:
+    5px 5px 0 #3b4115,
+    10px 10px 0 rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(220, 229, 77, 0.25);
+  animation: title-rise 1400ms $ease both;
+}
+
+.tagline {
+  margin: 0;
+  @include label;
+  font-size: clamp(16px, 1.6vw, 22px);
+  letter-spacing: 0.5em;
+  color: $ink;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  animation: title-in 1200ms ease 500ms both;
+}
+
+.prompt {
+  margin: 0 0 clamp(24px, 8vh, 96px);
+  @include ui(clamp(20px, 1.8vw, 26px));
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: $ink;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  animation:
+    title-in 900ms ease 1100ms both,
+    prompt-pulse 2400ms ease-in-out 2000ms infinite;
+}
+
+.copyright {
+  position: absolute;
+  right: clamp(16px, 3vw, 40px);
+  bottom: clamp(12px, 3vh, 28px);
+  margin: 0;
+  @include label;
+  color: $ink-dim;
+}
+
+@keyframes title-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes title-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+    filter: blur(6px);
+  }
+}
+
+@keyframes prompt-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@include no-motion {
+  .title,
+  .name,
+  .tagline,
+  .prompt {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+
+  .prompt {
+    animation: none;
+  }
+}

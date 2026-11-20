@@ -34,7 +34,134 @@ function star(p: PixelPainter, cx: number, cy: number, color: RGB): void {
 const WEB_SPOKES = 5;
 const WEB_RINGS = [9, 18, 28];
 
+const RUNE_STROKES: readonly (readonly [number, number, number, number])[][] = [
+	[
+		[0, 0, 0, 7],
+		[0, 0, 3, 3],
+		[0, 3, 3, 6],
+	],
+	[
+		[0, 0, 0, 7],
+		[3, 0, 3, 7],
+		[0, 3, 3, 5],
+	],
+	[
+		[1, 0, 1, 7],
+		[1, 2, 4, 0],
+		[1, 4, 4, 2],
+	],
+	[
+		[0, 0, 3, 7],
+		[3, 0, 0, 7],
+	],
+	[
+		[2, 0, 2, 7],
+		[0, 2, 4, 2],
+		[0, 5, 4, 5],
+	],
+	[
+		[0, 7, 2, 0],
+		[2, 0, 4, 7],
+		[1, 4, 3, 4],
+	],
+];
+
+const BAT_SHAPE = [
+	"X.....X.X.....X",
+	"XX....XXX....XX",
+	"XXXX..XXX..XXXX",
+	".XXXXXXXXXXXXX.",
+	"..XX.XXXXX.XX..",
+	"......XXX......",
+];
+
+function bat(p: PixelPainter, cx: number, cy: number, color: RGB): void {
+	const left = cx - Math.floor(BAT_SHAPE[0].length / 2);
+	for (const [row, line] of BAT_SHAPE.entries()) {
+		for (let column = 0; column < line.length; column += 1) {
+			if (line[column] === "X") {
+				p.set(left + column, cy - 3 + row, color);
+			}
+		}
+	}
+}
+
 const PATTERN_PAINTERS: Record<HatPattern, PatternPainter> = {
+	moon: (p, light, base) => {
+		const moon: RGB = hexToRgb(0xfff1b8);
+		for (let index = 0; index < 5; index += 1) {
+			const x = 6 + index * 13;
+			const y = 9 + (index % 2) * 10;
+			p.circle(x, y, 4.2, moon);
+			p.circle(
+				x + 2,
+				y - 1.4,
+				3.6,
+				shade(base, 1.12 - (y / CAP_HEIGHT) * 0.28),
+			);
+			p.set(x + 6, y + 4, light, 220);
+			p.set(x - 4, y - 6, light, 200);
+		}
+	},
+	checker: (p, light) => {
+		const size = 8;
+		for (let row = 0; row < Math.ceil(CAP_HEIGHT / size); row += 1) {
+			for (let column = 0; column < CAP_WIDTH / size; column += 1) {
+				if ((row + column) % 2 === 0) {
+					p.rect(column * size, row * size, size, size, light, 215);
+				}
+			}
+		}
+	},
+	runes: (p) => {
+		const glow: RGB = hexToRgb(0x8fe3ff);
+		const halo: RGB = hexToRgb(0x3c7fa8);
+		for (let index = 0; index < 6; index += 1) {
+			const left = 3 + index * 10 + (index % 2);
+			const top = 6 + (index % 2) * 11;
+			const strokes = RUNE_STROKES[index % RUNE_STROKES.length];
+			for (const [x0, y0, x1, y1] of strokes) {
+				p.line(
+					left + x0 + 1,
+					top + y0 + 1,
+					left + x1 + 1,
+					top + y1 + 1,
+					halo,
+					170,
+				);
+			}
+			for (const [x0, y0, x1, y1] of strokes) {
+				p.line(left + x0, top + y0, left + x1, top + y1, glow);
+			}
+		}
+	},
+	ghosts: (p) => {
+		const sheet: RGB = hexToRgb(0xf2f0ff);
+		const shadow: RGB = hexToRgb(0xb8b4d8);
+		const eye: RGB = hexToRgb(0x1a1426);
+		for (let index = 0; index < 5; index += 1) {
+			const x = 6 + index * 13;
+			const y = 8 + (index % 2) * 10;
+			p.circle(x, y, 3.4, sheet);
+			p.rect(x - 3, y, 7, 5, sheet);
+			for (let column = -3; column <= 3; column += 1) {
+				if ((column + 3) % 2 === 0) {
+					p.set(x + column, y + 5, sheet);
+				}
+			}
+			p.rect(x + 2, y, 1, 5, shadow);
+			p.set(x - 1, y - 1, eye);
+			p.set(x + 1, y - 1, eye);
+			p.set(x, y + 1, eye);
+		}
+	},
+	bats: (p, _light, base) => {
+		const wing: RGB = mix(hexToRgb(0x120c14), shade(base, 0.3), 0.25);
+		for (let index = 0; index < 4; index += 1) {
+			bat(p, 8 + index * 16, 9 + (index % 2) * 9, wing);
+		}
+		p.speckle(6, hexToRgb(0xffe9a8), 200);
+	},
 	hearts: (p) => {
 		const heart: RGB = hexToRgb(0xff5a8a);
 		const shine: RGB = hexToRgb(0xffc2d6);

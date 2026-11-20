@@ -1,7 +1,7 @@
 import type { SynthKit } from "../synthKit.js";
 import type { SoundRecipe } from "./types.js";
 
-const CHORD_S = 14;
+export const CHORD_S = 14;
 const CHORD_TAIL_S = 9;
 const NOTE_S = 5;
 const ECHO_S = 0.46;
@@ -77,17 +77,24 @@ function renderNote(kit: SynthKit, midi: number): void {
 	}
 }
 
-export const MUSIC_SOUNDS: SoundRecipe[] = [
-	{
-		id: "music-chord",
-		duration: CHORD_S + CHORD_TAIL_S,
-		variants: CHORDS.length,
-		render: (kit, variant) => renderChord(kit, CHORDS[variant]),
-	},
-	{
-		id: "music-note",
-		duration: NOTE_S + ECHO_TAIL_S,
-		variants: MELODY.length,
-		render: (kit, variant) => renderNote(kit, MELODY[variant]),
-	},
+export const NEXT_CHORDS: readonly (readonly number[])[] = [
+	[1, 2, 3],
+	[2, 0, 4],
+	[3, 0],
+	[0, 1],
+	[0, 2],
 ];
+
+export const MUSIC_CHORD: SoundRecipe = {
+	id: "music-chord",
+	duration: CHORD_S + CHORD_TAIL_S,
+	variants: CHORDS.length,
+	render: (kit, variant) => renderChord(kit, CHORDS[variant]),
+};
+
+export const MUSIC_NOTE: SoundRecipe = {
+	id: "music-note",
+	duration: NOTE_S + ECHO_TAIL_S,
+	variants: MELODY.length,
+	render: (kit, variant) => renderNote(kit, MELODY[variant]),
+};

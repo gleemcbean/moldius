@@ -3,12 +3,21 @@ import type { MatchResultEntry, MatchResults } from "./protocol/game.js";
 export const CHALLENGE_METRICS = [
 	"games",
 	"wins",
-	"flawless",
-	"flawlessWins",
+	"cleanGames",
+	"cleanWins",
+	"possessedWins",
 	"dailies",
+	"score",
 	"captures",
+	"captureStreak",
+	"tierThreeCaptures",
+	"speciesCaptured",
+	"lateCaptures",
 	"fragments",
 	"crafts",
+	"gifts",
+	"brews",
+	"bounties",
 	"doors",
 	"sprintMeters",
 	"hideSeconds",
@@ -19,6 +28,20 @@ export const CHALLENGE_METRICS = [
 	"pushes",
 	"stakes",
 ] as const;
+
+export const CLEAN_GAME_MIN_CAPTURES = 2;
+export const CLEAN_WIN_MIN_CAPTURES = 3;
+export const LATE_CAPTURE_WINDOW_MS = 60_000;
+export const SUMMARY_METRICS = [
+	"games",
+	"wins",
+	"cleanGames",
+	"cleanWins",
+	"possessedWins",
+	"dailies",
+	"score",
+	"captures",
+] as const satisfies readonly ChallengeMetric[];
 
 export type ChallengeMetric = (typeof CHALLENGE_METRICS)[number];
 
@@ -40,20 +63,28 @@ export const METRIC_UNITS: Partial<
 
 export const CLASSIC_CHALLENGES = [
 	{ id: "firstCapture", metric: "captures", target: 1 },
-	{ id: "hatTrick", metric: "captures", target: 3 },
 	{ id: "firstWin", metric: "wins", target: 1 },
-	{ id: "survivor", metric: "flawless", target: 1 },
-	{ id: "untouchable", metric: "flawlessWins", target: 1 },
-	{ id: "hermit", metric: "longestHideSeconds", target: 60 },
-	{ id: "sprinter", metric: "sprintMeters", target: 500 },
-	{ id: "gatherer", metric: "fragments", target: 20 },
-	{ id: "artisan", metric: "crafts", target: 3 },
-	{ id: "daredevil", metric: "stakes", target: 1 },
-	{ id: "prey", metric: "chasedSeconds", target: 45 },
-	{ id: "operator", metric: "radioSeconds", target: 60 },
-	{ id: "doorman", metric: "doors", target: 30 },
-	{ id: "bunny", metric: "jumps", target: 50 },
-	{ id: "saboteur", metric: "pushes", target: 5 },
+	{ id: "hatTrick", metric: "captureStreak", target: 3 },
+	{ id: "bigGame", metric: "tierThreeCaptures", target: 1 },
+	{ id: "naturalist", metric: "speciesCaptured", target: 3 },
+	{ id: "buzzer", metric: "lateCaptures", target: 1 },
+	{ id: "tally", metric: "score", target: 2500 },
+	{ id: "survivor", metric: "cleanGames", target: 1 },
+	{ id: "untouchable", metric: "cleanWins", target: 1 },
+	{ id: "impostor", metric: "possessedWins", target: 1 },
+	{ id: "hermit", metric: "longestHideSeconds", target: 150 },
+	{ id: "sprinter", metric: "sprintMeters", target: 1500 },
+	{ id: "gatherer", metric: "fragments", target: 30 },
+	{ id: "artisan", metric: "crafts", target: 5 },
+	{ id: "generous", metric: "gifts", target: 5 },
+	{ id: "taster", metric: "brews", target: 3 },
+	{ id: "bountyHunter", metric: "bounties", target: 2 },
+	{ id: "daredevil", metric: "stakes", target: 3 },
+	{ id: "prey", metric: "chasedSeconds", target: 150 },
+	{ id: "operator", metric: "radioSeconds", target: 180 },
+	{ id: "doorman", metric: "doors", target: 120 },
+	{ id: "bunny", metric: "jumps", target: 250 },
+	{ id: "saboteur", metric: "pushes", target: 12 },
 ] as const satisfies readonly {
 	id: string;
 	metric: ChallengeMetric;
@@ -61,15 +92,20 @@ export const CLASSIC_CHALLENGES = [
 }[];
 
 export const INCREMENTAL_CHALLENGES = [
-	{ id: "veteran", metric: "games", tiers: [5, 25, 100] },
-	{ id: "champion", metric: "wins", tiers: [3, 15, 50] },
-	{ id: "hunter", metric: "captures", tiers: [10, 50, 200] },
-	{ id: "forager", metric: "fragments", tiers: [50, 250, 1000] },
-	{ id: "crafter", metric: "crafts", tiers: [10, 50, 200] },
-	{ id: "runner", metric: "sprintMeters", tiers: [2000, 10000, 50000] },
-	{ id: "ghost", metric: "hideSeconds", tiers: [300, 1800, 7200] },
-	{ id: "gambler", metric: "stakes", tiers: [5, 25, 100] },
-	{ id: "regular", metric: "dailies", tiers: [1, 7, 30] },
+	{ id: "veteran", metric: "games", tiers: [10, 50, 200] },
+	{ id: "champion", metric: "wins", tiers: [5, 25, 100] },
+	{ id: "hunter", metric: "captures", tiers: [25, 150, 500] },
+	{ id: "titanSlayer", metric: "tierThreeCaptures", tiers: [5, 30, 100] },
+	{ id: "survivalist", metric: "cleanGames", tiers: [3, 15, 50] },
+	{ id: "puppeteer", metric: "possessedWins", tiers: [3, 10, 30] },
+	{ id: "forager", metric: "fragments", tiers: [150, 750, 3000] },
+	{ id: "crafter", metric: "crafts", tiers: [20, 100, 400] },
+	{ id: "benefactor", metric: "gifts", tiers: [25, 100, 400] },
+	{ id: "mercenary", metric: "bounties", tiers: [5, 25, 100] },
+	{ id: "runner", metric: "sprintMeters", tiers: [10000, 50000, 200000] },
+	{ id: "ghost", metric: "hideSeconds", tiers: [900, 3600, 14400] },
+	{ id: "gambler", metric: "stakes", tiers: [10, 50, 200] },
+	{ id: "regular", metric: "dailies", tiers: [3, 15, 60] },
 ] as const satisfies readonly {
 	id: string;
 	metric: ChallengeMetric;

@@ -208,7 +208,7 @@ describe("lobbies Socket.IO", () => {
 		);
 		expect(publicConfig).toMatchObject({
 			ok: false,
-			error: { code: "not-private" },
+			error: { code: "public-rules" },
 		});
 
 		const guestConfig = await request<LobbyState>((ack) =>

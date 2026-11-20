@@ -55,7 +55,7 @@ export function lineOfSight(
 		if (!box.enabled || !box.occludes) {
 			continue;
 		}
-		if (box.kind === "door" ? options.ignoreDoors : options.ignoreFurniture) {
+		if (box.kind === "furniture" ? options.ignoreFurniture : options.ignoreDoors) {
 			continue;
 		}
 		if (

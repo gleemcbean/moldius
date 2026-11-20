@@ -66,10 +66,17 @@ function stylize(pixels: Uint8Array): HTMLCanvasElement {
 	return canvas;
 }
 
-export function renderObjectArt(
+const OBJECTS_PER_FRAME = 3;
+const ENCODES_PER_FRAME = 4;
+
+function nextFrame(): Promise<void> {
+	return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+export async function renderObjectArt(
 	renderer: THREE.WebGLRenderer,
 	kit: ModelKit,
-): ObjectArt {
+): Promise<ObjectArt> {
 	const result: ObjectArt = new Map();
 	const target = new THREE.WebGLRenderTarget(SIZE, SIZE, {
 		colorSpace: THREE.SRGBColorSpace,
@@ -84,15 +91,29 @@ export function renderObjectArt(
 	const previousTarget = renderer.getRenderTarget();
 	const previousClear = renderer.getClearColor(new THREE.Color());
 	const previousAlpha = renderer.getClearAlpha();
-	const entries: [ObjectArtId, THREE.Group][] = [
+	const entries: [ObjectArtId, () => THREE.Group][] = [
 		...MATERIAL_IDS.map(
-			(id) => [id, createMaterialModel(kit, id)] as [ObjectArtId, THREE.Group],
+			(id) =>
+				[id, () => createMaterialModel(kit, id)] as [
+					ObjectArtId,
+					() => THREE.Group,
+				],
 		),
 		...OCCULT_IDS.map(
-			(id) => [id, createOccultModel(kit, id)] as [ObjectArtId, THREE.Group],
+			(id) =>
+				[id, () => createOccultModel(kit, id)] as [
+					ObjectArtId,
+					() => THREE.Group,
+				],
 		),
 	];
-	for (const [id, model] of entries) {
+	for (const [index, [id, create]] of entries.entries()) {
+		if (index > 0 && index % OBJECTS_PER_FRAME === 0) {
+			renderer.setRenderTarget(previousTarget);
+			renderer.setClearColor(previousClear, previousAlpha);
+			await nextFrame();
+		}
+		const model = create();
 		scene.add(model);
 		model.rotation.y = -0.35;
 		model.updateMatrixWorld(true);
@@ -118,7 +139,10 @@ export function renderObjectArt(
 	renderer.setClearColor(previousClear, previousAlpha);
 	target.dispose();
 	const urls: Partial<Record<ObjectArtId, string>> = {};
-	for (const [id, canvas] of result) {
+	for (const [index, [id, canvas]] of [...result].entries()) {
+		if (index > 0 && index % ENCODES_PER_FRAME === 0) {
+			await nextFrame();
+		}
 		urls[id] = canvas.toDataURL("image/png");
 	}
 	objectArtStore.set({ urls });

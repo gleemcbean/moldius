@@ -80,7 +80,7 @@ const RATE_LIMITED: LobbyError = {
 	message: "Trop de requêtes, patientez un instant.",
 };
 const NO_SESSION: LobbyError = {
-	code: "invalid-request",
+	code: "session-missing",
 	message: "Session absente : rechargez la page.",
 };
 
@@ -346,7 +346,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				return {
 					ok: false,
 					error: {
-						code: "not-found",
+						code: "invalid-code",
 						message: "Le code doit contenir 5 caractères.",
 					},
 				};

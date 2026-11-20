@@ -56,7 +56,14 @@ export const padFocus: {
 	captureActive: boolean;
 	onMenu: (() => boolean) | null;
 	onButton: ((button: number) => boolean) | null;
-} = { owner: "ui", captureActive: false, onMenu: null, onButton: null };
+	repeatButtons: ReadonlySet<number> | null;
+} = {
+	owner: "ui",
+	captureActive: false,
+	onMenu: null,
+	onButton: null,
+	repeatButtons: null,
+};
 
 export function markDevice(device: InputDevice): void {
 	if (inputDeviceStore.get().device !== device) {

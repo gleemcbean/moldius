@@ -1,13 +1,22 @@
+import {
+	PRIVATE_CODE_LENGTH,
+	PRIVATE_LOBBY_CAPACITY,
+} from "@shared/config/index";
 import { POSSESSED_MIN_PLAYERS } from "@shared/config/party";
 import { dailyChallenge, formatDailyCountdown } from "@shared/dailyChallenge";
+import { inviteCodeFromText } from "@shared/inviteLink";
+import { useState } from "react";
 import { openOverlay } from "../../app/appStore";
+import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
 import { useT } from "../../i18n";
 import { useDailyClock } from "../daily/useDailyClock";
 import {
 	createDailyLobby,
+	createPrivateLobby,
 	joinPossessedLobby,
+	joinPrivateLobby,
 	quickJoin,
 	startTutorial,
 } from "../lobby/lobbyClient";
@@ -39,6 +48,8 @@ export function ModeSelect({
 	const { date, remainingMs } = useDailyClock();
 	const challenge = dailyChallenge(date);
 	const theme = t.daily.themes[challenge.theme];
+	const [code, setCode] = useState("");
+	const codeValid = code.length === PRIVATE_CODE_LENGTH;
 
 	const start = (mode: GameMode) => {
 		onClose();
@@ -134,6 +145,60 @@ export function ModeSelect({
 					</article>
 				))}
 			</div>
+			<form
+				className={styles.private}
+				onSubmit={(event) => {
+					event.preventDefault();
+					if (!ready) {
+						return;
+					}
+					if (code.length === 0) {
+						onClose();
+						createPrivateLobby(name);
+					} else if (codeValid) {
+						onClose();
+						joinPrivateLobby(name, code);
+					}
+				}}
+			>
+				<div className={styles.privateText}>
+					<span className={styles.privateTitle}>{labels.private}</span>
+					<span className={styles.privateHint}>
+						{labels.privateText(PRIVATE_LOBBY_CAPACITY)}
+					</span>
+				</div>
+				<input
+					className={styles.codeInput}
+					value={code}
+					placeholder={t.home.codePlaceholder}
+					maxLength={PRIVATE_CODE_LENGTH}
+					onChange={(event) =>
+						setCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+					}
+					onPaste={(event) => {
+						const pasted = inviteCodeFromText(
+							event.clipboardData.getData("text"),
+							window.location.origin,
+						);
+						if (pasted) {
+							event.preventDefault();
+							setCode(pasted);
+						}
+					}}
+					aria-label={t.home.codeLabel}
+					spellCheck={false}
+					autoComplete="off"
+					data-selectable=""
+				/>
+				<Button
+					variant="secondary"
+					type="submit"
+					icon={code.length === 0 ? <Icon name="lock" /> : undefined}
+					disabled={!ready || (code.length > 0 && !codeValid)}
+				>
+					{code.length === 0 ? t.home.createPrivate : t.home.joinFriends}
+				</Button>
+			</form>
 		</Modal>
 	);
 }

@@ -42,6 +42,7 @@ export class TextureLibrary {
 	constructor(
 		private readonly anisotropy: number,
 		readonly quality: SurfaceQuality = DEFAULT_SURFACE_QUALITY,
+		private readonly priority = false,
 	) {}
 
 	get keys(): string[] {
@@ -121,7 +122,7 @@ export class TextureLibrary {
 		texture.anisotropy = this.anisotropy;
 		texture.repeat.set(1 / tileX, 1 / tileY);
 		if (canLoadImages()) {
-			this.track(fillTexture(texture, file));
+			this.track(fillTexture(texture, file, this.priority));
 		}
 		return texture;
 	}
@@ -147,12 +148,12 @@ export class TextureLibrary {
 			texture.colorSpace = THREE.SRGBColorSpace;
 			texture.magFilter = THREE.NearestFilter;
 			this.track(
-				Promise.all(reflectionFiles().map((file) => loadImage(file))).then(
-					(faces) => {
-						texture.images = faces;
-						texture.needsUpdate = true;
-					},
-				),
+				Promise.all(
+					reflectionFiles().map((file) => loadImage(file, this.priority)),
+				).then((faces) => {
+					texture.images = faces;
+					texture.needsUpdate = true;
+				}),
 			);
 			this.ambientReflections = texture;
 		}

@@ -50,6 +50,7 @@ const urls = new Map(
 const images = new Map<string, Promise<HTMLImageElement>>();
 const ready = new Map<string, HTMLImageElement>();
 const queue: (() => void)[] = [];
+const waiting = new Map<string, () => void>();
 let running = 0;
 
 function pump(): void {
@@ -59,9 +60,23 @@ function pump(): void {
 	}
 }
 
-function decode(url: string): Promise<HTMLImageElement> {
+function hurry(file: string): void {
+	const job = waiting.get(file);
+	const index = job ? queue.indexOf(job) : -1;
+	if (job && index > 0) {
+		queue.splice(index, 1);
+		queue.unshift(job);
+	}
+}
+
+function decode(
+	file: string,
+	url: string,
+	priority: boolean,
+): Promise<HTMLImageElement> {
 	return new Promise((resolve, reject) => {
-		queue.push(() => {
+		const job = () => {
+			waiting.delete(file);
 			const image = new Image();
 			image.decoding = "async";
 			image.src = url;
@@ -72,7 +87,13 @@ function decode(url: string): Promise<HTMLImageElement> {
 					running -= 1;
 					pump();
 				});
-		});
+		};
+		waiting.set(file, job);
+		if (priority) {
+			queue.unshift(job);
+		} else {
+			queue.push(job);
+		}
 		pump();
 	});
 }
@@ -89,8 +110,14 @@ export function canLoadImages(): boolean {
 	return typeof Image !== "undefined";
 }
 
-export function loadImage(file: string): Promise<HTMLImageElement> {
+export function loadImage(
+	file: string,
+	priority = false,
+): Promise<HTMLImageElement> {
 	let pending = images.get(file);
+	if (pending && priority) {
+		hurry(file);
+	}
 	if (!pending) {
 		const url = urls.get(file);
 		if (!url) {
@@ -99,7 +126,7 @@ export function loadImage(file: string): Promise<HTMLImageElement> {
 		if (!canLoadImages()) {
 			return Promise.reject(new Error("Chargement d'images indisponible"));
 		}
-		pending = decode(url).then((image) => {
+		pending = decode(file, url, priority).then((image) => {
 			ready.set(file, image);
 			return image;
 		});
@@ -150,6 +177,7 @@ export function reflectionFiles(): string[] {
 export function fillTexture(
 	texture: THREE.Texture,
 	file: string,
+	priority = false,
 ): Promise<void> {
 	const apply = (image: HTMLImageElement) => {
 		texture.image = image;
@@ -160,7 +188,7 @@ export function fillTexture(
 		apply(image);
 		return Promise.resolve();
 	}
-	return loadImage(file).then(apply);
+	return loadImage(file, priority).then(apply);
 }
 
 let specials: Map<string, THREE.Texture> | null = null;
@@ -186,11 +214,13 @@ export function specialTexture(key: string): THREE.Texture {
 	return texture;
 }
 
-export function preloadSpecialTextures(): Promise<void> {
+export function preloadSpecialTextures(priority = false): Promise<void> {
 	if (!canLoadImages()) {
 		return Promise.resolve();
 	}
 	return Promise.all(
-		Object.keys(SPECIAL_TEXTURES).map((key) => loadImage(specialFile(key))),
+		Object.keys(SPECIAL_TEXTURES).map((key) =>
+			loadImage(specialFile(key), priority),
+		),
 	).then(() => undefined);
 }

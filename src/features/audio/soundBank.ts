@@ -9,7 +9,7 @@ const SOUND_URLS = import.meta.glob<string>("../../assets/sounds/*.ogg", {
 const SOUND_NAME = /([^/]+?)(?:\.(\d+))?\.ogg$/;
 const LOOP_ENDS: Record<string, number> = loops;
 const LOAD_CONCURRENCY = 6;
-const LOAD_PRIORITY = ["ui-", "music-chord", "music-note"];
+const LOAD_PRIORITY = ["ui-"];
 
 interface SoundFile {
 	id: string;

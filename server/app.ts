@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import express, { type Express } from "express";
+import { parseLanguage } from "../shared/i18n/languages.js";
 import type { AdminLiveStats } from "../shared/protocol/admin.js";
 import type { AccountModule } from "./accounts/AccountModule.js";
 import { createAdminRouter } from "./accounts/adminRoutes.js";
@@ -153,7 +154,11 @@ export function createApp(
 					response
 						.status(503)
 						.type("text")
-						.send("Mise à jour en cours, réessayez dans quelques secondes.");
+						.send(
+							parseLanguage(request.get("accept-language")) === "fr"
+								? "Mise à jour en cours, réessayez dans quelques secondes."
+								: "Update in progress, please try again in a few seconds.",
+						);
 					return;
 				}
 			}

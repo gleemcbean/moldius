@@ -18,6 +18,9 @@ const FOCUSABLE =
 	'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const REPEAT_DELAY_MS = 380;
 const REPEAT_RATE_MS = 110;
+const BUTTON_REPEAT_DELAY_MS = 450;
+const BUTTON_REPEAT_RATE_MS = 70;
+const REPEAT_ATTRIBUTE = "data-pad-repeat";
 const STICK_THRESHOLD = 0.55;
 const SCROLL_SPEED = 900;
 const FOCUS_ATTRIBUTE = "data-pad-focus";
@@ -42,6 +45,8 @@ let frameHandle = 0;
 let lastTick = 0;
 let heldDirection: Direction | null = null;
 let nextRepeat = 0;
+let repeatButton: number | null = null;
+let nextButtonRepeat = 0;
 let marked: HTMLElement | null = null;
 let nextScopeCheck = 0;
 let mouseTravel = 0;
@@ -385,6 +390,19 @@ function direction(pad: {
 			: "up";
 }
 
+function repeatable(button: number): boolean {
+	if (!padFocus.repeatButtons?.has(button)) {
+		return false;
+	}
+	if (button !== PAD_BUTTON.a) {
+		return true;
+	}
+	const focused = document.activeElement;
+	return (
+		focused instanceof HTMLElement && focused.hasAttribute(REPEAT_ATTRIBUTE)
+	);
+}
+
 function tick(now: number): void {
 	frameHandle = requestAnimationFrame(tick);
 	const dt = Math.min(0.05, Math.max(0, (now - lastTick) / 1000));
@@ -394,6 +412,7 @@ function tick(now: number): void {
 	if (!pad) {
 		buttons.reset();
 		heldDirection = null;
+		repeatButton = null;
 		hideHints();
 		return;
 	}
@@ -403,6 +422,10 @@ function tick(now: number): void {
 		}
 		markDevice("pad");
 		const button = parsePadCode(edge.code)?.button;
+		if (button !== undefined && repeatable(button)) {
+			repeatButton = button;
+			nextButtonRepeat = now + BUTTON_REPEAT_DELAY_MS;
+		}
 		if (button !== undefined && padFocus.onButton?.(button)) {
 			continue;
 		}
@@ -421,6 +444,16 @@ function tick(now: number): void {
 			edge.code === padCode(PAD_BUTTON.rb, false)
 		) {
 			switchTab(edge.code === padCode(PAD_BUTTON.rb, false) ? 1 : -1);
+		}
+	}
+	if (repeatButton !== null) {
+		if (!pad.buttons[repeatButton] || !repeatable(repeatButton)) {
+			repeatButton = null;
+		} else if (now >= nextButtonRepeat) {
+			nextButtonRepeat = now + BUTTON_REPEAT_RATE_MS;
+			if (!padFocus.onButton?.(repeatButton)) {
+				activate();
+			}
 		}
 	}
 	checkScope(now);

@@ -341,7 +341,7 @@ describe("amis, invitations et admin", () => {
 			"lobby-friends-only",
 		);
 		expect(code(await joinFriend(guest, "Invité", lobby.id))).toBe(
-			"sign-in-required",
+			"join-sign-in-required",
 		);
 		const joined = value(await joinFriend(bobSocket, "Bob", lobby.id));
 		expect(joined.players.map((player) => player.name)).toEqual([
@@ -360,12 +360,12 @@ describe("amis, invitations et admin", () => {
 				bobSocket.emit("lobby:quickJoin", { name: "Bob" }, resolve),
 			),
 		);
-		expect(code(await openToFriends(bobSocket, true))).toBe("not-private");
+		expect(code(await openToFriends(bobSocket, true))).toBe("already-open");
 		expect(value(await joinFriend(stranger, "Zoé", lobby.id)).id).toBe(
 			lobby.id,
 		);
 		expect(code(await joinFriend(stranger, "Zoé", "l_inconnu"))).toBe(
-			"not-found",
+			"lobby-closed",
 		);
 	});
 

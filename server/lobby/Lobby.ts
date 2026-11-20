@@ -15,6 +15,7 @@ import {
 } from "../../shared/matchConfig.js";
 import { PLAYER_COLOR_CHOICES } from "../../shared/playerColors.js";
 import type {
+	LobbyError,
 	LobbyPhase,
 	LobbyPlayerInfo,
 	LobbyState,
@@ -42,20 +43,12 @@ export interface LobbyMember {
 	joinedAt: number;
 }
 
-export type LobbyActionResult =
-	| { ok: true }
-	| {
-			ok: false;
-			code:
-				| "full"
-				| "in-progress"
-				| "not-host"
-				| "not-private"
-				| "not-ready"
-				| "not-enough-players"
-				| "microphone-required";
-			message: string;
-	  };
+export type LobbyActionResult = { ok: true } | ({ ok: false } & LobbyError);
+
+export function lobbyErrorOf(result: { ok: false } & LobbyError): LobbyError {
+	const { ok: _ok, ...error } = result;
+	return error;
+}
 
 export class Lobby {
 	readonly members: LobbyMember[] = [];
@@ -179,7 +172,7 @@ export class Lobby {
 	setReady(playerId: string, ready: boolean): LobbyActionResult {
 		const member = this.member(playerId);
 		if (!member) {
-			return { ok: false, code: "not-ready", message: "Joueur inconnu." };
+			return { ok: false, code: "unknown-player", message: "Joueur inconnu." };
 		}
 		if (ready && !member.micReady) {
 			return {
@@ -211,7 +204,7 @@ export class Lobby {
 		if (this.visibility !== "private") {
 			return {
 				ok: false,
-				code: "not-private",
+				code: "public-rules",
 				message: "Les règles d'un lobby public sont imposées par le serveur.",
 			};
 		}
@@ -225,14 +218,14 @@ export class Lobby {
 		if (this.daily !== null) {
 			return {
 				ok: false,
-				code: "not-private",
+				code: "daily-rules",
 				message: "Le défi du jour a les mêmes règles pour tout le monde.",
 			};
 		}
 		if (this.phase !== "waiting") {
 			return {
 				ok: false,
-				code: "in-progress",
+				code: "rules-locked",
 				message: "Les règles ne peuvent plus changer.",
 			};
 		}
@@ -250,7 +243,7 @@ export class Lobby {
 		if (this.visibility !== "private") {
 			return {
 				ok: false,
-				code: "not-private",
+				code: "already-open",
 				message: "Un lobby public est déjà ouvert à tous.",
 			};
 		}
@@ -283,7 +276,7 @@ export class Lobby {
 		) {
 			return {
 				ok: false,
-				code: "in-progress",
+				code: "team-locked",
 				message: "Impossible de changer d'équipe maintenant.",
 			};
 		}
@@ -327,7 +320,7 @@ export class Lobby {
 		if (this.phase !== "waiting" && this.phase !== "countdown") {
 			return {
 				ok: false,
-				code: "in-progress",
+				code: "match-started",
 				message: "La partie est déjà lancée.",
 			};
 		}
@@ -336,6 +329,7 @@ export class Lobby {
 				ok: false,
 				code: "not-enough-players",
 				message: `Il faut au moins ${this.minPlayers} joueurs pour lancer une partie.`,
+				minPlayers: this.minPlayers,
 			};
 		}
 		if (!this.everyoneReady()) {

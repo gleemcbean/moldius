@@ -1532,7 +1532,7 @@ describe("historique et sessions", () => {
 				captures: 0,
 				deaths: 0,
 				won: false,
-				metrics: { sprintMeters: 500 },
+				metrics: { sprintMeters: 1500 },
 			});
 			expect(
 				(
@@ -1557,7 +1557,7 @@ describe("historique et sessions", () => {
 				"ALTER TABLE accounts DROP COLUMN challenge_progress",
 			);
 			await database.query(
-				"UPDATE accounts SET games_played = 26, wins = 4, total_captures = 11 WHERE id = $1",
+				"UPDATE accounts SET games_played = 60, wins = 4, total_captures = 11 WHERE id = $1",
 				[session.accountId],
 			);
 			for (const statement of MIGRATIONS.find(
@@ -1567,7 +1567,7 @@ describe("historique et sessions", () => {
 			}
 			const profile = await service.profile(session.accountId);
 			expect(profile?.challenges).toEqual({
-				games: { total: 26, best: 1 },
+				games: { total: 60, best: 1 },
 				wins: { total: 4, best: 1 },
 				captures: { total: 11, best: 1 },
 				dailies: { total: 0, best: 0 },
@@ -1829,7 +1829,7 @@ describe("historique et sessions", () => {
 					.ok,
 			).toBe(false);
 			await database.query(
-				`UPDATE accounts SET challenge_progress = '{"flawless":{"total":1,"best":1}}' WHERE id = $1`,
+				`UPDATE accounts SET challenge_progress = '{"cleanGames":{"total":1,"best":1}}' WHERE id = $1`,
 				[session.accountId],
 			);
 			const unlocked = await service.updateProfile(session.accountId, {

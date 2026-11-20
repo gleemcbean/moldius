@@ -155,7 +155,57 @@
   }
 }
 
+.private {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px auto;
+  align-items: center;
+  gap: 12px 16px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  @include surface;
+
+  @media (max-width: 760px) {
+    grid-template-columns: minmax(0, 1fr) auto;
+
+    .privateText {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+.privateText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.privateTitle {
+  @include heading(24px);
+  color: $ink;
+}
+
+.privateHint {
+  @include body(15px);
+  color: $ink-muted;
+}
+
+.codeInput {
+  height: 44px;
+  min-width: 0;
+  padding: 0 8px;
+  text-align: center;
+  @include field;
+  @include mono(20px);
+  letter-spacing: 0.3em;
+  color: $ink;
+}
+
 @include enter-keyframes;
+
+.private {
+  @include enter(up, 420ms);
+}
 
 .card {
   @include enter-stagger(up, 80ms, 90ms, 3);

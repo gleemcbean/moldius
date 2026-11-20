@@ -382,6 +382,12 @@ export class PostEffects {
 		uniforms.minimapOn.value = 1;
 	}
 
+	compile(): Promise<void> {
+		return this.renderer
+			.compileAsync(this.scene, this.camera)
+			.then(() => undefined);
+	}
+
 	get sceneTarget(): THREE.WebGLRenderTarget {
 		return this.target;
 	}

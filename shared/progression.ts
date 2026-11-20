@@ -3,7 +3,9 @@ export const MATCH_XP_WIN_BONUS = 60;
 export const MATCH_XP_SCORE_DIVISOR = 10;
 export const MATCH_XP_MAX = 600;
 
-export const LEVEL_MILESTONES = [5, 10, 15, 20, 30, 40, 50, 75, 100] as const;
+export const LEVEL_MILESTONES = [
+	5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 90, 100,
+] as const;
 
 export function matchXpParts(result: { score: number; won: boolean }): {
 	base: number;

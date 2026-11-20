@@ -803,15 +803,16 @@ export class ManorMeshBuilder {
 					[highOut.x, floorY + high.y, highOut.z],
 					[wall.x, floorY + high.y, wall.z],
 				];
+				const capUv: [number, number][] = [
+					[0, low.y],
+					[low.depth, low.y],
+					[high.depth, high.y],
+					[0, high.y],
+				];
 				quad(
-					sign > 0 ? corners : [...corners].reverse(),
+					sign > 0 ? [...corners].reverse() : corners,
 					[direction.x * sign, 0, direction.z * sign],
-					[
-						[0, low.y],
-						[low.depth, low.y],
-						[high.depth, high.y],
-						[0, high.y],
-					],
+					sign > 0 ? [...capUv].reverse() : capUv,
 				);
 			}
 		}

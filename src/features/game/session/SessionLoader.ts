@@ -121,6 +121,8 @@ export interface LoadedWorld {
 
 type Progress = (step: LoadStepId, fraction: number) => void;
 
+const TEXTURE_UPLOADS_PER_FRAME = 24;
+
 function effectWarmup(materials: THREE.Material[]): THREE.Group {
 	const group = new THREE.Group();
 	const plane = new THREE.PlaneGeometry(0.1, 0.1);
@@ -403,6 +405,7 @@ export async function loadSession(
 	const doors = new DoorViews(layout, kit);
 	scene.add(doors.group);
 	progress("architecture", 1);
+	await nextFrame();
 
 	const particles = new ParticleSystem();
 	particles.scale = settings.effects ? preset.particleScale : 0.25;
@@ -500,7 +503,9 @@ export async function loadSession(
 		init.pool,
 		(fraction) => progress("grimoire", fraction * 0.6),
 	);
-	const objectArt = renderObjectArt(renderer, kit);
+	await nextFrame();
+	const objectArt = await renderObjectArt(renderer, kit);
+	await nextFrame();
 	await ensureHudFonts();
 	const hud = new HudCanvas(objectArt);
 	const grimoire = new GrimoireController(
@@ -520,8 +525,14 @@ export async function loadSession(
 	const ambientAudio = new AmbientAudio(layout, world);
 
 	progress("gpu", 0.1);
-	for (const texture of [...textures.all(), ...pageTextures]) {
+	for (const [index, texture] of [
+		...textures.all(),
+		...pageTextures,
+	].entries()) {
 		renderer.initTexture(texture);
+		if (index % TEXTURE_UPLOADS_PER_FRAME === TEXTURE_UPLOADS_PER_FRAME - 1) {
+			await nextFrame();
+		}
 	}
 	progress("gpu", 0.4);
 	const warmModels = init.pool.map((species) =>

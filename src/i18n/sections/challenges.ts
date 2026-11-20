@@ -39,21 +39,47 @@ export const challengesFr = {
 			name: "Première prise",
 			description: () => "Capturez une anomalie.",
 		},
-		hatTrick: {
-			name: "Coup triple",
-			description: (target) => `Capturez ${target} anomalies en une partie.`,
-		},
 		firstWin: {
 			name: "Première victoire",
 			description: () => "Remportez une partie.",
 		},
+		hatTrick: {
+			name: "Coup triple",
+			description: (target) =>
+				`Capturez ${target} anomalies d'affilée sans jamais tomber entre deux.`,
+		},
+		bigGame: {
+			name: "Gros gibier",
+			description: () =>
+				"Capturez une anomalie redoutable : Réverbère, Doppelgänger, Colosse, Fulgurant ou Pleureuse.",
+		},
+		naturalist: {
+			name: "Naturaliste",
+			description: (target) =>
+				`Capturez ${target} espèces différentes en une partie.`,
+		},
+		buzzer: {
+			name: "Sur le fil",
+			description: () => "Capturez une anomalie dans la dernière minute.",
+		},
+		tally: {
+			name: "Tableau de chasse",
+			description: (target) => `Marquez ${target} points en une partie.`,
+		},
 		survivor: {
 			name: "Survivant",
-			description: () => "Finissez une partie sans jamais tomber.",
+			description: () =>
+				"Finissez une partie sans jamais tomber, avec au moins deux captures.",
 		},
 		untouchable: {
 			name: "Intouchable",
-			description: () => "Remportez une partie sans jamais tomber.",
+			description: () =>
+				"Remportez une partie sans jamais tomber, avec au moins trois captures.",
+		},
+		impostor: {
+			name: "Imposteur",
+			description: () =>
+				"Remportez une partie de Possédé dans le rôle du possédé.",
 		},
 		hermit: {
 			name: "Ermite",
@@ -72,9 +98,25 @@ export const challengesFr = {
 			description: (target) =>
 				`Fabriquez ${target} objets occultes en une partie.`,
 		},
+		generous: {
+			name: "Main tendue",
+			description: (target) =>
+				`Donnez ${target} fragments à d'autres joueurs en une partie.`,
+		},
+		taster: {
+			name: "Goûteur",
+			description: (target) =>
+				`Plongez dans ${target} chaudrons de potion en une partie.`,
+		},
+		bountyHunter: {
+			name: "Chasseur de primes",
+			description: (target) =>
+				`Touchez ${target} fois la prime d'un rival en une partie.`,
+		},
 		daredevil: {
 			name: "Trompe-la-mort",
-			description: () => "Touchez à l'enjeu d'une salle.",
+			description: (target) =>
+				`Touchez à l'enjeu de ${target} salles en une partie.`,
 		},
 		prey: {
 			name: "Proie",
@@ -110,6 +152,20 @@ export const challengesFr = {
 			name: "Chasseur",
 			description: (target) => `Capturez ${target} anomalies.`,
 		},
+		titanSlayer: {
+			name: "Tombeur de titans",
+			description: (target) => `Capturez ${target} anomalies redoutables.`,
+		},
+		survivalist: {
+			name: "Increvable",
+			description: (target) =>
+				`Finissez ${target} parties sans tomber, avec au moins deux captures.`,
+		},
+		puppeteer: {
+			name: "Marionnettiste",
+			description: (target) =>
+				`Remportez ${target} parties de Possédé dans le rôle du possédé.`,
+		},
 		forager: {
 			name: "Cueilleur",
 			description: (target) => `Ramassez ${target} fragments.`,
@@ -117,6 +173,14 @@ export const challengesFr = {
 		crafter: {
 			name: "Alchimiste",
 			description: (target) => `Fabriquez ${target} objets occultes.`,
+		},
+		benefactor: {
+			name: "Bienfaiteur",
+			description: (target) => `Donnez ${target} fragments à d'autres joueurs.`,
+		},
+		mercenary: {
+			name: "Mercenaire",
+			description: (target) => `Touchez ${target} primes.`,
 		},
 		runner: {
 			name: "Coureur de fond",
@@ -169,18 +233,43 @@ export const challengesEn: typeof challengesFr = {
 			name: "First catch",
 			description: () => "Capture an anomaly.",
 		},
+		firstWin: { name: "First win", description: () => "Win a game." },
 		hatTrick: {
 			name: "Hat trick",
-			description: (target) => `Capture ${target} anomalies in one game.`,
+			description: (target) =>
+				`Capture ${target} anomalies in a row without going down in between.`,
 		},
-		firstWin: { name: "First win", description: () => "Win a game." },
+		bigGame: {
+			name: "Big game",
+			description: () =>
+				"Capture a fearsome anomaly: the Gaslamp, the Doppelgänger, the Colossus, the Fulgurant or the Weeper.",
+		},
+		naturalist: {
+			name: "Naturalist",
+			description: (target) =>
+				`Capture ${target} different species in one game.`,
+		},
+		buzzer: {
+			name: "Down to the wire",
+			description: () => "Capture an anomaly in the final minute.",
+		},
+		tally: {
+			name: "Trophy board",
+			description: (target) => `Score ${target} points in one game.`,
+		},
 		survivor: {
 			name: "Survivor",
-			description: () => "Finish a game without ever going down.",
+			description: () =>
+				"Finish a game without ever going down, with at least two captures.",
 		},
 		untouchable: {
 			name: "Untouchable",
-			description: () => "Win a game without ever going down.",
+			description: () =>
+				"Win a game without ever going down, with at least three captures.",
+		},
+		impostor: {
+			name: "Impostor",
+			description: () => "Win a Possessed game as the possessed player.",
 		},
 		hermit: {
 			name: "Hermit",
@@ -198,9 +287,25 @@ export const challengesEn: typeof challengesFr = {
 			name: "Artisan",
 			description: (target) => `Craft ${target} occult objects in one game.`,
 		},
+		generous: {
+			name: "Helping hand",
+			description: (target) =>
+				`Give ${target} fragments to other players in one game.`,
+		},
+		taster: {
+			name: "Taster",
+			description: (target) =>
+				`Wade into ${target} potion cauldrons in one game.`,
+		},
+		bountyHunter: {
+			name: "Bounty hunter",
+			description: (target) =>
+				`Collect a rival's bounty ${target} times in one game.`,
+		},
 		daredevil: {
 			name: "Daredevil",
-			description: () => "Touch what's at stake in a room.",
+			description: (target) =>
+				`Touch the stake of ${target} rooms in one game.`,
 		},
 		prey: {
 			name: "Prey",
@@ -235,6 +340,20 @@ export const challengesEn: typeof challengesFr = {
 			name: "Hunter",
 			description: (target) => `Capture ${target} anomalies.`,
 		},
+		titanSlayer: {
+			name: "Titan slayer",
+			description: (target) => `Capture ${target} fearsome anomalies.`,
+		},
+		survivalist: {
+			name: "Unbreakable",
+			description: (target) =>
+				`Finish ${target} games without going down, with at least two captures.`,
+		},
+		puppeteer: {
+			name: "Puppeteer",
+			description: (target) =>
+				`Win ${target} Possessed games as the possessed player.`,
+		},
 		forager: {
 			name: "Forager",
 			description: (target) => `Pick up ${target} fragments.`,
@@ -242,6 +361,14 @@ export const challengesEn: typeof challengesFr = {
 		crafter: {
 			name: "Alchemist",
 			description: (target) => `Craft ${target} occult objects.`,
+		},
+		benefactor: {
+			name: "Benefactor",
+			description: (target) => `Give ${target} fragments to other players.`,
+		},
+		mercenary: {
+			name: "Mercenary",
+			description: (target) => `Collect ${target} bounties.`,
 		},
 		runner: {
 			name: "Long-distance runner",

@@ -6,6 +6,7 @@ import { SelectorGroup } from "../../components/SelectorGroup";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
 import { accountStore, termsAccepted } from "../account/accountStore";
+import { ManorApproachScene } from "../loading/ManorApproachScene";
 import { sessionStore } from "../network/sessionStore";
 import { settingsStore } from "../settings/settingsStore";
 import { micIsUsable, micStore } from "../voice/micManager";
@@ -29,6 +30,7 @@ import { TermsNotice } from "./TermsNotice";
 export function LobbyScreen() {
 	const t = useT();
 	const [rulesOpen, setRulesOpen] = useState(false);
+	useEffect(() => ManorApproachScene.prefetch(), []);
 	const lobby = useStore(lobbyStore, (state) => state.lobby);
 	const playerId = useStore(sessionStore, (state) => state.playerId);
 	const micStatus = useStore(micStore, (state) => state.status);

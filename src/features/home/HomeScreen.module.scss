@@ -21,6 +21,14 @@
     radial-gradient(ellipse at 70% 50%, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.6) 100%);
 }
 
+.shade {
+  transition: opacity 700ms ease;
+}
+
+.titleShade {
+  opacity: 0;
+}
+
 .panel {
   position: absolute;
   top: 50%;
@@ -58,8 +66,7 @@
   @include label;
 }
 
-.nameInput,
-.codeInput {
+.nameInput {
   height: 48px;
   padding: 0 16px;
   @include field;
@@ -294,19 +301,7 @@
   transform: translateX(0);
 }
 
-.codeRow {
-  display: grid;
-  grid-template-columns: 158px 1fr;
-  gap: 12px;
-}
 
-.codeInput {
-  min-width: 0;
-  padding: 0 8px;
-  text-align: center;
-  @include mono(20px);
-  letter-spacing: 0.3em;
-}
 
 .more {
   display: flex;

@@ -3,6 +3,7 @@ const SAFETY_TIMEOUT_MS = 8000;
 const FADE_MS = 520;
 
 const holds = new Set<symbol>();
+const bootListeners = new Set<() => void>();
 let mounted = false;
 let pending = false;
 let finished = false;
@@ -20,6 +21,17 @@ export function holdBoot(): () => void {
 		if (holds.delete(token)) {
 			scheduleFinish();
 		}
+	};
+}
+
+export function whenBooted(listener: () => void): () => void {
+	if (finished) {
+		listener();
+		return () => {};
+	}
+	bootListeners.add(listener);
+	return () => {
+		bootListeners.delete(listener);
 	};
 }
 
@@ -61,6 +73,10 @@ function finishBoot(): void {
 	}
 	finished = true;
 	holds.clear();
+	for (const listener of [...bootListeners]) {
+		listener();
+	}
+	bootListeners.clear();
 	document.documentElement.removeAttribute("data-booting");
 	const boot = bootElement();
 	if (!boot) {

@@ -34,7 +34,7 @@ export interface BoxCollider extends OrientedBox {
 	id: number;
 	walkable: boolean;
 	occludes: boolean;
-	kind: "furniture" | "door";
+	kind: "furniture" | "door" | "openDoor";
 	ownerId: number;
 	enabled: boolean;
 	soft: boolean;
@@ -109,6 +109,7 @@ export class CollisionWorld {
 	readonly regions: FloorRegion[] = [];
 	readonly decks: FloorRegion[] = [];
 	readonly doorBoxIds = new Map<number, number>();
+	readonly openDoorBoxIds = new Map<number, number>();
 	private readonly wallHash = new SpatialHash();
 	private readonly boxHash = new SpatialHash();
 	private readonly regionHash = new SpatialHash();
@@ -157,6 +158,10 @@ export class CollisionWorld {
 		const boxId = this.doorBoxIds.get(doorId);
 		if (boxId !== undefined) {
 			this.boxes[boxId].enabled = closed;
+		}
+		const openBoxId = this.openDoorBoxIds.get(doorId);
+		if (openBoxId !== undefined) {
+			this.boxes[openBoxId].enabled = !closed;
 		}
 	}
 
@@ -474,6 +479,18 @@ export class CollisionWorld {
 				soft: true,
 			});
 			this.doorBoxIds.set(opening.door.id, id);
+			const openBox = doorPanelBox(geometry, geometry.openAngle);
+			const openId = this.addBox({
+				...openBox,
+				hz: Math.max(openBox.hz, 0.06),
+				walkable: false,
+				occludes: true,
+				kind: "openDoor",
+				ownerId: opening.door.id,
+				enabled: opening.door.initiallyOpen,
+				soft: true,
+			});
+			this.openDoorBoxIds.set(opening.door.id, openId);
 		}
 	}
 

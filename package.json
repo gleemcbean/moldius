@@ -27,6 +27,7 @@
 		"export:textures": "tsx --tsconfig tsconfig.app.json scripts/export-textures.ts",
 		"export:assets": "npm run export:textures && npm run export:glb",
 		"export:sounds": "tsx scripts/export-sounds.ts",
+		"export:music": "tsx scripts/export-music.ts",
 		"vosk:setup": "node scripts/vosk-setup.mjs",
 		"vosk:forms": "tsx scripts/vosk-forms.ts",
 		"lan:open": "node scripts/lan.mjs open",

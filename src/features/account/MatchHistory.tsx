@@ -1,4 +1,8 @@
-import { CHALLENGE_METRICS, type ChallengeMetric } from "@shared/challenges";
+import {
+	CHALLENGE_METRICS,
+	type ChallengeMetric,
+	SUMMARY_METRICS,
+} from "@shared/challenges";
 import { dailyChallenge } from "@shared/dailyChallenge";
 import type {
 	MatchDetail,
@@ -19,22 +23,11 @@ import { loadHistory, loadHistoryDetail } from "./accountStore";
 import detail from "./MatchHistory.module.scss";
 
 type HistoryLabels = Messages["account"]["history"];
+type SummaryMetric = (typeof SUMMARY_METRICS)[number];
 
 const SHOWN_METRICS = CHALLENGE_METRICS.filter(
-	(
-		metric,
-	): metric is Exclude<
-		ChallengeMetric,
-		"games" | "wins" | "flawless" | "flawlessWins" | "dailies" | "captures"
-	> =>
-		![
-			"games",
-			"wins",
-			"flawless",
-			"flawlessWins",
-			"dailies",
-			"captures",
-		].includes(metric),
+	(metric): metric is Exclude<ChallengeMetric, SummaryMetric> =>
+		!(SUMMARY_METRICS as readonly ChallengeMetric[]).includes(metric),
 );
 
 function modeLabel(t: Messages, entry: MatchHistoryEntry): string {

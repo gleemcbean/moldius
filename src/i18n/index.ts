@@ -15,6 +15,7 @@ import { lobbyEn, lobbyFr } from "./sections/lobby";
 import { partyEn, partyFr } from "./sections/party";
 import { progressionEn, progressionFr } from "./sections/progression";
 import { settingsEn, settingsFr } from "./sections/settings";
+import { titleEn, titleFr } from "./sections/title";
 import { worldEn, worldFr } from "./sections/world";
 
 const fr = {
@@ -34,6 +35,7 @@ const fr = {
 	world: worldFr,
 	progression: progressionFr,
 	party: partyFr,
+	title: titleFr,
 };
 
 export type Messages = typeof fr;
@@ -55,6 +57,7 @@ const en: Messages = {
 	world: worldEn,
 	progression: progressionEn,
 	party: partyEn,
+	title: titleEn,
 };
 
 const MESSAGES: Record<Language, Messages> = { fr, en };

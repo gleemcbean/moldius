@@ -1,7 +1,8 @@
-import { navigate, showToast } from "../../app/appStore";
+import { appStore, navigate, showToast } from "../../app/appStore";
 import { currentMessages } from "../../i18n";
 import { applyLiveMetrics } from "../challenges/challengeStore";
 import { hudStore, initialHud } from "../hud/hudStore";
+import { waitForArrival } from "../loading/approachArrival";
 import { lobbyStore } from "../lobby/lobbyStore";
 import { sessionStore } from "../network/sessionStore";
 import { getSocket } from "../network/socket";
@@ -10,8 +11,18 @@ import { resetReplay } from "./replayStore";
 import { GameSession } from "./session/GameSession";
 import { LOAD_STEPS } from "./session/SessionLoader";
 
+const ARRIVAL_HOLD_MS = 2000;
+
 let session: GameSession | null = null;
 let initialized = false;
+
+function enterGame(started: GameSession): void {
+	void waitForArrival(ARRIVAL_HOLD_MS).then(() => {
+		if (session === started && appStore.get().screen === "loading") {
+			navigate("game");
+		}
+	});
+}
 
 export function currentSession(): GameSession | null {
 	return session;
@@ -71,7 +82,7 @@ export function initMatchController(): void {
 					layoutChecksum: init.layoutChecksum,
 				});
 				if (matchStore.get().begin) {
-					navigate("game");
+					enterGame(created);
 				}
 			})
 			.catch((error: unknown) => {
@@ -89,7 +100,7 @@ export function initMatchController(): void {
 		session.begin(begin);
 		matchStore.set({ begin });
 		if (session.isLoaded) {
-			navigate("game");
+			enterGame(session);
 		}
 	});
 	socket.on("game:snapshot", (snapshot) => session?.handleSnapshot(snapshot));

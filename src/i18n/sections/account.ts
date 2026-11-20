@@ -107,6 +107,15 @@ export const accountFr = {
 			jumps: (value: string) => `${value} sauts`,
 			pushes: (value: string) => `${value} poussées`,
 			stakes: (value: string) => `${value} salles à enjeu tentées`,
+			captureStreak: (value: string) => `${value} captures d'affilée au mieux`,
+			tierThreeCaptures: (value: string) =>
+				`${value} anomalies redoutables capturées`,
+			speciesCaptured: (value: string) => `${value} espèces capturées`,
+			lateCaptures: (value: string) =>
+				`${value} captures dans la dernière minute`,
+			gifts: (value: string) => `${value} fragments donnés`,
+			brews: (value: string) => `${value} chaudrons de potion`,
+			bounties: (value: string) => `${value} primes touchées`,
 		},
 		dateTime: (date: Date) =>
 			new Intl.DateTimeFormat("fr-FR", DATE_TIME).format(date),
@@ -293,6 +302,14 @@ export const accountEn: typeof accountFr = {
 			jumps: (value: string) => `${value} jumps`,
 			pushes: (value: string) => `${value} pushes`,
 			stakes: (value: string) => `${value} stake rooms tried`,
+			captureStreak: (value: string) => `best streak of ${value} captures`,
+			tierThreeCaptures: (value: string) =>
+				`${value} fearsome anomalies captured`,
+			speciesCaptured: (value: string) => `${value} species captured`,
+			lateCaptures: (value: string) => `${value} captures in the final minute`,
+			gifts: (value: string) => `${value} fragments given`,
+			brews: (value: string) => `${value} potion cauldrons`,
+			bounties: (value: string) => `${value} bounties collected`,
 		},
 		rankLabel: (rank: number) => {
 			const tens = rank % 100;

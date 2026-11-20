@@ -26,7 +26,7 @@ import { buildMatchRecords } from "../accounts/matchRecords.js";
 import { Match, type MatchTransport } from "../game/Match.js";
 import type { Session, SessionRegistry } from "../sessions/SessionRegistry.js";
 import { generateLobbyCode, randomLobbyId, randomMatchSeed } from "./codes.js";
-import { Lobby } from "./Lobby.js";
+import { Lobby, lobbyErrorOf } from "./Lobby.js";
 
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
@@ -197,7 +197,7 @@ export class LobbyManager {
 		if (!lobby || lobby.visibility !== "public") {
 			return {
 				ok: false,
-				error: { code: "not-found", message: "Ce lobby n'existe plus." },
+				error: { code: "lobby-closed", message: "Ce lobby n'existe plus." },
 			};
 		}
 		if (session.lobbyId !== lobby.id) {
@@ -220,7 +220,7 @@ export class LobbyManager {
 		if (!lobby) {
 			return {
 				ok: false,
-				error: { code: "not-found", message: "Ce lobby n'existe plus." },
+				error: { code: "lobby-closed", message: "Ce lobby n'existe plus." },
 			};
 		}
 		if (session.lobbyId === lobby.id) {
@@ -235,7 +235,7 @@ export class LobbyManager {
 				return {
 					ok: false,
 					error: {
-						code: "sign-in-required",
+						code: "join-sign-in-required",
 						message: "Connectez-vous pour rejoindre le lobby d'un ami.",
 					},
 				};
@@ -362,7 +362,7 @@ export class LobbyManager {
 			}
 			return {
 				ok: false,
-				error: { code: result.code, message: result.message },
+				error: lobbyErrorOf(result),
 			};
 		}
 		session.lobbyId = lobby.id;
@@ -400,11 +400,11 @@ export class LobbyManager {
 	setReady(session: Session, ready: boolean): LobbyError | null {
 		const lobby = this.lobbyOf(session);
 		if (!lobby) {
-			return { code: "not-found", message: "Vous n'êtes dans aucun lobby." };
+			return { code: "not-in-lobby", message: "Vous n'êtes dans aucun lobby." };
 		}
 		const result = lobby.setReady(session.playerId, ready);
 		this.broadcastState(lobby);
-		return result.ok ? null : { code: result.code, message: result.message };
+		return result.ok ? null : lobbyErrorOf(result);
 	}
 
 	setMicrophone(session: Session, ready: boolean): void {
@@ -421,14 +421,17 @@ export class LobbyManager {
 		if (!lobby) {
 			return {
 				ok: false,
-				error: { code: "not-found", message: "Vous n'êtes dans aucun lobby." },
+				error: {
+					code: "not-in-lobby",
+					message: "Vous n'êtes dans aucun lobby.",
+				},
 			};
 		}
 		const result = lobby.updateConfig(session.playerId, config);
 		if (!result.ok) {
 			return {
 				ok: false,
-				error: { code: result.code, message: result.message },
+				error: lobbyErrorOf(result),
 			};
 		}
 		this.broadcastState(lobby);
@@ -440,14 +443,17 @@ export class LobbyManager {
 		if (!lobby) {
 			return {
 				ok: false,
-				error: { code: "not-found", message: "Vous n'êtes dans aucun lobby." },
+				error: {
+					code: "not-in-lobby",
+					message: "Vous n'êtes dans aucun lobby.",
+				},
 			};
 		}
 		const result = lobby.setOpenToFriends(session.playerId, open);
 		if (!result.ok) {
 			return {
 				ok: false,
-				error: { code: result.code, message: result.message },
+				error: lobbyErrorOf(result),
 			};
 		}
 		this.broadcastState(lobby);
@@ -464,11 +470,11 @@ export class LobbyManager {
 	start(session: Session): LobbyError | null {
 		const lobby = this.lobbyOf(session);
 		if (!lobby) {
-			return { code: "not-found", message: "Vous n'êtes dans aucun lobby." };
+			return { code: "not-in-lobby", message: "Vous n'êtes dans aucun lobby." };
 		}
 		const check = lobby.canStart(session.playerId);
 		if (!check.ok) {
-			return { code: check.code, message: check.message };
+			return lobbyErrorOf(check);
 		}
 		if (lobby.visibility === "public") {
 			lobby.startCountdown(this.clock());

@@ -12,12 +12,14 @@ export function Modal({
 	onClose,
 	children,
 	wide = false,
+	fixed = false,
 	dismissible = true,
 }: {
 	title: string;
 	onClose: () => void;
 	children: ReactNode;
 	wide?: boolean;
+	fixed?: boolean;
 	dismissible?: boolean;
 }) {
 	const t = useT();
@@ -55,7 +57,11 @@ export function Modal({
 			}
 		>
 			<SelectorGroup
-				className={[styles.modal, wide ? styles.wide : ""].join(" ")}
+				className={[
+					styles.modal,
+					wide ? styles.wide : "",
+					fixed ? styles.fixed : "",
+				].join(" ")}
 			>
 				<header className={styles.header}>
 					<h2>{title}</h2>

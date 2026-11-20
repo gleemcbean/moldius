@@ -86,11 +86,24 @@ export type LobbyErrorCode =
 	| "lobby-not-invitable"
 	| "lobby-friends-only"
 	| "discord-not-linked"
-	| "discord-mismatch";
+	| "discord-mismatch"
+	| "not-in-lobby"
+	| "lobby-closed"
+	| "public-rules"
+	| "daily-rules"
+	| "rules-locked"
+	| "already-open"
+	| "team-locked"
+	| "match-started"
+	| "unknown-player"
+	| "invalid-code"
+	| "session-missing"
+	| "join-sign-in-required";
 
 export interface LobbyError {
 	code: LobbyErrorCode;
 	message: string;
+	minPlayers?: number;
 }
 
 export interface SessionInfo {

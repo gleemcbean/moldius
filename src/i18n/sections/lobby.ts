@@ -156,7 +156,22 @@ export const lobbyFr = {
 			"Liez votre compte Discord à votre compte de jeu pour synchroniser vos amis.",
 		"discord-mismatch":
 			"Ce compte Discord n'est pas celui lié à votre compte de jeu.",
+		"not-in-lobby": "Vous n'êtes dans aucun lobby.",
+		"lobby-closed": "Ce lobby n'existe plus.",
+		"public-rules":
+			"Les règles d'un lobby public sont imposées par le serveur.",
+		"daily-rules": "Le mode du jour a les mêmes règles pour tout le monde.",
+		"rules-locked": "Les règles ne peuvent plus changer.",
+		"already-open": "Un lobby public est déjà ouvert à tous.",
+		"team-locked": "Impossible de changer d'équipe maintenant.",
+		"match-started": "La partie est déjà lancée.",
+		"unknown-player": "Vous ne faites plus partie de ce lobby.",
+		"invalid-code": "Le code doit contenir 5 caractères.",
+		"session-missing": "Session absente : rechargez la page.",
+		"join-sign-in-required": "Connectez-vous pour rejoindre le lobby d'un ami.",
 	} satisfies Record<LobbyErrorCode, string>,
+	notEnoughPlayers: (count: number) =>
+		`Il faut au moins ${count} joueurs pour lancer une partie.`,
 };
 
 export const lobbyEn: typeof lobbyFr = {
@@ -312,5 +327,19 @@ export const lobbyEn: typeof lobbyFr = {
 			"Link your Discord account to your game account to sync your friends.",
 		"discord-mismatch":
 			"This Discord account isn't the one linked to your game account.",
+		"not-in-lobby": "You are not in a lobby.",
+		"lobby-closed": "This lobby no longer exists.",
+		"public-rules": "The server sets the rules of public lobbies.",
+		"daily-rules": "The daily mode has the same rules for everyone.",
+		"rules-locked": "The rules can no longer change.",
+		"already-open": "A public lobby is already open to everyone.",
+		"team-locked": "You cannot change teams right now.",
+		"match-started": "The game has already started.",
+		"unknown-player": "You are no longer part of this lobby.",
+		"invalid-code": "The code must be 5 characters long.",
+		"session-missing": "Session missing: please reload the page.",
+		"join-sign-in-required": "Sign in to join a friend's lobby.",
 	},
+	notEnoughPlayers: (count) =>
+		`At least ${count} players are needed to start a game.`,
 };

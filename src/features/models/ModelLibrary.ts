@@ -70,6 +70,7 @@ class ModelLibrary {
 	private readonly templates = new Map<string, THREE.Object3D>();
 	private readonly pending = new Map<string, Promise<void>>();
 	private readonly queue: (() => void)[] = [];
+	private readonly waiting = new Map<string, () => void>();
 	private readonly loader = new GLTFLoader().register(
 		(parser) => new SurfacePlugin(parser),
 	);
@@ -101,13 +102,14 @@ class ModelLibrary {
 	require(
 		ids: Iterable<string>,
 		onProgress?: (fraction: number) => void,
+		priority = false,
 	): Promise<void> {
 		const wanted = [...new Set(ids)].filter((id) => URLS.has(id));
 		let done = 0;
 		onProgress?.(wanted.length === 0 ? 1 : 0);
 		return Promise.all(
 			wanted.map((id) =>
-				this.fetch(id).then(() => {
+				this.fetch(id, priority).then(() => {
 					done += 1;
 					onProgress?.(done / wanted.length);
 				}),
@@ -115,18 +117,33 @@ class ModelLibrary {
 		).then(() => undefined);
 	}
 
-	private fetch(id: string): Promise<void> {
+	private fetch(id: string, priority = false): Promise<void> {
 		let task = this.pending.get(id);
+		if (task && priority) {
+			const job = this.waiting.get(id);
+			const index = job ? this.queue.indexOf(job) : -1;
+			if (job && index > 0) {
+				this.queue.splice(index, 1);
+				this.queue.unshift(job);
+			}
+		}
 		if (!task) {
 			task = new Promise<void>((resolve, reject) => {
-				this.queue.push(() => {
+				const job = () => {
+					this.waiting.delete(id);
 					this.parse(id)
 						.then(resolve, reject)
 						.finally(() => {
 							this.running -= 1;
 							this.pump();
 						});
-				});
+				};
+				this.waiting.set(id, job);
+				if (priority) {
+					this.queue.unshift(job);
+				} else {
+					this.queue.push(job);
+				}
 				this.pump();
 			}).catch((error: unknown) => {
 				this.pending.delete(id);

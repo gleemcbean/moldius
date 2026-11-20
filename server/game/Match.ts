@@ -1,4 +1,9 @@
-import { entryWon, type MatchMetrics } from "../../shared/challenges.js";
+import {
+	CLEAN_GAME_MIN_CAPTURES,
+	CLEAN_WIN_MIN_CAPTURES,
+	entryWon,
+	type MatchMetrics,
+} from "../../shared/challenges.js";
 import {
 	ALTAR_INTERACT_RANGE,
 	ANOMALY_FIRST_SPAWN_DELAY_MS,
@@ -729,6 +734,8 @@ export class Match {
 					: [],
 			),
 		);
+		this.awards.remainingMs =
+			this.endsAt > 0 ? this.endsAt - this.now : Number.POSITIVE_INFINITY;
 		for (const player of this.players.values()) {
 			this.awards.tick(player, this.now, chased.has(player.id));
 		}
@@ -762,16 +769,24 @@ export class Match {
 			results.entries.map((entry) => {
 				const stats = this.awards.stats.get(entry.playerId);
 				const won = entryWon(results, entry);
-				const flawless = entry.deaths === 0;
+				const unscathed = entry.deaths === 0;
+				const possessedWin =
+					won && results.possessed?.possessedId === entry.playerId;
 				return [
 					entry.playerId,
 					{
 						...(stats ? liveChallengeMetrics(stats) : {}),
 						games: 1,
 						wins: won ? 1 : 0,
-						flawless: flawless ? 1 : 0,
-						flawlessWins: won && flawless ? 1 : 0,
+						cleanGames:
+							unscathed && entry.captures >= CLEAN_GAME_MIN_CAPTURES ? 1 : 0,
+						cleanWins:
+							won && unscathed && entry.captures >= CLEAN_WIN_MIN_CAPTURES
+								? 1
+								: 0,
+						possessedWins: possessedWin ? 1 : 0,
 						dailies: results.daily ? 1 : 0,
+						score: Math.max(0, Math.floor(entry.score)),
 					} satisfies MatchMetrics,
 				];
 			}),
@@ -916,6 +931,7 @@ export class Match {
 		if (!entered || !cauldron.brew) {
 			return;
 		}
+		this.awards.brewed(player.id);
 		const effect = cauldron.brew.effect;
 		player.brew = effect;
 		player.brewUntil = this.now + BREW_DURATION_MS[effect];

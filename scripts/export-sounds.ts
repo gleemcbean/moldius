@@ -1,12 +1,11 @@
-import { spawn } from "node:child_process";
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { hashString } from "../shared/random.js";
+import { encodeOpus } from "./sounds/encodeOpus.js";
 import { OfflineAudioContext } from "./sounds/offlineAudio.js";
 import { AMBIENCE_SOUNDS } from "./sounds/recipes/ambienceSounds.js";
 import { ANOMALY_SOUNDS } from "./sounds/recipes/anomalySounds.js";
-import { MUSIC_SOUNDS } from "./sounds/recipes/musicSounds.js";
 import { PARTY_SOUNDS } from "./sounds/recipes/partySounds.js";
 import { PLAYER_SOUNDS } from "./sounds/recipes/playerSounds.js";
 import type { SoundRecipe } from "./sounds/recipes/types.js";
@@ -14,13 +13,11 @@ import { UI_SOUNDS } from "./sounds/recipes/uiSounds.js";
 import { SynthKit } from "./sounds/synthKit.js";
 
 const SAMPLE_RATE = 48000;
-const BITRATE = "96k";
 const LOOP_FADE_SECONDS = 0.25;
 const LOOP_FILE = "loops.json";
 
 const RECIPES: SoundRecipe[] = [
 	...UI_SOUNDS,
-	...MUSIC_SOUNDS,
 	...PLAYER_SOUNDS,
 	...ANOMALY_SOUNDS,
 	...AMBIENCE_SOUNDS,
@@ -58,59 +55,6 @@ function crossfadeLoop(data: Float32Array): number {
 	return (data.length - fade) / SAMPLE_RATE;
 }
 
-function encode(samples: Float32Array, file: string): Promise<void> {
-	return new Promise((resolve, reject) => {
-		const ffmpeg = spawn(
-			"ffmpeg",
-			[
-				"-hide_banner",
-				"-loglevel",
-				"error",
-				"-y",
-				"-f",
-				"f32le",
-				"-ar",
-				String(SAMPLE_RATE),
-				"-ac",
-				"1",
-				"-i",
-				"pipe:0",
-				"-c:a",
-				"libopus",
-				"-b:a",
-				BITRATE,
-				"-vbr",
-				"on",
-				"-application",
-				"audio",
-				"-map_metadata",
-				"-1",
-				"-fflags",
-				"+bitexact",
-				"-flags:a",
-				"+bitexact",
-				file,
-			],
-			{ stdio: ["pipe", "inherit", "inherit"] },
-		);
-		ffmpeg.on("error", (error) =>
-			reject(
-				new Error(
-					`Impossible de lancer ffmpeg (requis pour encoder les sons) : ${error.message}`,
-				),
-			),
-		);
-		ffmpeg.on("close", (code) =>
-			code === 0
-				? resolve()
-				: reject(new Error(`ffmpeg a échoué (code ${code}) sur ${file}`)),
-		);
-		ffmpeg.stdin.end(
-			Buffer.from(samples.buffer, samples.byteOffset, samples.byteLength),
-		);
-	});
-}
-
 function fileName(recipe: SoundRecipe, variant: number): string {
 	return recipe.variants === 1
 		? `${recipe.id}.ogg`
@@ -141,7 +85,11 @@ async function main(): Promise<void> {
 			if (recipe.loop) {
 				loops[recipe.id] = crossfadeLoop(samples);
 			}
-			await encode(samples, path.join(outDir, fileName(recipe, variant)));
+			await encodeOpus(samples, path.join(outDir, fileName(recipe, variant)), {
+				sampleRate: SAMPLE_RATE,
+				channels: 1,
+				bitrate: "96k",
+			});
 			files += 1;
 			seconds += samples.length / SAMPLE_RATE;
 		}

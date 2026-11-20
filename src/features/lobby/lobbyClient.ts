@@ -3,7 +3,7 @@ import type { MatchConfig } from '@shared/matchConfig';
 import type { LobbyError, LobbyState } from '@shared/protocol/lobby';
 import type { LanternTint, Tagline } from '@shared/rewards';
 import { navigate, showToast } from '../../app/appStore';
-import { currentMessages } from '../../i18n';
+import { lobbyErrorText } from './lobbyErrors';
 import { getSocket } from '../network/socket';
 import { createStore } from '../../utils/store';
 import { micManager } from '../voice/micManager';
@@ -27,10 +27,6 @@ export function listenLobbyUpdates(): void {
     }
     lobbyStore.set({ lobby: state });
   });
-}
-
-function lobbyErrorText(error: LobbyError): string {
-  return currentMessages().lobby.errors[error.code] ?? error.message;
 }
 
 function handleJoin(response: LobbyResponse): boolean {

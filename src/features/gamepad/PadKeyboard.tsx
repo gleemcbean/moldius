@@ -12,6 +12,12 @@ import {
 	typeText,
 } from "./textEntry";
 
+const REPEATING: ReadonlySet<number> = new Set([
+	PAD_BUTTON.a,
+	PAD_BUTTON.x,
+	PAD_BUTTON.y,
+]);
+
 const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
 
 const LETTERS: Record<"fr" | "en", string[][]> = {
@@ -87,6 +93,7 @@ export function PadKeyboard() {
 				setValue(target.value);
 			}
 		}, 250);
+		padFocus.repeatButtons = REPEATING;
 		padFocus.onButton = (button) => {
 			if (button === PAD_BUTTON.x) {
 				eraseText();
@@ -107,6 +114,7 @@ export function PadKeyboard() {
 			window.removeEventListener("keydown", onKey, true);
 			window.clearInterval(watch);
 			padFocus.onButton = null;
+			padFocus.repeatButtons = null;
 		};
 	}, [target]);
 
@@ -124,8 +132,13 @@ export function PadKeyboard() {
 	};
 
 	return (
-		<div className={styles.layer} data-pad-scope="" data-pad-priority="">
-			<section className={styles.panel} aria-label={labels.title}>
+		<div className={styles.layer}>
+			<section
+				className={styles.panel}
+				aria-label={labels.title}
+				data-pad-scope=""
+				data-pad-priority=""
+			>
 				<header className={styles.preview}>
 					<span className={styles.field}>{fieldName(target)}</span>
 					<span className={styles.value}>
@@ -142,6 +155,7 @@ export function PadKeyboard() {
 									type="button"
 									className={styles.key}
 									onClick={() => press(key)}
+									data-pad-repeat=""
 									data-pad-default={
 										row === rows[0] && index === 0 ? "" : undefined
 									}
@@ -176,6 +190,7 @@ export function PadKeyboard() {
 							type="button"
 							className={[styles.key, styles.space].join(" ")}
 							onClick={() => typeText(" ")}
+							data-pad-repeat=""
 							data-selectable=""
 						>
 							{labels.space}
@@ -184,6 +199,7 @@ export function PadKeyboard() {
 							type="button"
 							className={[styles.key, styles.wide].join(" ")}
 							onClick={eraseText}
+							data-pad-repeat=""
 							data-selectable=""
 						>
 							⌫

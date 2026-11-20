@@ -3,11 +3,15 @@ import {
 	type AwardId,
 	type MatchAward,
 } from "../../shared/awards.js";
-import type { MatchMetrics } from "../../shared/challenges.js";
+import {
+	LATE_CAPTURE_WINDOW_MS,
+	type MatchMetrics,
+} from "../../shared/challenges.js";
 import {
 	SERVER_TICK_MS,
 	VOICE_AUDIBLE_LEVEL,
 } from "../../shared/config/index.js";
+import { SPECIES, type SpeciesId } from "../../shared/config/species.js";
 import type { GameEvent } from "../../shared/protocol/game.js";
 import type { MatchPlayer } from "./MatchPlayer.js";
 
@@ -31,6 +35,14 @@ export interface PlayerStats {
 	hideMs: number;
 	crafts: number;
 	stakes: number;
+	captureRun: number;
+	captureStreak: number;
+	tierThreeCaptures: number;
+	species: Set<SpeciesId>;
+	lateCaptures: number;
+	gifts: number;
+	brews: number;
+	bounties: number;
 }
 
 function emptyStats(): PlayerStats {
@@ -54,6 +66,14 @@ function emptyStats(): PlayerStats {
 		hideMs: 0,
 		crafts: 0,
 		stakes: 0,
+		captureRun: 0,
+		captureStreak: 0,
+		tierThreeCaptures: 0,
+		species: new Set(),
+		lateCaptures: 0,
+		gifts: 0,
+		brews: 0,
+		bounties: 0,
 	};
 }
 
@@ -96,6 +116,13 @@ export function liveChallengeMetrics(stats: PlayerStats): MatchMetrics {
 		jumps: stats.jumps,
 		pushes: stats.pushes,
 		stakes: stats.stakes,
+		captureStreak: stats.captureStreak,
+		tierThreeCaptures: stats.tierThreeCaptures,
+		speciesCaptured: stats.species.size,
+		lateCaptures: stats.lateCaptures,
+		gifts: stats.gifts,
+		brews: stats.brews,
+		bounties: stats.bounties,
 	};
 }
 
@@ -131,6 +158,7 @@ export function pickAwards(
 
 export class AwardTracker {
 	readonly stats = new Map<string, PlayerStats>();
+	remainingMs = Number.POSITIVE_INFINITY;
 
 	private of(playerId: string): PlayerStats {
 		let entry = this.stats.get(playerId);
@@ -143,6 +171,10 @@ export class AwardTracker {
 
 	addPlayer(playerId: string): void {
 		this.of(playerId);
+	}
+
+	brewed(playerId: string): void {
+		this.of(playerId).brews += 1;
 	}
 
 	tick(player: MatchPlayer, now: number, chased: boolean): void {
@@ -194,8 +226,27 @@ export class AwardTracker {
 					this.of(event.playerId).fragments += 1;
 				}
 				break;
-			case "capture":
-				this.of(event.playerId).captures += 1;
+			case "capture": {
+				const stats = this.of(event.playerId);
+				stats.captures += 1;
+				stats.captureRun += 1;
+				stats.captureStreak = Math.max(stats.captureStreak, stats.captureRun);
+				stats.species.add(event.species);
+				if (SPECIES[event.species]?.tier === 3) {
+					stats.tierThreeCaptures += 1;
+				}
+				if (this.remainingMs <= LATE_CAPTURE_WINDOW_MS) {
+					stats.lateCaptures += 1;
+				}
+				break;
+			}
+			case "gift":
+				if (event.fromId !== event.toId && players.has(event.toId)) {
+					this.of(event.fromId).gifts += 1;
+				}
+				break;
+			case "bountyReward":
+				this.of(event.playerId).bounties += 1;
 				break;
 			case "damage":
 				if (event.source === "fall") {
@@ -215,6 +266,7 @@ export class AwardTracker {
 				break;
 			case "death": {
 				this.of(event.playerId).deaths += 1;
+				this.of(event.playerId).captureRun = 0;
 				if (event.cause === "fall" || event.cause === "pact") {
 					break;
 				}

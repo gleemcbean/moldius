@@ -55,12 +55,13 @@ describe("défis", () => {
 		if (!hatTrick) {
 			throw new Error("défi manquant");
 		}
-		const twoGames = withMatchMetrics(withMatchMetrics({}, { captures: 2 }), {
-			captures: 2,
-		});
+		const twoGames = withMatchMetrics(
+			withMatchMetrics({}, { captureStreak: 2 }),
+			{ captureStreak: 2 },
+		);
 		expect(classicStatus(hatTrick, twoGames).done).toBe(false);
-		expect(twoGames.captures).toEqual({ total: 4, best: 2 });
-		const after = withMatchMetrics(twoGames, { captures: 3 });
+		expect(twoGames.captureStreak).toEqual({ total: 4, best: 2 });
+		const after = withMatchMetrics(twoGames, { captureStreak: 3 });
 		expect(classicStatus(hatTrick, after).done).toBe(true);
 	});
 
@@ -68,35 +69,66 @@ describe("défis", () => {
 		if (!hunter) {
 			throw new Error("défi manquant");
 		}
-		const start = withMatchMetrics({}, { captures: 8 });
+		const start = withMatchMetrics({}, { captures: 20 });
 		expect(incrementalStatus(hunter, start)).toMatchObject({
-			value: 8,
-			target: 10,
+			value: 20,
+			target: 25,
 			tier: 0,
 			done: false,
 		});
-		const after = withMatchMetrics(start, { captures: 45 });
+		const after = withMatchMetrics(start, { captures: 140 });
 		expect(incrementalStatus(hunter, after)).toMatchObject({
-			target: 200,
+			target: 500,
 			tier: 2,
 		});
 		expect(
 			incrementalStatus(hunter, withMatchMetrics(after, { captures: 500 })),
-		).toMatchObject({ value: 200, tier: 3, done: true });
+		).toMatchObject({ value: 500, tier: 3, done: true });
 	});
 
 	it("annonce chaque défi une seule fois, même plusieurs paliers d'un coup", () => {
-		const before: ChallengeProgress = { captures: { total: 9, best: 2 } };
-		const after = withMatchMetrics(before, { captures: 3 });
+		const before: ChallengeProgress = {
+			captures: { total: 24, best: 2 },
+			captureStreak: { total: 2, best: 2 },
+		};
+		const after = withMatchMetrics(before, { captures: 3, captureStreak: 3 });
 		expect(newlyCompleted(before, after)).toEqual([
 			{ id: "hatTrick", tier: null },
 			{ id: "hunter", tier: 1 },
 		]);
 		expect(newlyCompleted(after, after)).toEqual([]);
-		const huge = withMatchMetrics({}, { games: 100 });
+		const huge = withMatchMetrics({}, { games: 200 });
 		expect(
 			newlyCompleted({}, huge).filter(({ id }) => id === "veteran"),
 		).toHaveLength(3);
+	});
+
+	it("ne distribue qu'une poignée de défis lors d'une bonne première partie", () => {
+		const firstGame = withMatchMetrics(
+			{},
+			{
+				games: 1,
+				wins: 1,
+				dailies: 1,
+				score: 1400,
+				captures: 3,
+				captureStreak: 2,
+				speciesCaptured: 2,
+				fragments: 18,
+				crafts: 3,
+				stakes: 1,
+				doors: 70,
+				sprintMeters: 900,
+				longestHideSeconds: 80,
+				hideSeconds: 200,
+				chasedSeconds: 90,
+				radioSeconds: 100,
+				jumps: 120,
+				pushes: 6,
+			},
+		);
+		const completed = newlyCompleted({}, firstGame).map(({ id }) => id);
+		expect(completed).toEqual(["firstCapture", "firstWin"]);
 	});
 
 	it("compte le total de défis et chaque défi a une mesure connue", () => {
@@ -125,10 +157,13 @@ describe("défis", () => {
 		silenceAnomalies(sim);
 		const p1 = sim.match.players.get("p1") as MatchPlayer;
 		const p2 = sim.match.players.get("p2") as MatchPlayer;
-		sim.match.awards.event(
-			{ type: "capture", playerId: "p1" } as never,
-			sim.match.players,
-		);
+		for (const species of ["colosse", "luciole", "colosse"]) {
+			sim.match.awards.event(
+				{ type: "capture", playerId: "p1", species } as never,
+				sim.match.players,
+			);
+		}
+		p1.captures = 3;
 		sim.run(3);
 		const sent = sim.transport.messages.filter(
 			(entry) => entry.event === "game:challenges" && entry.target === "p1",
@@ -141,12 +176,22 @@ describe("défis", () => {
 		expect(results.metrics.p1).toMatchObject({
 			games: 1,
 			wins: 1,
-			captures: 1,
-			flawless: 1,
-			flawlessWins: 1,
+			captures: 3,
+			captureStreak: 3,
+			tierThreeCaptures: 2,
+			speciesCaptured: 2,
+			cleanGames: 1,
+			cleanWins: 1,
+			possessedWins: 0,
 			dailies: 0,
+			score: 300,
 		});
-		expect(results.metrics.p2).toMatchObject({ games: 1, wins: 0 });
+		expect(results.metrics.p2).toMatchObject({
+			games: 1,
+			wins: 0,
+			cleanGames: 0,
+			cleanWins: 0,
+		});
 	});
 });
 
@@ -156,11 +201,11 @@ describe("récompenses de défis", () => {
 	it("débloque un motif en réussissant un défi classique", () => {
 		expect(hatUnlocked("lightning", { ...base, challenges: {} })).toBe(false);
 		expect(hatUnlocked("lightning", null)).toBe(false);
-		const challenges = withMatchMetrics({}, { sprintMeters: 500 });
+		const challenges = withMatchMetrics({}, { sprintMeters: 1500 });
 		expect(hatUnlocked("lightning", { ...base, challenges })).toBe(true);
 		const split = withMatchMetrics(
-			withMatchMetrics({}, { sprintMeters: 300 }),
-			{ sprintMeters: 300 },
+			withMatchMetrics({}, { sprintMeters: 900 }),
+			{ sprintMeters: 900 },
 		);
 		expect(hatUnlocked("lightning", { ...base, challenges: split })).toBe(
 			false,
@@ -172,20 +217,20 @@ describe("récompenses de défis", () => {
 			...base,
 			challenges: withMatchMetrics({}, { hideSeconds }),
 		});
-		expect(lanternUnlocked("specter", reach(300))).toBe(false);
+		expect(lanternUnlocked("specter", reach(900))).toBe(false);
 		const reward = rewardFor("lantern", "specter");
-		expect(reward && rewardProgress(reward, reach(300))).toEqual({
-			value: 300,
-			target: 1800,
+		expect(reward && rewardProgress(reward, reach(900))).toEqual({
+			value: 900,
+			target: 3600,
 		});
-		expect(lanternUnlocked("specter", reach(1800))).toBe(true);
+		expect(lanternUnlocked("specter", reach(3600))).toBe(true);
 	});
 
 	it("annonce une récompense quand le défi la débloque", () => {
 		const before = { ...base, challenges: {} };
 		const after = {
 			...base,
-			challenges: withMatchMetrics({}, { flawlessWins: 1 }),
+			challenges: withMatchMetrics({}, { cleanWins: 1 }),
 		};
 		expect(newlyUnlocked(before, after).map(({ value }) => value)).toEqual([
 			"laurel",
@@ -276,7 +321,7 @@ describe("devises", () => {
 		expect(
 			allowedTagline("immortal", {
 				...stats,
-				challenges: { flawless: { total: 1, best: 1 } },
+				challenges: { cleanGames: { total: 1, best: 1 } },
 			}),
 		).toBe("immortal");
 	});

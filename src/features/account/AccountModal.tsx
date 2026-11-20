@@ -1184,6 +1184,7 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
 			title={signedIn ? t.account.titleSignedIn : t.account.titleGuest}
 			onClose={close}
 			wide={signedIn}
+			fixed={signedIn}
 		>
 			<NoticeBanner />
 			{status === "loading" ? (

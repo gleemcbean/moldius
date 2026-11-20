@@ -29,6 +29,15 @@
   width: min(1040px, 100%);
 }
 
+.fixed {
+  height: min(860px, calc(100vh - 48px));
+
+  .body {
+    flex: 1;
+    min-height: 0;
+  }
+}
+
 .header {
   display: flex;
   align-items: center;
@@ -68,6 +77,7 @@
 
 .body {
   overflow: auto;
+  scrollbar-gutter: stable;
   padding: $space-4 $space-5 $space-5;
 }
 

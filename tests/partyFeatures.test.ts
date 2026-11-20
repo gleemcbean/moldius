@@ -650,6 +650,14 @@ describe("titres de fin de partie", () => {
 		captures: 0,
 		deaths: 0,
 		jumps: 0,
+		captureRun: 0,
+		captureStreak: 0,
+		tierThreeCaptures: 0,
+		species: new Set(),
+		lateCaptures: 0,
+		gifts: 0,
+		brews: 0,
+		bounties: 0,
 		...patch,
 	});
 
@@ -718,16 +726,17 @@ describe("récompenses", () => {
 		expect(hatUnlocked("crown", null)).toBe(false);
 		const done = (metrics: MatchMetrics) =>
 			stats({ challenges: withMatchMetrics({}, metrics) });
-		expect(hatUnlocked("crown", done({ dailies: 7 }))).toBe(true);
+		expect(hatUnlocked("crown", done({ dailies: 14 }))).toBe(false);
+		expect(hatUnlocked("crown", done({ dailies: 15 }))).toBe(true);
 		expect(lanternUnlocked("amber", null)).toBe(true);
-		expect(lanternUnlocked("violet", done({ stakes: 4 }))).toBe(false);
-		expect(lanternUnlocked("violet", done({ stakes: 5 }))).toBe(true);
+		expect(lanternUnlocked("violet", done({ stakes: 9 }))).toBe(false);
+		expect(lanternUnlocked("violet", done({ stakes: 10 }))).toBe(true);
 	});
 
 	it("repère ce qui vient d'être débloqué", () => {
 		const unlocked = newlyUnlocked(
-			stats({ challenges: withMatchMetrics({}, { games: 4 }) }),
-			stats({ challenges: withMatchMetrics({}, { games: 5 }) }),
+			stats({ challenges: withMatchMetrics({}, { games: 9 }) }),
+			stats({ challenges: withMatchMetrics({}, { games: 10 }) }),
 		);
 		expect(unlocked.map((reward) => reward.value)).toEqual(["emerald"]);
 		expect(newlyUnlocked(null, null)).toEqual([]);

@@ -859,6 +859,71 @@
 			],
 			"normal": true
 		},
+		"cap-d8442f-moon": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-checker": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-runes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-ghosts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d8442f-bats": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
 		"cap-3f7fd6-spots": {
 			"category": "caps",
 			"fine": false,
@@ -1068,6 +1133,71 @@
 			"normal": true
 		},
 		"cap-3f7fd6-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-moon": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-checker": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-runes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-ghosts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-3f7fd6-bats": {
 			"category": "caps",
 			"fine": false,
 			"size": [
@@ -1301,6 +1431,71 @@
 			],
 			"normal": true
 		},
+		"cap-e0b326-moon": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-checker": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-runes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-ghosts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e0b326-bats": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
 		"cap-8f4fc9-spots": {
 			"category": "caps",
 			"fine": false,
@@ -1510,6 +1705,71 @@
 			"normal": true
 		},
 		"cap-8f4fc9-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-moon": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-checker": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-runes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-ghosts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8f4fc9-bats": {
 			"category": "caps",
 			"fine": false,
 			"size": [
@@ -1743,6 +2003,71 @@
 			],
 			"normal": true
 		},
+		"cap-4f9e45-moon": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-checker": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-runes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-ghosts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-4f9e45-bats": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
 		"cap-e2772a-spots": {
 			"category": "caps",
 			"fine": false,
@@ -1952,6 +2277,71 @@
 			"normal": true
 		},
 		"cap-e2772a-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-moon": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-checker": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-runes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-ghosts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-e2772a-bats": {
 			"category": "caps",
 			"fine": false,
 			"size": [
@@ -2185,6 +2575,71 @@
 			],
 			"normal": true
 		},
+		"cap-d9629a-moon": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-checker": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-runes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-ghosts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-d9629a-bats": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
 		"cap-8a5a34-spots": {
 			"category": "caps",
 			"fine": false,
@@ -2394,6 +2849,71 @@
 			"normal": true
 		},
 		"cap-8a5a34-mycelium": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-moon": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-checker": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-runes": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-ghosts": {
+			"category": "caps",
+			"fine": false,
+			"size": [
+				64,
+				32
+			],
+			"tile": [
+				1,
+				1
+			],
+			"normal": true
+		},
+		"cap-8a5a34-bats": {
 			"category": "caps",
 			"fine": false,
 			"size": [

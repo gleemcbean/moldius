@@ -1,53 +1,56 @@
 import { audioEngine } from "./audioEngine";
-import { soundBank } from "./soundBank";
+import {
+	type MusicMode,
+	type MusicTrackConfig,
+	musicLoopBounds,
+	musicTrackFor,
+} from "./musicLoop";
 
-export type MusicMode = "menu" | "game";
+export type { MusicMode };
 
-const LEVELS: Record<MusicMode, number> = { menu: 0.5, game: 0.22 };
-const LOOKAHEAD_S = 6;
-const TICK_MS = 1000;
-const CHORD_S = 14;
-const CHORD_SOUND = "music-chord";
-const NOTE_SOUND = "music-note";
-const NEXT_CHORDS = [
-	[1, 2, 3],
-	[2, 0, 4],
-	[3, 0],
-	[0, 1],
-	[0, 2],
-] as const;
-
-function pick<T>(items: readonly T[]): T {
-	return items[Math.floor(Math.random() * items.length)];
+interface PlayingTrack {
+	id: string;
+	source: AudioBufferSourceNode;
+	gain: GainNode;
 }
 
+const TRACK_URLS = import.meta.glob<string>(
+	"../../assets/music/*.{ogg,opus,mp3,m4a,aac,wav,flac,webm}",
+	{ eager: true, query: "?url&no-inline", import: "default" },
+);
+const TRACK_CONFIGS = import.meta.glob<Record<string, MusicTrackConfig>>(
+	"../../assets/music/music.json",
+	{ eager: true, import: "default" },
+);
+const TRACK_NAME = /([^/]+)\.[a-z0-9]+$/i;
+const LEVELS: Record<MusicMode, number> = { menu: 0.5, game: 0.22 };
+const FADE_IN_TAU = 1.2;
+const MODE_TAU = 0.6;
+const FADE_OUT_TAU = 0.7;
+const FADE_OUT_STOP_S = 4;
+
+const TRACKS = new Map<string, string>(
+	Object.entries(TRACK_URLS).flatMap(([path, url]) => {
+		const match = TRACK_NAME.exec(path);
+		return match ? [[match[1], url] as const] : [];
+	}),
+);
+const CONFIG: Record<string, MusicTrackConfig> =
+	Object.values(TRACK_CONFIGS)[0] ?? {};
+
 class MusicPlayer {
-	private output: GainNode | null = null;
-	private timer: number | null = null;
 	private mode: MusicMode = "menu";
-	private chord = 0;
-	private chordAt = 0;
-	private noteAt = 0;
+	private started = false;
+	private playing: PlayingTrack | null = null;
+	private request = 0;
+	private readonly buffers = new Map<string, Promise<AudioBuffer | null>>();
 
 	start(): void {
-		if (this.timer !== null || !audioEngine.ready) {
+		if (this.started || !audioEngine.ready) {
 			return;
 		}
-		const context = audioEngine.ctx;
-		if (!this.output) {
-			this.output = context.createGain();
-			this.output.gain.value = 0;
-			this.output.connect(audioEngine.bus("music"));
-		}
-		this.chordAt = context.currentTime + 0.1;
-		this.noteAt = context.currentTime + 3;
-		this.output.gain.setTargetAtTime(
-			LEVELS[this.mode],
-			context.currentTime,
-			2.5,
-		);
-		this.timer = window.setInterval(() => this.schedule(), TICK_MS);
-		this.schedule();
+		this.started = true;
+		void this.play();
 	}
 
 	setMode(mode: MusicMode): void {
@@ -55,63 +58,85 @@ class MusicPlayer {
 			return;
 		}
 		this.mode = mode;
-		if (this.output) {
-			this.output.gain.setTargetAtTime(
-				LEVELS[mode],
-				audioEngine.ctx.currentTime,
-				1.5,
-			);
+		if (this.started) {
+			void this.play();
 		}
 	}
 
-	private schedule(): void {
+	private level(id: string): number {
+		return LEVELS[this.mode] * (CONFIG[id]?.volume ?? 1);
+	}
+
+	private load(id: string): Promise<AudioBuffer | null> {
+		let pending = this.buffers.get(id);
+		if (!pending) {
+			const url = TRACKS.get(id);
+			pending = url ? decode(url) : Promise.resolve(null);
+			this.buffers.set(id, pending);
+		}
+		return pending;
+	}
+
+	private async play(): Promise<void> {
+		const request = ++this.request;
+		const id = musicTrackFor(this.mode, TRACKS);
 		const context = audioEngine.ctx;
-		if (context.state !== "running") {
+		if (this.playing && this.playing.id === id) {
+			this.playing.gain.gain.setTargetAtTime(
+				this.level(id),
+				context.currentTime,
+				MODE_TAU,
+			);
 			return;
 		}
-		const now = context.currentTime;
-		this.chordAt = Math.max(this.chordAt, now + 0.05);
-		this.noteAt = Math.max(this.noteAt, now + 0.05);
-		while (this.chordAt < now + LOOKAHEAD_S) {
-			const chord = soundBank.buffer(CHORD_SOUND, this.chord);
-			if (!chord) {
-				break;
-			}
-			this.play(context, chord, this.chordAt, null);
-			this.chordAt += CHORD_S;
-			this.chord = pick(NEXT_CHORDS[this.chord]);
+		const buffer = id ? await this.load(id) : null;
+		if (request !== this.request) {
+			return;
 		}
-		while (this.noteAt < now + LOOKAHEAD_S) {
-			const note = soundBank.buffer(NOTE_SOUND);
-			if (note && Math.random() < 0.7) {
-				this.play(context, note, this.noteAt, Math.random() * 0.8 - 0.4);
-			}
-			this.noteAt += 2.2 + Math.random() * 4.5;
+		const previous = this.playing;
+		this.playing = null;
+		if (previous) {
+			fadeOut(context, previous);
 		}
-	}
-
-	private play(
-		context: AudioContext,
-		buffer: AudioBuffer,
-		time: number,
-		pan: number | null,
-	): void {
-		const output = this.output as GainNode;
+		if (!id || !buffer) {
+			return;
+		}
 		const source = context.createBufferSource();
 		source.buffer = buffer;
-		let panner: StereoPannerNode | null = null;
-		if (pan === null) {
-			source.connect(output);
-		} else {
-			panner = context.createStereoPanner();
-			panner.pan.value = pan;
-			source.connect(panner).connect(output);
-		}
+		source.loop = true;
+		const bounds = musicLoopBounds(CONFIG[id], buffer.duration);
+		source.loopStart = bounds.start;
+		source.loopEnd = bounds.end;
+		const gain = context.createGain();
+		gain.gain.value = 0;
+		gain.gain.setTargetAtTime(this.level(id), context.currentTime, FADE_IN_TAU);
+		source.connect(gain).connect(audioEngine.bus("music"));
 		source.onended = () => {
 			source.disconnect();
-			panner?.disconnect();
+			gain.disconnect();
 		};
-		source.start(time);
+		source.start();
+		this.playing = { id, source, gain };
+	}
+}
+
+function fadeOut(context: AudioContext, track: PlayingTrack): void {
+	track.gain.gain.setTargetAtTime(0, context.currentTime, FADE_OUT_TAU);
+	try {
+		track.source.stop(context.currentTime + FADE_OUT_STOP_S);
+	} catch {
+		track.source.disconnect();
+	}
+}
+
+async function decode(url: string): Promise<AudioBuffer | null> {
+	try {
+		const response = await fetch(url);
+		return response.ok
+			? await audioEngine.ctx.decodeAudioData(await response.arrayBuffer())
+			: null;
+	} catch {
+		return null;
 	}
 }
 

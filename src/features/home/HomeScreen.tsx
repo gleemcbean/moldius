@@ -1,10 +1,5 @@
-import {
-	PLAYER_NAME_MAX_LENGTH,
-	PRIVATE_CODE_LENGTH,
-	PRIVATE_LOBBY_CAPACITY,
-} from "@shared/config/index";
+import { PLAYER_NAME_MAX_LENGTH } from "@shared/config/index";
 import { DEFAULT_HAT_PATTERN } from "@shared/hatPatterns";
-import { inviteCodeFromText } from "@shared/inviteLink";
 import {
 	accountProgress,
 	DEFAULT_LANTERN_TINT,
@@ -23,8 +18,9 @@ import { useLanguage, useT } from "../../i18n";
 import { accountStore } from "../account/accountStore";
 import { friendsStore } from "../friends/friendsStore";
 import { installStore, promptInstall } from "../install/installStore";
+import { ManorApproachScene } from "../loading/ManorApproachScene";
 import { consumeInvite, inviteStore } from "../lobby/inviteStore";
-import { createPrivateLobby, joinPrivateLobby } from "../lobby/lobbyClient";
+import { joinPrivateLobby } from "../lobby/lobbyClient";
 import { lobbyStore } from "../lobby/lobbyStore";
 import { sessionStore } from "../network/sessionStore";
 import { settingsStore, updateSettings } from "../settings/settingsStore";
@@ -32,6 +28,10 @@ import { AppearancePicker } from "./AppearancePicker";
 import { HomeBackdrop } from "./HomeBackdrop";
 import styles from "./HomeScreen.module.scss";
 import { ModeSelect } from "./ModeSelect";
+import { TitleScreen } from "./TitleScreen";
+import { enterMenu, titleStore } from "./titleStore";
+
+const PREFETCH_DELAY_MS = 1500;
 
 export function HomeScreen() {
 	const t = useT();
@@ -49,12 +49,12 @@ export function HomeScreen() {
 	const accountStatus = useStore(accountStore, (state) => state.status);
 	const account = useStore(accountStore, (state) => state.account);
 	const installable = useStore(installStore, (state) => state.available);
-	const [code, setCode] = useState("");
 	const [choosingMode, setChoosingMode] = useState(false);
+	const phase = useStore(titleStore, (state) => state.phase);
+	const inMenu = phase === "menu";
 	const trimmed = name.trim();
 	const nameValid = trimmed.length >= 2;
 	const ready = connection === "connected" && nameValid && !pending;
-	const codeValid = code.length === PRIVATE_CODE_LENGTH;
 	const invite = useStore(inviteStore, (state) => state.code);
 	const stats = useMemo(
 		() => (account ? accountProgress(account) : null),
@@ -78,9 +78,20 @@ export function HomeScreen() {
 
 	useEffect(() => {
 		if (invite) {
-			setCode(invite);
+			enterMenu();
 		}
 	}, [invite]);
+
+	useEffect(() => {
+		if (!inMenu) {
+			return;
+		}
+		const timer = window.setTimeout(
+			ManorApproachScene.prefetch,
+			PREFETCH_DELAY_MS,
+		);
+		return () => window.clearTimeout(timer);
+	}, [inMenu]);
 
 	useEffect(() => {
 		if (invite && ready) {
@@ -92,211 +103,165 @@ export function HomeScreen() {
 	return (
 		<main className={styles.home}>
 			<HomeBackdrop />
-			<div className={styles.shade} />
-			<SelectorGroup className={styles.panel}>
-				<header className={styles.brand}>
-					<h1 className={styles.title}>Moldius</h1>
-				</header>
+			<div
+				className={[styles.shade, inMenu ? "" : styles.titleShade].join(" ")}
+			/>
+			{inMenu ? null : <TitleScreen />}
+			{inMenu ? (
+				<SelectorGroup className={styles.panel}>
+					<header className={styles.brand}>
+						<h1 className={styles.title}>Moldius</h1>
+					</header>
 
-				<section className={styles.nameBlock}>
-					<label className={styles.label} htmlFor="player-name">
-						{t.home.yourMushroom}
-					</label>
-					<input
-						id="player-name"
-						className={styles.nameInput}
-						value={name}
-						maxLength={PLAYER_NAME_MAX_LENGTH}
-						onChange={(event) =>
-							updateSettings({ playerName: event.target.value })
-						}
-						spellCheck={false}
-						autoComplete="off"
-						data-selectable=""
-					/>
-					<AppearancePicker stats={stats} />
-				</section>
-
-				<div className={styles.actions}>
-					<Button
-						size="large"
-						wide
-						icon={<Icon name="play" />}
-						disabled={!ready}
-						onClick={() => setChoosingMode(true)}
-					>
-						{t.home.play}
-					</Button>
-					<form
-						className={styles.codeRow}
-						onSubmit={(event) => {
-							event.preventDefault();
-							if (!ready) {
-								return;
-							}
-							if (code.length === 0) {
-								createPrivateLobby(trimmed);
-							} else if (codeValid) {
-								joinPrivateLobby(trimmed, code);
-							}
-						}}
-					>
+					<section className={styles.nameBlock}>
+						<label className={styles.label} htmlFor="player-name">
+							{t.home.yourMushroom}
+						</label>
 						<input
-							className={styles.codeInput}
-							value={code}
-							placeholder={t.home.codePlaceholder}
-							maxLength={PRIVATE_CODE_LENGTH}
+							id="player-name"
+							className={styles.nameInput}
+							value={name}
+							maxLength={PLAYER_NAME_MAX_LENGTH}
 							onChange={(event) =>
-								setCode(
-									event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""),
-								)
+								updateSettings({ playerName: event.target.value })
 							}
-							onPaste={(event) => {
-								const pasted = inviteCodeFromText(
-									event.clipboardData.getData("text"),
-									window.location.origin,
-								);
-								if (pasted) {
-									event.preventDefault();
-									setCode(pasted);
-								}
-							}}
-							aria-label={t.home.codeLabel}
 							spellCheck={false}
 							autoComplete="off"
 							data-selectable=""
 						/>
+						<AppearancePicker stats={stats} />
+					</section>
+
+					<div className={styles.actions}>
 						<Button
-							variant="secondary"
-							type="submit"
-							icon={code.length === 0 ? <Icon name="lock" /> : undefined}
-							title={
-								code.length === 0
-									? t.home.createPrivateHint(PRIVATE_LOBBY_CAPACITY)
-									: undefined
-							}
-							disabled={!ready || (code.length > 0 && !codeValid)}
-						>
-							{code.length === 0 ? t.home.createPrivate : t.home.joinFriends}
-						</Button>
-					</form>
-					{desktopApp ? (
-						<Button
-							variant="dangerGhost"
+							size="large"
 							wide
-							icon={<Icon name="door" />}
-							onClick={() => desktopApp?.quit()}
+							icon={<Icon name="play" />}
+							disabled={!ready}
+							onClick={() => setChoosingMode(true)}
 						>
-							{t.home.quitGame}
+							{t.home.play}
 						</Button>
-					) : null}
-				</div>
+						{desktopApp ? (
+							<Button
+								variant="dangerGhost"
+								wide
+								icon={<Icon name="door" />}
+								onClick={() => desktopApp?.quit()}
+							>
+								{t.home.quitGame}
+							</Button>
+						) : null}
+					</div>
 
-				<div className={styles.more}>
-					<button
-						type="button"
-						className={styles.tile}
-						onClick={() => openOverlay("challenges")}
-						title={t.challenges.button}
-						aria-label={t.challenges.button}
-						data-selectable=""
-					>
-						<span className={styles.tileIcon}>
-							<Icon name="check" />
-						</span>
-						<span className={styles.tileTitle}>
-							<span>{t.challenges.button}</span>
-						</span>
-					</button>
-					{accountStatus === "loading" ||
-					accountStatus === "disabled" ? null : (
+					<div className={styles.more}>
 						<button
 							type="button"
 							className={styles.tile}
-							onClick={() => openOverlay("account")}
-							title={account?.displayName}
+							onClick={() => openOverlay("challenges")}
+							title={t.challenges.button}
+							aria-label={t.challenges.button}
 							data-selectable=""
 						>
 							<span className={styles.tileIcon}>
-								<Icon name="user" />
+								<Icon name="check" />
 							</span>
 							<span className={styles.tileTitle}>
-								<span>{account ? t.home.myAccount : t.home.signIn}</span>
+								<span>{t.challenges.button}</span>
 							</span>
 						</button>
-					)}
-					{accountStatus === "loading" ||
-					accountStatus === "disabled" ? null : (
+						{accountStatus === "loading" ||
+						accountStatus === "disabled" ? null : (
+							<button
+								type="button"
+								className={styles.tile}
+								onClick={() => openOverlay("account")}
+								title={account?.displayName}
+								data-selectable=""
+							>
+								<span className={styles.tileIcon}>
+									<Icon name="user" />
+								</span>
+								<span className={styles.tileTitle}>
+									<span>{account ? t.home.myAccount : t.home.signIn}</span>
+								</span>
+							</button>
+						)}
+						{accountStatus === "loading" ||
+						accountStatus === "disabled" ? null : (
+							<button
+								type="button"
+								className={styles.tile}
+								onClick={() => openOverlay("friends")}
+								title={t.home.friends}
+								aria-label={t.home.friends}
+								data-selectable=""
+							>
+								<span className={styles.tileIcon}>
+									<Icon name="users" />
+								</span>
+								<span className={styles.tileTitle}>
+									<span>{t.home.friends}</span>
+								</span>
+								{friendAlerts > 0 ? (
+									<span className={styles.tileBadge}>{friendAlerts}</span>
+								) : null}
+							</button>
+						)}
 						<button
 							type="button"
 							className={styles.tile}
-							onClick={() => openOverlay("friends")}
-							title={t.home.friends}
-							aria-label={t.home.friends}
+							onClick={() => openOverlay("settings")}
+							title={t.home.settings}
+							aria-label={t.home.settings}
 							data-selectable=""
 						>
 							<span className={styles.tileIcon}>
-								<Icon name="users" />
+								<Icon name="gear" />
 							</span>
 							<span className={styles.tileTitle}>
-								<span>{t.home.friends}</span>
-							</span>
-							{friendAlerts > 0 ? (
-								<span className={styles.tileBadge}>{friendAlerts}</span>
-							) : null}
-						</button>
-					)}
-					<button
-						type="button"
-						className={styles.tile}
-						onClick={() => openOverlay("settings")}
-						title={t.home.settings}
-						aria-label={t.home.settings}
-						data-selectable=""
-					>
-						<span className={styles.tileIcon}>
-							<Icon name="gear" />
-						</span>
-						<span className={styles.tileTitle}>
-							<span>{t.home.settings}</span>
-						</span>
-					</button>
-					{installable ? (
-						<button
-							type="button"
-							className={styles.tile}
-							onClick={promptInstall}
-							title={t.home.install}
-							aria-label={t.home.install}
-							data-selectable=""
-						>
-							<span className={styles.tileIcon}>
-								<Icon name="download" />
-							</span>
-							<span className={styles.tileTitle}>
-								<span>{t.home.install}</span>
+								<span>{t.home.settings}</span>
 							</span>
 						</button>
-					) : null}
-				</div>
+						{installable ? (
+							<button
+								type="button"
+								className={styles.tile}
+								onClick={promptInstall}
+								title={t.home.install}
+								aria-label={t.home.install}
+								data-selectable=""
+							>
+								<span className={styles.tileIcon}>
+									<Icon name="download" />
+								</span>
+								<span className={styles.tileTitle}>
+									<span>{t.home.install}</span>
+								</span>
+							</button>
+						) : null}
+					</div>
 
-				{connection === "connected" ? null : (
-					<p className={styles.offline} role="status">
-						{connection === "connecting" ? t.home.connecting : t.home.offline}
-					</p>
-				)}
-			</SelectorGroup>
-			{choosingMode ? (
+					{connection === "connected" ? null : (
+						<p className={styles.offline} role="status">
+							{connection === "connecting" ? t.home.connecting : t.home.offline}
+						</p>
+					)}
+				</SelectorGroup>
+			) : null}
+			{inMenu && choosingMode ? (
 				<ModeSelect
 					name={trimmed}
 					ready={ready}
 					onClose={() => setChoosingMode(false)}
 				/>
 			) : null}
-			<nav className={styles.legal} aria-label={t.home.legal}>
-				<a href={`/terms?lang=${language}`}>{t.home.terms}</a>
-				<a href={`/privacy?lang=${language}`}>{t.home.privacy}</a>
-			</nav>
+			{inMenu ? (
+				<nav className={styles.legal} aria-label={t.home.legal}>
+					<a href={`/terms?lang=${language}`}>{t.home.terms}</a>
+					<a href={`/privacy?lang=${language}`}>{t.home.privacy}</a>
+				</nav>
+			) : null}
 		</main>
 	);
 }

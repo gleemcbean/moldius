@@ -95,8 +95,8 @@
 
 .codeRow {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 12px;
   padding: 12px 16px;
   border: 1px dashed $accent;

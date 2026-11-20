@@ -1,7 +1,6 @@
 import type { FriendInvite, FriendsOverview } from "@shared/protocol/friends";
 import type { LobbyError, LobbyErrorCode } from "@shared/protocol/lobby";
 import { appStore, closeOverlay, showToast } from "../../app/appStore";
-import { currentMessages } from "../../i18n";
 import { createStore } from "../../utils/store";
 import { accountStore } from "../account/accountStore";
 import {
@@ -9,6 +8,7 @@ import {
 	joinPrivateLobby,
 	joinPublicLobby,
 } from "../lobby/lobbyClient";
+import { lobbyErrorText } from "../lobby/lobbyErrors";
 import { sessionStore } from "../network/sessionStore";
 import { getSocket } from "../network/socket";
 import { settingsStore } from "../settings/settingsStore";
@@ -23,10 +23,7 @@ export const friendsStore = createStore<{
 type Reply<T> = { ok: true; value: T } | { ok: false; error: LobbyError };
 
 function reportError(error: LobbyError): void {
-	showToast(
-		currentMessages().lobby.errors[error.code] ?? error.message,
-		"error",
-	);
+	showToast(lobbyErrorText(error), "error");
 }
 
 function applyOverview(reply: Reply<FriendsOverview>, silent = false): boolean {
