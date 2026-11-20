@@ -18,7 +18,9 @@ import {
 } from "../../shared/hatPatterns.js";
 import type { BrewEffect } from "../../shared/manor/brews.js";
 import type { Vec3 } from "../../shared/math.js";
+import { FILM_BASE_LEVEL } from "../../shared/minigames/filmRunner.js";
 import {
+	type CompulsionKind,
 	PLAYER_FLAG,
 	type PlayerSnapshot,
 	type SpawnPoint,
@@ -38,6 +40,11 @@ export interface VoiceSample {
 
 export interface CastingState {
 	since: number;
+}
+
+export interface CompulsionState {
+	kind: CompulsionKind;
+	until: number;
 }
 
 export class MatchPlayer {
@@ -84,12 +91,15 @@ export class MatchPlayer {
 	cameraRaised = false;
 	radioOn = false;
 	radioNoiseAt = -Infinity;
+
 	readonly materials = Object.fromEntries(
 		MATERIAL_IDS.map((id) => [id, 0]),
 	) as Record<MaterialId, number>;
+
 	readonly objects = Object.fromEntries(
 		OCCULT_IDS.map((id) => [id, 0]),
 	) as Record<OccultId, number>;
+
 	castBlockedUntil = 0;
 	sabotageProtectedUntil = 0;
 	pushCooldownUntil = 0;
@@ -121,6 +131,15 @@ export class MatchPlayer {
 	bountyPushedBy: string | null = null;
 	bountyPushedAt = -Infinity;
 	bountyPushReadyAt = 0;
+	infectedUntil = 0;
+	infectedBy: number | null = null;
+	immuneUntil = 0;
+	nextCompulsionAt = 0;
+	compulsion: CompulsionState | null = null;
+	lastCompulsion: CompulsionKind | null = null;
+	entrancedBy = -1;
+	filmLevel = FILM_BASE_LEVEL;
+	filmsPlayed = 0;
 
 	constructor(
 		readonly id: string,
@@ -150,6 +169,18 @@ export class MatchPlayer {
 		return this.carriedBy >= 0;
 	}
 
+	get entranced(): boolean {
+		return this.entrancedBy >= 0;
+	}
+
+	infected(now: number): boolean {
+		return this.infectedUntil > now;
+	}
+
+	compelled(now: number): boolean {
+		return this.compulsion !== null && this.compulsion.until > now;
+	}
+
 	get active(): boolean {
 		return this.alive && this.connected && !this.hidden && !this.carried;
 	}
@@ -168,7 +199,9 @@ export class MatchPlayer {
 
 	recordVoice(sample: VoiceSample): void {
 		this.voice.push(sample);
+
 		const cutoff = sample.t - 8000;
+
 		while (this.voice.length > 0 && this.voice[0].t < cutoff) {
 			this.voice.shift();
 		}
@@ -176,24 +209,30 @@ export class MatchPlayer {
 
 	voiceLevelNow(now: number): number {
 		const last = this.voice[this.voice.length - 1];
+
 		if (!last || now - last.t > 400) {
 			return 0;
 		}
+
 		return last.level;
 	}
 
 	audibleVoice(now: number): number | null {
 		const level = this.voiceLevelNow(now);
+
 		if (level < VOICE_AUDIBLE_LEVEL) {
 			return null;
 		}
+
 		const sustained = this.voiceActivitySince(
 			now - VOICE_AUDIBLE_WINDOW_MS,
 			VOICE_AUDIBLE_LEVEL,
 		);
+
 		if (sustained < VOICE_AUDIBLE_SUSTAIN_MS) {
 			return null;
 		}
+
 		return (level - VOICE_AUDIBLE_LEVEL) / (1 - VOICE_AUDIBLE_LEVEL);
 	}
 
@@ -213,18 +252,23 @@ export class MatchPlayer {
 		const recent = this.voice.filter(
 			(sample) => sample.t >= now - durationMs - 120,
 		);
+
 		if (recent.length === 0) {
 			return 0;
 		}
+
 		const covered = recent.reduce((sum, sample) => sum + sample.activeMs, 0);
+
 		if (covered < durationMs) {
 			return 0;
 		}
+
 		return Math.min(...recent.map((sample) => sample.level));
 	}
 
 	flags(now: number): number {
 		let flags = 0;
+
 		if (
 			this.sprintIntent &&
 			this.moveInput &&
@@ -233,60 +277,91 @@ export class MatchPlayer {
 		) {
 			flags |= PLAYER_FLAG.sprint;
 		}
+
 		if (this.lanternOpen) {
 			flags |= PLAYER_FLAG.lantern;
 		}
+
 		if (this.grimoireOpen) {
 			flags |= PLAYER_FLAG.grimoire;
 		}
+
 		if (this.hidden) {
 			flags |= PLAYER_FLAG.hidden;
 		}
+
 		if (!this.alive) {
 			flags |= PLAYER_FLAG.dead;
 		}
+
 		if (this.carried) {
 			flags |= PLAYER_FLAG.carried;
 		}
+
 		if (this.casting) {
 			flags |= PLAYER_FLAG.casting;
 		}
+
 		if (this.protectedUntil > now) {
 			flags |= PLAYER_FLAG.protected;
 		}
+
 		if (this.slimed) {
 			flags |= PLAYER_FLAG.slimed;
 		}
+
 		if (this.sprintLocked) {
 			flags |= PLAYER_FLAG.sprintLocked;
 		}
+
 		if (this.voiceLevelNow(now) > 0.12) {
 			flags |= PLAYER_FLAG.speaking;
 		}
+
 		if (this.shoutingUntil > now) {
 			flags |= PLAYER_FLAG.shouting;
 		}
+
 		if (this.alive && this.petrifiedUntil > now) {
 			flags |= PLAYER_FLAG.petrified;
 		}
+
 		if (this.alive && !this.grounded && !this.hidden && !this.carried) {
 			flags |= PLAYER_FLAG.airborne;
 		}
+
 		if (this.radioOn) {
 			flags |= PLAYER_FLAG.radio;
 		}
+
 		if (this.cameraRaised && this.camera >= 0 && this.alive) {
 			flags |= PLAYER_FLAG.camera;
 		}
+
 		if (this.walkie >= 0) {
 			flags |= PLAYER_FLAG.walkieHeld;
 		}
+
 		if (this.camera >= 0) {
 			flags |= PLAYER_FLAG.cameraHeld;
 		}
+
 		if (this.bountyHolder) {
 			flags |= PLAYER_FLAG.bounty;
 		}
+
+		if (this.alive && this.infected(now)) {
+			flags |= PLAYER_FLAG.infected;
+		}
+
+		if (this.alive && this.compelled(now)) {
+			flags |= PLAYER_FLAG.compelled;
+		}
+
+		if (this.alive && this.entranced) {
+			flags |= PLAYER_FLAG.entranced;
+		}
+
 		return flags;
 	}
 

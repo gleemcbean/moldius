@@ -6,6 +6,7 @@ import {
 import { OCCULT_IDS, type OccultId } from "@shared/config/occult";
 import type { EmoteId } from "@shared/config/party";
 import { type LiquidVolume, liquidAt } from "@shared/manor/liquids";
+import { yawToDirection } from "@shared/math";
 import type { CollisionWorld } from "@shared/physics/collisionWorld";
 import {
 	countWallsBetween,
@@ -60,7 +61,13 @@ interface RemoteView {
 	wasDead: boolean;
 	corpse: THREE.Vector3 | null;
 	corpseYaw: number;
+	absorb: number;
+	lens: THREE.Vector3 | null;
 }
+
+const ABSORB_SECONDS = 0.7;
+const LENS_HEIGHT = 1.47;
+const LENS_REACH = 0.7;
 
 export class RemotePlayers {
 	readonly group = new THREE.Group();
@@ -82,21 +89,28 @@ export class RemotePlayers {
 	) {
 		this.ghosts = !state.init.tutorial;
 		this.megaphone = state.init.config.mutators?.includes("megaphone") ?? false;
+
 		for (const player of state.players.values()) {
 			const lanternColor = LANTERN_TINT_COLORS[player.lantern];
+
 			const model = new MushroomModel(
 				kit,
 				player.color,
 				player.pattern,
 				player.lantern === DEFAULT_LANTERN_TINT ? null : lanternColor,
 			);
+
 			const tag = nameTag(
 				player.name,
 				player.team === null ? player.color : TEAM_COLORS[player.team],
 			);
+
 			const crown = bountyTag();
+
 			crown.visible = false;
+
 			this.group.add(model.root, tag, crown);
+
 			this.views.set(player.id, {
 				id: player.id,
 				model,
@@ -120,8 +134,11 @@ export class RemotePlayers {
 				crown,
 				wasDead: false,
 				corpse: null,
+				absorb: 0,
+				lens: null,
 				corpseYaw: 0,
 			});
+
 			if (player.id === state.selfId) {
 				model.root.visible = false;
 				tag.visible = false;
@@ -141,9 +158,11 @@ export class RemotePlayers {
 	resetPoses(): void {
 		for (const view of this.views.values()) {
 			view.pose.reset();
+
 			view.corpse = null;
 			view.wasDead = false;
 		}
+
 		this.replayVoices.clear();
 	}
 
@@ -153,26 +172,37 @@ export class RemotePlayers {
 
 	selfLanternPosition(): THREE.Vector3 | null {
 		const view = this.views.get(this.state.selfId);
+
 		if (!view?.visible || !this.selfPose?.lanternOpen) {
 			return null;
 		}
+
 		view.model.root.updateMatrixWorld(true);
+
 		return view.model.lanternLightPosition;
 	}
 
 	private updateSelf(view: RemoteView, dt: number): void {
 		const pose = this.selfPose;
+
 		if (!pose) {
 			this.setVisible(view, false);
+
 			return;
 		}
+
 		this.setVisible(view, true);
+
 		view.tag.visible = false;
 		view.crown.visible = false;
+
 		view.position.set(pose.x, pose.y, pose.z);
 		view.model.root.position.copy(view.position);
+
 		view.model.root.rotation.y = modelYaw(pose.yaw);
+
 		view.model.setGhost(pose.ghost);
+
 		view.model.update(dt, {
 			speed: 0,
 			crouch: 0,
@@ -195,11 +225,13 @@ export class RemotePlayers {
 
 	nameTagAnchor(playerId: string): THREE.Vector3 | null {
 		const view = this.views.get(playerId);
+
 		return view?.visible ? view.tag.position : null;
 	}
 
 	positionOf(playerId: string): THREE.Vector3 | null {
 		const view = this.views.get(playerId);
+
 		return view?.visible ? view.position : null;
 	}
 
@@ -211,69 +243,112 @@ export class RemotePlayers {
 		dynamicLights: DynamicLight[],
 	): void {
 		this.time += dt;
+
 		const listening = !this.spectating && this.state.selfHasWalkie;
+
 		this.radioSpeakers = [];
+
 		for (const view of this.views.values()) {
 			if (view.id === this.state.selfId && !this.spectating) {
 				this.updateSelf(view, dt);
 				continue;
 			}
+
 			const player = this.state.players.get(view.id) as RemotePlayerState;
 			const sample = player.buffer.sample(renderTime);
+
 			if (!sample) {
 				this.setVisible(view, false);
+
 				if (!this.spectating) {
 					voiceChat.updateSpatial(view.id, null, 0, Infinity);
 				}
+
 				continue;
 			}
+
 			const flags = sample.value.flags;
+
 			const hidden =
 				(flags & PLAYER_FLAG.hidden) !== 0 ||
 				(flags & PLAYER_FLAG.carried) !== 0;
+
 			const dead = (flags & PLAYER_FLAG.dead) !== 0;
+			const entranced = (flags & PLAYER_FLAG.entranced) !== 0 && !dead;
+
+			view.absorb = THREE.MathUtils.clamp(
+				view.absorb + (entranced ? dt : -dt) / ABSORB_SECONDS,
+				0,
+				1,
+			);
+
+			if (entranced) {
+				view.lens = this.lensOf(view.id) ?? view.lens;
+			} else if (view.absorb === 0) {
+				view.lens = null;
+			}
+
+			const absorbed = view.absorb >= 1;
 			const selfGhost = this.ghosts && !this.spectating && this.state.selfDead;
 			const ghost = this.ghosts && dead;
 			const ghostVisible = ghost && selfGhost;
+
 			if (dead !== view.wasDead || hidden) {
 				view.pose.reset();
 			}
+
 			if (dead && !view.wasDead) {
 				view.corpse = new THREE.Vector3(
 					sample.value.x,
 					sample.value.y,
 					sample.value.z,
 				);
+
 				view.corpseYaw = sample.value.yaw;
 			} else if (!dead) {
 				view.corpse = null;
 			}
+
 			view.wasDead = dead;
+
 			view.pose.update(sample, dt);
+
 			const lying = ghost && !ghostVisible && view.corpse !== null;
+
 			if (lying && view.corpse) {
 				view.position.copy(view.corpse);
 			} else {
 				view.position.set(view.pose.x, view.pose.y, view.pose.z);
 			}
+
 			view.model.setGhost(ghostVisible);
-			this.setVisible(view, !hidden);
+			this.setVisible(view, !hidden && !absorbed);
 			view.model.root.position.copy(view.position);
+
 			view.model.root.rotation.y = modelYaw(
 				lying ? view.corpseYaw : view.pose.yaw,
 			);
+
+			this.applyAbsorb(view);
+
 			const lanternOpen = (flags & PLAYER_FLAG.lantern) !== 0;
+
 			const talking = this.spectating
 				? (this.replayVoices.get(view.id) ?? 0)
 				: voiceChat.levelOf(view.id);
+
 			const onRadio = listening && (flags & PLAYER_FLAG.radio) !== 0;
+
 			if (!this.spectating) {
 				voiceChat.setRadio(view.id, onRadio);
 			}
+
 			if (onRadio && talking > 0.12) {
 				this.radioSpeakers.push(player.name);
 			}
+
 			const emote = this.state.emoteOf(view.id, renderTime);
+
 			view.model.update(dt, {
 				speed: dead ? 0 : view.pose.speed,
 				crouch: dead ? 0 : sample.value.crouch,
@@ -293,39 +368,59 @@ export class RemotePlayers {
 							: 1,
 				walkie: (flags & PLAYER_FLAG.walkieHeld) !== 0,
 				heldObject: OCCULT_IDS[sample.value.held ?? -1] ?? null,
+				infection:
+					(flags & PLAYER_FLAG.compelled) !== 0
+						? 1
+						: (flags & PLAYER_FLAG.infected) !== 0
+							? 0.6
+							: 0,
 			});
+
 			const distance = view.position.distanceTo(listener);
+
 			view.tag.position.set(
 				view.position.x,
 				view.position.y + 2.05 - sample.value.crouch * 0.5,
 				view.position.z,
 			);
+
 			view.tag.visible =
 				!hidden &&
+				view.absorb === 0 &&
 				(!dead || ghostVisible) &&
 				distance < 11 &&
 				(ghostVisible || lineOfSight(this.world, eye, view.tag.position));
+
 			view.crown.position.set(
 				view.tag.position.x,
 				view.tag.position.y + 0.32,
 				view.tag.position.z,
 			);
+
 			view.crown.visible =
 				(flags & PLAYER_FLAG.bounty) !== 0 &&
 				!hidden &&
+				view.absorb === 0 &&
 				!dead &&
 				distance < 32 &&
 				lineOfSight(this.world, eye, view.crown.position);
-			if (!hidden && lanternOpen) {
+
+			if (!hidden && !absorbed && lanternOpen) {
 				view.model.root.updateMatrixWorld(true);
+
 				const held = view.model.lanternLightPosition;
 				const body = { x: view.position.x, y: held.y, z: view.position.z };
+
 				view.light.position.copy(pullBackToSight(this.world, body, held, 0.06));
+
 				view.light.intensity = LANTERN_LIGHT_INTENSITY;
+
 				dynamicLights.push(view.light);
 			}
+
 			if (this.time - view.occlusionAt > 0.25) {
 				view.occlusionAt = this.time;
+
 				view.occlusion =
 					distance < 30
 						? countWallsBetween(
@@ -340,11 +435,14 @@ export class RemotePlayers {
 							)
 						: 3;
 			}
+
 			if (!this.spectating && !this.voiceOpen) {
 				this.routeVoice(view, listener, distance, ghost, selfGhost);
 			}
+
 			const liquid =
 				hidden || dead ? null : liquidAt(this.liquids, view.position);
+
 			this.splash(view, liquid, distance);
 			this.footsteps(view, view.pose.speed, dt, flags, distance, liquid);
 		}
@@ -359,22 +457,29 @@ export class RemotePlayers {
 	): void {
 		if (ghost && !selfGhost) {
 			voiceChat.updateSpatial(view.id, null, 0, Infinity);
+
 			return;
 		}
+
 		const mouth = new THREE.Vector3(
 			view.position.x,
 			view.position.y + 1.5,
 			view.position.z,
 		);
+
 		if ((ghost && selfGhost) || this.megaphone) {
 			const offset = mouth.sub(listener);
 			const reach = Math.min(offset.length(), VOICE_PROXIMITY_FULL_RANGE * 0.5);
+
 			const near = listener
 				.clone()
 				.add(offset.normalize().multiplyScalar(reach));
+
 			voiceChat.updateSpatial(view.id, near, 0, reach);
+
 			return;
 		}
+
 		voiceChat.updateSpatial(view.id, mouth, view.occlusion, distance);
 	}
 
@@ -395,14 +500,19 @@ export class RemotePlayers {
 		) {
 			return;
 		}
+
 		view.stepPhase += dt * speed * 0.9;
+
 		if (view.stepPhase >= 1) {
 			view.stepPhase = 0;
+
 			const crouch = speed < 2;
+
 			const room = this.world.roomAt(
 				{ x: view.position.x, z: view.position.z },
 				view.position.y + 0.1,
 			);
+
 			soundBank.play(liquid ? "step-water" : footstepSound(room?.style.floor), {
 				position: view.position,
 				volume: crouch ? 0.25 : 0.55,
@@ -419,14 +529,19 @@ export class RemotePlayers {
 		distance: number,
 	): void {
 		const id = liquid?.itemId ?? null;
+
 		if (id === view.liquidId) {
 			return;
 		}
+
 		view.liquidId = id;
+
 		if (!liquid || distance > 24) {
 			return;
 		}
+
 		const shallow = liquid.kind === "pond" || liquid.kind === "birdbath";
+
 		soundBank.play(shallow ? "step-water" : "splash", {
 			position: view.position,
 			volume: shallow ? 0.5 : 0.85,
@@ -436,9 +551,52 @@ export class RemotePlayers {
 		});
 	}
 
+	private lensOf(playerId: string): THREE.Vector3 | null {
+		for (const anomaly of this.state.anomalies.values()) {
+			const latest = anomaly.latest;
+
+			if (
+				!anomaly.active ||
+				!latest ||
+				anomaly.roster.species !== "cinematographe" ||
+				latest.target !== playerId
+			) {
+				continue;
+			}
+
+			const forward = yawToDirection(latest.yaw);
+
+			return new THREE.Vector3(
+				latest.x + forward.x * LENS_REACH,
+				latest.y + LENS_HEIGHT,
+				latest.z + forward.z * LENS_REACH,
+			);
+		}
+
+		return null;
+	}
+
+	private applyAbsorb(view: RemoteView): void {
+		const root = view.model.root;
+
+		if (view.absorb === 0 || !view.lens) {
+			root.scale.setScalar(1);
+
+			return;
+		}
+
+		const pull = view.absorb * view.absorb * (3 - 2 * view.absorb);
+
+		root.position.lerp(view.lens, pull);
+		root.scale.set(1 - pull * 0.9, 1 - pull * 0.97, 1 - pull * 0.9);
+
+		root.rotation.y += pull * pull * Math.PI * 3;
+	}
+
 	private setVisible(view: RemoteView, visible: boolean): void {
 		view.visible = visible;
 		view.model.root.visible = visible;
+
 		if (!visible) {
 			view.tag.visible = false;
 			view.crown.visible = false;
@@ -453,6 +611,7 @@ export class RemotePlayers {
 			(view.crown.material as THREE.SpriteMaterial).map?.dispose();
 			(view.crown.material as THREE.SpriteMaterial).dispose();
 		}
+
 		this.views.clear();
 	}
 }

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="fr">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Labo du film</title>
+		<style>
+			body {
+				margin: 0;
+				height: 100vh;
+				display: grid;
+				place-items: center;
+				background: #0b0806;
+				color: #e8d8b8;
+				font-family: sans-serif;
+			}
+
+			canvas {
+				width: min(96vw, 170vh);
+				box-shadow: 0 0 0 6px #3a2614;
+			}
+
+			p {
+				position: fixed;
+				bottom: 8px;
+				margin: 0;
+				font-size: 14px;
+			}
+		</style>
+	</head>
+	<body>
+		<p id="status"></p>
+		<script type="module">
+			import "/src/styles/fonts.scss";
+			import {
+				createFilm,
+				FILM_BASE_LEVEL,
+				FILM_TICK_MS,
+				FILM_TICK_RATE,
+				stepFilm,
+			} from "/shared/minigames/filmRunner.ts";
+			import { FilmRenderer } from "/src/features/seance/FilmRenderer.ts";
+
+			const params = new URLSearchParams(location.search);
+			const seed = Number(params.get("seed") ?? 7);
+			const level = Number(params.get("level") ?? FILM_BASE_LEVEL);
+			const renderer = new FilmRenderer(Number(params.get("cap") ?? 0xd8442f));
+			const status = document.getElementById("status");
+
+			const labels = {
+				presents: "Le Cinématographe présente",
+				title: "« Le Petit Champignon »",
+				controls: "Sauter : Espace / ↑   ·   Se baisser : Ctrl / ↓",
+				end: "FIN",
+				endText: "Le film s'arrête là.",
+				intermission: "ENTRACTE",
+				intermissionText: "La machine a calé : capturez-la !",
+				cut: "La séance est interrompue.",
+			};
+
+			document.body.append(renderer.canvas);
+
+			await Promise.all([
+				document.fonts.load("20px 'IM Fell English SC'"),
+				document.fonts.load("20px 'IM Fell English'"),
+			]);
+
+			let state = createFilm(seed, level);
+			const at = params.get("at");
+
+			if (at !== null) {
+				const ending = params.get("ending");
+				const ticks = Number(at) * FILM_TICK_RATE;
+
+				while (state.tick < ticks && state.outcome === "playing") {
+					stepFilm(state, false, params.get("duck") === "1");
+				}
+
+				for (let frame = 0; frame < 3; frame += 1) {
+					renderer.draw(state, labels, 1 / 30, Number(at), ending, Number(params.get("since") ?? 1.5));
+				}
+
+				document.title = "film-ready";
+			} else {
+				let jump = false;
+				let duck = false;
+				let ending = null;
+				let since = 0;
+				let clock = 0;
+				let accumulator = 0;
+				let last = performance.now();
+				let wins = 0;
+				let films = 0;
+
+				addEventListener("keydown", (event) => {
+					if (event.code === "Space" || event.code === "ArrowUp") {
+						jump = true;
+					}
+
+					if (event.code.startsWith("Control") || event.code === "ArrowDown" || event.code === "KeyS") {
+						duck = true;
+					}
+
+					if (event.code === "Enter" && ending) {
+						state = createFilm(Math.floor(Math.random() * 1e9), level);
+						ending = null;
+						clock = 0;
+					}
+
+					event.preventDefault();
+				});
+
+				addEventListener("keyup", (event) => {
+					if (event.code.startsWith("Control") || event.code === "ArrowDown" || event.code === "KeyS") {
+						duck = false;
+					}
+				});
+
+				const loop = (now) => {
+					const dt = Math.min(0.25, (now - last) / 1000);
+
+					last = now;
+					clock += dt;
+
+					if (ending) {
+						since += dt;
+					} else {
+						accumulator += dt * 1000;
+
+						while (accumulator >= FILM_TICK_MS && state.outcome === "playing") {
+							accumulator -= FILM_TICK_MS;
+							stepFilm(state, jump, duck);
+							jump = false;
+						}
+
+						if (state.outcome !== "playing") {
+							ending = state.outcome;
+							since = 0;
+							films += 1;
+							wins += state.outcome === "won" ? 1 : 0;
+						}
+					}
+
+					renderer.draw(state, labels, dt, clock, ending, since);
+
+					status.textContent = `niveau ${level.toFixed(2)} · ${wins} / ${films} réussites · Entrée : rejouer`;
+
+					requestAnimationFrame(loop);
+				};
+
+				requestAnimationFrame(loop);
+			}
+		</script>
+	</body>
+</html>

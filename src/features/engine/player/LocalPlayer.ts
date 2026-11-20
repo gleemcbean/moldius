@@ -75,15 +75,18 @@ export class LocalPlayer {
 	jumps = 0;
 	private accumulator = 0;
 	private readonly jumpAssist = new JumpAssist();
+
 	readonly events: {
 		kind: "jump" | "land" | "tired" | "bounds";
 		speed: number;
 	}[] = [];
+
 	private boundsWarnedAt = -Infinity;
 	private cameraY: number;
 	private forced: ForcedAnimation | null = null;
 	private deathTilt = 0;
 	private time = 0;
+
 	lastInput: CharacterInput = {
 		forward: 0,
 		strafe: 0,
@@ -113,13 +116,16 @@ export class LocalPlayer {
 
 	applyForcedMove(move: ForcedMove): void {
 		this.moveAck = Math.max(this.moveAck, move.moveId);
+
 		const from = {
 			x: this.character.x,
 			y: this.character.y,
 			z: this.character.z,
 		};
+
 		const to = { x: move.x, y: move.y, z: move.z };
 		const distance = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
+
 		if (
 			move.yaw !== null &&
 			(move.kind === "respawn" ||
@@ -132,9 +138,12 @@ export class LocalPlayer {
 			this.yaw = move.yaw;
 			this.pitch = move.kind === "hide" ? 0 : this.pitch;
 		}
+
 		const reach = move.kind === "throw" ? 12 : 4;
+
 		const animated =
 			move.durationMs > 0 && distance < reach && move.kind !== "respawn";
+
 		if (animated) {
 			this.forced = {
 				kind: move.kind,
@@ -156,39 +165,55 @@ export class LocalPlayer {
 		this.character.vy = 0;
 		this.character.vz = 0;
 		this.character.grounded = true;
+
 		Object.assign(this.previous, this.character);
+
 		this.cameraY =
 			to.y + EYE_HEIGHT_STANDING - CROUCH_EYE_DROP * this.character.crouch;
+
 		this.forced = null;
 	}
 
 	update(dt: number, controls: LocalControls, context: LocalContext): void {
 		this.time += dt;
+
 		this.updateLook(controls, context);
+
 		if (this.forced) {
 			this.updateForced();
+
 			return;
 		}
+
 		if (!context.alive && context.ghost) {
 			this.deathTilt = 0;
+
 			this.updateGhost(dt, controls, context.ghost);
+
 			return;
 		}
+
 		if (!context.alive || context.carriedAnchor || context.hideInterior) {
 			this.character.vx = 0;
 			this.character.vz = 0;
+
 			if (context.carriedAnchor) {
 				this.character.x = context.carriedAnchor.x;
 				this.character.y = context.carriedAnchor.y;
 				this.character.z = context.carriedAnchor.z;
+
 				Object.assign(this.previous, this.character);
 			}
+
 			this.deathTilt = context.alive
 				? 0
 				: Math.min(1, this.deathTilt + dt * 1.5);
+
 			return;
 		}
+
 		this.deathTilt = 0;
+
 		const input: CharacterInput = {
 			forward: controls.forward,
 			strafe: controls.strafe,
@@ -198,7 +223,9 @@ export class LocalPlayer {
 			jump: controls.jump,
 			rise: controls.rise,
 		};
+
 		this.lastInput = input;
+
 		const modifiers: MovementModifiers = {
 			speedFactor: context.speedFactor,
 			gravityFactor: context.gravityFactor,
@@ -207,7 +234,9 @@ export class LocalPlayer {
 			fly: context.devModes.fly,
 			passThrough: context.devModes.passThrough,
 		};
+
 		this.accumulator = Math.min(this.accumulator + dt, STEP * MAX_STEPS);
+
 		if (input.jump) {
 			if (context.jumpAllowed) {
 				this.jumpAssist.press();
@@ -215,11 +244,14 @@ export class LocalPlayer {
 				this.events.push({ kind: "tired", speed: 0 });
 			}
 		}
+
 		while (this.accumulator >= STEP) {
 			Object.assign(this.previous, this.character);
+
 			const wasGrounded = this.character.grounded;
 			const fallSpeed = -this.character.vy;
 			const jump = this.jumpAssist.request(this.character);
+
 			stepCharacter(
 				this.world,
 				this.character,
@@ -227,16 +259,21 @@ export class LocalPlayer {
 				modifiers,
 				STEP,
 			);
+
 			if (!modifiers.passThrough && context.bodies.length > 0) {
 				separateFromBodies(this.world, this.character, context.bodies, STEP);
 			}
+
 			this.jumpAssist.settle(this.character, STEP);
+
 			if (jump.jump) {
 				this.jumps += 1;
+
 				this.events.push({ kind: "jump", speed: 0 });
 			} else if (!wasGrounded && this.character.grounded) {
 				this.events.push({ kind: "land", speed: fallSpeed });
 			}
+
 			this.accumulator -= STEP;
 		}
 	}
@@ -247,41 +284,52 @@ export class LocalPlayer {
 		bounds: GhostBounds,
 	): void {
 		Object.assign(this.previous, this.character);
+
 		let forward = clamp(controls.forward, -1, 1);
 		let strafe = clamp(controls.strafe, -1, 1);
 		const length = Math.hypot(forward, strafe);
+
 		if (length > 1) {
 			forward /= length;
 			strafe /= length;
 		}
+
 		const speed = controls.sprint ? GHOST_FAST_SPEED : GHOST_SPEED;
 		const world = rotate2({ x: strafe, z: -forward }, -this.yaw);
 		const blend = Math.min(1, dt * 7);
+
 		this.character.vx += (world.x * speed - this.character.vx) * blend;
 		this.character.vz += (world.z * speed - this.character.vz) * blend;
+
 		this.character.vy +=
 			(clamp(controls.rise, -1, 1) * GHOST_VERTICAL_SPEED - this.character.vy) *
 			blend;
+
 		const wanted = {
 			x: this.character.x + this.character.vx * dt,
 			y: this.character.y + this.character.vy * dt,
 			z: this.character.z + this.character.vz * dt,
 		};
+
 		const kept = clampToGhostBounds(wanted, bounds);
+
 		if (
 			Math.hypot(kept.x - wanted.x, kept.y - wanted.y, kept.z - wanted.z) >
 				0.001 &&
 			this.time - this.boundsWarnedAt > 3
 		) {
 			this.boundsWarnedAt = this.time;
+
 			this.events.push({ kind: "bounds", speed: 0 });
 		}
+
 		this.character.x = kept.x;
 		this.character.y = kept.y;
 		this.character.z = kept.z;
 		this.character.grounded = false;
 		this.character.crouch = 0;
 		this.cameraY = kept.y + EYE_HEIGHT_STANDING;
+
 		this.lastInput = {
 			forward: controls.forward,
 			strafe: controls.strafe,
@@ -294,14 +342,17 @@ export class LocalPlayer {
 
 	private updateLook(controls: LocalControls, context: LocalContext): void {
 		const scale = MOUSE_LOOK_SCALE * context.sensitivity;
+
 		this.yaw -= controls.lookX * scale;
 		this.pitch -= controls.lookY * scale * (context.invertY ? -1 : 1);
 		this.pitch = clamp(this.pitch, -1.45, 1.45);
+
 		if (context.hideInterior) {
 			const offset = Math.atan2(
 				Math.sin(this.yaw - context.hideFacing),
 				Math.cos(this.yaw - context.hideFacing),
 			);
+
 			this.yaw = context.hideFacing + clamp(offset, -1.0, 1.0);
 			this.pitch = clamp(this.pitch, -0.55, 0.45);
 		}
@@ -309,20 +360,27 @@ export class LocalPlayer {
 
 	private updateForced(): void {
 		const forced = this.forced as ForcedAnimation;
+
 		const t =
 			forced.duration <= 0
 				? 1
 				: Math.min(1, (this.time - forced.start) / forced.duration);
+
 		const thrown = forced.kind === "throw";
 		const eased = thrown ? t * t * (3 - 2 * t) : 1 - (1 - t) * (1 - t);
+
 		this.character.x = lerp(forced.from.x, forced.to.x, eased);
+
 		this.character.y =
 			lerp(forced.from.y, forced.to.y, eased) +
 			(thrown ? Math.sin(Math.PI * t) * 1.2 : 0);
+
 		this.character.z = lerp(forced.from.z, forced.to.z, eased);
 		this.character.vx = 0;
 		this.character.vz = 0;
+
 		Object.assign(this.previous, this.character);
+
 		if (t >= 1) {
 			this.teleport(forced.to);
 		}
@@ -336,28 +394,36 @@ export class LocalPlayer {
 				z: this.character.z,
 			};
 		}
+
 		if (context.hideInterior && !this.forced) {
 			this.cameraY = context.hideInterior.y;
+
 			return { ...context.hideInterior };
 		}
+
 		const alpha = this.accumulator / STEP;
 		const x = lerp(this.previous.x, this.character.x, alpha);
 		const z = lerp(this.previous.z, this.character.z, alpha);
 		const y = lerp(this.previous.y, this.character.y, alpha);
 		const eye = EYE_HEIGHT_STANDING - CROUCH_EYE_DROP * this.character.crouch;
 		let target = y + eye;
+
 		if (this.deathTilt > 0) {
 			target = y + lerp(eye, 0.35, this.deathTilt);
 		}
+
 		if (context.carriedAnchor) {
 			target = context.carriedAnchor.y + 1.9;
 		}
+
 		const gap = target - this.cameraY;
+
 		if (Math.abs(gap) > 0.7 || !this.character.grounded) {
 			this.cameraY = target;
 		} else {
 			this.cameraY += gap * (1 - Math.exp(-dt * 16));
 		}
+
 		return { x, y: this.cameraY, z };
 	}
 

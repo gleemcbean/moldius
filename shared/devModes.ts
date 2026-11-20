@@ -20,12 +20,15 @@ export function noDevModes(): DevModes {
 
 export function sanitizeDevModes(input: unknown): DevModes {
 	const modes = noDevModes();
+
 	if (typeof input !== "object" || input === null) {
 		return modes;
 	}
+
 	for (const id of DEV_MODE_IDS) {
 		modes[id] = (input as Record<string, unknown>)[id] === true;
 	}
+
 	return modes;
 }
 

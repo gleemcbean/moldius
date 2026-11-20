@@ -6,7 +6,8 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"ignoreUnknown": false
+		"ignoreUnknown": false,
+		"includes": ["**", "!src/assets/**/*.json"]
 	},
 	"formatter": {
 		"enabled": true,
@@ -24,7 +25,8 @@
 				"noControlCharactersInRegex": "off"
 			},
 			"a11y": {
-				"noLabelWithoutControl": "off"
+				"noLabelWithoutControl": "off",
+				"useSemanticElements": "off"
 			}
 		}
 	},

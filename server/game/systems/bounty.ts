@@ -26,21 +26,28 @@ export class BountySystem {
 		if (!this.enabled) {
 			return;
 		}
+
 		const ranked = [...match.players.values()]
 			.filter((player) => player.connected)
 			.sort((a, b) => b.score - a.score);
+
 		const lead =
 			ranked.length >= 2 ? ranked[0].score - ranked[1].score : -Infinity;
+
 		const holder = lead >= BOUNTY_MIN_LEAD ? ranked[0] : null;
 		const value = holder ? bountyValue(lead) : 0;
+
 		if ((holder?.id ?? null) === this.holderId && value === this.value) {
 			return;
 		}
+
 		for (const player of match.players.values()) {
 			player.bountyHolder = player === holder;
 		}
+
 		this.holderId = holder?.id ?? null;
 		this.value = value;
+
 		match.emit({ type: "bounty", playerId: this.holderId, value });
 	}
 
@@ -48,12 +55,16 @@ export class BountySystem {
 		if (!this.enabled || target.id !== this.holderId) {
 			return;
 		}
+
 		target.bountyPushedBy = pusher.id;
 		target.bountyPushedAt = match.now;
+
 		if (pusher.bountyPushReadyAt > match.now) {
 			return;
 		}
+
 		pusher.bountyPushReadyAt = match.now + BOUNTY_PUSH_COOLDOWN_MS;
+
 		this.reward(match, pusher, target, BOUNTY_PUSH_POINTS, "push");
 	}
 
@@ -66,8 +77,11 @@ export class BountySystem {
 		) {
 			return;
 		}
+
 		const claimer = match.players.get(victim.bountyPushedBy);
+
 		victim.bountyPushedBy = null;
+
 		if (claimer && claimer !== victim) {
 			this.reward(match, claimer, victim, this.value, "claim");
 		}
@@ -87,6 +101,7 @@ export class BountySystem {
 		reason: "push" | "claim",
 	): void {
 		player.score += points;
+
 		match.emit({
 			type: "bountyReward",
 			playerId: player.id,
@@ -95,6 +110,7 @@ export class BountySystem {
 			score: player.score,
 			reason,
 		});
+
 		this.update(match);
 	}
 }

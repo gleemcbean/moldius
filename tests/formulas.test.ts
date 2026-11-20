@@ -3,8 +3,8 @@ import {
 	editDistance,
 	formulaKeyWord,
 	generateFormulas,
-	matchingFormulas,
 	MIN_WORD_SEPARATION,
+	matchingFormulas,
 	normalizeSpeech,
 	phoneticKey,
 	transcriptMatchesFormula,
@@ -41,12 +41,15 @@ describe("reconnaissance des formules latines", () => {
 		expect(transcriptMatchesFormula("Ignis, Ombra, Loumen", FORMULA)).toBe(
 			true,
 		);
+
 		expect(transcriptMatchesFormula("ig nice ombre a lumen", FORMULA)).toBe(
 			true,
 		);
+
 		expect(transcriptMatchesFormula("euh ignis le umbra lumen", FORMULA)).toBe(
 			true,
 		);
+
 		expect(
 			transcriptMatchesFormula("or homme spiritus vulpès", [
 				"aurum",
@@ -69,6 +72,7 @@ describe("reconnaissance des formules latines", () => {
 		expect(
 			transcriptMatchesFormula("ignis un deux trois umbra lumen", FORMULA),
 		).toBe(false);
+
 		expect(
 			transcriptMatchesFormula(
 				"alors donc voila bon bref ignis umbra lumen",
@@ -79,6 +83,7 @@ describe("reconnaissance des formules latines", () => {
 
 	it("ne confond jamais deux formules d'une même partie", () => {
 		const formulas = generateFormulas(new SeededRandom(5), 20);
+
 		for (const spoken of formulas) {
 			for (const other of formulas) {
 				expect(transcriptMatchesFormula(spoken.join(" "), other)).toBe(
@@ -105,12 +110,15 @@ describe("reconnaissance tolérante", () => {
 			["candela", "corvus", "fortuna"],
 			["stella", "vapor", "gladius"],
 		];
+
 		expect(transcriptMatchesFormula("agnès ombre lumière", FORMULA)).toBe(
 			false,
 		);
+
 		expect(matchingFormulas(["agnès ombre lumière"], formulas)).toEqual([
 			FORMULA,
 		]);
+
 		expect(matchingFormulas(["candelo corvo fortune"], formulas)).toEqual([
 			formulas[1],
 		]);
@@ -118,20 +126,24 @@ describe("reconnaissance tolérante", () => {
 
 	it("garde la formule exacte prioritaire et refuse un ordre différent", () => {
 		const formulas = [FORMULA, ["candela", "corvus", "fortuna"]];
+
 		expect(matchingFormulas(["ignis umbra lumen"], formulas)).toEqual([
 			FORMULA,
 		]);
+
 		expect(matchingFormulas(["ombre agnès lumière"], formulas)).toEqual([]);
 	});
 
 	it("ne confond ni les formules d'une partie ni les bavardages", () => {
 		for (let seed = 1; seed <= 60; seed += 1) {
 			const formulas = generateFormulas(new SeededRandom(seed), 8);
+
 			for (const spoken of formulas) {
 				expect(matchingFormulas([spoken.join(" ")], formulas)).toEqual([
 					spoken,
 				]);
 			}
+
 			for (const text of chatter) {
 				expect(matchingFormulas([text], formulas), text).toEqual([]);
 			}
@@ -143,11 +155,15 @@ describe("génération des formules", () => {
 	it("produit des formules de trois mots latins, tous distincts et bien séparés à l'oreille", () => {
 		const formulas = generateFormulas(new SeededRandom(42), 20);
 		const words = formulas.flat().map(formulaKeyWord);
+
 		expect(formulas).toHaveLength(20);
+
 		for (const formula of formulas) {
 			expect(formula).toHaveLength(FORMULA_WORD_COUNT);
 		}
+
 		expect(new Set(words).size).toBe(words.length);
+
 		for (let i = 0; i < words.length; i += 1) {
 			for (let j = i + 1; j < words.length; j += 1) {
 				expect(editDistance(words[i], words[j])).toBeGreaterThanOrEqual(2);
@@ -159,11 +175,13 @@ describe("génération des formules", () => {
 		for (let seed = 1; seed <= 40; seed += 1) {
 			const first = generateFormulas(new SeededRandom(seed), 20);
 			const previous = new Set(first.flat().map(formulaKeyWord));
+
 			const second = generateFormulas(
 				new SeededRandom(seed + 500),
 				20,
 				previous,
 			);
+
 			for (const word of second.flat()) {
 				expect(previous.has(formulaKeyWord(word))).toBe(false);
 			}
@@ -173,19 +191,24 @@ describe("génération des formules", () => {
 	it("change de formules entre deux graines", () => {
 		const a = generateFormulas(new SeededRandom(1), 4).flat().join(" ");
 		const b = generateFormulas(new SeededRandom(2), 4).flat().join(" ");
+
 		expect(a).not.toBe(b);
 	});
 
 	it("dispose d'un vocabulaire latin sans mots qui se ressemblent", () => {
 		const keys = INCANTATION_VOCABULARY.map(phoneticKey);
+
 		expect(new Set(keys).size).toBe(keys.length);
 		expect(keys.length).toBeGreaterThanOrEqual(FORMULA_WORD_COUNT * 50);
+
 		for (let i = 0; i < keys.length; i += 1) {
 			expect(keys[i].length).toBeGreaterThanOrEqual(4);
+
 			for (let j = i + 1; j < keys.length; j += 1) {
 				expect(editDistance(keys[i], keys[j])).toBeGreaterThanOrEqual(2);
 			}
 		}
+
 		expect(MIN_WORD_SEPARATION).toBeGreaterThanOrEqual(2);
 	});
 });

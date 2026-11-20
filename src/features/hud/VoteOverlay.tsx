@@ -17,15 +17,20 @@ export function VoteOverlay() {
 	const labels = t.party.possessed;
 	const vote = useStore(voteStore, (state) => state);
 	const [now, setNow] = useState(() => clockSync.serverNow());
+
 	useEffect(() => {
 		const timer = window.setInterval(() => setNow(clockSync.serverNow()), 250);
+
 		return () => window.clearInterval(timer);
 	}, []);
+
 	if (!vote.open) {
 		return null;
 	}
+
 	const seconds = Math.max(0, Math.ceil((vote.endsAt - now) / 1000));
 	const voted = vote.candidates.filter((candidate) => candidate.voted).length;
+
 	return (
 		<div className={styles.overlay} data-pad-scope="">
 			<section className={styles.panel}>

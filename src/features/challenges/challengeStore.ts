@@ -20,17 +20,22 @@ export function challengeLabel(
 	completed: CompletedChallenge,
 ): string {
 	const { name } = t.challenges.list[completed.id];
+
 	return completed.tier === null ? name : `${name} ${completed.tier}`;
 }
 
 export function applyLiveMetrics(metrics: MatchMetrics): void {
 	const previous = matchStore.get().challengeMetrics;
+
 	matchStore.set({ challengeMetrics: metrics });
+
 	if (!previous) {
 		return;
 	}
+
 	const saved = savedProgress();
 	const t = currentMessages();
+
 	for (const completed of newlyCompleted(
 		withMatchMetrics(saved, previous),
 		withMatchMetrics(saved, metrics),
@@ -47,8 +52,10 @@ export function useChallengeProgress(): ChallengeProgress {
 		accountStore,
 		(state) => state.account?.challenges ?? null,
 	);
+
 	const live = useStore(matchStore, (state) =>
 		state.results ? null : state.challengeMetrics,
 	);
+
 	return withMatchMetrics(saved ?? {}, live ?? {});
 }

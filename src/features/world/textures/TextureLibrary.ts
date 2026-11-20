@@ -61,12 +61,16 @@ export class TextureLibrary {
 			...keys.flatMap((key) => surfaceFiles(key, this.low)),
 			...reflectionFiles(),
 		];
+
 		let done = 0;
+
 		progress?.(0);
+
 		await Promise.all(
 			files.map((file) =>
 				loadImage(file).then(() => {
 					done += 1;
+
 					progress?.(done / files.length);
 				}),
 			),
@@ -76,19 +80,25 @@ export class TextureLibrary {
 	surface(key: string, fixedRepeat = false): SurfaceMaps {
 		const id = fixedRepeat ? `${key}#fixed` : key;
 		const existing = this.surfaces.get(id);
+
 		if (existing) {
 			return existing;
 		}
+
 		const info = SURFACES[key];
+
 		if (!info) {
 			throw new Error(`Texture inconnue : ${key}`);
 		}
+
 		const [albedo, normal, orm] = surfaceFiles(key, this.low);
 		const [tileX, tileY] = fixedRepeat ? [1, 1] : info.tile;
+
 		const layer = (file: string | undefined, suffix: string, color: boolean) =>
 			file
 				? this.layer(file, `${key}${suffix}`, color, info.fine, tileX, tileY)
 				: null;
+
 		const created: SurfaceMaps = {
 			map: layer(albedo, "", true) as THREE.Texture,
 			normalMap: layer(normal, ":normal", false),
@@ -98,7 +108,9 @@ export class TextureLibrary {
 			depth: info.fine ? info.depth : 0,
 			parallax: info.fine && info.parallax,
 		};
+
 		this.surfaces.set(id, created);
+
 		return created;
 	}
 
@@ -111,19 +123,25 @@ export class TextureLibrary {
 		tileY: number,
 	): THREE.Texture {
 		const texture = new THREE.Texture();
+
 		texture.name = name;
 		texture.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace;
 		texture.magFilter = fine ? THREE.LinearFilter : THREE.NearestFilter;
+
 		texture.minFilter = fine
 			? THREE.LinearMipmapLinearFilter
 			: THREE.NearestMipmapLinearFilter;
+
 		texture.wrapS = THREE.RepeatWrapping;
 		texture.wrapT = THREE.RepeatWrapping;
 		texture.anisotropy = this.anisotropy;
+
 		texture.repeat.set(1 / tileX, 1 / tileY);
+
 		if (canLoadImages()) {
 			this.track(fillTexture(texture, file, this.priority));
 		}
+
 		return texture;
 	}
 
@@ -135,6 +153,7 @@ export class TextureLibrary {
 				}
 			})
 			.finally(() => this.loading.delete(tracked));
+
 		this.loading.add(tracked);
 	}
 
@@ -145,8 +164,10 @@ export class TextureLibrary {
 	reflections(): THREE.CubeTexture | null {
 		if (!this.ambientReflections && typeof document !== "undefined") {
 			const texture = new THREE.CubeTexture();
+
 			texture.colorSpace = THREE.SRGBColorSpace;
 			texture.magFilter = THREE.NearestFilter;
+
 			this.track(
 				Promise.all(
 					reflectionFiles().map((file) => loadImage(file, this.priority)),
@@ -155,8 +176,10 @@ export class TextureLibrary {
 					texture.needsUpdate = true;
 				}),
 			);
+
 			this.ambientReflections = texture;
 		}
+
 		return this.ambientReflections;
 	}
 
@@ -178,11 +201,15 @@ export class TextureLibrary {
 
 	dispose(): void {
 		this.disposed = true;
+
 		for (const texture of this.all()) {
 			texture.dispose();
 		}
+
 		this.ambientReflections?.dispose();
+
 		this.ambientReflections = null;
+
 		this.surfaces.clear();
 	}
 }

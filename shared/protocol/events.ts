@@ -7,6 +7,7 @@ import type {
 	CastRequest,
 	CastResult,
 	ClientStateMessage,
+	FilmReport,
 	ForcedMove,
 	GameEvent,
 	GhostActionKind,
@@ -129,6 +130,7 @@ export interface ClientToServerEvents {
 	"game:ghost": (payload: { kind: GhostActionKind; id: number }) => void;
 	"game:power": (payload: PowerRequest) => void;
 	"game:vote": (payload: { targetId: string }) => void;
+	"game:film": (payload: FilmReport) => void;
 	"game:leave": () => void;
 }
 

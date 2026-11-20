@@ -12,6 +12,7 @@ export function randomDefaultName(
 ): string {
 	const pool = NAMES[language];
 	const options = pool.filter((name) => !exclude.includes(name));
+
 	return options[Math.floor(Math.random() * options.length)] ?? pool[0];
 }
 

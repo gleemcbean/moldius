@@ -1,4 +1,11 @@
 import {
+	crystalCluster,
+	fairyPortal,
+	floatingBooks,
+	floatingCrystal,
+	runeStone,
+} from "./arcane";
+import {
 	armor,
 	bellJar,
 	birdcage,
@@ -91,6 +98,19 @@ import {
 	wallShelf,
 	window,
 } from "./fixtures";
+import {
+	bracketFungus,
+	fungusJar,
+	giantMushroom,
+	hangingMycelium,
+	mossCarpet,
+	mushroomBed,
+	mushroomPatch,
+	mushroomRing,
+	myceliumVeins,
+	sporeSac,
+	wallMushrooms,
+} from "./fungi";
 import { flowerPot, pond } from "./garden";
 import {
 	climbingVine,
@@ -152,6 +172,13 @@ import {
 	vase,
 	vialCluster,
 } from "./props";
+import {
+	brokenColumn,
+	fallenBeam,
+	floorDebris,
+	rubblePile,
+	wallRoots,
+} from "./ruins";
 import { stakePact, stakeReliquary, stakeSanctuary } from "./stakes";
 import {
 	bookcase,
@@ -368,6 +395,27 @@ export const FURNITURE_BUILDERS: Record<string, FurnitureBuilder> = {
 	oilLamp,
 	stuffedRaven,
 	leatherTomes,
+	giantMushroom,
+	mushroomPatch,
+	mushroomRing,
+	mushroomBed,
+	bracketFungus,
+	sporeSac,
+	fungusJar,
+	myceliumVeins,
+	hangingMycelium,
+	wallMushrooms,
+	mossCarpet,
+	rubblePile,
+	floorDebris,
+	brokenColumn,
+	fallenBeam,
+	wallRoots,
+	floatingCrystal,
+	crystalCluster,
+	floatingBooks,
+	runeStone,
+	fairyPortal,
 };
 
 export function builderFor(kind: string): FurnitureBuilder {

@@ -44,8 +44,10 @@ export abstract class AnomalyModel {
 
 	protected load(id: string, parent: THREE.Object3D = this.root): Rig {
 		const rig = this.kit.rig(id);
+
 		parent.add(rig.root);
 		this.rigs.push(rig);
+
 		return rig;
 	}
 
@@ -55,6 +57,7 @@ export abstract class AnomalyModel {
 
 	protected advanceWalk(input: AnomalyPoseInput, stride: number): number {
 		this.walkPhase += input.dt * (1.5 + input.speed * stride);
+
 		return this.walkPhase;
 	}
 
@@ -62,6 +65,7 @@ export abstract class AnomalyModel {
 		if (input.state !== "windup") {
 			return 0;
 		}
+
 		return Math.min(1, input.stateMs / duration);
 	}
 
@@ -69,6 +73,7 @@ export abstract class AnomalyModel {
 		if (input.state !== "recover") {
 			return 0;
 		}
+
 		return Math.max(0, 1 - input.stateMs / duration);
 	}
 
@@ -77,11 +82,13 @@ export abstract class AnomalyModel {
 		target: THREE.Vector3,
 	): THREE.Vector3 {
 		anchor.getWorldPosition(target);
+
 		return this.root.worldToLocal(target);
 	}
 
 	protected own<T extends THREE.Material>(material: T): T {
 		this.owned.push(material);
+
 		return material;
 	}
 
@@ -89,6 +96,7 @@ export abstract class AnomalyModel {
 		for (const rig of this.rigs) {
 			rig.dispose();
 		}
+
 		for (const material of this.owned) {
 			material.dispose();
 		}

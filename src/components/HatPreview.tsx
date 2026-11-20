@@ -21,48 +21,62 @@ function drawOnDome(
 	source: HTMLCanvasElement,
 ): void {
 	const from = source.getContext("2d")?.getImageData(0, 0, 64, 32);
+
 	if (!from) {
 		return;
 	}
+
 	const image = context.createImageData(WIDTH, HEIGHT);
 	const cos = Math.cos(DOME_TILT);
 	const sin = Math.sin(DOME_TILT);
+
 	for (let y = 0; y < HEIGHT; y += 1) {
 		for (let x = 0; x < WIDTH; x += 1) {
 			const sum = [0, 0, 0, 0];
+
 			for (let sub = 0; sub < DOME_SAMPLES * DOME_SAMPLES; sub += 1) {
 				const offsetX = ((sub % DOME_SAMPLES) + 0.5) / DOME_SAMPLES;
 				const offsetY = (Math.floor(sub / DOME_SAMPLES) + 0.5) / DOME_SAMPLES;
 				const nx = (x + offsetX - WIDTH / 2) / DOME_RADIUS;
 				const ny = Math.max(0, (DOME_BASE - y - offsetY) / DOME_RADIUS);
 				const depth = 1 - nx * nx - ny * ny;
+
 				if (depth < 0) {
 					continue;
 				}
+
 				const nz = Math.sqrt(depth);
 				const up = ny * cos + nz * sin;
 				const front = nz * cos - ny * sin;
 				const along = Math.atan2(nx, front) / (2 * Math.PI) + 0.5;
 				const sourceX = Math.floor(along * DOME_WRAPS * 64) % 64;
+
 				const sourceY = Math.min(
 					31,
 					Math.floor((Math.acos(Math.min(1, up)) / (Math.PI / 2)) * 32),
 				);
+
 				const read = (sourceY * 64 + sourceX) * 4;
+
 				for (let channel = 0; channel < 3; channel += 1) {
 					sum[channel] += from.data[read + channel];
 				}
+
 				sum[3] += 1;
 			}
+
 			if (sum[3] > 0) {
 				const write = (y * WIDTH + x) * 4;
+
 				for (let channel = 0; channel < 3; channel += 1) {
 					image.data[write + channel] = sum[channel] / sum[3];
 				}
+
 				image.data[write + 3] = sum[3] > DOME_SAMPLES ? 255 : 0;
 			}
 		}
 	}
+
 	context.putImageData(image, 0, 0);
 }
 
@@ -80,10 +94,13 @@ export function HatPreview({
 	useEffect(() => {
 		const target = canvas.current;
 		const context = target?.getContext("2d");
+
 		if (!target || !context) {
 			return;
 		}
+
 		let cancelled = false;
+
 		void loadImage(surfaceAlbedoFile(capTextureKey(color, pattern))).then(
 			(image) => {
 				if (!cancelled) {
@@ -91,6 +108,7 @@ export function HatPreview({
 				}
 			},
 		);
+
 		return () => {
 			cancelled = true;
 		};
@@ -112,16 +130,22 @@ function drawHat(
 	pattern: HatPattern,
 ): void {
 	const source = document.createElement("canvas");
+
 	source.width = 64;
 	source.height = 32;
+
 	source.getContext("2d")?.drawImage(image, 0, 0);
 	context.clearRect(0, 0, WIDTH, HEIGHT);
+
 	if (DOME_PATTERNS.has(pattern)) {
 		drawOnDome(context, source);
+
 		return;
 	}
+
 	context.save();
 	context.beginPath();
+
 	context.ellipse(
 		WIDTH / 2,
 		HEIGHT - 4,
@@ -131,11 +155,14 @@ function drawHat(
 		Math.PI,
 		Math.PI * 2,
 	);
+
 	context.lineTo(WIDTH - 1, HEIGHT - 1);
 	context.lineTo(1, HEIGHT - 1);
 	context.closePath();
 	context.clip();
+
 	context.imageSmoothingEnabled = false;
+
 	context.drawImage(source, 0, 0, WIDTH, HEIGHT);
 	context.restore();
 }

@@ -33,9 +33,11 @@ export function curvedLeaf(
 ): Part {
 	const geometry = new THREE.PlaneGeometry(width, length, 1, 5);
 	const positions = geometry.getAttribute("position") as THREE.BufferAttribute;
+
 	for (let vertex = 0; vertex < positions.count; vertex += 1) {
 		const t = (positions.getY(vertex) + length / 2) / length;
 		const bend = t * t;
+
 		positions.setXYZ(
 			vertex,
 			positions.getX(vertex),
@@ -43,10 +45,12 @@ export function curvedLeaf(
 			length * bend * droop,
 		);
 	}
+
 	geometry.computeVertexNormals();
 	geometry.rotateX(lean);
 	geometry.rotateY(yaw);
 	geometry.translate(root.x, root.y, root.z);
+
 	return { geometry, material };
 }
 
@@ -62,34 +66,45 @@ export function leafyBush(
 	const parts: Part[] = [
 		sphere(core, radius * 0.72, center.x, center.y, center.z, 1, squashY, 1, 8),
 	];
+
 	const up = new THREE.Vector3(0, 0, 1);
 	const golden = Math.PI * (3 - Math.sqrt(5));
 	const size = radius * 0.95;
+
 	for (let index = 0; index < cards; index += 1) {
 		const height = 1 - ((index + 0.5) / cards) * 2;
 		const ring = Math.sqrt(Math.max(0, 1 - height * height));
 		const angle = index * golden + rng.next() * 0.4;
+
 		const direction = new THREE.Vector3(
 			Math.cos(angle) * ring,
 			height,
 			Math.sin(angle) * ring,
 		).normalize();
+
 		const geometry = new THREE.PlaneGeometry(size, size);
+
 		geometry.rotateZ(rng.next() * Math.PI * 2);
+
 		geometry.applyQuaternion(
 			new THREE.Quaternion().setFromUnitVectors(up, direction),
 		);
+
 		const normals = geometry.getAttribute("normal") as THREE.BufferAttribute;
+
 		for (let vertex = 0; vertex < normals.count; vertex += 1) {
 			normals.setXYZ(vertex, direction.x, direction.y, direction.z);
 		}
+
 		geometry.translate(
 			center.x + direction.x * radius * 0.68,
 			center.y + direction.y * radius * 0.68 * squashY,
 			center.z + direction.z * radius * 0.68,
 		);
+
 		parts.push({ geometry, material });
 	}
+
 	return parts;
 }
 
@@ -112,8 +127,10 @@ export function flowerHead(
 			6,
 		),
 	];
+
 	for (let index = 0; index < 5; index += 1) {
 		const angle = (index / 5) * Math.PI * 2;
+
 		parts.push(
 			sphere(
 				petal,
@@ -128,6 +145,7 @@ export function flowerHead(
 			),
 		);
 	}
+
 	return parts;
 }
 

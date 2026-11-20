@@ -49,8 +49,11 @@ export function showToast(
 	durationMs = 4200,
 ): void {
 	toastCounter += 1;
+
 	const toast = { id: toastCounter, text, tone };
+
 	appStore.set((state) => ({ toasts: [...state.toasts.slice(-3), toast] }));
+
 	window.setTimeout(() => {
 		appStore.set((state) => ({
 			toasts: state.toasts.filter((entry) => entry.id !== toast.id),

@@ -19,12 +19,16 @@ export const PIXEL_RECIPES: Record<string, TextureRecipe> = {
 
 export function paintPixelRecipe(key: string): PixelData {
 	const recipe = PIXEL_RECIPES[key];
+
 	if (!recipe) {
 		throw new Error(`Texture inconnue : ${key}`);
 	}
+
 	const [width, height] = recipe.size;
 	const painter = new PixelPainter(width, height, hashString(key));
+
 	recipe.draw(painter);
+
 	return painter.data;
 }
 

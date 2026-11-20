@@ -9,6 +9,7 @@ export const GHOST_DOOR_RANGE = 3.4;
 export const GHOST_DOOR_COOLDOWN_MS = 8_000;
 export const GHOST_KNOCK_COOLDOWN_MS = 12_000;
 export const GHOST_KNOCK_LOUDNESS = 7;
+
 export const PING_KINDS = [
 	"here",
 	"danger",

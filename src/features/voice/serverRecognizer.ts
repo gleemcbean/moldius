@@ -14,21 +14,26 @@ class Downsampler {
 		const step = sampleRate / SPEECH_SAMPLE_RATE;
 		const output = new Int16Array(Math.ceil(samples.length / step) + 1);
 		let filled = 0;
+
 		for (const value of samples) {
 			this.sum += value;
 			this.count += 1;
 			this.progress += 1;
+
 			if (this.progress >= step) {
 				this.progress -= step;
+
 				output[filled] = Math.max(
 					-0x8000,
 					Math.min(0x7fff, Math.round(this.sum / this.count)),
 				);
+
 				filled += 1;
 				this.sum = 0;
 				this.count = 0;
 			}
 		}
+
 		return output.slice(0, filled);
 	}
 }
@@ -38,9 +43,11 @@ let subscribed = false;
 
 function dispatch(reply: SpeechReply): void {
 	const listener = listeners.get(reply.id);
+
 	if (!listener) {
 		return;
 	}
+
 	if (reply.event === "error") {
 		listener({ event: "error", recognizerId: reply.id, error: reply.error });
 	} else if (reply.event === "partialresult") {
@@ -71,19 +78,25 @@ export class ServerModel implements RecognizerBackend {
 
 	constructor(private readonly language: Language) {
 		const socket = getSocket();
+
 		if (!subscribed) {
 			subscribed = true;
+
 			socket.on("speech:reply", dispatch);
 		}
+
 		socket
 			.timeout(PREPARE_TIMEOUT_MS)
 			.emit("speech:prepare", { language }, (error, result) => {
 				if (error) {
 					this.failed = true;
+
 					return;
 				}
+
 				this.ready = result === "ready";
 				this.failed = !this.ready;
+
 				if (!this.ready) {
 					unavailable = true;
 				}
@@ -96,18 +109,22 @@ export class ServerModel implements RecognizerBackend {
 		grammar: readonly string[],
 	): string {
 		const id = crypto.randomUUID();
+
 		listeners.set(id, listener);
 		this.downsamplers.set(id, new Downsampler());
+
 		getSocket().emit("speech:start", {
 			id,
 			language: this.language,
 			grammar: [...grammar],
 		});
+
 		return id;
 	}
 
 	feed(recognizerId: string, samples: Float32Array, sampleRate: number): void {
 		const pcm = this.downsamplers.get(recognizerId)?.run(samples, sampleRate);
+
 		if (pcm) {
 			getSocket().emit("speech:audio", {
 				id: recognizerId,
@@ -131,9 +148,12 @@ const models = new Map<Language, ServerModel>();
 
 export function serverModelFor(language: Language): ServerModel {
 	let model = models.get(language);
+
 	if (!model || model.failed) {
 		model = new ServerModel(language);
+
 		models.set(language, model);
 	}
+
 	return model;
 }

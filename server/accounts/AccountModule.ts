@@ -54,33 +54,41 @@ export class AccountModule {
 		if (this.options.publicUrl) {
 			return this.options.publicUrl;
 		}
+
 		return this.options.dev ? requestOrigin : null;
 	}
 
 	async start(): Promise<void> {
 		const database = this.database;
+
 		if (!database || this.closed) {
 			return;
 		}
+
 		try {
 			const encoding = await serverEncoding(database);
+
 			if (encoding && encoding !== "UTF8") {
 				console.error(
 					`Comptes : la base PostgreSQL est encodée en ${encoding} au lieu de UTF8. Les longueurs de pseudonymes y sont comptées en octets : un nom accentué de 18 caractères est refusé. Recréez la base avec ENCODING 'UTF8'.`,
 				);
 			}
+
 			const applied = await migrate(database);
+
 			if (applied > 0) {
 				console.log(
 					`Comptes : ${applied} migration(s) PostgreSQL appliquée(s)`,
 				);
 			}
+
 			this.service = new AccountService(database, {
 				scrypt: this.options.scrypt,
 				now: this.options.now,
 				mailer: this.options.mailer ?? null,
 				onRevoke: (revocation) => this.onRevoke(revocation),
 			});
+
 			this.purgeTimer = setInterval(() => {
 				this.service?.purgeExpired().catch((error: unknown) => {
 					console.error(
@@ -89,11 +97,15 @@ export class AccountModule {
 					);
 				});
 			}, PURGE_MS);
+
 			this.purgeTimer.unref();
+
 			this.friends = new FriendStore(database, this.options.now);
 			this.admin = new AdminStore(database, this.options.now);
+
 			this.presenceTimer = setInterval(() => {
 				const live = this.liveStats?.();
+
 				if (live) {
 					this.admin?.samplePresence(live).catch((error: unknown) => {
 						console.error(
@@ -103,15 +115,19 @@ export class AccountModule {
 					});
 				}
 			}, PRESENCE_SAMPLE_MS);
+
 			this.presenceTimer.unref();
 		} catch (error) {
 			console.error(
 				`Comptes : base PostgreSQL injoignable (${describe(error)}), nouvel essai dans ${RETRY_MS / 1000} s`,
 			);
+
 			this.retryTimer = setTimeout(() => {
 				this.retryTimer = null;
+
 				void this.start();
 			}, RETRY_MS);
+
 			this.retryTimer.unref();
 		}
 	}
@@ -120,32 +136,40 @@ export class AccountModule {
 		cookieHeader: string | undefined,
 	): Promise<(AuthenticatedSession & { progress?: ProgressStats }) | null> {
 		const service = this.service;
+
 		if (!service) {
 			return null;
 		}
+
 		try {
 			const session = await service.authenticate(
 				readCookie(cookieHeader, sessionCookieName(this.cookieSecure)),
 			);
+
 			if (!session) {
 				return null;
 			}
+
 			const profile = await service.profile(session.accountId);
+
 			return {
 				...session,
 				progress: profile ? accountProgress(profile) : undefined,
 			};
 		} catch (error) {
 			console.error("Comptes : identification impossible", describe(error));
+
 			return null;
 		}
 	}
 
 	record(records: MatchRecord[]): void {
 		const service = this.service;
+
 		if (!service) {
 			return;
 		}
+
 		for (const record of records) {
 			service.recordMatch(record).catch((error: unknown) => {
 				console.error(
@@ -158,18 +182,23 @@ export class AccountModule {
 
 	async close(): Promise<void> {
 		this.closed = true;
+
 		if (this.retryTimer) {
 			clearTimeout(this.retryTimer);
 		}
+
 		if (this.purgeTimer) {
 			clearInterval(this.purgeTimer);
 		}
+
 		if (this.presenceTimer) {
 			clearInterval(this.presenceTimer);
 		}
+
 		this.service = null;
 		this.friends = null;
 		this.admin = null;
+
 		await this.database?.close();
 	}
 }
@@ -178,5 +207,6 @@ function describe(error: unknown): string {
 	if (error instanceof Error) {
 		return (error as Error & { code?: string }).code ?? error.message;
 	}
+
 	return "erreur inconnue";
 }

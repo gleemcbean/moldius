@@ -9,9 +9,11 @@ export function LevelBadge({
 	className?: string;
 }) {
 	const t = useT();
+
 	if (!level) {
 		return null;
 	}
+
 	return (
 		<span
 			className={[styles.level, className ?? ""].filter(Boolean).join(" ")}

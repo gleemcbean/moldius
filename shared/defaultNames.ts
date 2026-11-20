@@ -51,6 +51,7 @@ export function randomPlayerName(
 	const pool = DEFAULT_PLAYER_NAMES[language];
 	const options = pool.filter((name) => !exclude.includes(name));
 	const choices = options.length > 0 ? options : pool;
+
 	return (
 		choices[Math.floor(random() * choices.length)] ?? pool[0] ?? "Champignon"
 	);

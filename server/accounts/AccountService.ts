@@ -148,10 +148,12 @@ export class AccountService {
 	private readonly scrypt: ScryptParameters;
 	private readonly now: () => number;
 	private readonly mailer: Mailer | null;
+
 	private readonly mailThrottle = new Throttle(
 		MAILS_PER_ADDRESS,
 		MAIL_WINDOW_MS,
 	);
+
 	private dummyHash: Promise<string> | null = null;
 	onRevoke: (revocation: AccountRevocation) => void;
 
@@ -177,12 +179,14 @@ export class AccountService {
 	private async deliver(message: MailMessage): Promise<boolean> {
 		try {
 			await (this.mailer as Mailer).send(message);
+
 			return true;
 		} catch (error) {
 			console.error(
 				"Comptes : envoi d'e-mail impossible",
 				error instanceof Error ? error.message : error,
 			);
+
 			return false;
 		}
 	}
@@ -192,18 +196,21 @@ export class AccountService {
 			randomBytes(18).toString("base64url"),
 			this.scrypt,
 		);
+
 		return this.dummyHash;
 	}
 
 	private async issue(account: StoredAccount): Promise<IssuedSession> {
 		const token = createSessionToken();
 		const now = this.now();
+
 		await this.store.createSession(
 			hashSessionToken(token),
 			account.id,
 			new Date(now),
 			new Date(now + SESSION_IDLE_MS),
 		);
+
 		return { profile: account.profile, token };
 	}
 
@@ -223,52 +230,69 @@ export class AccountService {
 		if (!this.mailer) {
 			return fail(503, "mailUnavailable");
 		}
+
 		if (typeof input.email !== "string") {
 			return fail(400, "emailMissing", "email");
 		}
+
 		const emailError = validateEmail(input.email);
+
 		if (emailError) {
 			return invalid(400, emailError, "email");
 		}
+
 		if (typeof input.password !== "string") {
 			return fail(400, "passwordMissing", "password");
 		}
+
 		const passwordError = validatePassword(input.password, input.email);
+
 		if (passwordError) {
 			return invalid(400, passwordError, "password");
 		}
+
 		const displayName = sanitizeName(input.displayName);
+
 		if (!displayName) {
 			return fail(400, "displayNameInvalid", "displayName");
 		}
+
 		if (!isPlayerColor(input.color)) {
 			return fail(400, "colorInvalid", "color");
 		}
+
 		if (
 			input.pattern !== undefined &&
 			(!isHatPattern(input.pattern) || !hatUnlocked(input.pattern, null))
 		) {
 			return fail(400, "patternInvalid", "pattern");
 		}
+
 		if (input.language !== undefined && !isLanguage(input.language)) {
 			return fail(400, "languageInvalid", "language");
 		}
+
 		const pattern = input.pattern ?? DEFAULT_HAT_PATTERN;
 		const language = input.language ?? fallbackLanguage;
 		const email = normalizeEmail(input.email);
 		const key = emailKey(email);
 		const passwordHash = await hashPassword(input.password, this.scrypt);
+
 		const linkable =
 			discord && !(await this.store.findByDiscord(discord.id)) ? discord : null;
+
 		const accepted: ServiceResult<RegisterResponse> = {
 			ok: true,
 			value: { pending: true, email, discord: linkable?.username ?? null },
 		};
+
 		if (!this.allowMail(key)) {
 			return accepted;
 		}
+
 		const existing = await this.store.findByEmail(key);
 		let sent: boolean;
+
 		if (existing) {
 			sent = await this.deliver(
 				alreadyRegisteredEmail(
@@ -280,6 +304,7 @@ export class AccountService {
 		} else {
 			const token = createSessionToken();
 			const now = this.now();
+
 			await this.store.createPending(
 				hashSessionToken(token),
 				{
@@ -301,6 +326,7 @@ export class AccountService {
 				new Date(now),
 				new Date(now + REGISTRATION_TTL_MS),
 			);
+
 			sent = await this.deliver(
 				verificationEmail(
 					email,
@@ -310,6 +336,7 @@ export class AccountService {
 				),
 			);
 		}
+
 		return sent ? accepted : fail(502, "mailFailed");
 	}
 
@@ -317,27 +344,35 @@ export class AccountService {
 		if (typeof token !== "string" || !isSessionToken(token)) {
 			return fail(400, "linkInvalid", "token");
 		}
+
 		const now = this.now();
+
 		const pending = await this.store.takePending(
 			hashSessionToken(token),
 			new Date(now),
 		);
+
 		if (!pending) {
 			return fail(400, "registrationLinkInvalid", "token");
 		}
+
 		try {
 			let account = await this.store.create(pending, new Date(now));
+
 			await this.store.deletePendingFor(pending.emailKey);
 			await this.store.touchLogin(account.id);
+
 			if (pending.discord) {
 				account =
 					(await this.attachDiscord(account.id, pending.discord)) ?? account;
 			}
+
 			return { ok: true, value: await this.issue(account) };
 		} catch (error) {
 			if (isUniqueViolation(error)) {
 				return fail(409, "emailAlreadyConfirmed", "token");
 			}
+
 			throw error;
 		}
 	}
@@ -353,16 +388,22 @@ export class AccountService {
 			[...password].length > 128
 		) {
 			await verifyPassword("invalid", await this.dummy());
+
 			return null;
 		}
+
 		const account = await this.store.findByEmail(emailKey(email));
+
 		if (!account?.passwordHash) {
 			await verifyPassword(password, await this.dummy());
+
 			return null;
 		}
+
 		if (!(await verifyPassword(password, account.passwordHash))) {
 			return null;
 		}
+
 		if (needsRehash(account.passwordHash, this.scrypt)) {
 			await this.store.updatePasswordHash(
 				account.id,
@@ -370,7 +411,9 @@ export class AccountService {
 				false,
 			);
 		}
+
 		await this.store.touchLogin(account.id);
+
 		return this.issue(account);
 	}
 
@@ -381,21 +424,27 @@ export class AccountService {
 		if (!this.mailer) {
 			return fail(503, "mailUnavailable");
 		}
+
 		if (typeof email !== "string" || validateEmail(email)) {
 			return fail(400, "emailInvalid", "email");
 		}
+
 		const key = emailKey(email);
+
 		if (this.allowMail(key)) {
 			const account = await this.store.findByEmail(key);
+
 			if (account) {
 				const token = createSessionToken();
 				const now = this.now();
+
 				await this.store.createReset(
 					hashSessionToken(token),
 					account.id,
 					new Date(now),
 					new Date(now + RESET_TTL_MS),
 				);
+
 				void this.deliver(
 					passwordResetEmail(
 						account.profile.email ?? normalizeEmail(email),
@@ -405,6 +454,7 @@ export class AccountService {
 				);
 			}
 		}
+
 		return { ok: true, value: null };
 	}
 
@@ -416,39 +466,50 @@ export class AccountService {
 		if (typeof token !== "string" || !isSessionToken(token)) {
 			return fail(400, "linkInvalid", "token");
 		}
+
 		const tokenHash = hashSessionToken(token);
 		const now = new Date(this.now());
 		const accountId = await this.store.peekReset(tokenHash, now);
 		const account = accountId ? await this.store.findById(accountId) : null;
+
 		if (!account) {
 			return fail(400, "resetLinkInvalid", "token");
 		}
+
 		if (typeof newPassword !== "string") {
 			return fail(400, "newPasswordMissing", "newPassword");
 		}
+
 		const passwordError = validatePassword(
 			newPassword,
 			account.profile.email ?? "",
 		);
+
 		if (passwordError) {
 			return invalid(400, passwordError, "newPassword");
 		}
+
 		if ((await this.store.takeReset(tokenHash, now)) !== account.id) {
 			return fail(400, "resetLinkInvalid", "token");
 		}
+
 		await this.store.updatePasswordHash(
 			account.id,
 			await hashPassword(newPassword, this.scrypt),
 			true,
 		);
+
 		await this.store.deleteSessionsOf(account.id);
 		await this.store.deleteResetsOf(account.id);
+
 		const issued = await this.issue(account);
+
 		this.onRevoke({
 			kind: "account",
 			accountId: account.id,
 			keepTokenHash: hashSessionToken(issued.token),
 		});
+
 		if (account.profile.email) {
 			void this.deliver(
 				passwordChangedEmail(
@@ -458,6 +519,7 @@ export class AccountService {
 				),
 			);
 		}
+
 		return { ok: true, value: issued };
 	}
 
@@ -467,26 +529,35 @@ export class AccountService {
 		if (!token || !isSessionToken(token)) {
 			return null;
 		}
+
 		const tokenHash = hashSessionToken(token);
 		const now = this.now();
 		const session = await this.store.findSession(tokenHash, new Date(now));
+
 		if (!session) {
 			return null;
 		}
+
 		const absoluteEnd = session.createdAt.getTime() + SESSION_ABSOLUTE_MS;
+
 		if (absoluteEnd <= now) {
 			await this.store.deleteSession(tokenHash);
+
 			return null;
 		}
+
 		let refreshed = false;
+
 		if (now - session.lastUsedAt.getTime() >= SESSION_REFRESH_MS) {
 			await this.store.extendSession(
 				tokenHash,
 				new Date(now),
 				new Date(Math.min(absoluteEnd, now + SESSION_IDLE_MS)),
 			);
+
 			refreshed = true;
 		}
+
 		return { accountId: session.accountId, tokenHash, refreshed };
 	}
 
@@ -512,9 +583,11 @@ export class AccountService {
 		},
 	): Promise<ServiceResult<AccountProfile>> {
 		const account = await this.store.findById(accountId);
+
 		if (!account) {
 			return fail(401, "sessionExpired");
 		}
+
 		let displayName = account.profile.displayName;
 		let color = account.profile.color;
 		let pattern = account.profile.pattern;
@@ -522,19 +595,25 @@ export class AccountService {
 		let tagline = account.profile.tagline;
 		let language = account.profile.language;
 		let privateProfile = account.profile.privateProfile;
+
 		if (patch.displayName !== undefined) {
 			const cleaned = sanitizeName(patch.displayName);
+
 			if (!cleaned) {
 				return fail(400, "displayNameInvalid", "displayName");
 			}
+
 			displayName = cleaned;
 		}
+
 		if (patch.color !== undefined) {
 			if (!isPlayerColor(patch.color)) {
 				return fail(400, "colorInvalid", "color");
 			}
+
 			color = patch.color;
 		}
+
 		if (patch.pattern !== undefined) {
 			if (
 				!isHatPattern(patch.pattern) ||
@@ -542,8 +621,10 @@ export class AccountService {
 			) {
 				return fail(400, "patternInvalid", "pattern");
 			}
+
 			pattern = patch.pattern;
 		}
+
 		if (patch.lantern !== undefined) {
 			if (
 				!isLanternTint(patch.lantern) ||
@@ -551,8 +632,10 @@ export class AccountService {
 			) {
 				return fail(400, "patternInvalid", "pattern");
 			}
+
 			lantern = patch.lantern;
 		}
+
 		if (patch.tagline !== undefined) {
 			if (
 				patch.tagline !== null &&
@@ -561,20 +644,26 @@ export class AccountService {
 			) {
 				return fail(400, "patternInvalid", "pattern");
 			}
+
 			tagline = patch.tagline;
 		}
+
 		if (patch.language !== undefined) {
 			if (!isLanguage(patch.language)) {
 				return fail(400, "languageInvalid", "language");
 			}
+
 			language = patch.language;
 		}
+
 		if (patch.privateProfile !== undefined) {
 			if (typeof patch.privateProfile !== "boolean") {
 				return fail(400, "invalidRequest");
 			}
+
 			privateProfile = patch.privateProfile;
 		}
+
 		const updated = await this.store.updateProfile(accountId, {
 			displayName,
 			color,
@@ -584,6 +673,7 @@ export class AccountService {
 			language,
 			privateProfile,
 		});
+
 		return updated
 			? { ok: true, value: updated.profile }
 			: fail(401, "sessionExpired");
@@ -591,6 +681,7 @@ export class AccountService {
 
 	async acceptTerms(accountId: string): Promise<ServiceResult<AccountProfile>> {
 		const updated = await this.store.acceptTerms(accountId);
+
 		return updated
 			? { ok: true, value: updated.profile }
 			: fail(401, "sessionExpired");
@@ -603,12 +694,15 @@ export class AccountService {
 		base: string,
 	): Promise<ServiceResult<IssuedSession>> {
 		const account = await this.store.findById(accountId);
+
 		if (!account) {
 			return fail(401, "sessionExpired");
 		}
+
 		if (!account.passwordHash) {
 			return fail(400, "noPasswordYet", "currentPassword");
 		}
+
 		if (
 			typeof currentPassword !== "string" ||
 			[...currentPassword].length > 128 ||
@@ -616,32 +710,41 @@ export class AccountService {
 		) {
 			return fail(403, "currentPasswordWrong", "currentPassword");
 		}
+
 		if (typeof newPassword !== "string") {
 			return fail(400, "newPasswordMissing", "newPassword");
 		}
+
 		const passwordError = validatePassword(
 			newPassword,
 			account.profile.email ?? "",
 		);
+
 		if (passwordError) {
 			return invalid(400, passwordError, "newPassword");
 		}
+
 		if (newPassword === currentPassword) {
 			return fail(400, "newPasswordSame", "newPassword");
 		}
+
 		await this.store.updatePasswordHash(
 			accountId,
 			await hashPassword(newPassword, this.scrypt),
 			true,
 		);
+
 		await this.store.deleteSessionsOf(accountId);
 		await this.store.deleteResetsOf(accountId);
+
 		const issued = await this.issue(account);
+
 		this.onRevoke({
 			kind: "account",
 			accountId,
 			keepTokenHash: hashSessionToken(issued.token),
 		});
+
 		if (this.mailer && base && account.profile.email) {
 			void this.deliver(
 				passwordChangedEmail(
@@ -651,6 +754,7 @@ export class AccountService {
 				),
 			);
 		}
+
 		return { ok: true, value: issued };
 	}
 
@@ -660,9 +764,11 @@ export class AccountService {
 		confirmation: unknown,
 	): Promise<ServiceResult<null>> {
 		const account = await this.store.findById(accountId);
+
 		if (!account) {
 			return fail(401, "sessionExpired");
 		}
+
 		if (!account.passwordHash) {
 			if (!isDeleteConfirmation(confirmation)) {
 				return fail(403, "deleteConfirmation", "confirmation");
@@ -674,8 +780,10 @@ export class AccountService {
 		) {
 			return fail(403, "passwordWrong", "password");
 		}
+
 		await this.store.delete(accountId);
 		this.onRevoke({ kind: "account", accountId, keepTokenHash: null });
+
 		return { ok: true, value: null };
 	}
 
@@ -684,29 +792,38 @@ export class AccountService {
 		fallbackLanguage: Language = DEFAULT_LANGUAGE,
 	): Promise<{ outcome: DiscordOutcome; issued: IssuedSession | null }> {
 		const linked = await this.store.findByDiscord(discord.id);
+
 		if (linked) {
 			const refreshed =
 				(await this.store.setDiscord(linked.id, discord)) ?? linked;
+
 			await this.store.touchLogin(linked.id);
+
 			return { outcome: "connecte", issued: await this.issue(refreshed) };
 		}
+
 		const verifiedEmail =
 			discord.email && discord.emailVerified && !validateEmail(discord.email)
 				? normalizeEmail(discord.email)
 				: null;
+
 		if (
 			verifiedEmail &&
 			(await this.store.findByEmail(emailKey(verifiedEmail)))
 		) {
 			return { outcome: "email-existant", issued: null };
 		}
+
 		const language =
 			parseLanguage(discord.locale ?? undefined) ?? fallbackLanguage;
+
 		const displayName = randomPlayerName(language);
+
 		const color =
 			PLAYER_COLOR_CHOICES[
 				Math.floor(Math.random() * PLAYER_COLOR_CHOICES.length)
 			];
+
 		try {
 			const account = await this.store.createFromDiscord(
 				discord,
@@ -718,12 +835,15 @@ export class AccountService {
 				language,
 				new Date(this.now()),
 			);
+
 			await this.store.touchLogin(account.id);
+
 			return { outcome: "cree", issued: await this.issue(account) };
 		} catch (error) {
 			if (isUniqueViolation(error)) {
 				return { outcome: "deja-lie", issued: null };
 			}
+
 			throw error;
 		}
 	}
@@ -735,6 +855,7 @@ export class AccountService {
 		if (await this.store.findByDiscord(discord.id)) {
 			return null;
 		}
+
 		try {
 			return await this.store.setDiscord(accountId, {
 				id: discord.id,
@@ -749,6 +870,7 @@ export class AccountService {
 			if (isUniqueViolation(error)) {
 				return null;
 			}
+
 			throw error;
 		}
 	}
@@ -758,9 +880,11 @@ export class AccountService {
 		discord: DiscordProfile,
 	): Promise<DiscordOutcome> {
 		const linked = await this.store.findByDiscord(discord.id);
+
 		if (linked && linked.id !== accountId) {
 			return "deja-lie";
 		}
+
 		try {
 			return (await this.store.setDiscord(accountId, discord))
 				? "lie"
@@ -769,6 +893,7 @@ export class AccountService {
 			if (isUniqueViolation(error)) {
 				return "deja-lie";
 			}
+
 			throw error;
 		}
 	}
@@ -777,16 +902,20 @@ export class AccountService {
 		accountId: string,
 	): Promise<ServiceResult<AccountProfile>> {
 		const account = await this.store.findById(accountId);
+
 		if (!account) {
 			return fail(401, "sessionExpired");
 		}
+
 		if (!account.passwordHash || !account.profile.email) {
 			return fail(
 				409,
 				account.profile.email ? "unlinkNeedsPassword" : "unlinkDiscordOnly",
 			);
 		}
+
 		const updated = await this.store.setDiscord(accountId, null);
+
 		return updated
 			? { ok: true, value: updated.profile }
 			: fail(401, "sessionExpired");
@@ -803,6 +932,7 @@ export class AccountService {
 		if (typeof matchId !== "string" || !/^m_[\w-]{1,32}$/.test(matchId)) {
 			return Promise.resolve(null);
 		}
+
 		return this.store.historyDetail(accountId, matchId);
 	}
 
@@ -818,6 +948,7 @@ export class AccountService {
 		) {
 			return Promise.resolve(null);
 		}
+
 		return this.store.publicProfile(profileId, PUBLIC_RECENT_LIMIT, viewerId);
 	}
 

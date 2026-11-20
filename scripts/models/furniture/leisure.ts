@@ -36,11 +36,13 @@ const FELT: MaterialOptions = {
 	color: 0x3f8a4a,
 	roughness: 1,
 };
+
 const VELVET: MaterialOptions = {
 	wave: "cloth",
 	texture: "velvetRed",
 	roughness: 1,
 };
+
 const BALL_COLORS = [0xf2ecd8, 0xd8442f, 0xe0b326, 0x2a3a8a, 0x111111];
 
 function tilted(
@@ -73,6 +75,7 @@ export const billiardTable: FurnitureBuilder = ({ item, rng }) => {
 	const wood = pickWood(rng);
 	const { width, depth, height } = item;
 	const parts: Part[] = [];
+
 	for (const sx of [-1, 0, 1]) {
 		for (const sz of [-1, 1]) {
 			parts.push(
@@ -93,6 +96,7 @@ export const billiardTable: FurnitureBuilder = ({ item, rng }) => {
 			);
 		}
 	}
+
 	parts.push(
 		box(wood, width - 0.1, 0.22, depth - 0.1, 0, height - 0.36, 0, 0, 0.02),
 		box(FELT, width - 0.2, 0.05, depth - 0.2, 0, height - 0.15, 0),
@@ -101,6 +105,7 @@ export const billiardTable: FurnitureBuilder = ({ item, rng }) => {
 		box(wood, 0.11, 0.1, depth - 0.2, width / 2 - 0.055, height - 0.1, 0),
 		box(wood, 0.11, 0.1, depth - 0.2, -width / 2 + 0.055, height - 0.1, 0),
 	);
+
 	for (const sx of [-1, 0, 1]) {
 		for (const sz of [-1, 1]) {
 			parts.push(
@@ -117,6 +122,7 @@ export const billiardTable: FurnitureBuilder = ({ item, rng }) => {
 			);
 		}
 	}
+
 	for (let index = 0; index < 7; index += 1) {
 		parts.push(
 			sphere(
@@ -132,6 +138,7 @@ export const billiardTable: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	parts.push(
 		cylinderBetween(
 			{ texture: "woodLight", roughness: 0.6 },
@@ -141,12 +148,14 @@ export const billiardTable: FurnitureBuilder = ({ item, rng }) => {
 			6,
 		),
 	);
+
 	return parts;
 };
 
 export const chessTable: FurnitureBuilder = ({ item, rng }) => {
 	const wood = pickWood(rng);
 	const { width, height } = item;
+
 	const parts: Part[] = [
 		lathe(
 			wood,
@@ -165,10 +174,12 @@ export const chessTable: FurnitureBuilder = ({ item, rng }) => {
 		),
 		box(wood, width, 0.05, width, 0, height - 0.05, 0, 0, 0.015),
 	];
+
 	const board = width * 0.72;
 	const cell = board / 8;
 	const light: MaterialOptions = { texture: "woodLight", roughness: 0.5 };
 	const dark: MaterialOptions = { texture: "woodDark", roughness: 0.5 };
+
 	for (let row = 0; row < 8; row += 1) {
 		for (let column = 0; column < 8; column += 1) {
 			parts.push(
@@ -184,9 +195,11 @@ export const chessTable: FurnitureBuilder = ({ item, rng }) => {
 			);
 		}
 	}
+
 	for (let index = 0; index < 10; index += 1) {
 		const white = index % 2 === 0;
 		const tall = index < 2;
+
 		parts.push(
 			lathe(
 				{ color: white ? 0xe8e0c8 : 0x1a1410, roughness: 0.4 },
@@ -204,6 +217,7 @@ export const chessTable: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };
 
@@ -212,6 +226,7 @@ export const gramophone: FurnitureBuilder = ({ item, rng }) => {
 	const { width, height } = item;
 	const cabinet = height * 0.62;
 	const body = width * 0.78;
+
 	const platter: PartAnimation = {
 		kind: "spin",
 		pivot: [0, cabinet, 0],
@@ -220,11 +235,14 @@ export const gramophone: FurnitureBuilder = ({ item, rng }) => {
 		amplitude: 0,
 		phase: 0,
 	};
+
 	const horn: MaterialOptions = rng.chance(0.5)
 		? BRASS
 		: { texture: "copper", roughness: 0.4, metalness: 0.75 };
+
 	const record: MaterialOptions = { color: 0x0e0d0c, roughness: 0.28 };
 	const pillar = new THREE.Vector3(body * 0.32, cabinet, -body * 0.3);
+
 	const parts: Part[] = [
 		box(wood, body + 0.04, 0.05, body + 0.04, 0, 0, 0, 0, 0.012),
 		box(wood, body, cabinet - 0.1, body, 0, 0.05, 0),
@@ -364,6 +382,7 @@ export const gramophone: FurnitureBuilder = ({ item, rng }) => {
 			10,
 		),
 	];
+
 	const bell = pleated(
 		horn,
 		hollowProfile(
@@ -384,6 +403,7 @@ export const gramophone: FurnitureBuilder = ({ item, rng }) => {
 		0,
 		0,
 	);
+
 	bell.geometry.applyMatrix4(
 		new THREE.Matrix4().compose(
 			new THREE.Vector3(-width * 0.05, cabinet + 0.25, -width * 0.12),
@@ -393,23 +413,29 @@ export const gramophone: FurnitureBuilder = ({ item, rng }) => {
 			new THREE.Vector3(1, 1, 1),
 		),
 	);
+
 	parts.push(bell);
+
 	return parts;
 };
 
 export const weaponRack: FurnitureBuilder = ({ item, rng }) => {
 	const wood = pickWood(rng);
 	const { width, height } = item;
+
 	const parts: Part[] = [
 		box(wood, width, height * 0.9, 0.05, 0, 0.05, -0.12, 0, 0.01),
 		box(wood, width + 0.06, 0.08, 0.3, 0, 0, 0, 0, 0.01),
 		box(wood, width, 0.05, 0.12, 0, height * 0.62, -0.05),
 		box(wood, width, 0.05, 0.12, 0, height * 0.25, -0.05),
 	];
+
 	const slots = Math.max(3, Math.round(width / 0.22));
+
 	for (let index = 0; index < slots; index += 1) {
 		const x = -width / 2 + (index + 0.5) * (width / slots);
 		const spear = index % 3 === 1;
+
 		if (spear) {
 			parts.push(
 				cylinderBetween(
@@ -421,9 +447,12 @@ export const weaponRack: FurnitureBuilder = ({ item, rng }) => {
 				),
 				boxAt(IRON, 0.05, 0.22, 0.01, x, height - 0.15, -0.035, 0, 0, 0),
 			);
+
 			continue;
 		}
+
 		const tip = height * (0.72 + rng.next() * 0.12);
+
 		parts.push(
 			boxAt(IRON, 0.035, tip - 0.32, 0.008, x, 0.32 + (tip - 0.32) / 2, 0),
 			boxAt(BRASS, 0.16, 0.025, 0.03, x, 0.3, 0),
@@ -439,6 +468,7 @@ export const weaponRack: FurnitureBuilder = ({ item, rng }) => {
 			sphere(BRASS, 0.02, x, 0.1, 0, 1, 1, 1, 8),
 		);
 	}
+
 	return parts;
 };
 
@@ -447,14 +477,17 @@ export const shieldDisplay: FurnitureBuilder = ({ item }) => {
 	const radius = Math.min(width, height) * 0.32;
 	const center = height / 2;
 	const parts: Part[] = [];
+
 	for (const side of [-1, 1]) {
 		const from = new THREE.Vector3(side * width * 0.42, 0.05, 0.03);
 		const to = new THREE.Vector3(-side * width * 0.42, height - 0.05, 0.03);
+
 		parts.push(
 			cylinderBetween(IRON, from, to, 0.012, 6),
 			sphere(BRASS, 0.025, from.x, from.y, from.z, 1, 1, 1, 8),
 		);
 	}
+
 	parts.push(
 		part(
 			placed(
@@ -470,6 +503,7 @@ export const shieldDisplay: FurnitureBuilder = ({ item }) => {
 		torus(IRON, radius, 0.018, 0, center, 0.09, 0, 0),
 		sphere(BRASS, radius * 0.25, 0, center, 0.1, 1, 1, 0.5, 12),
 	);
+
 	return parts;
 };
 
@@ -480,6 +514,7 @@ export const statue: FurnitureBuilder = ({ item, rng }) => {
 	const s = (height - plinth) / 1.5;
 	const at = (value: number) => plinth + value * s;
 	const die = plinth - 0.3;
+
 	const parts: Part[] = [
 		box(material, width, 0.1, width, 0, 0, 0, 0, 0.015),
 		box(material, width * 0.93, 0.06, width * 0.93, 0, 0.1, 0, 0, 0.025),
@@ -646,6 +681,7 @@ export const statue: FurnitureBuilder = ({ item, rng }) => {
 			Math.PI * 1.4,
 		),
 	];
+
 	return parts;
 };
 
@@ -654,18 +690,23 @@ export const theaterSeats: FurnitureBuilder = ({ item, rng }) => {
 	const { width, depth } = item;
 	const count = Math.max(2, Math.round(width / 0.6));
 	const seat = width / count;
+
 	const parts: Part[] = [
 		box(IRON, width - 0.1, 0.04, 0.06, 0, 0.02, -depth * 0.1),
 	];
+
 	for (let index = 0; index <= count; index += 1) {
 		const x = -width / 2 + index * seat;
+
 		parts.push(
 			box(wood, 0.06, 0.62, depth * 0.8, x, 0, -depth * 0.05),
 			box(wood, 0.08, 0.04, depth * 0.7, x, 0.62, 0),
 		);
 	}
+
 	for (let index = 0; index < count; index += 1) {
 		const x = -width / 2 + (index + 0.5) * seat;
+
 		parts.push(
 			box(VELVET, seat - 0.1, 0.12, depth * 0.5, x, 0.36, 0.06, 0, 0.03),
 			boxAt(
@@ -683,11 +724,13 @@ export const theaterSeats: FurnitureBuilder = ({ item, rng }) => {
 			boxAt(wood, seat - 0.06, 0.66, 0.03, x, 0.78, -depth / 2 + 0.05, -0.12),
 		);
 	}
+
 	return parts;
 };
 
 export const stageCurtain: FurnitureBuilder = ({ item, rng }) => {
 	const { width, height, depth } = item;
+
 	const parts: Part[] = [
 		cylinderBetween(
 			BRASS,
@@ -707,15 +750,20 @@ export const stageCurtain: FurnitureBuilder = ({ item, rng }) => {
 			-depth / 2 + 0.02,
 		),
 	];
+
 	const gap = 0.35 + rng.next() * 0.35;
 	const folds = Math.round(width / 0.16);
+
 	for (let index = 0; index < folds; index += 1) {
 		const t = (index + 0.5) / folds;
 		const x = -width / 2 + t * width;
+
 		if (Math.abs(x) < gap) {
 			continue;
 		}
+
 		const gather = 1 - Math.abs(x) / (width / 2);
+
 		parts.push(
 			cylinder(
 				VELVET,
@@ -729,6 +777,7 @@ export const stageCurtain: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	for (const side of [-1, 1]) {
 		parts.push(
 			torus(
@@ -741,6 +790,7 @@ export const stageCurtain: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };
 
@@ -749,6 +799,7 @@ export const spinningWheel: FurnitureBuilder = ({ item, rng }) => {
 	const { width, height, depth } = item;
 	const radius = Math.min(height * 0.32, 0.32);
 	const hub = new THREE.Vector3(width * 0.12, height - radius - 0.06, 0);
+
 	const wheelSpin: PartAnimation = {
 		kind: "spin",
 		pivot: [hub.x, hub.y, hub.z],
@@ -757,6 +808,7 @@ export const spinningWheel: FurnitureBuilder = ({ item, rng }) => {
 		amplitude: 0,
 		phase: rng.next() * Math.PI * 2,
 	};
+
 	const parts: Part[] = [
 		box(wood, width * 0.85, 0.06, depth * 0.45, 0, 0.32, 0, 0, 0.01),
 		{
@@ -764,6 +816,7 @@ export const spinningWheel: FurnitureBuilder = ({ item, rng }) => {
 			animation: wheelSpin,
 		},
 	];
+
 	for (const [x, z] of [
 		[-width * 0.36, -depth * 0.18],
 		[-width * 0.36, depth * 0.18],
@@ -779,8 +832,10 @@ export const spinningWheel: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	for (let index = 0; index < 8; index += 1) {
 		const angle = (index / 8) * Math.PI * 2;
+
 		parts.push({
 			...cylinderBetween(
 				wood,
@@ -796,6 +851,7 @@ export const spinningWheel: FurnitureBuilder = ({ item, rng }) => {
 			animation: wheelSpin,
 		});
 	}
+
 	for (const z of [-0.06, 0.06]) {
 		parts.push(
 			cylinderBetween(
@@ -807,6 +863,7 @@ export const spinningWheel: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	parts.push(
 		cylinderBetween(
 			wood,
@@ -827,6 +884,7 @@ export const spinningWheel: FurnitureBuilder = ({ item, rng }) => {
 			10,
 		),
 	);
+
 	return parts;
 };
 
@@ -837,6 +895,7 @@ const COAT_CLOTHS = [
 	"velvetGreen",
 	"velvetPurple",
 ] as const;
+
 const COAT_TINTS = [0x3a3a4a, 0x5a4232, 0x2e3a2a, 0x6a5a48, 0x4a2a2a];
 
 function hookPath(
@@ -849,6 +908,7 @@ function hookPath(
 		y + lift,
 		Math.sin(angle) * distance,
 	];
+
 	return [
 		along(0.02, 0),
 		along(reach * 0.55, 0.012),
@@ -861,6 +921,7 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 	const wood = pickWood(rng);
 	const { height } = item;
 	const top = height - 0.06;
+
 	const parts: Part[] = [
 		lathe(
 			wood,
@@ -889,13 +950,16 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 			20,
 		),
 	];
+
 	for (let index = 0; index < 4; index += 1) {
 		const angle = (index / 4) * Math.PI * 2 + Math.PI / 4;
+
 		const out = (distance: number, lift: number): [number, number, number] => [
 			Math.cos(angle) * distance,
 			lift,
 			Math.sin(angle) * distance,
 		];
+
 		parts.push(
 			bentTube(
 				wood,
@@ -907,7 +971,9 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 			sphere(wood, 0.024, ...out(0.275, 0.022), 1, 0.8, 1, 10),
 		);
 	}
+
 	const hooks: { angle: number; y: number; tip: THREE.Vector3 }[] = [];
+
 	for (const [tier, y, reach, count] of [
 		[0, top - 0.09, 0.16, 4],
 		[1, top - 0.3, 0.13, 4],
@@ -915,6 +981,7 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 		for (let index = 0; index < count; index += 1) {
 			const angle = (index / count) * Math.PI * 2 + tier * (Math.PI / count);
 			const path = hookPath(angle, y, reach);
+
 			parts.push(
 				bentTube(
 					tier === 0 ? BRASS : wood,
@@ -933,26 +1000,34 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 					8,
 				),
 			);
+
 			hooks.push({ angle, y, tip: new THREE.Vector3(...path[3]) });
 		}
 	}
+
 	const lower = hooks.filter((hook) => hook.y < top - 0.2);
 	const upper = hooks.filter((hook) => hook.y > top - 0.2);
+
 	if (rng.chance(0.8)) {
 		const hook = rng.pick(lower);
+
 		const cloth: MaterialOptions = {
 			texture: rng.pick(COAT_CLOTHS),
 			color: rng.pick(COAT_TINTS),
 			roughness: 1,
 		};
+
 		const length = rng.range(0.85, 1.05);
 		const radial = hook.angle;
+
 		const center = new THREE.Vector3(
 			Math.cos(radial) * 0.19,
 			hook.tip.y + 0.03,
 			Math.sin(radial) * 0.19,
 		);
+
 		const turn = -radial + Math.PI / 2;
+
 		parts.push(
 			pleated(
 				cloth,
@@ -989,16 +1064,19 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 				turn,
 			),
 		);
+
 		for (const side of [-1, 1]) {
 			const sideways = new THREE.Vector3(
 				Math.cos(radial + Math.PI / 2),
 				0,
 				Math.sin(radial + Math.PI / 2),
 			).multiplyScalar(side * 0.155);
+
 			const shoulder = center
 				.clone()
 				.add(sideways)
 				.add(new THREE.Vector3(0, -0.13, 0));
+
 			parts.push(
 				bentTube(
 					cloth,
@@ -1022,22 +1100,27 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 			);
 		}
 	}
+
 	if (rng.chance(0.6)) {
 		const hook = rng.pick(upper);
+
 		const felt: MaterialOptions = {
 			texture: "velvetPurple",
 			color: rng.pick([0x2e2a2e, 0x3a2e24, 0x24262e]),
 			roughness: 1,
 		};
+
 		const lean = new THREE.Vector3(
 			Math.cos(hook.angle),
 			0,
 			Math.sin(hook.angle),
 		);
+
 		const base = hook.tip
 			.clone()
 			.add(lean.clone().multiplyScalar(0.03))
 			.add(new THREE.Vector3(0, -0.05, 0));
+
 		const hat = lathe(
 			felt,
 			[
@@ -1057,8 +1140,10 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 			0,
 			24,
 		);
+
 		placed(hat.geometry, 0, 0, 0, -hook.angle, 0, -0.35);
 		placed(hat.geometry, base.x, base.y, base.z);
+
 		const band = torus(
 			{ texture: "velvetRed", color: 0x5a2020, roughness: 1 },
 			0.0735,
@@ -1067,22 +1152,27 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 			0.035,
 			0,
 		);
+
 		placed(band.geometry, 0, 0, 0, -hook.angle, 0, -0.35);
 		placed(band.geometry, base.x, base.y, base.z);
 		parts.push(hat, band);
 	}
+
 	if (rng.chance(0.45)) {
 		const angle = rng.next() * Math.PI * 2;
+
 		const foot = new THREE.Vector3(
 			Math.cos(angle) * 0.2,
 			0,
 			Math.sin(angle) * 0.2,
 		);
+
 		const shade: MaterialOptions = {
 			texture: "velvetBlue",
 			color: 0x1c1c22,
 			roughness: 0.9,
 		};
+
 		const umbrella = pleated(
 			shade,
 			[
@@ -1098,11 +1188,14 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 			0,
 			0,
 		);
+
 		const tilt = new THREE.Matrix4().makeRotationAxis(
 			new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle)),
 			-0.16,
 		);
+
 		const shaft = cylinder(DARK, 0.006, 0.006, 0.9, 0, 0, 0, 6);
+
 		const handle = bentTube(
 			wood,
 			[
@@ -1115,12 +1208,14 @@ export const coatRack: FurnitureBuilder = ({ item, rng }) => {
 			10,
 			6,
 		);
+
 		for (const piece of [umbrella, shaft, handle]) {
 			piece.geometry.applyMatrix4(tilt);
 			piece.geometry.translate(foot.x, foot.y, foot.z);
 			parts.push(piece);
 		}
 	}
+
 	return parts;
 };
 
@@ -1134,8 +1229,10 @@ function transformedTorus(
 	rotationY: number,
 ): Part {
 	const ring = torus(material, radius, tube, 0, 0, 0);
+
 	ring.geometry.scale(1, 1, 0.55);
 	placed(ring.geometry, x, y, z, rotationY);
+
 	return ring;
 }
 
@@ -1144,6 +1241,7 @@ export const barrelStack: FurnitureBuilder = ({ item, rng }) => {
 	const { width, height, depth } = item;
 	const radius = Math.min(height / 3.4, 0.36);
 	const length = depth - 0.1;
+
 	const profile: [number, number][] = [
 		[radius * 0.86, 0],
 		[radius, length * 0.25],
@@ -1151,21 +1249,27 @@ export const barrelStack: FurnitureBuilder = ({ item, rng }) => {
 		[radius, length * 0.75],
 		[radius * 0.86, length],
 	];
+
 	const parts: Part[] = [box(wood, width, 0.12, depth * 0.7, 0, 0, 0)];
 	const bottomCount = Math.max(2, Math.floor(width / (radius * 2.05)));
+
 	const rows: [number, number][] = [
 		[bottomCount, 0.12 + radius],
 		[bottomCount - 1, 0.12 + radius + radius * 1.73],
 	];
+
 	if (bottomCount >= 3) {
 		rows.push([bottomCount - 2, 0.12 + radius + radius * 3.46]);
 	}
+
 	for (const [count, y] of rows) {
 		if (count <= 0 || y + radius > height + 0.05) {
 			continue;
 		}
+
 		for (let index = 0; index < count; index += 1) {
 			const x = (index - (count - 1) / 2) * radius * 2.02;
+
 			parts.push(
 				tilted(
 					{ ...wood, color: 0xb89a7a },
@@ -1199,6 +1303,7 @@ export const barrelStack: FurnitureBuilder = ({ item, rng }) => {
 			);
 		}
 	}
+
 	return parts;
 };
 
@@ -1208,15 +1313,18 @@ export const standingCoffin: FurnitureBuilder = ({ item, rng }) => {
 		color: 0x7a6a5a,
 		roughness: 0.85,
 	};
+
 	const lining: MaterialOptions = {
 		texture: "velvetRed",
 		color: 0x7a3a3a,
 		roughness: 1,
 	};
+
 	const { width, height, depth } = item;
 	const panel = 0.04;
 	const shoulder = height * 0.72;
 	const foot = width * 0.62;
+
 	const parts: Part[] = [
 		box(
 			lining,
@@ -1230,14 +1338,17 @@ export const standingCoffin: FurnitureBuilder = ({ item, rng }) => {
 		box(wood, width, panel, depth, 0, 0, 0),
 		box(wood, width * 0.7, panel, depth, 0, height - panel, 0),
 	];
+
 	const sides: [number, number, number, number][] = [
 		[foot / 2, 0, width / 2, shoulder],
 		[width / 2, shoulder, width * 0.35, height],
 	];
+
 	for (const side of [-1, 1]) {
 		for (const [x1, y1, x2, y2] of sides) {
 			const length = Math.hypot(x2 - x1, y2 - y1);
 			const angle = Math.atan2(x2 - x1, y2 - y1);
+
 			parts.push(
 				boxAt(
 					wood,
@@ -1254,12 +1365,14 @@ export const standingCoffin: FurnitureBuilder = ({ item, rng }) => {
 			);
 		}
 	}
+
 	const open = 0.5 + rng.next() * 0.15;
 	const hingeX = -width / 2;
 	const front = depth / 2 + 0.01;
 	const lidWidth = width - 0.04;
 	const centerX = hingeX + Math.cos(open) * (lidWidth / 2);
 	const centerZ = front + Math.sin(open) * (lidWidth / 2);
+
 	parts.push(
 		boxAt(
 			wood,
@@ -1295,5 +1408,6 @@ export const standingCoffin: FurnitureBuilder = ({ item, rng }) => {
 			-open,
 		),
 	);
+
 	return parts;
 };

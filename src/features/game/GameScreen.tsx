@@ -10,13 +10,17 @@ export function GameScreen() {
 	const host = useRef<HTMLDivElement>(null);
 	const session = currentSession();
 	const replaying = useStore(replayStore, (state) => state.active);
+
 	useEffect(() => {
 		if (!session || !host.current) {
 			return;
 		}
+
 		session.attach(host.current);
+
 		return () => session.detach();
 	}, [session]);
+
 	return (
 		<main className={styles.game}>
 			<div ref={host} className={styles.viewport} />

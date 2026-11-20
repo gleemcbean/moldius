@@ -27,6 +27,7 @@ import { TextureLibrary } from "../world/textures/TextureLibrary";
 import { preloadSpecialTextures } from "../world/textures/textureFiles";
 
 const STRIDE_SPEED = 4.6;
+
 const HOME_MODELS = [
 	"world/door",
 	"world/door_3panel",
@@ -36,6 +37,7 @@ const HOME_MODELS = [
 	"tools/walkie",
 	"anomalies/veilleur",
 ];
+
 const DEFAULT_LANTERN_LIGHT = 0xffb060;
 
 function lanternTint(tint: LanternTint): number | null {
@@ -46,10 +48,12 @@ export class HomeScene {
 	private readonly renderer: THREE.WebGLRenderer;
 	private readonly scene = new THREE.Scene();
 	private readonly camera = new THREE.PerspectiveCamera(60, 1, 0.05, 60);
+
 	private readonly textures = new TextureLibrary(
 		2,
 		surfaceQuality(settingsStore.get().quality),
 	);
+
 	private readonly materials = new MaterialLibrary(this.textures);
 	private readonly kit = new ModelKit(this.materials);
 	private disposed = false;
@@ -60,12 +64,14 @@ export class HomeScene {
 	private readonly motes = new AmbientMotes();
 	private mushroom: MushroomModel;
 	private readonly hunter: ReverbereModel;
+
 	private readonly lantern = new THREE.PointLight(
 		DEFAULT_LANTERN_LIGHT,
 		9,
 		11,
 		2,
 	);
+
 	private readonly hunterEye = new THREE.PointLight(0xff5a3a, 0.8, 2.2, 2);
 	private frame = 0;
 	private time = 0;
@@ -81,6 +87,7 @@ export class HomeScene {
 	): Promise<HomeScene> {
 		const course = randomChaseCourse();
 		const visible = new Set(course.visibleRooms);
+
 		await Promise.all([
 			modelLibrary.require([
 				...HOME_MODELS,
@@ -90,6 +97,7 @@ export class HomeScene {
 			]),
 			preloadSpecialTextures(),
 		]);
+
 		return new HomeScene(host, course, color, pattern, tint);
 	}
 
@@ -104,35 +112,51 @@ export class HomeScene {
 			antialias: false,
 			powerPreference: "low-power",
 		});
+
 		const settings = settingsStore.get();
+
 		this.renderer.setPixelRatio(
 			renderPixelRatio(settings.quality, settings.renderScale),
 		);
+
 		this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 		this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
 		host.appendChild(this.renderer.domElement);
+
 		this.post = new PostEffects(this.renderer, 0);
 		this.scene.background = new THREE.Color(0x140c07);
 		this.scene.fog = new THREE.FogExp2(0x140c07, 0.045);
+
 		this.scene.add(new THREE.HemisphereLight(0xa4907c, 0x44301e, 2.1));
 		this.scene.add(this.motes.points);
 
 		this.director = new ChaseDirector(course);
+
 		const { layout } = course;
 		const builder = new ManorMeshBuilder(layout, this.materials);
+
 		for (const id of course.visibleRooms) {
-			this.scene.add(builder.buildRoom(layout.rooms[id]).group);
+			const built = builder.buildRoom(layout.rooms[id]);
+
+			this.scene.add(built.group, built.doorways);
 		}
+
 		this.doors = new DoorViews(layout, this.kit);
+
 		const route = new Set(course.loop.openings);
+
 		for (const door of this.doors.doors.values()) {
 			if (route.has(door.opening.id)) {
 				this.doors.setOpen(door.doorId, true);
 			}
 		}
+
 		this.doors.update(10);
 		this.scene.add(this.doors.group);
+
 		const visible = new Set(course.visibleRooms);
+
 		this.lights = new LightPool(
 			this.scene,
 			6,
@@ -146,17 +170,23 @@ export class HomeScene {
 			pattern,
 			lanternTint(tint),
 		);
+
 		this.lantern.color.setHex(lanternTint(tint) ?? DEFAULT_LANTERN_LIGHT);
+
 		this.hunter = new ReverbereModel(this.kit);
+
 		this.scene.add(
 			this.mushroom.root,
 			this.hunter.root,
 			this.lantern,
 			this.hunterEye,
 		);
+
 		this.observer = new ResizeObserver(() => this.resize());
+
 		this.observer.observe(host);
 		this.resize();
+
 		void this.textures.settled().then(() => {
 			if (!this.disposed) {
 				this.last = performance.now();
@@ -173,20 +203,26 @@ export class HomeScene {
 		) {
 			return;
 		}
+
 		this.color = color;
 		this.pattern = pattern;
 		this.tint = tint;
+
 		this.lantern.color.setHex(lanternTint(tint) ?? DEFAULT_LANTERN_LIGHT);
+
 		const position = this.mushroom.root.position.clone();
 		const rotation = this.mushroom.root.rotation.clone();
+
 		this.scene.remove(this.mushroom.root);
 		this.mushroom.dispose();
+
 		this.mushroom = new MushroomModel(
 			this.kit,
 			color,
 			pattern,
 			lanternTint(tint),
 		);
+
 		this.mushroom.root.position.copy(position);
 		this.mushroom.root.rotation.copy(rotation);
 		this.scene.add(this.mushroom.root);
@@ -195,23 +231,30 @@ export class HomeScene {
 	private resize(): void {
 		const width = this.host.clientWidth || window.innerWidth;
 		const height = this.host.clientHeight || window.innerHeight;
+
 		this.renderer.setSize(width, height, false);
+
 		this.renderer.domElement.style.width = "100%";
 		this.renderer.domElement.style.height = "100%";
 		this.camera.aspect = width / Math.max(1, height);
+
 		if (width > height * 1.1) {
 			this.camera.setViewOffset(width * 1.38, height, 0, 0, width, height);
 		} else {
 			this.camera.clearViewOffset();
 		}
+
 		this.camera.updateProjectionMatrix();
 	}
 
 	private readonly loop = (now: number) => {
 		this.frame = requestAnimationFrame(this.loop);
+
 		const dt = Math.min(0.05, (now - this.last) / 1000);
+
 		this.last = now;
 		this.time += dt;
+
 		const shot = this.director.update(dt);
 
 		this.mushroom.root.position.set(
@@ -219,8 +262,10 @@ export class HomeScene {
 			shot.runner.y,
 			shot.runner.z,
 		);
+
 		this.mushroom.root.rotation.y =
 			modelYaw(shot.runnerYaw) + Math.sin(this.time * 3.4) * 0.1;
+
 		this.mushroom.update(dt, {
 			speed: STRIDE_SPEED,
 			crouch: 0,
@@ -231,8 +276,11 @@ export class HomeScene {
 			dead: false,
 			talking: 0,
 		});
+
 		this.hunter.root.position.set(shot.hunter.x, shot.hunter.y, shot.hunter.z);
+
 		this.hunter.root.rotation.y = modelYaw(shot.hunterYaw);
+
 		this.hunter.update({
 			state: shot.lunge > 0 ? "windup" : "chase",
 			stateMs: shot.lunge * 600,
@@ -244,15 +292,20 @@ export class HomeScene {
 
 		this.mushroom.root.updateMatrixWorld(true);
 		this.lantern.position.copy(this.mushroom.lanternLightPosition);
+
 		this.lantern.intensity =
 			8.5 + Math.sin(this.time * 17) * 0.7 + Math.sin(this.time * 29) * 0.4;
+
 		const glow = this.hunter.glow;
+
 		if (glow) {
 			this.hunterEye.position
 				.copy(glow.offset)
 				.applyQuaternion(this.hunter.root.quaternion)
 				.add(this.hunter.root.position);
+
 			this.hunterEye.color.setHex(glow.color);
+
 			this.hunterEye.intensity = glow.intensity;
 			this.hunterEye.distance = glow.radius;
 		}
@@ -262,17 +315,22 @@ export class HomeScene {
 			shot.camera.y + Math.sin(this.time * 7) * 0.01,
 			shot.camera.z,
 		);
+
 		this.camera.lookAt(shot.target.x, shot.target.y, shot.target.z);
 
 		this.renderer.toneMappingExposure = Math.min(1, this.time / 0.8) * 1.05;
+
 		this.doors.update(dt);
 		this.lights.update(this.camera.position, [], dt);
 		this.motes.update(dt, this.camera.position);
+
 		const settings = settingsStore.get();
 		const ratio = renderPixelRatio(settings.quality, settings.renderScale);
+
 		if (this.renderer.getPixelRatio() !== ratio) {
 			this.renderer.setPixelRatio(ratio);
 		}
+
 		this.post.render(
 			{
 				dt,
@@ -282,24 +340,30 @@ export class HomeScene {
 			},
 			() => this.renderer.render(this.scene, this.camera),
 		);
+
 		if (this.onFirstFrame) {
 			const done = this.onFirstFrame;
+
 			this.onFirstFrame = null;
+
 			done();
 		}
 	};
 
 	dispose(): void {
 		this.disposed = true;
+
 		cancelAnimationFrame(this.frame);
 		this.observer.disconnect();
 		this.lights.dispose(this.scene);
 		this.motes.dispose();
+
 		this.scene.traverse((object) => {
 			if (object instanceof THREE.Mesh) {
 				object.geometry.dispose();
 			}
 		});
+
 		this.materials.dispose();
 		this.textures.dispose();
 		this.post.dispose();

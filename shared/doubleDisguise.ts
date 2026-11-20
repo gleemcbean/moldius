@@ -42,10 +42,12 @@ export class PlayerMarkerBlender {
 		const own = realIsDead
 			? []
 			: disguises.filter((body) => body.playerId === playerId);
+
 		const bodyOf = (source: number | null): MarkerBody | null =>
 			source === null
 				? real
 				: (own.find((body) => body.anomalyId === source) ?? null);
+
 		const track = this.tracks.get(playerId) ?? {
 			source: null,
 			shownX: real.x,
@@ -54,17 +56,23 @@ export class PlayerMarkerBlender {
 			fromZ: real.z,
 			slideStart: -SLIDE_MS,
 		};
+
 		this.tracks.set(playerId, track);
+
 		let nearest: number | null = null;
 		let nearestDistance = distance(real, viewer);
+
 		for (const body of own) {
 			const away = distance(body, viewer);
+
 			if (away < nearestDistance) {
 				nearest = body.anomalyId;
 				nearestDistance = away;
 			}
 		}
+
 		const current = bodyOf(track.source);
+
 		if (
 			nearest !== track.source &&
 			(!current || nearestDistance + SWITCH_MARGIN < distance(current, viewer))
@@ -74,11 +82,14 @@ export class PlayerMarkerBlender {
 			track.fromZ = track.shownZ;
 			track.slideStart = now;
 		}
+
 		const body = bodyOf(track.source) ?? real;
 		const t = Math.min(1, (now - track.slideStart) / SLIDE_MS);
 		const eased = t * t * (3 - 2 * t);
+
 		track.shownX = track.fromX + (body.x - track.fromX) * eased;
 		track.shownZ = track.fromZ + (body.z - track.fromZ) * eased;
+
 		return { ...body, x: track.shownX, z: track.shownZ };
 	}
 }
@@ -100,22 +111,31 @@ export class VoiceClipGate {
 			if (level < CLIP_START_LEVEL) {
 				return null;
 			}
+
 			this.startedAt = now;
 			this.lastLoudAt = now;
+
 			return "start";
 		}
+
 		if (level >= CLIP_KEEP_LEVEL) {
 			this.lastLoudAt = now;
 		}
+
 		if (now - this.startedAt >= CLIP_MAX_MS) {
 			this.startedAt = null;
+
 			return "keep";
 		}
+
 		if (now - this.lastLoudAt < CLIP_SILENCE_MS) {
 			return null;
 		}
+
 		const spoken = this.lastLoudAt - this.startedAt;
+
 		this.startedAt = null;
+
 		return spoken >= CLIP_MIN_MS ? "keep" : "discard";
 	}
 }

@@ -35,6 +35,7 @@ export type LobbyResult =
 	| { ok: false; error: LobbyError };
 
 const WAITING_DISCONNECT_GRACE_MS = 8000;
+
 const ALREADY_PLAYING: LobbyError = {
 	code: "already-playing",
 	message: "Ce compte est déjà dans une partie, dans un autre onglet.",
@@ -64,9 +65,11 @@ export class LobbyManager {
 
 	dispose(): void {
 		clearInterval(this.countdownTimer);
+
 		for (const match of this.matches.values()) {
 			match.stop();
 		}
+
 		for (const timer of this.removalTimers.values()) {
 			clearTimeout(timer);
 		}
@@ -78,7 +81,9 @@ export class LobbyManager {
 
 	matchOf(session: Session): Match | null {
 		const lobby = this.lobbyOf(session);
+
 		if (!lobby?.matchId) return null;
+
 		return this.matches.get(lobby.matchId) ?? null;
 	}
 
@@ -90,7 +95,9 @@ export class LobbyManager {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
+
 		this.leave(session);
+
 		return this.join(session, this.openPublicLobby("classic"), name, look);
 	}
 
@@ -102,7 +109,9 @@ export class LobbyManager {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
+
 		this.leave(session);
+
 		return this.join(session, this.openPublicLobby("possessed"), name, look);
 	}
 
@@ -114,11 +123,15 @@ export class LobbyManager {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
+
 		this.leave(session);
+
 		const lobby = this.createLobby("private", 1);
 		const challenge = dailyChallenge(dailyDateKey(Date.now()));
+
 		lobby.daily = challenge.date;
 		lobby.config = challenge.config;
+
 		return this.join(session, lobby, name, look);
 	}
 
@@ -130,7 +143,9 @@ export class LobbyManager {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
+
 		this.leave(session);
+
 		return this.join(session, this.createLobby("private"), name, look);
 	}
 
@@ -147,14 +162,19 @@ export class LobbyManager {
 				candidate.config.mode === mode &&
 				candidate.acceptsPlayers,
 		);
+
 		if (open) {
 			return open;
 		}
+
 		if (mode === "classic") {
 			return this.createLobby("public");
 		}
+
 		const lobby = this.createLobby("public", this.possessedMinPlayers());
+
 		lobby.config = possessedConfig();
+
 		return lobby;
 	}
 
@@ -167,8 +187,10 @@ export class LobbyManager {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
+
 		const lobbyId = this.codes.get(code);
 		const lobby = lobbyId ? this.lobbies.get(lobbyId) : undefined;
+
 		if (!lobby) {
 			return {
 				ok: false,
@@ -178,9 +200,11 @@ export class LobbyManager {
 				},
 			};
 		}
+
 		if (session.lobbyId !== lobby.id) {
 			this.leave(session);
 		}
+
 		return this.join(session, lobby, name, look);
 	}
 
@@ -193,16 +217,20 @@ export class LobbyManager {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
+
 		const lobby = this.lobbies.get(lobbyId);
-		if (!lobby || lobby.visibility !== "public") {
+
+		if (lobby?.visibility !== "public") {
 			return {
 				ok: false,
 				error: { code: "lobby-closed", message: "Ce lobby n'existe plus." },
 			};
 		}
+
 		if (session.lobbyId !== lobby.id) {
 			this.leave(session);
 		}
+
 		return this.join(session, lobby, name, look);
 	}
 
@@ -216,20 +244,25 @@ export class LobbyManager {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
+
 		const lobby = this.lobbies.get(lobbyId);
+
 		if (!lobby) {
 			return {
 				ok: false,
 				error: { code: "lobby-closed", message: "Ce lobby n'existe plus." },
 			};
 		}
+
 		if (session.lobbyId === lobby.id) {
 			return this.join(session, lobby, name, look);
 		}
+
 		const allowed =
 			lobby.visibility === "public" ||
 			(lobby.openToFriends &&
 				this.isHostFriend(lobby, session.account?.accountId ?? null, friends));
+
 		if (!allowed) {
 			if (!session.account) {
 				return {
@@ -240,6 +273,7 @@ export class LobbyManager {
 					},
 				};
 			}
+
 			return {
 				ok: false,
 				error: {
@@ -248,7 +282,9 @@ export class LobbyManager {
 				},
 			};
 		}
+
 		this.leave(session);
+
 		return this.join(session, lobby, name, look);
 	}
 
@@ -262,8 +298,10 @@ export class LobbyManager {
 				.withAccount(viewerAccountId)
 				.map((session) => session.lobbyId),
 		);
+
 		for (const session of this.sessions.withAccount(friendAccountId)) {
 			const lobby = session.socketId ? this.lobbyOf(session) : null;
+
 			if (
 				lobby &&
 				!viewerLobbies.has(lobby.id) &&
@@ -274,6 +312,7 @@ export class LobbyManager {
 				return lobby.id;
 			}
 		}
+
 		return null;
 	}
 
@@ -283,6 +322,7 @@ export class LobbyManager {
 		friends: ReadonlySet<string>,
 	): boolean {
 		const host = this.sessions.fromPlayer(lobby.hostId)?.account?.accountId;
+
 		return Boolean(
 			accountId && host && (host === accountId || friends.has(host)),
 		);
@@ -290,6 +330,7 @@ export class LobbyManager {
 
 	hostAccountOf(session: Session): string | null {
 		const lobby = this.lobbyOf(session);
+
 		return lobby
 			? (this.sessions.fromPlayer(lobby.hostId)?.account?.accountId ?? null)
 			: null;
@@ -303,13 +344,19 @@ export class LobbyManager {
 		if (this.accountBusy(session)) {
 			return { ok: false, error: ALREADY_PLAYING };
 		}
+
 		this.leave(session);
+
 		const lobby = this.createLobby("private");
+
 		lobby.config = TUTORIAL_MATCH_CONFIG;
+
 		const joined = this.join(session, lobby, name, look);
+
 		if (joined.ok) {
 			this.startMatch(lobby, true);
 		}
+
 		return joined;
 	}
 
@@ -318,34 +365,44 @@ export class LobbyManager {
 		minPlayers = this.options.minPlayers,
 	): Lobby {
 		const id = randomLobbyId();
+
 		const code =
 			visibility === "private"
 				? generateLobbyCode((candidate) => this.codes.has(candidate))
 				: null;
+
 		const lobby = new Lobby(id, visibility, code, minPlayers);
+
 		this.lobbies.set(id, lobby);
+
 		if (code) {
 			this.codes.set(code, id);
 		}
+
 		return lobby;
 	}
 
 	private accountBusy(session: Session): boolean {
 		const accountId = session.account?.accountId;
+
 		if (!accountId || this.options.dev) {
 			return false;
 		}
+
 		let busy = false;
+
 		for (const other of this.sessions.withAccount(accountId)) {
 			if (other === session || !other.lobbyId) {
 				continue;
 			}
+
 			if (other.socketId) {
 				busy = true;
 			} else {
 				this.leave(other);
 			}
 		}
+
 		return busy;
 	}
 
@@ -356,68 +413,91 @@ export class LobbyManager {
 		look: LookPreference,
 	): LobbyResult {
 		const result = lobby.add(session.playerId, name, this.clock(), look);
+
 		if (!result.ok) {
 			if (lobby.isEmpty) {
 				this.deleteLobby(lobby);
 			}
+
 			return {
 				ok: false,
 				error: lobbyErrorOf(result),
 			};
 		}
+
 		session.lobbyId = lobby.id;
 		session.name = name;
+
 		this.cancelRemoval(session.playerId);
+
 		const socket = session.socketId
 			? this.io.sockets.sockets.get(session.socketId)
 			: undefined;
+
 		void socket?.join(this.room(lobby));
 		this.broadcastState(lobby);
+
 		return { ok: true, value: this.stateOf(lobby) };
 	}
 
 	leave(session: Session): void {
 		const lobby = this.lobbyOf(session);
+
 		if (!lobby) {
 			return;
 		}
+
 		const match = lobby.matchId ? this.matches.get(lobby.matchId) : undefined;
+
 		match?.playerDisconnected(session.playerId);
 		lobby.remove(session.playerId);
+
 		session.lobbyId = null;
+
 		const socket = session.socketId
 			? this.io.sockets.sockets.get(session.socketId)
 			: undefined;
+
 		void socket?.leave(this.room(lobby));
 		this.cancelRemoval(session.playerId);
+
 		if (lobby.isEmpty) {
 			this.deleteLobby(lobby);
+
 			return;
 		}
+
 		this.broadcastState(lobby);
 	}
 
 	setReady(session: Session, ready: boolean): LobbyError | null {
 		const lobby = this.lobbyOf(session);
+
 		if (!lobby) {
 			return { code: "not-in-lobby", message: "Vous n'êtes dans aucun lobby." };
 		}
+
 		const result = lobby.setReady(session.playerId, ready);
+
 		this.broadcastState(lobby);
+
 		return result.ok ? null : lobbyErrorOf(result);
 	}
 
 	setMicrophone(session: Session, ready: boolean): void {
 		const lobby = this.lobbyOf(session);
+
 		if (!lobby) {
 			return;
 		}
+
 		lobby.setMicrophone(session.playerId, ready);
 		this.broadcastState(lobby);
 	}
 
 	updateConfig(session: Session, config: unknown): LobbyResult {
 		const lobby = this.lobbyOf(session);
+
 		if (!lobby) {
 			return {
 				ok: false,
@@ -427,19 +507,24 @@ export class LobbyManager {
 				},
 			};
 		}
+
 		const result = lobby.updateConfig(session.playerId, config);
+
 		if (!result.ok) {
 			return {
 				ok: false,
 				error: lobbyErrorOf(result),
 			};
 		}
+
 		this.broadcastState(lobby);
+
 		return { ok: true, value: this.stateOf(lobby) };
 	}
 
 	setOpenToFriends(session: Session, open: boolean): LobbyResult {
 		const lobby = this.lobbyOf(session);
+
 		if (!lobby) {
 			return {
 				ok: false,
@@ -449,19 +534,24 @@ export class LobbyManager {
 				},
 			};
 		}
+
 		const result = lobby.setOpenToFriends(session.playerId, open);
+
 		if (!result.ok) {
 			return {
 				ok: false,
 				error: lobbyErrorOf(result),
 			};
 		}
+
 		this.broadcastState(lobby);
+
 		return { ok: true, value: this.stateOf(lobby) };
 	}
 
 	setTeam(session: Session, team: number): void {
 		const lobby = this.lobbyOf(session);
+
 		if (lobby?.setTeam(session.playerId, team).ok) {
 			this.broadcastState(lobby);
 		}
@@ -469,28 +559,37 @@ export class LobbyManager {
 
 	start(session: Session): LobbyError | null {
 		const lobby = this.lobbyOf(session);
+
 		if (!lobby) {
 			return { code: "not-in-lobby", message: "Vous n'êtes dans aucun lobby." };
 		}
+
 		const check = lobby.canStart(session.playerId);
+
 		if (!check.ok) {
 			return lobbyErrorOf(check);
 		}
+
 		if (lobby.visibility === "public") {
 			lobby.startCountdown(this.clock());
 			this.broadcastState(lobby);
+
 			return null;
 		}
+
 		this.startMatch(lobby);
+
 		return null;
 	}
 
 	private checkCountdowns(): void {
 		const now = this.clock();
+
 		for (const lobby of this.lobbies.values()) {
 			if (lobby.visibility !== "public") {
 				continue;
 			}
+
 			if (lobby.phase === "waiting" && lobby.everyoneReady()) {
 				lobby.startCountdown(now);
 				this.broadcastState(lobby);
@@ -510,39 +609,51 @@ export class LobbyManager {
 
 	private stateOf(lobby: Lobby): LobbyState {
 		const state = lobby.toState();
+
 		for (const player of state.players) {
 			const account = this.sessions.fromPlayer(player.id)?.account;
+
 			player.profileId = account?.accountId ?? null;
+
 			player.level = account?.progress
 				? levelOf(account.progress.xp ?? 0)
 				: null;
 		}
+
 		return state;
 	}
 
 	private startMatch(lobby: Lobby, tutorial = false): void {
 		const participants = lobby.members.filter((member) => member.connected);
+
 		if (participants.length === 0) {
 			return;
 		}
+
 		const challenge = lobby.daily
 			? dailyChallenge(dailyDateKey(Date.now()))
 			: null;
+
 		if (challenge) {
 			lobby.daily = challenge.date;
 			lobby.config = challenge.config;
 		}
+
 		lobby.phase = "loading";
 		lobby.countdownEndsAt = null;
+
 		const matchId = `m_${randomBytes(6).toString("base64url")}`;
 		const config = lobby.config;
+
 		lobby.matchId = matchId;
+
 		const accounts = new Map(
 			participants.map((member) => [
 				member.id,
 				this.sessions.fromPlayer(member.id)?.account?.accountId ?? null,
 			]),
 		);
+
 		const match = new Match({
 			id: matchId,
 			seed: tutorial ? TUTORIAL_SEED : (challenge?.seed ?? randomMatchSeed()),
@@ -567,19 +678,26 @@ export class LobbyManager {
 				if (results && !tutorial) {
 					this.recordResults(results, lobby.visibility, accounts, config);
 				}
+
 				this.onMatchFinished(lobby, matchId);
 			},
 		});
+
 		this.matches.set(matchId, match);
+
 		lobby.previousFormulaWords = match.usedFormulaWords;
+
 		this.broadcastState(lobby);
 		this.io.to(this.room(lobby)).emit("game:init", match.initPayload());
+
 		lobby.phase = "playing";
+
 		this.broadcastState(lobby);
 	}
 
 	private transportFor(lobby: Lobby): MatchTransport {
 		const room = this.room(lobby);
+
 		return {
 			broadcast: (event, ...args) => {
 				this.io.to(room).emit(event, ...args);
@@ -589,6 +707,7 @@ export class LobbyManager {
 			},
 			toPlayer: (playerId, event, ...args) => {
 				const session = this.sessions.fromPlayer(playerId);
+
 				if (session?.socketId) {
 					this.io.to(session.socketId).emit(event, ...args);
 				}
@@ -609,12 +728,15 @@ export class LobbyManager {
 			new Date(),
 			config,
 		);
+
 		if (records.length > 0) {
 			this.options.onMatchRecords?.(records);
 		}
+
 		for (const record of records) {
 			for (const session of this.sessions.withAccount(record.accountId)) {
 				const progress = session.account?.progress;
+
 				if (progress) {
 					progress.gamesPlayed += 1;
 					progress.wins += record.won ? 1 : 0;
@@ -622,6 +744,7 @@ export class LobbyManager {
 					progress.awards += record.awarded ? 1 : 0;
 					progress.dailies += record.dailyDate ? 1 : 0;
 					progress.xp = (progress.xp ?? 0) + (record.xp ?? 0);
+
 					progress.challenges = withMatchMetrics(
 						progress.challenges ?? {},
 						record.metrics ?? {},
@@ -633,72 +756,99 @@ export class LobbyManager {
 
 	private onMatchFinished(lobby: Lobby, matchId: string): void {
 		const match = this.matches.get(matchId);
+
 		match?.stop();
 		this.matches.delete(matchId);
+
 		if (!this.lobbies.has(lobby.id)) {
 			return;
 		}
+
 		for (const member of [...lobby.members]) {
 			if (!member.connected) {
 				lobby.remove(member.id);
+
 				const session = this.sessions.fromPlayer(member.id);
+
 				if (session) {
 					session.lobbyId = null;
 				}
 			}
 		}
+
 		lobby.resetAfterMatch();
+
 		if (lobby.isEmpty) {
 			this.deleteLobby(lobby);
+
 			return;
 		}
+
 		this.broadcastState(lobby);
 	}
 
 	handleDisconnect(session: Session): void {
 		const lobby = this.lobbyOf(session);
+
 		if (!lobby) {
 			return;
 		}
+
 		const member = lobby.member(session.playerId);
+
 		if (member) {
 			member.connected = false;
 			member.ready = false;
 		}
+
 		const match = lobby.matchId ? this.matches.get(lobby.matchId) : undefined;
+
 		if (match) {
 			match.playerDisconnected(session.playerId);
 			this.broadcastState(lobby);
+
 			return;
 		}
+
 		lobby.cancelCountdown();
 		this.broadcastState(lobby);
+
 		const timer = setTimeout(() => {
 			this.removalTimers.delete(session.playerId);
+
 			if (!session.socketId && session.lobbyId === lobby.id) {
 				this.leave(session);
 				this.sessions.forget(session);
 			}
 		}, WAITING_DISCONNECT_GRACE_MS);
+
 		this.removalTimers.set(session.playerId, timer);
 	}
 
 	handleReconnect(session: Session): void {
 		const lobby = this.lobbyOf(session);
+
 		if (!lobby) {
 			return;
 		}
+
 		this.cancelRemoval(session.playerId);
+
 		const member = lobby.member(session.playerId);
+
 		if (member) {
 			member.connected = true;
 		}
+
 		const socket = session.socketId
 			? this.io.sockets.sockets.get(session.socketId)
 			: undefined;
+
 		void socket?.join(this.room(lobby));
 		this.broadcastState(lobby);
+
 		const match = lobby.matchId ? this.matches.get(lobby.matchId) : undefined;
+
 		if (match?.players.has(session.playerId)) {
 			match.playerReconnected(session.playerId);
 		}
@@ -706,14 +856,17 @@ export class LobbyManager {
 
 	relayVoice(from: Session, peerId: string): string | null {
 		const lobby = this.lobbyOf(from);
+
 		if (!lobby?.member(peerId) || peerId === from.playerId) {
 			return null;
 		}
+
 		return this.sessions.fromPlayer(peerId)?.socketId ?? null;
 	}
 
 	private cancelRemoval(playerId: string): void {
 		const timer = this.removalTimers.get(playerId);
+
 		if (timer) {
 			clearTimeout(timer);
 			this.removalTimers.delete(playerId);
@@ -723,10 +876,13 @@ export class LobbyManager {
 	private deleteLobby(lobby: Lobby): void {
 		if (lobby.matchId) {
 			const match = this.matches.get(lobby.matchId);
+
 			match?.stop();
 			this.matches.delete(lobby.matchId);
 		}
+
 		this.lobbies.delete(lobby.id);
+
 		if (lobby.code) {
 			this.codes.delete(lobby.code);
 		}

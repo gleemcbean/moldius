@@ -21,6 +21,7 @@ export function matchXpParts(result: { score: number; won: boolean }): {
 
 export function matchXp(result: { score: number; won: boolean }): number {
 	const parts = matchXpParts(result);
+
 	return Math.min(MATCH_XP_MAX, parts.base + parts.score + parts.win);
 }
 
@@ -30,6 +31,7 @@ export function xpForNextLevel(level: number): number {
 
 export function xpForLevel(level: number): number {
 	const steps = Math.max(0, Math.floor(level) - 1);
+
 	return 100 * steps + (25 * steps * (steps - 1)) / 2;
 }
 
@@ -42,9 +44,11 @@ export interface LevelProgress {
 export function levelProgress(xp: number): LevelProgress {
 	const total = Math.max(0, Math.floor(xp));
 	let level = 1;
+
 	while (xpForLevel(level + 1) <= total) {
 		level += 1;
 	}
+
 	return {
 		level,
 		into: total - xpForLevel(level),

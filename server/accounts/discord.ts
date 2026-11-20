@@ -29,6 +29,7 @@ export function discordAvatarUrl(
 	) {
 		return null;
 	}
+
 	return `https://cdn.discordapp.com/avatars/${id}/${avatar}.png?size=64`;
 }
 
@@ -42,12 +43,16 @@ export function parseDiscordUser(payload: unknown): DiscordProfile {
 	const user = (
 		typeof payload === "object" && payload !== null ? payload : {}
 	) as Record<string, unknown>;
+
 	const id = text(user.id, 25);
 	const username = text(user.username, 64);
+
 	if (!id || !/^[0-9]+$/.test(id) || !username) {
 		throw new Error("Profil Discord inattendu");
 	}
+
 	const email = text(user.email, 254);
+
 	return {
 		id,
 		username,
@@ -64,9 +69,11 @@ async function currentUser(accessToken: string): Promise<DiscordProfile> {
 		headers: { Authorization: `Bearer ${accessToken}` },
 		signal: AbortSignal.timeout(TIMEOUT_MS),
 	});
+
 	if (!userResponse.ok) {
 		throw new Error(`Profil Discord indisponible (${userResponse.status})`);
 	}
+
 	return parseDiscordUser(await userResponse.json());
 }
 
@@ -75,6 +82,7 @@ export function createDiscordClient(
 	clientSecret: string,
 ): DiscordClient {
 	const credentials = { client_id: clientId, client_secret: clientSecret };
+
 	return {
 		authorizeUrl(state, redirectUri) {
 			const query = new URLSearchParams({
@@ -84,6 +92,7 @@ export function createDiscordClient(
 				state,
 				redirect_uri: redirectUri,
 			});
+
 			return `${AUTHORIZE_URL}?${query.toString()}`;
 		},
 		async fetchProfile(code, redirectUri) {
@@ -98,15 +107,19 @@ export function createDiscordClient(
 				}),
 				signal: AbortSignal.timeout(TIMEOUT_MS),
 			});
+
 			if (!tokenResponse.ok) {
 				throw new Error(
 					`Échange du code Discord refusé (${tokenResponse.status})`,
 				);
 			}
+
 			const token = (await tokenResponse.json()) as { access_token?: unknown };
+
 			if (typeof token.access_token !== "string") {
 				throw new Error("Jeton Discord absent");
 			}
+
 			try {
 				return await currentUser(token.access_token);
 			} finally {

@@ -13,14 +13,17 @@ export function TermsNotice({ onLeave }: { onLeave: () => void }) {
 	const language = useStore(settingsStore, (state) => state.language);
 	const [saving, setSaving] = useState(false);
 	const [failed, setFailed] = useState(false);
+
 	const accept = async () => {
 		setSaving(true);
 		setFailed(false);
+
 		if (!(await acceptTerms())) {
 			setFailed(true);
 			setSaving(false);
 		}
 	};
+
 	return (
 		<Modal title={labels.title} onClose={onLeave} dismissible={false}>
 			<div className={styles.termsNotice}>

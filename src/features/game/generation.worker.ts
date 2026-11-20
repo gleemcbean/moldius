@@ -8,5 +8,6 @@ interface GenerationRequest {
 
 self.onmessage = (event: MessageEvent<GenerationRequest>) => {
 	const layout = generateManor(event.data.seed, event.data.config);
+
 	self.postMessage({ layout, checksum: layoutChecksum(layout) });
 };

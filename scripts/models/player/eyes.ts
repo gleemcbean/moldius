@@ -26,9 +26,12 @@ export function buildEyeball(
 	const segments = options.segments ?? 16;
 	const root = kit.pivot(name);
 	const gaze = kit.pivot(`${name}_gaze`);
+
 	root.add(kit.sphere(radius, options.sclera, [1, 1, 1], segments), gaze);
+
 	if (options.iris) {
 		const angle = options.irisAngle ?? 0.62;
+
 		gaze.add(
 			kit.mesh(
 				new THREE.SphereGeometry(
@@ -44,22 +47,30 @@ export function buildEyeball(
 			),
 		);
 	}
+
 	if (options.pupil) {
 		const size = radius * (options.pupilSize ?? 0.3);
+
 		const pupil = kit.named(
 			`${name}_pupil`,
 			kit.sphere(size, options.pupil, [1, 1, 0.4], 10),
 		);
+
 		pupil.position.z = Math.sqrt(radius * radius - size * size);
+
 		const [shapeX, shapeY] = options.pupilShape ?? [1, 1];
+
 		pupil.scale.set(shapeX, shapeY, 1);
 		gaze.add(pupil);
 	}
+
 	if (options.catchlight ?? true) {
 		const glint = kit.sphere(radius * 0.17, CATCHLIGHT, [1, 1, 0.5], 6);
+
 		glint.position.copy(CATCHLIGHT_DIRECTION).multiplyScalar(radius * 0.99);
 		glint.lookAt(CATCHLIGHT_DIRECTION.clone().multiplyScalar(2));
 		root.add(glint);
 	}
+
 	return root;
 }

@@ -12,10 +12,13 @@ export function TaglineBadge({
 	className?: string;
 }) {
 	const t = useT();
+
 	if (!tagline) {
 		return null;
 	}
+
 	const text = t.appearance.taglines[tagline];
+
 	return (
 		<span
 			className={[styles.tagline, chip ? styles.chip : "", className ?? ""]

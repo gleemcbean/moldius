@@ -13,8 +13,10 @@ import { MatchSimulation } from "./helpers/simulation.js";
 
 function simulation(dev: boolean): MatchSimulation {
 	const sim = new MatchSimulation({ seed: 4242, players: 1, dev });
+
 	silenceAnomalies(sim);
 	sim.run(2.2);
+
 	return sim;
 }
 
@@ -24,24 +26,31 @@ function player(sim: MatchSimulation): MatchPlayer {
 
 function wallCrossing(sim: MatchSimulation) {
 	const { match } = sim;
+
 	for (const room of match.layout.rooms) {
 		if (room.level !== 0 || room.type === "stairwell") {
 			continue;
 		}
+
 		for (const cell of match.grid.roomCells.get(room.id) ?? []) {
 			if (!match.grid.isInMainComponent(cell)) {
 				continue;
 			}
+
 			const from = match.grid.nodePosition(cell);
+
 			for (let step = 0; step < 16; step += 1) {
 				const yaw = (step / 16) * Math.PI * 2;
 				const direction = yawToDirection(yaw);
+
 				const to = {
 					x: from.x + direction.x * 1.6,
 					y: from.y,
 					z: from.z + direction.z * 1.6,
 				};
+
 				const landing = match.grid.nearestNode(to, 1);
+
 				if (
 					landing !== null &&
 					match.roomIdAt(to) !== room.id &&
@@ -73,6 +82,7 @@ function wallCrossing(sim: MatchSimulation) {
 			}
 		}
 	}
+
 	throw new Error("No wall to cross found for the test.");
 }
 
@@ -81,11 +91,13 @@ describe("modes de développement", () => {
 		expect(
 			sanitizeDevModes({ fly: true, immortal: "oui", other: true }),
 		).toEqual({ ...noDevModes(), fly: true });
+
 		expect(sanitizeDevModes(null)).toEqual(noDevModes());
 	});
 
 	it("sont ignorés quand le serveur n'est pas en mode dev", () => {
 		const sim = simulation(false);
+
 		sim.match.handleDevModes("p1", { ...noDevModes(), immortal: true });
 		expect(player(sim).devModes.immortal).toBe(false);
 		expect(sim.match.applyDamage(player(sim), 30, "veilleur", null)).toBe(true);
@@ -93,19 +105,25 @@ describe("modes de développement", () => {
 
 	it("rend immortel et donne une énergie infinie", () => {
 		const sim = simulation(true);
+
 		sim.match.handleDevModes("p1", {
 			...noDevModes(),
 			immortal: true,
 			infiniteEnergy: true,
 		});
+
 		expect(
 			sim.match.applyDamage(player(sim), HEALTH_MAX, "explosion", null),
 		).toBe(false);
+
 		expect(player(sim).health).toBe(HEALTH_MAX);
+
 		const bot = sim.bot("p1");
+
 		bot.input.forward = 1;
 		bot.input.sprint = true;
 		bot.lantern = true;
+
 		sim.run(6);
 		expect(player(sim).energy).toBe(ENERGY_MAX);
 		expect(player(sim).sprintLocked).toBe(false);
@@ -115,16 +133,21 @@ describe("modes de développement", () => {
 		const sim = simulation(true);
 		const start = player(sim).position.y;
 		const bot = sim.bot("p1");
+
 		bot.input.rise = 1;
+
 		sim.run(0.5);
 		expect(player(sim).position.y).toBeCloseTo(start, 3);
 		sim.match.handleDevModes("p1", { ...noDevModes(), fly: true });
 		sim.run(0.5);
+
 		const corrections = sim.transport.messages.filter(
 			(message) => message.event === "game:forcedMove",
 		).length;
+
 		expect(player(sim).position.y).toBeGreaterThan(start + 1);
 		expect(player(sim).position.y).toBeCloseTo(bot.character.y, 3);
+
 		expect(
 			sim.transport.messages.filter(
 				(message) => message.event === "game:forcedMove",
@@ -136,21 +159,31 @@ describe("modes de développement", () => {
 		for (const enabled of [false, true]) {
 			const sim = simulation(true);
 			const crossing = wallCrossing(sim);
+
 			placeBot(sim, "p1", crossing.from, crossing.yaw);
+
 			sim.match.handleDevModes("p1", {
 				...noDevModes(),
 				passThrough: enabled,
 			});
+
 			const bot = sim.bot("p1");
+
 			bot.input.forward = 1;
+
 			sim.run(0.7);
+
 			bot.input.forward = 0;
+
 			sim.run(0.2);
+
 			const direction = yawToDirection(crossing.yaw);
 			const position = player(sim).position;
+
 			const progress =
 				(position.x - crossing.from.x) * direction.x +
 				(position.z - crossing.from.z) * direction.z;
+
 			if (enabled) {
 				expect(progress).toBeGreaterThan(1.6);
 				expect(sim.match.roomIdAt(position)).not.toBe(crossing.roomId);
@@ -162,25 +195,34 @@ describe("modes de développement", () => {
 
 	it("accepte le vol rapide en ligne droite à travers le manoir", () => {
 		const sim = simulation(true);
+
 		sim.match.handleDevModes("p1", {
 			...noDevModes(),
 			fly: true,
 			passThrough: true,
 		});
+
 		const start = { ...player(sim).position };
+
 		const forced = () =>
 			sim.transport.messages.filter(
 				(message) => message.event === "game:forcedMove",
 			).length;
+
 		const before = forced();
 		const bot = sim.bot("p1");
+
 		bot.input.forward = 1;
 		bot.input.sprint = true;
+
 		sim.run(0.6);
+
 		const position = player(sim).position;
+
 		expect(
 			Math.hypot(position.x - start.x, position.z - start.z),
 		).toBeGreaterThan(5);
+
 		expect(forced()).toBe(before);
 	});
 });
@@ -190,9 +232,12 @@ describe("joueur à terre", () => {
 		const sim = simulation(false);
 		const fallen = player(sim);
 		const yaw = fallen.yaw;
+
 		sim.match.applyDamage(fallen, HEALTH_MAX, "veilleur", null);
 		expect(fallen.alive).toBe(false);
+
 		sim.bot("p1").input.yaw = yaw + 2;
+
 		sim.run(1);
 		expect(fallen.yaw).toBeCloseTo(yaw + 2);
 	});
@@ -204,11 +249,16 @@ describe("lampe contre un mur", () => {
 		const crossing = wallCrossing(sim);
 		const eye = { ...crossing.from, y: crossing.from.y + 1 };
 		const held = { ...crossing.to, y: eye.y };
+
 		expect(lineOfSight(sim.match.world, eye, held)).toBe(false);
+
 		const light = pullBackToSight(sim.match.world, eye, held, 0.06);
+
 		expect(lineOfSight(sim.match.world, eye, light)).toBe(true);
 		expect(sim.match.roomIdAt(light)).toBe(crossing.roomId);
+
 		const open = { x: eye.x, y: eye.y + 0.2, z: eye.z };
+
 		expect(pullBackToSight(sim.match.world, eye, open, 0.06)).toBe(open);
 	});
 });

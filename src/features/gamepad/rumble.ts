@@ -52,6 +52,7 @@ function hapticPad(): HapticPad | null {
 
 export function rumbleSupported(): boolean {
 	const pad = hapticPad();
+
 	return (
 		!pad ||
 		typeof pad.vibrationActuator?.playEffect === "function" ||
@@ -66,37 +67,52 @@ export function rumble(
 	if (!force && inputDeviceStore.get().device !== "pad") {
 		return;
 	}
+
 	const intensity = settingsStore.get().padVibration * scale;
+
 	if (intensity <= 0) {
 		return;
 	}
+
 	const pad = hapticPad();
+
 	if (!pad) {
 		return;
 	}
+
 	const effect = RUMBLES[id];
+
 	const strength =
 		Math.max(effect.strongMagnitude, effect.weakMagnitude) * scale;
+
 	const now = performance.now();
+
 	if (now < busyUntil && strength < busyStrength) {
 		return;
 	}
+
 	busyUntil = now + effect.duration;
 	busyStrength = strength;
+
 	const params = {
 		duration: effect.duration,
 		strongMagnitude: Math.min(1, effect.strongMagnitude * intensity),
 		weakMagnitude: Math.min(1, effect.weakMagnitude * intensity),
 	};
+
 	try {
 		const actuator = pad.vibrationActuator;
+
 		if (typeof actuator?.playEffect === "function") {
 			void Promise.resolve(actuator.playEffect("dual-rumble", params)).catch(
 				() => undefined,
 			);
+
 			return;
 		}
+
 		const legacy = pad.hapticActuators?.[0];
+
 		if (typeof legacy?.pulse === "function") {
 			void Promise.resolve(
 				legacy.pulse(

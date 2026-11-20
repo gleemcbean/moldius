@@ -3,6 +3,7 @@ import styles from "./DesktopOnly.module.scss";
 
 export function DesktopOnly() {
 	const t = useT();
+
 	return (
 		<main className={styles.page}>
 			<h1 className={styles.title}>Moldius</h1>

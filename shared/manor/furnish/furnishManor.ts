@@ -15,8 +15,10 @@ import type {
 	RoomType,
 	ValveStation,
 } from "../types.js";
+import { furnishRoomByType } from "./furnishRoom.js";
+import { topUpHidingSpots } from "./hidingTopUp.js";
 import { type IdAllocator, RoomFurnisher } from "./RoomFurnisher.js";
-import { balanceRoom, furnishRoomByType, topUpHidingSpots } from "./themes.js";
+import { balanceRoom } from "./smallRoomBalance.js";
 
 export interface FurnishResult {
 	furniture: FurnitureItem[];
@@ -68,6 +70,7 @@ export function furnishManor(
 	const ids: IdAllocator = { furniture: 0, hide: 0, light: 0, valve: 0 };
 	const valveTarget = Math.max(3, Math.round(rooms.length / 7));
 	const valveRooms = chooseValveRooms(rooms, rng, valveTarget);
+
 	const furnishers = rooms.map(
 		(room) =>
 			new RoomFurnisher(
@@ -77,7 +80,9 @@ export function furnishManor(
 				ids,
 			),
 	);
+
 	placeStakes(furnishers);
+
 	for (const furnisher of furnishers) {
 		furnishRoomByType(furnisher, { valve: valveRooms.has(furnisher.room.id) });
 	}
@@ -85,17 +90,21 @@ export function furnishManor(
 	ensureValveCount(furnishers, valveTarget, rng);
 	ensureHidingSpots(furnishers, Math.ceil(rooms.length * 0.55), rng);
 	placeAltars(furnishers, rng.fork("altars"));
+
 	for (const furnisher of furnishers) {
 		balanceRoom(furnisher);
 	}
+
 	return collect(furnishers);
 }
 
 function placeStakes(furnishers: RoomFurnisher[]): void {
 	for (const furnisher of furnishers) {
 		const kind = STAKE_KINDS.find((entry) => entry === furnisher.room.type);
+
 		if (kind) {
 			const item = STAKE_FURNITURE[kind];
+
 			furnisher.floorItem(item, { wallMargin: 0.7 }) ??
 				furnisher.floorItem(item, { wallMargin: 0.3 }) ??
 				furnisher.floorItem(item, { wallMargin: 0.05 });
@@ -112,11 +121,14 @@ function altarTarget(roomCount: number): number {
 
 function placeAltars(furnishers: RoomFurnisher[], rng: SeededRandom): void {
 	const levels = [...new Set(furnishers.map(({ room }) => room.level))];
+
 	for (const level of levels) {
 		const onLevel = furnishers.filter(
 			({ room }) => room.level === level && room.type !== "stairwell",
 		);
+
 		const target = altarTarget(onLevel.length);
+
 		const candidates = [
 			...rng.shuffle(
 				onLevel.filter(({ room }) => !ALTAR_AVOID_TYPES.includes(room.type)),
@@ -125,12 +137,15 @@ function placeAltars(furnishers: RoomFurnisher[], rng: SeededRandom): void {
 				onLevel.filter(({ room }) => ALTAR_AVOID_TYPES.includes(room.type)),
 			),
 		];
+
 		const placed: RoomFurnisher[] = [];
+
 		const distance = (a: RoomFurnisher, b: RoomFurnisher) =>
 			Math.hypot(
 				a.room.labelPoint.x - b.room.labelPoint.x,
 				a.room.labelPoint.z - b.room.labelPoint.z,
 			);
+
 		for (const minimum of [12, 0]) {
 			for (const furnisher of candidates) {
 				if (
@@ -146,6 +161,7 @@ function placeAltars(furnishers: RoomFurnisher[], rng: SeededRandom): void {
 				}
 			}
 		}
+
 		if (placed.length === 0) {
 			forceAltar(candidates);
 		}
@@ -156,6 +172,7 @@ function forceAltar(candidates: RoomFurnisher[]): void {
 	const byArea = [...candidates].sort(
 		(first, second) => second.room.area - first.room.area,
 	);
+
 	for (const furnisher of byArea) {
 		const movable = () =>
 			furnisher.items.filter(
@@ -164,13 +181,17 @@ function forceAltar(candidates: RoomFurnisher[]): void {
 					item.valveId === null &&
 					furnishMovable(item.kind),
 			);
+
 		const attempt = () =>
 			furnisher.floorItem("occultAltar", { variant: 1, wallMargin: 0.3 });
+
 		if (attempt()) {
 			return;
 		}
+
 		for (const item of movable()) {
 			furnisher.removeItem(item);
+
 			if (attempt()) {
 				return;
 			}
@@ -180,6 +201,7 @@ function forceAltar(candidates: RoomFurnisher[]): void {
 
 function furnishMovable(kind: string): boolean {
 	const placement = furnitureDefinition(kind).placement;
+
 	return placement === "floor" || placement === "wall";
 }
 
@@ -189,16 +211,20 @@ function chooseValveRooms(
 	target: number,
 ): Set<number> {
 	const chosen = new Set<number>();
+
 	for (const tier of VALVE_PREFERENCE) {
 		const candidates = rng.shuffle(
 			rooms.filter((room) => tier.includes(room.type)),
 		);
+
 		for (const room of candidates) {
 			if (chosen.size >= target) {
 				return chosen;
 			}
+
 			const tooClose = [...chosen].some((id) => {
 				const other = rooms[id];
+
 				return (
 					other.level === room.level &&
 					Math.hypot(
@@ -207,11 +233,13 @@ function chooseValveRooms(
 					) < 9
 				);
 			});
+
 			if (!tooClose) {
 				chosen.add(room.id);
 			}
 		}
 	}
+
 	return chosen;
 }
 
@@ -224,6 +252,7 @@ function ensureValveCount(
 		(sum, furnisher) => sum + furnisher.valves.length,
 		0,
 	);
+
 	const candidates = rng.shuffle(
 		furnishers.filter(
 			(furnisher) =>
@@ -234,10 +263,12 @@ function ensureValveCount(
 				furnisher.room.type !== "greenhouse",
 		),
 	);
+
 	for (const furnisher of candidates) {
 		if (count >= target) {
 			return;
 		}
+
 		if (furnisher.wallItem("valveStation")) {
 			count += 1;
 		}
@@ -253,11 +284,13 @@ function ensureHidingSpots(
 		(sum, furnisher) => sum + furnisher.hideSpots.length,
 		0,
 	);
+
 	const preferred = rng.shuffle(
 		furnishers.filter((furnisher) =>
 			HIDE_TOP_UP_TYPES.includes(furnisher.room.type),
 		),
 	);
+
 	const fallback = rng.shuffle(
 		furnishers.filter(
 			(furnisher) =>
@@ -265,6 +298,7 @@ function ensureHidingSpots(
 				HIDE_FALLBACK_TYPES.includes(furnisher.room.type),
 		),
 	);
+
 	for (let pass = 0; pass < 4 && count < target; pass += 1) {
 		for (const furnisher of pass < 2
 			? preferred
@@ -272,8 +306,11 @@ function ensureHidingSpots(
 			if (count >= target) {
 				return;
 			}
+
 			const before = furnisher.hideSpots.length;
+
 			topUpHidingSpots(furnisher);
+
 			count += furnisher.hideSpots.length - before;
 		}
 	}
@@ -288,6 +325,7 @@ function collect(furnishers: RoomFurnisher[]): FurnishResult {
 	const furnitureIds = new Map(
 		furniture.map((item, index) => [item.id, index]),
 	);
+
 	const hideIds = new Map(hideSpots.map((spot, index) => [spot.id, index]));
 	const valveIds = new Map(valves.map((valve, index) => [valve.id, index]));
 

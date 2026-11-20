@@ -61,11 +61,14 @@ export class RecordingTransport implements MatchTransport {
 		payload: unknown,
 	): void {
 		this.messages.push({ target, event, payload });
+
 		if (event === "game:events") {
 			this.events.push(...(payload as { events: GameEvent[] }).events);
 		}
+
 		if (event === "game:forcedMove") {
 			const move = payload as ForcedMove;
+
 			this.forcedMoves.push(move);
 			this.onForcedMove?.(move);
 		}
@@ -123,12 +126,14 @@ export class MatchSimulation {
 
 	constructor(options: SimulationOptions = {}) {
 		const count = options.players ?? 2;
+
 		const participants = Array.from({ length: count }, (_, index) => ({
 			id: `p${index + 1}`,
 			name: `Testeur ${index + 1}`,
 			color: 0xffffff,
 			team: options.teams?.[index] ?? null,
 		}));
+
 		this.match = new Match({
 			id: "m_test",
 			seed: options.seed ?? 12345,
@@ -144,6 +149,7 @@ export class MatchSimulation {
 			dev: options.dev ?? false,
 			tutorial: options.tutorial ?? false,
 		});
+
 		for (const player of this.match.players.values()) {
 			this.bots.set(player.id, {
 				id: player.id,
@@ -171,8 +177,10 @@ export class MatchSimulation {
 				pitch: 0,
 			});
 		}
+
 		this.transport.onForcedMove = (move) => {
 			const bot = this.bots.get(move.playerId);
+
 			if (bot) {
 				bot.character.x = move.x;
 				bot.character.y = move.y;
@@ -180,14 +188,17 @@ export class MatchSimulation {
 				bot.character.vx = 0;
 				bot.character.vz = 0;
 				bot.moveAck = move.moveId;
+
 				if (move.yaw !== null) {
 					bot.input.yaw = move.yaw;
 				}
 			}
 		};
+
 		for (const player of this.match.players.values()) {
 			this.match.playerLoaded(player.id);
 		}
+
 		this.match.step(this.clock.now());
 	}
 
@@ -197,21 +208,26 @@ export class MatchSimulation {
 
 	teleportBot(id: string, position: Vec3, yaw?: number): void {
 		const player = this.match.players.get(id);
+
 		if (!player) {
 			throw new Error(`Player ${id} not found`);
 		}
+
 		this.match.forcedMove(player, "spawn", position, yaw ?? null, 0);
 	}
 
 	run(seconds: number, everyTick?: (time: number) => void): void {
 		const ticks = Math.round((seconds * 1000) / SERVER_TICK_MS);
+
 		for (let i = 0; i < ticks; i += 1) {
 			this.clock.advance(SERVER_TICK_MS);
 			everyTick?.(this.clock.time);
 			this.simulateClients(SERVER_TICK_MS / 1000);
+
 			if (this.match.phase === "ended") {
 				return;
 			}
+
 			this.match.step(this.clock.now());
 		}
 	}
@@ -219,17 +235,20 @@ export class MatchSimulation {
 	private simulateClients(dt: number): void {
 		for (const bot of this.bots.values()) {
 			const player = this.match.players.get(bot.id);
+
 			if (!player) {
 				throw new Error(`Player ${bot.id} not found`);
 			}
 
 			if (player.alive && !player.hidden && !player.carried) {
 				const substeps = 4;
+
 				for (let index = 0; index < substeps; index += 1) {
 					const jumpsNow =
 						bot.input.jump &&
 						bot.character.grounded &&
 						bot.character.crouch < 0.6;
+
 					stepCharacter(
 						this.match.world,
 						bot.character,
@@ -242,15 +261,19 @@ export class MatchSimulation {
 						},
 						dt / substeps,
 					);
+
 					if (jumpsNow) {
 						bot.jumps += 1;
 					}
 				}
 			}
+
 			if (bot.lantern !== player.lanternOpen) {
 				this.match.handleLantern(bot.id, bot.lantern);
 			}
+
 			bot.seq += 1;
+
 			const message: ClientStateMessage = {
 				seq: bot.seq,
 				x: bot.character.x,
@@ -273,6 +296,7 @@ export class MatchSimulation {
 				moveAck: bot.moveAck,
 				jumps: bot.jumps,
 			};
+
 			this.match.handleClientState(bot.id, message);
 		}
 	}

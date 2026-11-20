@@ -18,8 +18,10 @@ function SpeakingDot({ playerId, self }: { playerId: string; self: boolean }) {
 		voiceStore,
 		(state) => state.peers[playerId]?.level ?? 0,
 	);
+
 	const local = useStore(micStore, (state) => (self ? state.level : 0));
 	const level = self ? local : remote;
+
 	return (
 		<span
 			className={styles.speaking}
@@ -43,28 +45,35 @@ const LINK_LABELS: Partial<
 
 function VoiceLink({ playerId }: { playerId: string }) {
 	const t = useT();
+
 	const state = useStore(
 		voiceStore,
 		(voice) => voice.peers[playerId]?.state ?? null,
 	);
+
 	const relayed = useStore(
 		voiceStore,
 		(voice) => voice.peers[playerId]?.relayed ?? false,
 	);
+
 	if (relayed) {
 		return <span className={styles.micOk}>{t.lobby.voice.relayed}</span>;
 	}
+
 	const key = state ? LINK_LABELS[state] : undefined;
 	const label = key ? t.lobby.voice[key] : undefined;
+
 	if (!label) {
 		return null;
 	}
+
 	const className =
 		state === "connected"
 			? styles.micOk
 			: state === "failed" || state === "disconnected"
 				? styles.micMissing
 				: styles.linkPending;
+
 	return <span className={className}>{label}</span>;
 }
 
@@ -78,6 +87,7 @@ function Occupied({
 	self: boolean;
 }) {
 	const t = useT();
+
 	return (
 		<li
 			className={[styles.slot, self ? styles.self : ""].join(" ")}
@@ -150,10 +160,12 @@ export function PlayerSlots({
 	const t = useT();
 	const free = Math.max(0, lobby.capacity - lobby.players.length);
 	const me = lobby.players.find((player) => player.id === selfId);
+
 	const teams = Array.from(
 		{ length: lobby.config.teamCount },
 		(_, team) => team,
 	);
+
 	return (
 		<>
 			{lobby.config.teamCount > 0 && me ? (

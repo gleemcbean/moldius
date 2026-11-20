@@ -134,15 +134,18 @@ function walkable(
 ): THREE.Vector3 | null {
 	for (let ring = 0; ring <= 4; ring += 1) {
 		const steps = ring === 0 ? 1 : ring * 8;
+
 		for (let step = 0; step < steps; step += 1) {
 			const angle = (step / steps) * Math.PI * 2;
 			const px = x + Math.cos(angle) * ring * 0.12;
 			const pz = z + Math.sin(angle) * ring * 0.12;
+
 			if (grid.isWalkablePoint({ x: px, y: room.floorY, z: pz })) {
 				return new THREE.Vector3(px, room.floorY, pz);
 			}
 		}
 	}
+
 	return null;
 }
 
@@ -155,6 +158,7 @@ function placements(
 ): THREE.Vector3[] | null {
 	const right = new THREE.Vector2(-forward.y, forward.x);
 	const placed: THREE.Vector3[] = [];
+
 	for (const actor of cast) {
 		const position = walkable(
 			manor.grid,
@@ -162,6 +166,7 @@ function placements(
 			eye.x + forward.x * actor.depth + right.x * actor.side,
 			eye.z + forward.y * actor.depth + right.y * actor.side,
 		);
+
 		if (
 			!position ||
 			manor.world.roomAt({ x: position.x, z: position.z }, room.floorY) !==
@@ -170,6 +175,7 @@ function placements(
 		) {
 			return null;
 		}
+
 		const visible = [0.25, 0.8, 1.3].every((height) =>
 			[-0.25, 0, 0.25].every((offset) =>
 				lineOfSight(
@@ -184,11 +190,14 @@ function placements(
 				),
 			),
 		);
+
 		if (!visible) {
 			return null;
 		}
+
 		placed.push(position);
 	}
+
 	return placed;
 }
 
@@ -206,11 +215,13 @@ function furnitureAhead(
 		) {
 			return false;
 		}
+
 		const dx = item.x - eye.x;
 		const dz = item.z - eye.z;
 		const along = dx * forward.x + dz * forward.y;
 		const across = Math.abs(dx * -forward.y + dz * forward.x);
 		const size = Math.max(item.width, item.depth) / 2;
+
 		return along > -size && along < 2.7 + size && across < along * 0.5 + size;
 	});
 }
@@ -224,32 +235,41 @@ function frame(
 	const { cast } = plate;
 	const center = new THREE.Vector2(room.labelPoint.x, room.labelPoint.z);
 	const { minX, minZ, maxX, maxZ } = room.bounds;
+
 	let best: {
 		eye: THREE.Vector3;
 		forward: THREE.Vector2;
 		placed: THREE.Vector3[];
 		score: number;
 	} | null = null;
+
 	for (let x = minX + 0.4; x <= maxX - 0.4; x += CANDIDATE_STEP) {
 		for (let z = minZ + 0.4; z <= maxZ - 0.4; z += CANDIDATE_STEP) {
 			const ground = walkable(manor.grid, room, x, z);
+
 			if (
 				!ground ||
 				manor.world.roomAt({ x: ground.x, z: ground.z }, room.floorY) !== room
 			) {
 				continue;
 			}
+
 			const forward = center.clone().sub(new THREE.Vector2(ground.x, ground.z));
+
 			if (forward.length() < 1.5) {
 				continue;
 			}
+
 			forward.normalize();
+
 			const eye = new THREE.Vector3(
 				ground.x,
 				room.floorY + Math.min(plate.eye, room.height - 0.4),
 				ground.z,
 			);
+
 			const right = new THREE.Vector2(-forward.y, forward.x);
+
 			const clear = [1, 1.8, 2.4].every((ahead) =>
 				[-0.75, -0.35, 0, 0.35, 0.75].every((spread) =>
 					(strict ? [0.3, 0.6, 1.5] : [0.6, 1.5]).every((height) =>
@@ -266,29 +286,38 @@ function frame(
 					),
 				),
 			);
+
 			if (!clear || (strict && furnitureAhead(manor, room, eye, forward))) {
 				continue;
 			}
+
 			const placed = placements(manor, room, eye, forward, cast);
+
 			if (!placed) {
 				continue;
 			}
+
 			const score = center.distanceTo(new THREE.Vector2(eye.x, eye.z));
+
 			if (!best || score > best.score) {
 				best = { eye, forward, placed, score };
 			}
 		}
 	}
+
 	if (!best) {
 		return null;
 	}
+
 	const { eye, forward, placed } = best;
 	const focus = cast.reduce((sum, actor) => sum + actor.depth, 0) / cast.length;
+
 	const target = new THREE.Vector3(
 		eye.x + forward.x * focus,
 		room.floorY + plate.focus,
 		eye.z + forward.y * focus,
 	);
+
 	return {
 		room,
 		eye,
@@ -297,6 +326,7 @@ function frame(
 			const index = cast.indexOf(actor as CastMember);
 			const position = (placed[index] ?? placed[0]).clone();
 			const toCamera = Math.atan2(eye.x - position.x, eye.z - position.z);
+
 			return { position, yaw: toCamera + actor.facing + Math.PI };
 		},
 	};
@@ -332,6 +362,7 @@ class Stage {
 		this.camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.05, 40);
 		this.scene.background = new THREE.Color(MANOR_AIR_COLOR);
 		this.scene.fog = new THREE.FogExp2(MANOR_AIR_COLOR, MANOR_AIR_DENSITY);
+
 		this.scene.add(
 			new THREE.HemisphereLight(
 				MANOR_SKY_LIGHT,
@@ -339,26 +370,36 @@ class Stage {
 				MANOR_AMBIENT_INTENSITY,
 			),
 		);
+
 		const { layout, builder } = manor;
 		const shown = new Set([shot.room.id]);
+
 		for (const openingId of shot.room.openingIds) {
 			const opening = layout.openings[openingId];
+
 			shown.add(opening.roomA);
 			shown.add(opening.roomB);
 		}
+
 		for (const id of shown) {
 			const room = layout.rooms[id];
+
 			if (room) {
-				this.scene.add(builder.buildRoom(room).group);
+				const built = builder.buildRoom(room);
+
+				this.scene.add(built.group, built.doorways);
 			}
 		}
+
 		this.scene.add(manor.doors.group);
+
 		this.pool = new LightPool(
 			this.scene,
 			QUALITY_PRESETS.high.lightPool,
 			layout.lights.filter((light) => shown.has(light.roomId)),
 			layout.rooms,
 		);
+
 		this.scene.add(this.motes.points);
 		this.camera.position.copy(shot.eye);
 		this.camera.lookAt(shot.target);
@@ -375,6 +416,7 @@ class Stage {
 			look.pattern,
 			look.lantern ?? null,
 		);
+
 		for (let step = 0; step < 10; step += 1) {
 			model.update(0.05, {
 				speed: pose.run ? 5.2 : 0,
@@ -387,11 +429,16 @@ class Stage {
 				talking: 0,
 			});
 		}
+
 		const { position, yaw } = this.shot.place(actor);
+
 		model.root.position.copy(position);
+
 		model.root.rotation.y = modelYaw(yaw);
+
 		this.scene.add(model.root);
 		model.root.updateMatrixWorld(true);
+
 		this.lights.push({
 			id: `lantern-${this.lights.length}`,
 			position: model.lanternLightPosition.clone(),
@@ -401,7 +448,9 @@ class Stage {
 			priority: 4,
 			flicker: 0.12,
 		});
+
 		this.disposers.push(() => model.dispose());
+
 		return model;
 	}
 
@@ -411,13 +460,20 @@ class Stage {
 		state: "chase" | "idle",
 	): AnomalyModel {
 		const model = createAnomalyModel(species, this.kit);
+
 		posed(model, state);
+
 		const { position, yaw } = this.shot.place(actor);
+
 		model.root.position.copy(position);
+
 		model.root.rotation.y = modelYaw(yaw);
+
 		this.scene.add(model.root);
 		model.root.updateMatrixWorld(true);
+
 		const glow = model.glow;
+
 		if (glow) {
 			this.lights.push({
 				id: `anomaly-${this.lights.length}`,
@@ -432,7 +488,9 @@ class Stage {
 				flicker: 0.1,
 			});
 		}
+
 		this.disposers.push(() => model.dispose());
+
 		return model;
 	}
 
@@ -445,9 +503,11 @@ class Stage {
 		this.scene.remove(this.manor.doors.group);
 		this.pool.dispose(this.scene);
 		this.motes.dispose();
+
 		for (const dispose of this.disposers) {
 			dispose();
 		}
+
 		this.scene.traverse((object) => {
 			if (object instanceof THREE.Mesh) {
 				object.geometry.dispose();
@@ -609,22 +669,27 @@ function stageFor(manor: Manor, plate: Plate, taken: Set<number>): Shot | null {
 		(room) =>
 			room.level === 0 && room.type !== "corridor" && !taken.has(room.id),
 	);
+
 	const preferred = plate.rooms.flatMap((type) =>
 		rooms
 			.filter((room) => room.type === type)
 			.sort((a, b) => (plate.cozy ? a.area - b.area : b.area - a.area)),
 	);
+
 	const others = rooms
 		.filter((room) => !preferred.includes(room))
 		.sort((a, b) => b.area - a.area);
+
 	for (const strict of [true, false]) {
 		for (const room of [...preferred, ...others]) {
 			const shot = frame(manor, room, plate, strict);
+
 			if (shot) {
 				return shot;
 			}
 		}
 	}
+
 	return null;
 }
 
@@ -642,6 +707,7 @@ function perform(stage: Stage, cast: readonly CastMember[]): void {
 			);
 		}
 	}
+
 	stage.settle();
 }
 
@@ -649,15 +715,22 @@ function enlarge(source: HTMLCanvasElement, scale: number): string {
 	if (scale === 1) {
 		return source.toDataURL("image/png");
 	}
+
 	const canvas = document.createElement("canvas");
+
 	canvas.width = source.width * scale;
 	canvas.height = source.height * scale;
+
 	const context = canvas.getContext("2d");
+
 	if (!context) {
 		throw new Error("Contexte 2D indisponible");
 	}
+
 	context.imageSmoothingEnabled = false;
+
 	context.drawImage(source, 0, 0, canvas.width, canvas.height);
+
 	return canvas.toDataURL("image/png");
 }
 
@@ -668,20 +741,26 @@ async function drawPlates<Name extends string>(
 	scale = 1,
 ): Promise<Record<Name, string>> {
 	const canvas = document.createElement("canvas");
+
 	canvas.width = width;
 	canvas.height = height;
+
 	const renderer = new THREE.WebGLRenderer({
 		canvas,
 		antialias: false,
 		powerPreference: "low-power",
 		preserveDrawingBuffer: true,
 	});
+
 	renderer.setPixelRatio(1);
 	renderer.setSize(width, height, false);
+
 	renderer.outputColorSpace = THREE.SRGBColorSpace;
 	renderer.toneMapping = THREE.ACESFilmicToneMapping;
 	renderer.toneMappingExposure = 1;
+
 	const post = new PostEffects(renderer, 0);
+
 	const textures = new TextureLibrary(
 		Math.min(
 			QUALITY_PRESETS.high.textureAnisotropy,
@@ -689,21 +768,28 @@ async function drawPlates<Name extends string>(
 		),
 		surfaceQuality("high"),
 	);
+
 	await Promise.all([
 		textures.prepare(),
 		modelLibrary.load(),
 		preloadSpecialTextures(),
 	]);
+
 	const materials = new MaterialLibrary(textures);
 	const kit = new ModelKit(materials);
+
 	const layout = generateManor(ART_SEED, {
 		...PUBLIC_MATCH_CONFIG,
 		manorSize: "medium",
 		floors: 0,
 	});
+
 	const doors = new DoorViews(layout, kit);
+
 	doors.update(10);
+
 	const world = new CollisionWorld(layout);
+
 	const manor: Manor = {
 		layout,
 		world,
@@ -711,18 +797,25 @@ async function drawPlates<Name extends string>(
 		builder: new ManorMeshBuilder(layout, materials),
 		doors,
 	};
+
 	try {
 		const result = {} as Record<Name, string>;
 		const taken = new Set<number>();
+
 		for (const name of Object.keys(plates) as Name[]) {
 			const plate = plates[name];
 			const shot = stageFor(manor, plate, taken);
+
 			if (!shot) {
 				throw new Error(`Pas de salle pour l'illustration ${name}`);
 			}
+
 			taken.add(shot.room.id);
+
 			const stage = new Stage(manor, kit, shot, width / height);
+
 			perform(stage, plate.cast);
+
 			post.render(
 				{
 					dt: 1,
@@ -733,10 +826,13 @@ async function drawPlates<Name extends string>(
 				},
 				() => renderer.render(stage.scene, stage.camera),
 			);
+
 			result[name] = enlarge(canvas, scale);
+
 			stage.dispose();
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		}
+
 		return result;
 	} finally {
 		post.dispose();

@@ -18,6 +18,7 @@ export interface GhostBounds {
 export function ghostBounds(layout: ManorLayout): GhostBounds {
 	const floors = layout.rooms.map((room) => room.floorY);
 	const ceilings = layout.rooms.map((room) => room.ceilingY);
+
 	return {
 		minX: layout.bounds.minX - GHOST_BOUNDS_MARGIN,
 		maxX: layout.bounds.maxX + GHOST_BOUNDS_MARGIN,

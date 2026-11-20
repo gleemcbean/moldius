@@ -47,6 +47,7 @@ export type LobbyActionResult = { ok: true } | ({ ok: false } & LobbyError);
 
 export function lobbyErrorOf(result: { ok: false } & LobbyError): LobbyError {
 	const { ok: _ok, ...error } = result;
+
 	return error;
 }
 
@@ -109,14 +110,17 @@ export class Lobby {
 	): LobbyActionResult {
 		const preferredColor = look.color ?? null;
 		const existing = this.member(playerId);
+
 		if (existing) {
 			existing.name = name;
 			existing.connected = true;
 			existing.pattern = look.pattern ?? existing.pattern;
 			existing.lantern = look.lantern ?? existing.lantern;
 			existing.tagline = look.tagline ?? null;
+
 			return { ok: true };
 		}
+
 		if (this.phase !== "waiting" && this.phase !== "countdown") {
 			return {
 				ok: false,
@@ -124,16 +128,20 @@ export class Lobby {
 				message: "Une partie est déjà en cours dans ce lobby.",
 			};
 		}
+
 		if (this.isFull) {
 			return { ok: false, code: "full", message: "Ce lobby est complet." };
 		}
+
 		const usedColors = new Set(this.members.map((member) => member.color));
+
 		const color =
 			preferredColor !== null && !usedColors.has(preferredColor)
 				? preferredColor
 				: (PLAYER_COLOR_CHOICES.find(
 						(candidate) => !usedColors.has(candidate),
 					) ?? PLAYER_COLOR_CHOICES[0]);
+
 		this.members.push({
 			id: playerId,
 			name,
@@ -147,23 +155,30 @@ export class Lobby {
 			team: null,
 			joinedAt: now,
 		});
+
 		if (!this.hostId) {
 			this.hostId = playerId;
 		}
+
 		this.assignTeams();
 		this.cancelCountdown();
+
 		return { ok: true };
 	}
 
 	remove(playerId: string): void {
 		const index = this.members.findIndex((member) => member.id === playerId);
+
 		if (index < 0) {
 			return;
 		}
+
 		this.members.splice(index, 1);
+
 		if (this.hostId === playerId) {
 			this.hostId = this.members[0]?.id ?? "";
 		}
+
 		if (this.phase === "countdown") {
 			this.cancelCountdown();
 		}
@@ -171,9 +186,11 @@ export class Lobby {
 
 	setReady(playerId: string, ready: boolean): LobbyActionResult {
 		const member = this.member(playerId);
+
 		if (!member) {
 			return { ok: false, code: "unknown-player", message: "Joueur inconnu." };
 		}
+
 		if (ready && !member.micReady) {
 			return {
 				ok: false,
@@ -181,21 +198,28 @@ export class Lobby {
 				message: "Un microphone opérationnel est nécessaire pour jouer.",
 			};
 		}
+
 		member.ready = ready;
+
 		if (!ready) {
 			this.cancelCountdown();
 		}
+
 		return { ok: true };
 	}
 
 	setMicrophone(playerId: string, ready: boolean): void {
 		const member = this.member(playerId);
+
 		if (!member) {
 			return;
 		}
+
 		member.micReady = ready;
+
 		if (!ready) {
 			member.ready = false;
+
 			this.cancelCountdown();
 		}
 	}
@@ -208,6 +232,7 @@ export class Lobby {
 				message: "Les règles d'un lobby public sont imposées par le serveur.",
 			};
 		}
+
 		if (playerId !== this.hostId) {
 			return {
 				ok: false,
@@ -215,6 +240,7 @@ export class Lobby {
 				message: "Seul l'hôte peut modifier les règles.",
 			};
 		}
+
 		if (this.daily !== null) {
 			return {
 				ok: false,
@@ -222,6 +248,7 @@ export class Lobby {
 				message: "Le défi du jour a les mêmes règles pour tout le monde.",
 			};
 		}
+
 		if (this.phase !== "waiting") {
 			return {
 				ok: false,
@@ -229,13 +256,17 @@ export class Lobby {
 				message: "Les règles ne peuvent plus changer.",
 			};
 		}
+
 		this.config = sanitizeMatchConfig(input, this.config);
+
 		this.assignTeams();
+
 		for (const member of this.members) {
 			if (member.id !== this.hostId) {
 				member.ready = false;
 			}
 		}
+
 		return { ok: true };
 	}
 
@@ -247,6 +278,7 @@ export class Lobby {
 				message: "Un lobby public est déjà ouvert à tous.",
 			};
 		}
+
 		if (playerId !== this.hostId) {
 			return {
 				ok: false,
@@ -254,7 +286,9 @@ export class Lobby {
 				message: "Seul l'hôte peut ouvrir le lobby à ses amis.",
 			};
 		}
+
 		this.openToFriends = open;
+
 		return { ok: true };
 	}
 
@@ -267,6 +301,7 @@ export class Lobby {
 
 	setTeam(playerId: string, team: number): LobbyActionResult {
 		const member = this.member(playerId);
+
 		if (
 			!member ||
 			this.phase !== "waiting" ||
@@ -280,12 +315,15 @@ export class Lobby {
 				message: "Impossible de changer d'équipe maintenant.",
 			};
 		}
+
 		member.team = team;
+
 		return { ok: true };
 	}
 
 	private assignTeams(): void {
 		const count = this.config.teamCount;
+
 		for (const member of [...this.members].sort(
 			(a, b) => a.joinedAt - b.joinedAt,
 		)) {
@@ -303,6 +341,7 @@ export class Lobby {
 
 	everyoneReady(): boolean {
 		const connected = this.members.filter((member) => member.connected);
+
 		return (
 			connected.length >= Math.max(1, this.minPlayers) &&
 			connected.every((member) => member.ready && member.micReady)
@@ -317,6 +356,7 @@ export class Lobby {
 				message: "Seul l'hôte peut lancer la partie.",
 			};
 		}
+
 		if (this.phase !== "waiting" && this.phase !== "countdown") {
 			return {
 				ok: false,
@@ -324,6 +364,7 @@ export class Lobby {
 				message: "La partie est déjà lancée.",
 			};
 		}
+
 		if (this.connectedCount < this.minPlayers) {
 			return {
 				ok: false,
@@ -332,6 +373,7 @@ export class Lobby {
 				minPlayers: this.minPlayers,
 			};
 		}
+
 		if (!this.everyoneReady()) {
 			return {
 				ok: false,
@@ -339,6 +381,7 @@ export class Lobby {
 				message: "Tous les joueurs doivent être prêts avec un micro actif.",
 			};
 		}
+
 		return { ok: true };
 	}
 
@@ -358,6 +401,7 @@ export class Lobby {
 		this.phase = "waiting";
 		this.matchId = null;
 		this.countdownEndsAt = null;
+
 		for (const member of this.members) {
 			member.ready = false;
 		}
@@ -382,6 +426,7 @@ export class Lobby {
 			profileId: null,
 			level: null,
 		}));
+
 		return {
 			id: this.id,
 			code: this.code,

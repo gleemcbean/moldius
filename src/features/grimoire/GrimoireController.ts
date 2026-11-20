@@ -29,8 +29,10 @@ interface Page {
 
 function canvas(): HTMLCanvasElement {
 	const element = document.createElement("canvas");
+
 	element.width = PAGE_WIDTH;
 	element.height = PAGE_HEIGHT;
+
 	return element;
 }
 
@@ -59,9 +61,11 @@ export class GrimoireController {
 		const present = SPECIES_LIST.filter((species) =>
 			this.init.pool.includes(species.id),
 		);
+
 		for (const species of present) {
 			const left = canvas();
 			const right = canvas();
+
 			const page: Page = {
 				species: species.id,
 				left,
@@ -70,20 +74,27 @@ export class GrimoireController {
 				rightTexture: createPageTexture(right, this.anisotropy),
 				signature: "",
 			};
+
 			renderLeftPage(left, this.content(page));
 			this.renderRight(page, true);
+
 			page.leftTexture.needsUpdate = true;
+
 			this.pages.push(page);
 			onProgress(this.pages.length / present.length);
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		}
+
 		const first = this.pages[0];
+
 		this.model.setPages(first.leftTexture, first.rightTexture);
+
 		this.unsubscribe = settingsStore.subscribe((state, previous) => {
 			if (state.language !== previous.language) {
 				this.rerender();
 			}
 		});
+
 		return this.pages.flatMap((page) => [page.leftTexture, page.rightTexture]);
 	}
 
@@ -91,9 +102,11 @@ export class GrimoireController {
 		const species = SPECIES_LIST.find(
 			(entry) => entry.id === page.species,
 		) as SpeciesDefinition;
+
 		const specimens = this.init.roster.filter(
 			(entry) => entry.species === page.species,
 		);
+
 		const formulas: FormulaEntry[] =
 			specimens.length > 0
 				? [
@@ -105,6 +118,7 @@ export class GrimoireController {
 						},
 					]
 				: [];
+
 		return {
 			occult: specimens[0]?.occult ?? null,
 			art: this.objectArt,
@@ -117,21 +131,28 @@ export class GrimoireController {
 	private rerender(): void {
 		for (const page of this.pages) {
 			renderLeftPage(page.left, this.content(page));
+
 			page.leftTexture.needsUpdate = true;
+
 			this.renderRight(page, true);
 		}
 	}
 
 	private renderRight(page: Page, force = false): void {
 		const content = this.content(page);
+
 		const signature = JSON.stringify(
 			content.formulas.map((formula) => formula.present),
 		);
+
 		if (!force && signature === page.signature) {
 			return;
 		}
+
 		page.signature = signature;
+
 		renderRightPage(page.right, content);
+
 		page.rightTexture.needsUpdate = true;
 	}
 
@@ -139,11 +160,13 @@ export class GrimoireController {
 		if (this.open !== open) {
 			soundBank.play(open ? "book-open" : "hide", { volume: 0.5 });
 		}
+
 		this.open = open;
 	}
 
 	refresh(): void {
 		const page = this.pages[this.current];
+
 		if (page) {
 			this.renderRight(page);
 		}
@@ -151,12 +174,17 @@ export class GrimoireController {
 
 	goTo(index: number): void {
 		const clamped = Math.max(0, Math.min(this.pages.length - 1, index));
+
 		if (clamped === this.current || this.pages.length === 0) {
 			return;
 		}
+
 		const direction: 1 | -1 = clamped > this.current ? 1 : -1;
+
 		this.current = clamped;
+
 		const page = this.pages[clamped];
+
 		this.renderRight(page, true);
 		this.model.flipTo(page.leftTexture, page.rightTexture, direction);
 		soundBank.play("page-turn", { volume: 0.6 });
@@ -172,7 +200,9 @@ export class GrimoireController {
 
 	dispose(): void {
 		this.unsubscribe?.();
+
 		this.unsubscribe = null;
+
 		for (const page of this.pages) {
 			page.leftTexture.dispose();
 			page.rightTexture.dispose();

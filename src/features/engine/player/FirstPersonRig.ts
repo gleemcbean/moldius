@@ -54,12 +54,14 @@ export interface RigInput {
 const ARM_LENGTH = 0.6;
 const ARM_DARK = new THREE.Color(0x4e4a44);
 const ARM_LIT = new THREE.Color(0xa58a6a);
+
 const ARM_VERTEX_SHADER = `
 varying vec3 vArmNormal;
 void main() {
 	vArmNormal = normalMatrix * normal;
 	gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
+
 const ARM_FRAGMENT_SHADER = `
 uniform vec3 color;
 varying vec3 vArmNormal;
@@ -69,6 +71,7 @@ void main() {
 	#include <tonemapping_fragment>
 	#include <colorspace_fragment>
 }`;
+
 const UP = new THREE.Vector3(0, 1, 0);
 const FP_KEY_COLOR = 0xffd9b0;
 const FP_KEY_INTENSITY = 0.9;
@@ -106,11 +109,14 @@ const BOOK_STRAIGHT_PITCH = -0.85;
 
 function openBookPosition(fov: number, aspect: number): THREE.Vector3 {
 	const slope = Math.tan((fov * Math.PI) / 360);
+
 	const distance = Math.max(
 		BOOK_HEIGHT / (2 * slope * BOOK_HEIGHT_SHARE),
 		BOOK_WIDTH / (2 * slope * aspect * BOOK_MAX_WIDTH_SHARE),
 	);
+
 	const top = (0.5 - BOOK_TOP_EDGE) * 2 * slope * distance;
+
 	return new THREE.Vector3(-0.005, top - BOOK_HEIGHT / 2, -distance);
 }
 
@@ -141,6 +147,7 @@ export class FirstPersonRig {
 	private readonly heldHeights = new Map<OccultId, number>();
 	private readonly aura = new OccultAura();
 	private readonly heldTint = new THREE.Color();
+
 	readonly heldGlow: DynamicLight = {
 		id: "held-object",
 		position: new THREE.Vector3(),
@@ -150,6 +157,7 @@ export class FirstPersonRig {
 		priority: 3,
 		flicker: 0.08,
 	};
+
 	private heldShown: OccultId | null = null;
 	private heldBlend = 0;
 	private readonly photoCamera: CameraModel;
@@ -163,26 +171,40 @@ export class FirstPersonRig {
 		cameraScreen: THREE.Texture | null = null,
 	) {
 		this.lantern = new LanternModel(kit, LANTERN_SCALE, lanternTint);
+
 		this.root.add(this.lantern.root);
+
 		this.grimoire = new GrimoireModel(kit);
+
 		this.root.add(this.grimoire.root);
+
 		for (const id of OCCULT_IDS) {
 			const model = this.createHeldModel(kit, id);
+
 			this.heldModels.set(id, model);
 			this.heldRoot.add(model);
 		}
+
 		this.heldRoot.add(this.aura.root);
 		this.root.add(this.heldRoot);
+
 		this.photoCamera = createCameraModel(kit, cameraScreen);
 		this.photoCamera.root.visible = false;
+
 		this.root.add(this.photoCamera.root);
+
 		this.rightArm = this.createArm(kit, "right_arm");
 		this.leftArm = this.createArm(kit, "left_arm");
 		this.fpLight = new THREE.PointLight(lanternTint ?? 0xffb468, 0, 1.6, 2);
+
 		this.root.add(this.fpLight);
+
 		this.fpAmbient = new THREE.HemisphereLight(0xaaaaae, 0x4c4c4e, 1.25);
+
 		this.root.add(this.fpAmbient);
+
 		const key = new THREE.DirectionalLight(FP_KEY_COLOR, FP_KEY_INTENSITY);
+
 		key.position.set(-0.7, 1.1, 0.5);
 		key.target.position.set(0.25, -0.3, -0.6);
 		this.root.add(key, key.target);
@@ -195,16 +217,22 @@ export class FirstPersonRig {
 		const size = box.getSize(new THREE.Vector3());
 		const center = box.getCenter(new THREE.Vector3());
 		const scale = HELD_SIZE / Math.max(size.x, size.y, size.z);
+
 		model.scale.setScalar(scale);
 		this.heldHeights.set(id, size.y * scale);
+
 		model.position.set(
 			-center.x * scale,
 			-box.min.y * scale,
 			-center.z * scale,
 		);
+
 		const holder = new THREE.Group();
+
 		holder.add(model);
+
 		holder.visible = false;
+
 		return holder;
 	}
 
@@ -216,46 +244,63 @@ export class FirstPersonRig {
 	): void {
 		const wanted =
 			this.bookBlend > 0.05 || input.cameraRaised ? null : input.heldObject;
+
 		if (wanted !== null && wanted !== this.heldShown) {
 			this.heldShown = wanted;
+
 			this.aura.show(wanted, this.heldHeights.get(wanted) ?? HELD_SIZE);
+
 			this.heldGlow.color = this.aura.color;
+
 			this.heldTint.setHex(this.aura.color);
 		}
+
 		const target = wanted === null ? 0 : 1;
 		const step = dt / 0.2;
+
 		this.heldBlend =
 			this.heldBlend < target
 				? Math.min(target, this.heldBlend + step)
 				: Math.max(target, this.heldBlend - step);
+
 		for (const [id, model] of this.heldModels) {
 			model.visible = id === this.heldShown && this.heldBlend > 0.01;
 		}
+
 		const position = new THREE.Vector3().lerpVectors(
 			HELD_LOWERED,
 			HELD_RAISED,
 			easeInOut(this.heldBlend),
 		);
+
 		position.x += this.sway.x + bobX;
 		position.y += this.sway.y - bobY - input.crouch * 0.01;
+
 		this.heldRoot.position.copy(position);
 		this.heldRoot.rotation.set(0.12, 0.35, 0);
+
 		const resonance = input.heldResonance ?? 0;
+
 		this.aura.update(
 			dt,
 			input.visible ? this.heldBlend : 0,
 			!input.reduceMotion,
 			resonance,
 		);
+
 		this.heldGlow.intensity =
 			input.visible && this.heldBlend > 0.01
 				? HELD_GLOW_INTENSITY * this.heldBlend * (1 + resonance * 1.5)
 				: 0;
+
 		this.heldGlow.position.copy(position).add(this.aura.root.position);
 		this.root.localToWorld(this.heldGlow.position);
+
 		if (this.heldBlend > 0.01 && this.bookBlend <= 0.05) {
 			const contact = position.clone();
+
 			contact.y -= HELD_TIP_DROP;
+
 			this.placeArm(this.leftArm, contact, HELD_ELBOW);
 		}
 	}
@@ -276,49 +321,69 @@ export class FirstPersonRig {
 	): void {
 		const target = input.cameraRaised && this.bookBlend <= 0.05 ? 1 : 0;
 		const step = dt / 0.22;
+
 		this.cameraBlend =
 			this.cameraBlend < target
 				? Math.min(target, this.cameraBlend + step)
 				: Math.max(target, this.cameraBlend - step);
+
 		const aimTarget = input.cameraAimed && target === 1 ? 1 : 0;
 		const aimStep = dt / CAMERA_AIM_SECONDS;
+
 		this.aimBlend =
 			this.aimBlend < aimTarget
 				? Math.min(aimTarget, this.aimBlend + aimStep)
 				: Math.max(aimTarget, this.aimBlend - aimStep);
+
 		const model = this.photoCamera.root;
+
 		model.visible = this.cameraBlend > 0.01;
+
 		if (!model.visible) {
 			return;
 		}
+
 		const aim = easeInOut(this.aimBlend);
+
 		const position = new THREE.Vector3()
 			.lerpVectors(CAMERA_LOWERED, CAMERA_RAISED, easeInOut(this.cameraBlend))
 			.lerp(this.aimedCameraPosition(input.fov), aim);
+
 		const steady = 0.5 - aim * 0.38;
+
 		position.x += (this.sway.x + bobX) * steady;
 		position.y += (this.sway.y - bobY) * steady - input.crouch * 0.01;
+
 		model.position.copy(position);
+
 		model.position.y -= CAMERA_BODY_HALF;
+
 		model.rotation.set(
 			(0.05 - (1 - this.cameraBlend) * 0.9) * (1 - aim),
 			0.04 * (1 - aim),
 			0,
 		);
+
 		const flashing = performance.now() < this.flashUntil;
+
 		this.photoCamera.flash.material.color.setHex(
 			flashing ? 0xffffff : 0xd8dde4,
 		);
+
 		const contact = position.clone();
+
 		contact.x -= 0.075 + aim * 0.012;
 		contact.y -= aim * 0.04;
+
 		this.placeArm(this.leftArm, contact, CAMERA_ELBOW);
 	}
 
 	private aimedCameraPosition(fov: number): THREE.Vector3 {
 		const viewHeight = 2 * Math.tan(THREE.MathUtils.degToRad(fov) / 2);
+
 		const distance =
 			CAMERA_SCREEN_SIZE / (viewHeight * CAMERA_AIM_SCREEN_SHARE);
+
 		return new THREE.Vector3(
 			-CAMERA_SCREEN_OFFSET_X,
 			0,
@@ -328,6 +393,7 @@ export class FirstPersonRig {
 
 	private createArm(kit: ModelKit, name: string): ArmMesh {
 		const mesh = kit.rig("player/first_person_arms").mesh(name);
+
 		const arm: ArmMesh = new THREE.Mesh(
 			mesh.geometry,
 			new THREE.ShaderMaterial({
@@ -336,39 +402,51 @@ export class FirstPersonRig {
 				fragmentShader: ARM_FRAGMENT_SHADER,
 			}),
 		);
+
 		this.root.add(arm);
+
 		return arm;
 	}
 
 	private updateArmTones(): void {
 		const right: THREE.Color = this.rightArm.material.uniforms.color.value;
 		const left: THREE.Color = this.leftArm.material.uniforms.color.value;
+
 		right.lerpColors(ARM_DARK, ARM_LIT, this.lanternLevel);
 		left.copy(right).lerp(this.heldTint, HELD_ARM_TINT * this.heldBlend);
 	}
 
 	update(dt: number, input: RigInput): void {
 		this.root.visible = input.visible;
+
 		const target = input.grimoireOpen ? 1 : 0;
 		const step = dt / 0.36;
+
 		if (this.bookBlend < target) {
 			this.bookBlend = Math.min(target, this.bookBlend + step);
 		} else if (this.bookBlend > target) {
 			this.bookBlend = Math.max(target, this.bookBlend - step);
 		}
+
 		const blend = easeInOut(this.bookBlend);
 		const moving = Math.min(1, input.speed / 3);
+
 		if (input.headBob) {
 			this.bobPhase += dt * (4 + input.speed * 1.8);
 		}
+
 		const bobX = input.headBob ? Math.cos(this.bobPhase) * 0.012 * moving : 0;
+
 		const bobY = input.headBob
 			? Math.abs(Math.sin(this.bobPhase)) * 0.014 * moving
 			: 0;
+
 		this.sway.x +=
 			(-input.lookDeltaX * 0.0009 - this.sway.x) * Math.min(1, dt * 8);
+
 		this.sway.y +=
 			(input.lookDeltaY * 0.0009 - this.sway.y) * Math.min(1, dt * 8);
+
 		this.sway.clampScalar(-0.04, 0.04);
 
 		const lanternAnchor = new THREE.Vector3().lerpVectors(
@@ -376,38 +454,52 @@ export class FirstPersonRig {
 			LANTERN_READING,
 			blend,
 		);
+
 		lanternAnchor.x += this.sway.x + bobX;
 		lanternAnchor.y += this.sway.y - bobY - input.crouch * 0.01;
+
 		this.updatePendulum(dt, input, blend);
 		this.placeLantern(lanternAnchor);
 
 		const open = openBookPosition(input.fov, input.aspect);
 		const facing = Math.atan2(open.y, -open.z);
+
 		const tiltTarget = THREE.MathUtils.smoothstep(
 			input.pitch,
 			BOOK_UPRIGHT_PITCH,
 			BOOK_FLAT_PITCH,
 		);
+
 		this.bookTilt += (tiltTarget - this.bookTilt) * Math.min(1, dt * 10);
+
 		const loweredTarget = THREE.MathUtils.smoothstep(
 			-input.pitch,
 			-BOOK_LOWERED_PITCH,
 			-BOOK_STRAIGHT_PITCH,
 		);
+
 		this.bookLowered +=
 			(loweredTarget - this.bookLowered) * Math.min(1, dt * 10);
+
 		open.y *= 1 - this.bookLowered;
+
 		const flat = -(Math.PI / 2 + Math.max(0, input.pitch));
+
 		open.addScaledVector(BOOK_FLAT_DROP, this.bookTilt);
+
 		const bookPosition = new THREE.Vector3().lerpVectors(
 			BOOK_STOWED,
 			open,
 			blend,
 		);
+
 		const steady = 1 - blend * 0.6;
+
 		bookPosition.x += (this.sway.x * 0.6 + bobX * 0.5) * steady;
 		bookPosition.y += (this.sway.y * 0.6 - bobY * 0.6) * steady;
+
 		this.grimoire.root.position.copy(bookPosition);
+
 		this.grimoire.root.rotation.set(
 			THREE.MathUtils.lerp(facing, flat, this.bookTilt) *
 				(1 - this.bookLowered) -
@@ -415,7 +507,9 @@ export class FirstPersonRig {
 			0.02,
 			0.03 * (1 - blend),
 		);
+
 		this.grimoire.root.visible = this.bookBlend > 0.01;
+
 		this.grimoire.update(dt);
 
 		this.placeArm(
@@ -427,17 +521,22 @@ export class FirstPersonRig {
 				-0.16 - blend * 0.06,
 			),
 		);
+
 		if (this.bookBlend > 0.05) {
 			this.placeBookArm(bookPosition, this.grimoire.root.rotation);
 		}
+
 		this.updateHeld(dt, input, bobX, bobY);
 		this.updateCamera(dt, input, bobX, bobY);
+
 		this.leftArm.visible =
 			this.bookBlend > 0.05 || this.heldBlend > 0.01 || this.cameraBlend > 0.01;
 
 		this.lanternLevel = this.lantern.update(dt, input.lanternOpen);
+
 		this.updateArmTones();
 		this.fpLight.position.copy(this.lanternLocalPosition());
+
 		this.fpLight.position.z += 0.05;
 		this.fpLight.intensity = this.lanternLevel * (0.55 + blend * 0.2);
 	}
@@ -450,46 +549,59 @@ export class FirstPersonRig {
 		if (dt <= 0) {
 			return;
 		}
+
 		const last = this.lastLook ?? { yaw: input.yaw, pitch: input.pitch };
+
 		this.lastLook = { yaw: input.yaw, pitch: input.pitch };
+
 		const smoothing = Math.min(1, dt * 20);
+
 		const yawRate = THREE.MathUtils.clamp(
 			angleDifference(last.yaw, input.yaw) / dt,
 			-LANTERN_MAX_TURN_RATE,
 			LANTERN_MAX_TURN_RATE,
 		);
+
 		const pitchRate = THREE.MathUtils.clamp(
 			(input.pitch - last.pitch) / dt,
 			-LANTERN_MAX_TURN_RATE,
 			LANTERN_MAX_TURN_RATE,
 		);
+
 		this.turnRate.x += (yawRate - this.turnRate.x) * smoothing;
 		this.turnRate.y += (pitchRate - this.turnRate.y) * smoothing;
+
 		const rest = new THREE.Vector2(
 			this.turnRate.x * LANTERN_AIR_DRAG_TURN,
 			-this.turnRate.y * LANTERN_AIR_DRAG_TILT -
 				input.speed * LANTERN_AIR_DRAG_WALK,
 		).multiplyScalar(input.swing);
+
 		this.pendulumVelocity.x +=
 			(-(this.pendulum.x - rest.x) * LANTERN_PENDULUM_STIFFNESS -
 				this.pendulumVelocity.x * LANTERN_PENDULUM_DAMPING) *
 			dt;
+
 		this.pendulumVelocity.y +=
 			(-(this.pendulum.y - rest.y) * LANTERN_PENDULUM_STIFFNESS -
 				this.pendulumVelocity.y * LANTERN_PENDULUM_DAMPING) *
 			dt;
+
 		this.pendulum.addScaledVector(this.pendulumVelocity, dt);
 		this.pendulum.clampScalar(-0.5 + blend * 0.3, 0.5 - blend * 0.3);
 	}
 
 	private placeLantern(anchor: THREE.Vector3): void {
 		const lantern = this.lantern.root;
+
 		lantern.rotation.set(this.pendulum.y, 0, this.pendulum.x);
 		lantern.updateMatrix();
+
 		const handleOffset = this.lantern.handle.position
 			.clone()
 			.multiplyScalar(lantern.scale.x)
 			.applyEuler(lantern.rotation);
+
 		lantern.position.copy(anchor).sub(handleOffset);
 	}
 
@@ -504,6 +616,7 @@ export class FirstPersonRig {
 		)
 			.applyEuler(bookRotation)
 			.add(bookPosition);
+
 		this.placeArm(this.leftArm, contact, new THREE.Vector3(-0.42, -0.5, -0.1));
 	}
 
@@ -514,6 +627,7 @@ export class FirstPersonRig {
 	): void {
 		const direction = new THREE.Vector3().subVectors(contact, elbow);
 		const length = direction.length();
+
 		arm.position.copy(elbow).addScaledVector(direction, 0.5);
 		arm.quaternion.setFromUnitVectors(UP, direction.normalize());
 		arm.scale.set(1, length / ARM_LENGTH, 1);
@@ -521,6 +635,7 @@ export class FirstPersonRig {
 
 	lanternLocalPosition(): THREE.Vector3 {
 		const lantern = this.lantern.root;
+
 		return this.lantern.lightAnchor.position
 			.clone()
 			.multiplyScalar(lantern.scale.x)
@@ -533,6 +648,7 @@ export class FirstPersonRig {
 		this.aura.dispose();
 		this.rightArm.material.dispose();
 		this.leftArm.material.dispose();
+
 		this.root.traverse((object) => {
 			if (object instanceof THREE.Mesh) {
 				object.geometry.dispose();

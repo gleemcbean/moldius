@@ -18,6 +18,7 @@ export interface BasinShape {
 
 function roundOpening(radius: number): { width: number; depth: number } {
 	const side = radius * Math.SQRT2;
+
 	return { width: side, depth: side };
 }
 
@@ -25,6 +26,7 @@ export function basinShape(
 	item: Pick<FurnitureItem, "kind" | "width" | "depth" | "height">,
 ): BasinShape | null {
 	const { width, depth, height } = item;
+
 	switch (item.kind) {
 		case "cauldron":
 			return {
@@ -32,18 +34,21 @@ export function basinShape(
 				floorY: 0.14,
 				surfaceY: height - 0.13,
 			};
+
 		case "washtub":
 			return {
 				...roundOpening(width / 2 - 0.07),
 				floorY: 0.05,
 				surfaceY: height - 0.12,
 			};
+
 		case "birdbath":
 			return {
 				...roundOpening(width * 0.42),
 				floorY: height - 0.1,
 				surfaceY: height - 0.045,
 			};
+
 		case "bathtub":
 			return {
 				width: width - 0.14,
@@ -51,6 +56,7 @@ export function basinShape(
 				floorY: 0.19,
 				surfaceY: height - 0.14,
 			};
+
 		default:
 			return null;
 	}
@@ -77,6 +83,7 @@ export function liquidVolumes(
 	furniture: readonly FurnitureItem[],
 ): LiquidVolume[] {
 	const volumes: LiquidVolume[] = [];
+
 	for (const item of furniture) {
 		const base = {
 			itemId: item.id,
@@ -84,6 +91,7 @@ export function liquidVolumes(
 			z: item.z,
 			rotation: item.rotation,
 		};
+
 		if (item.kind === "pond") {
 			volumes.push({
 				...base,
@@ -95,12 +103,16 @@ export function liquidVolumes(
 				surfaceY: item.y + POND_SURFACE,
 				brew: null,
 			});
+
 			continue;
 		}
+
 		const shape = basinShape(item);
+
 		if (!shape) {
 			continue;
 		}
+
 		volumes.push({
 			...base,
 			kind: item.kind as LiquidKind,
@@ -112,6 +124,7 @@ export function liquidVolumes(
 			brew: item.kind === "cauldron" ? cauldronBrew(item.seed) : null,
 		});
 	}
+
 	return volumes;
 }
 
@@ -126,18 +139,22 @@ export function liquidAt(
 		) {
 			continue;
 		}
+
 		const local = rotate2(
 			{ x: position.x - volume.x, z: position.z - volume.z },
 			-volume.rotation,
 		);
+
 		const inside = volume.elliptic
 			? (local.x / volume.halfWidth) ** 2 + (local.z / volume.halfDepth) ** 2 <=
 				1
 			: Math.abs(local.x) <= volume.halfWidth &&
 				Math.abs(local.z) <= volume.halfDepth;
+
 		if (inside) {
 			return volume;
 		}
 	}
+
 	return null;
 }

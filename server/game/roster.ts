@@ -27,6 +27,8 @@ const SPECIES_CAPS: Partial<Record<SpeciesId, number>> = {
 	colosse: 2,
 	fulgurant: 2,
 	gorgone: 2,
+	cordyceps: 2,
+	cinematographe: 1,
 };
 
 export function planRoster(
@@ -36,42 +38,60 @@ export function planRoster(
 	allowed: readonly SpeciesId[] = ENABLED_SPECIES_IDS,
 ): RosterPlan {
 	const poolSize = Math.min(count, rng.int(6, 8));
+
 	const pool = rng
 		.shuffle(SPECIES_IDS.filter((id) => allowed.includes(id)))
 		.slice(0, poolSize);
+
 	if (pool.length === 0) {
 		return { pool: [], instances: [] };
 	}
+
 	const assigned: SpeciesId[] = [...pool];
+
 	const capped = (species: SpeciesId) =>
 		assigned.filter((entry) => entry === species).length >=
 		(SPECIES_CAPS[species] ?? 6);
+
 	while (assigned.length < count) {
 		const candidates = pool.filter((species) => !capped(species));
+
 		const choice =
 			candidates.length > 0 ? rng.pick(candidates) : rng.pick(pool);
+
 		assigned.push(choice);
 	}
+
 	if (pool.length > count) {
 		assigned.length = count;
 	}
+
 	const species = [...new Set(assigned)];
 	const generated = generateFormulas(rng, species.length, previousWords);
+
 	const formulaOf = new Map(
 		species.map((entry, index) => [entry, generated[index]]),
 	);
+
 	const occultRng = rng.fork("occult");
+
 	const occultOf = new Map(
 		species.map((entry) => [entry, occultRng.pick(OCCULT_IDS)]),
 	);
+
 	const counts = new Map<SpeciesId, number>();
+
 	for (const species of assigned) {
 		counts.set(species, (counts.get(species) ?? 0) + 1);
 	}
+
 	const seen = new Map<SpeciesId, number>();
+
 	const instances = assigned.map((entry) => {
 		const exemplar = (seen.get(entry) ?? 0) + 1;
+
 		seen.set(entry, exemplar);
+
 		return {
 			species: entry,
 			exemplar,
@@ -80,6 +100,7 @@ export function planRoster(
 			occult: occultOf.get(entry) as OccultId,
 		};
 	});
+
 	return { pool: species, instances };
 }
 

@@ -224,24 +224,33 @@ function percent(value: number, target: number): number {
 
 function starCanvas(): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
+
 	canvas.width = 128;
 	canvas.height = 128;
+
 	const context = canvas.getContext("2d") as CanvasRenderingContext2D;
+
 	context.beginPath();
+
 	for (let index = 0; index < 10; index += 1) {
 		const radius = index % 2 === 0 ? 58 : 23;
 		const angle = (index / 10) * Math.PI * 2 - Math.PI / 2;
+
 		context.lineTo(
 			64 + Math.cos(angle) * radius,
 			64 + Math.sin(angle) * radius,
 		);
 	}
+
 	context.closePath();
+
 	context.fillStyle = "#ffe07a";
 	context.strokeStyle = "#5a3c08";
 	context.lineWidth = 5;
+
 	context.fill();
 	context.stroke();
+
 	return canvas;
 }
 
@@ -256,8 +265,10 @@ function overlaySprite(texture: THREE.Texture): THREE.Sprite {
 			sizeAttenuation: false,
 		}),
 	);
+
 	sprite.renderOrder = 10;
 	sprite.visible = false;
+
 	return sprite;
 }
 
@@ -273,11 +284,13 @@ class WorldBadge {
 		this.texture = new THREE.CanvasTexture(this.canvas);
 		this.texture.colorSpace = THREE.SRGBColorSpace;
 		this.sprite = overlaySprite(this.texture);
+
 		this.sprite.scale.set(
 			(BADGE_SCALE * this.canvas.width) / this.canvas.height,
 			BADGE_SCALE,
 			1,
 		);
+
 		this.sprite.renderOrder = 11;
 	}
 
@@ -288,32 +301,46 @@ class WorldBadge {
 		fill: number | null,
 	) {
 		this.sprite.position.copy(position);
+
 		this.sprite.visible = true;
+
 		const key = `${text}|${color}|${fill === null ? "" : Math.round(fill * 40)}`;
+
 		if (key === this.drawn) {
 			return;
 		}
+
 		this.drawn = key;
+
 		const context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 		const { width, height } = this.canvas;
+
 		context.clearRect(0, 0, width, height);
+
 		context.font = BADGE_FONT;
+
 		const textWidth = Math.min(
 			width - 24,
 			context.measureText(text).width + 56,
 		);
+
 		const left = (width - textWidth) / 2;
+
 		context.fillStyle = "rgba(10, 12, 10, 0.86)";
 		context.strokeStyle = color;
 		context.lineWidth = 5;
+
 		context.beginPath();
 		context.roundRect(left, 8, textWidth, height - 16, 22);
 		context.fill();
 		context.stroke();
+
 		if (fill !== null) {
 			context.fillStyle = color;
 			context.globalAlpha = 0.35;
+
 			context.beginPath();
+
 			context.roundRect(
 				left + 6,
 				14,
@@ -321,13 +348,18 @@ class WorldBadge {
 				height - 28,
 				16,
 			);
+
 			context.fill();
+
 			context.globalAlpha = 1;
 		}
+
 		context.fillStyle = color;
 		context.textAlign = "center";
 		context.textBaseline = "middle";
+
 		context.fillText(text, width / 2, height / 2 + 2, textWidth - 28);
+
 		this.texture.needsUpdate = true;
 	}
 
@@ -358,11 +390,13 @@ export class TutorialController {
 	private capturedAt = -Infinity;
 	private craftedAt = -Infinity;
 	private voiceHeardAt = -Infinity;
+
 	private readonly stakeAt: Record<StakeKind, number> = {
 		sanctuary: -Infinity,
 		reliquary: -Infinity,
 		pact: -Infinity,
 	};
+
 	private castStartedAt: number | null = null;
 	private castEndedAt = -Infinity;
 	private castOutcome: "interrupted" | "completed" | null = null;
@@ -380,6 +414,7 @@ export class TutorialController {
 		this.starTexture = new THREE.CanvasTexture(starCanvas());
 		this.starTexture.colorSpace = THREE.SRGBColorSpace;
 		this.star = overlaySprite(this.starTexture);
+
 		this.star.scale.setScalar(STAR_SCALE);
 		loaded.scene.add(this.star, this.ear.sprite, this.spell.sprite);
 		loaded.state.listeners.add(this.listener);
@@ -410,16 +445,20 @@ export class TutorialController {
 
 	private onEvent(event: GameEvent): void {
 		const now = performance.now();
+
 		switch (event.type) {
 			case "heard":
 				if (event.playerId === this.selfId) {
 					this.heardAt = now;
 					this.memo.sneakTime = 0;
+
 					if (!this.crouchHeld) {
 						this.memo.heardStanding = true;
 					}
 				}
+
 				break;
+
 			case "push":
 				if (
 					event.fromId === this.selfId &&
@@ -427,32 +466,43 @@ export class TutorialController {
 				) {
 					this.pushedAt = now;
 				}
+
 				break;
+
 			case "castInterrupted":
 				if (event.playerId === TUTORIAL_DUMMY_ID) {
 					this.castOutcome = "interrupted";
 					this.castEndedAt = now;
 					this.castStartedAt = null;
+
 					if (event.byId === this.selfId && event.cause !== "push") {
 						this.interruptedAt = now;
 					}
 				}
+
 				break;
+
 			case "capture":
 				if (event.playerId === this.selfId) {
 					this.capturedAt = now;
 				}
+
 				break;
+
 			case "craft":
 				if (event.playerId === this.selfId) {
 					this.craftedAt = now;
 				}
+
 				break;
+
 			case "stake":
 				if (event.playerId === this.selfId) {
 					this.stakeAt[event.stake] = now;
 				}
+
 				break;
+
 			default:
 				break;
 		}
@@ -461,16 +511,22 @@ export class TutorialController {
 	update(context: TutorialFrame): void {
 		this.time += context.dt;
 		this.crouchHeld = context.frame.held.has("crouch");
+
 		let checks: TutorialCheck[] = [];
+
 		if (!this.finished) {
 			this.enterStep();
 			this.trackDummy();
+
 			const step = this.index;
 			const evaluation = this.evaluate(context);
+
 			this.advance(context, evaluation);
+
 			if (step !== this.index) {
 				this.enterStep();
 			}
+
 			checks =
 				step !== this.index || this.finished
 					? []
@@ -478,10 +534,13 @@ export class TutorialController {
 						? evaluation.checks
 						: evaluation.checks.map((check) => ({ ...check, ok: true }));
 		}
+
 		const target = this.finished
 			? null
 			: this.target(context.feet, context.inventory);
+
 		this.star.visible = target !== null;
+
 		if (target) {
 			this.star.position.set(
 				target.point.x,
@@ -489,6 +548,7 @@ export class TutorialController {
 				target.point.z,
 			);
 		}
+
 		this.updateBadges();
 		this.publish(context, target?.point ?? null, checks);
 	}
@@ -497,12 +557,17 @@ export class TutorialController {
 		if (this.entered === this.index) {
 			return;
 		}
+
 		this.entered = this.index;
 		this.memo = freshMemo();
+
 		const stage = this.spec.stage;
+
 		if (stage !== this.sentStage) {
 			this.sentStage = stage;
+
 			this.actions.stage(stage);
+
 			if (TELEPORT_STAGES.has(stage)) {
 				pushFeedback(currentMessages().game.tutorial.teleported, "info");
 			}
@@ -511,7 +576,9 @@ export class TutorialController {
 
 	private advance(context: TutorialFrame, { done }: Evaluation): void {
 		const skip = this.skip || context.frame.confirm;
+
 		this.skip = false;
+
 		if (this.step === "fork") {
 			if (skip) {
 				this.finish();
@@ -519,32 +586,44 @@ export class TutorialController {
 				playUiClick("confirm");
 				this.next();
 			}
+
 			return;
 		}
+
 		if (this.step === "end") {
 			if (skip) {
 				this.finish();
 			}
+
 			return;
 		}
+
 		if (skip) {
 			this.next();
+
 			return;
 		}
+
 		const now = performance.now();
+
 		if (this.completedAt === null) {
 			if (done) {
 				this.completedAt = now;
+
 				pushFeedback(currentMessages().game.tutorial.stepDone, "success");
 				playUiClick("confirm");
 			}
+
 			return;
 		}
+
 		const following = STEPS[this.index + 1];
+
 		const teleports =
 			following !== undefined &&
 			following.stage !== this.spec.stage &&
 			TELEPORT_STAGES.has(following.stage);
+
 		if (
 			now - this.completedAt >= STEP_DONE_DELAY_MS &&
 			(!teleports || context.grounded)
@@ -560,26 +639,34 @@ export class TutorialController {
 
 	private finish(): void {
 		this.finished = true;
+
 		playUiClick("confirm");
 	}
 
 	private trackDummy(): void {
 		const flags =
 			this.loaded.state.players.get(TUTORIAL_DUMMY_ID)?.latest?.flags ?? 0;
+
 		const casting = (flags & PLAYER_FLAG.casting) !== 0;
 		const now = performance.now();
+
 		if (casting && this.castStartedAt === null) {
 			this.castStartedAt = now;
 			this.castOutcome = null;
+
 			return;
 		}
+
 		if (!casting && this.castStartedAt !== null) {
 			const lasted = now - this.castStartedAt;
+
 			this.castStartedAt = null;
 			this.castEndedAt = now;
+
 			if (this.castOutcome === null) {
 				this.castOutcome =
 					lasted >= TUTORIAL_DUMMY_CAST_MS * 0.85 ? "completed" : "interrupted";
+
 				if (this.castOutcome === "completed" && this.step === "shout") {
 					pushFeedback(
 						currentMessages().game.tutorial.castCompleted,
@@ -611,6 +698,7 @@ export class TutorialController {
 
 	private monsterDistance(feet: Vec3): number {
 		const info = this.loaded.anomalies.info(0);
+
 		return info
 			? Math.hypot(info.position.x - feet.x, info.position.z - feet.z)
 			: Infinity;
@@ -629,10 +717,12 @@ export class TutorialController {
 		const memo = this.memo;
 		const keys = activeBindings();
 		const label = (action: ActionId) => keyLabel(keys[action]);
+
 		const all = (checks: TutorialCheck[]): Evaluation => ({
 			checks,
 			done: checks.every((check) => check.ok),
 		});
+
 		switch (this.step) {
 			case "move": {
 				if (memo.last) {
@@ -641,7 +731,9 @@ export class TutorialController {
 						feet.z - memo.last.z,
 					);
 				}
+
 				memo.last = { ...feet };
+
 				return all([
 					{
 						label: labels.walk(percent(memo.travelled, WALK_DISTANCE)),
@@ -649,11 +741,14 @@ export class TutorialController {
 					},
 				]);
 			}
+
 			case "run":
 				if (frame.held.has("sprint") && this.moving(frame)) {
 					memo.sprintTime += dt;
 				}
+
 				memo.jumped ||= frame.pressed.has("jump");
+
 				return all([
 					{
 						label: labels.sprint(
@@ -664,8 +759,10 @@ export class TutorialController {
 					},
 					{ label: labels.jump(label("jump")), ok: memo.jumped },
 				]);
+
 			case "stealth": {
 				const quiet = performance.now() - this.heardAt > QUIET_AFTER_HEARD_MS;
+
 				if (
 					this.crouchHeld &&
 					this.moving(frame) &&
@@ -674,6 +771,7 @@ export class TutorialController {
 				) {
 					memo.sneakTime += dt;
 				}
+
 				return all([
 					{ label: labels.heardStanding, ok: memo.heardStanding },
 					{
@@ -686,14 +784,18 @@ export class TutorialController {
 					},
 				]);
 			}
+
 			case "map":
 				memo.opened ||= context.mapOpen;
+
 				return all([
 					{ label: labels.mapOpened, ok: memo.opened },
 					{ label: labels.mapClosed, ok: memo.opened && !context.mapOpen },
 				]);
+
 			case "lantern":
 				memo.opened ||= context.lanternOpen;
+
 				return all([
 					{ label: labels.lanternOpened, ok: memo.opened },
 					{
@@ -701,12 +803,15 @@ export class TutorialController {
 						ok: memo.opened && !context.lanternOpen,
 					},
 				]);
+
 			case "fragments": {
 				const crafted = this.crafted(inventory);
 				const names = currentMessages().grimoire.materials;
+
 				return all(
 					this.recipe().map(([id, count]) => {
 						const have = Math.min(count, inventory?.materials[id] ?? 0);
+
 						return {
 							label: labels.material(names[id], crafted ? count : have, count),
 							ok: crafted || have >= count,
@@ -714,6 +819,7 @@ export class TutorialController {
 					}),
 				);
 			}
+
 			case "altar":
 				return all([
 					{
@@ -725,6 +831,7 @@ export class TutorialController {
 						ok: this.object !== null && context.heldObject === this.object,
 					},
 				]);
+
 			case "water":
 				return this.waterChecks(context);
 			case "push":
@@ -734,12 +841,15 @@ export class TutorialController {
 						ok: this.pushedAt >= memo.startedAt,
 					},
 				]);
+
 			case "shout": {
 				const broken = this.interruptedAt >= memo.startedAt;
 				const dummy = this.loaded.remotePlayers.positionOf(TUTORIAL_DUMMY_ID);
+
 				const near =
 					dummy !== null &&
 					Math.hypot(dummy.x - feet.x, dummy.z - feet.z) <= SHOUT_RANGE;
+
 				return {
 					checks: [
 						{ label: labels.shoutRange(SHOUT_RANGE), ok: broken || near },
@@ -748,12 +858,14 @@ export class TutorialController {
 					done: broken,
 				};
 			}
+
 			case "goal":
 				if (context.grimoireOpen) {
 					memo.readSince ||= performance.now();
 				} else {
 					memo.readSince = 0;
 				}
+
 				return all([
 					{
 						label: labels.grimoire(label("grimoire")),
@@ -762,19 +874,24 @@ export class TutorialController {
 							performance.now() - memo.readSince >= GRIMOIRE_READ_MS,
 					},
 				]);
+
 			case "capture":
 				return this.captureChecks(context);
 			case "pact":
 				return all([
 					{ label: labels.pact, ok: this.stakeAt.pact >= memo.startedAt },
 				]);
+
 			case "sanctuary": {
 				const lit = this.stakeAt.sanctuary >= memo.startedAt;
 				const health = Math.round(context.health);
+
 				if (lit) {
 					memo.healthAtStart ??= health;
 				}
+
 				const gained = lit ? health - (memo.healthAtStart ?? health) : 0;
+
 				return all([
 					{ label: labels.sanctuary, ok: lit },
 					{
@@ -786,6 +903,7 @@ export class TutorialController {
 					},
 				]);
 			}
+
 			case "reliquary":
 				return all([
 					{
@@ -793,11 +911,14 @@ export class TutorialController {
 						ok: this.stakeAt.reliquary >= memo.startedAt,
 					},
 				]);
+
 			case "walkie": {
 				const taken = this.loaded.state.selfHasWalkie;
+
 				if (taken && context.radioOn) {
 					memo.radioTime += dt;
 				}
+
 				return all([
 					{ label: labels.walkieTaken(label("interact")), ok: taken },
 					{
@@ -809,10 +930,13 @@ export class TutorialController {
 					},
 				]);
 			}
+
 			case "camera": {
 				const taken = this.loaded.state.selfHasCamera;
+
 				memo.photosAtStart ??= context.photos;
 				memo.opened ||= taken && context.cameraRaised;
+
 				return all([
 					{ label: labels.cameraTaken(label("interact")), ok: taken },
 					{ label: labels.cameraRaised(label("camera")), ok: memo.opened },
@@ -822,6 +946,7 @@ export class TutorialController {
 					},
 				]);
 			}
+
 			default:
 				return { checks: [], done: false };
 		}
@@ -831,12 +956,16 @@ export class TutorialController {
 		const { layout, state } = this.loaded;
 		const labels = currentMessages().game.tutorial.checks;
 		const memo = this.memo;
+
 		memo.woundSeen ||= health <= TUTORIAL_WOUNDED_HEALTH;
+
 		const flowing = layout.valves.filter(
 			(valve) => (state.valves.get(valve.id)?.activeUntil ?? 0) > serverNow,
 		);
+
 		const target = TUTORIAL_WOUNDED_HEALTH + HEAL_TO_PASS;
 		const healed = memo.woundSeen && health >= target;
+
 		const checks = [
 			{ label: labels.valveOpen, ok: flowing.length > 0 || healed },
 			{
@@ -855,12 +984,14 @@ export class TutorialController {
 				ok: healed,
 			},
 		];
+
 		return { checks, done: healed };
 	}
 
 	private captureChecks(context: TutorialFrame): Evaluation {
 		const labels = currentMessages().game.tutorial.checks;
 		const center = this.loaded.anomalies.info(0)?.center;
+
 		const distance = center
 			? Math.hypot(
 					center.x - context.feet.x,
@@ -868,9 +999,11 @@ export class TutorialController {
 					center.z - context.feet.z,
 				)
 			: Infinity;
+
 		if (micManager.measure() >= VOICE_HEARD_LEVEL) {
 			this.voiceHeardAt = performance.now();
 		}
+
 		return {
 			checks: [
 				{
@@ -893,10 +1026,13 @@ export class TutorialController {
 	private nearest(feet: Vec3, points: Vec3[]): Vec3 | null {
 		const distance = (point: Vec3) =>
 			Math.hypot(point.x - feet.x, point.z - feet.z);
+
 		const sameFloor = points.filter(
 			(point) => Math.abs(point.y - feet.y) < SAME_FLOOR,
 		);
+
 		const pool = sameFloor.length > 0 ? sameFloor : points;
+
 		return (
 			[...pool].sort(
 				(first, second) => distance(first) - distance(second),
@@ -906,11 +1042,14 @@ export class TutorialController {
 
 	private target(feet: Vec3, inventory: PlayerInventory | null): Target | null {
 		const { layout, pickups, anomalies, state, walkies, cameras } = this.loaded;
+
 		const at = (point: Vec3 | null, lift = STAR_HEIGHT): Target | null =>
 			point ? { point, lift } : null;
+
 		switch (this.step) {
 			case "fragments": {
 				const missing = this.missingMaterials(inventory);
+
 				return at(
 					this.nearest(
 						feet,
@@ -922,10 +1061,12 @@ export class TutorialController {
 					),
 				);
 			}
+
 			case "altar":
 				return this.crafted(inventory)
 					? null
 					: at(this.nearest(feet, layout.altars));
+
 			case "water":
 				return at(
 					this.nearest(
@@ -937,22 +1078,29 @@ export class TutorialController {
 						})),
 					),
 				);
+
 			case "capture": {
 				const center = anomalies.info(0)?.center;
+
 				return center
 					? at({ x: center.x, y: center.y - 1, z: center.z })
 					: null;
 			}
+
 			case "pact":
 			case "sanctuary":
 			case "reliquary": {
 				const kind = this.step;
+
 				if (this.stakeAt[kind] >= this.memo.startedAt) {
 					return null;
 				}
+
 				const stake = layout.stakes.find((entry) => entry.kind === kind);
+
 				return stake ? at(stake, STAKE_STAR_HEIGHT) : null;
 			}
+
 			case "walkie":
 				return state.selfHasWalkie
 					? null
@@ -964,6 +1112,7 @@ export class TutorialController {
 									.filter((spot) => walkies.isAvailable(spot.id)),
 							),
 						);
+
 			case "camera":
 				return state.selfHasCamera
 					? null
@@ -975,6 +1124,7 @@ export class TutorialController {
 									.filter((spot) => cameras.isAvailable(spot.id)),
 							),
 						);
+
 			default:
 				return null;
 		}
@@ -983,12 +1133,15 @@ export class TutorialController {
 	private updateBadges(): void {
 		const labels = currentMessages().game.tutorial.badges;
 		const now = performance.now();
+
 		const info =
 			!this.finished && this.step === "stealth"
 				? this.loaded.anomalies.info(0)
 				: null;
+
 		if (info) {
 			const heard = now - this.heardAt < HEARD_BADGE_MS;
+
 			this.ear.show(
 				new THREE.Vector3(
 					info.position.x,
@@ -1002,16 +1155,22 @@ export class TutorialController {
 		} else {
 			this.ear.hide();
 		}
+
 		const anchor =
 			!this.finished && this.step === "shout"
 				? this.loaded.remotePlayers.positionOf(TUTORIAL_DUMMY_ID)
 				: null;
+
 		if (!anchor) {
 			this.spell.hide();
+
 			return;
 		}
+
 		const position = anchor.clone();
+
 		position.y += SPELL_BADGE_HEIGHT;
+
 		if (this.castStartedAt !== null) {
 			this.spell.show(
 				position,
@@ -1021,6 +1180,7 @@ export class TutorialController {
 			);
 		} else if (now - this.castEndedAt < CAST_RESULT_MS && this.castOutcome) {
 			const broken = this.castOutcome === "interrupted";
+
 			this.spell.show(
 				position,
 				broken ? labels.interrupted : labels.completed,
@@ -1038,11 +1198,13 @@ export class TutorialController {
 
 	private speciesName(): string {
 		const species = this.init.roster[0]?.species;
+
 		return species ? currentMessages().grimoire.species[species].name : "";
 	}
 
 	private speciesPoints(): number {
 		const species = this.init.roster[0]?.species;
+
 		return SPECIES_LIST.find((entry) => entry.id === species)?.points ?? 0;
 	}
 
@@ -1050,6 +1212,7 @@ export class TutorialController {
 		const keys = activeBindings();
 		const label = (action: ActionId) => keyLabel(keys[action]);
 		const steps = currentMessages().game.tutorial.steps;
+
 		switch (this.step) {
 			case "move":
 				return steps.move(
@@ -1060,6 +1223,7 @@ export class TutorialController {
 						label("moveRight"),
 					].join(" "),
 				);
+
 			case "run":
 				return steps.run(label("sprint"), label("jump"));
 			case "stealth":
@@ -1078,6 +1242,7 @@ export class TutorialController {
 					VALVE_JET_DURATION_MS / 1000,
 					VALVE_COOLDOWN_MS / 1000,
 				);
+
 			case "push":
 				return steps.push(label("push"));
 			case "shout":
@@ -1090,6 +1255,7 @@ export class TutorialController {
 					CAPTURE_MAX_RANGE,
 					this.init.roster[0]?.formula.join(" · ") ?? "",
 				);
+
 			case "fork":
 				return steps.fork(this.speciesPoints());
 			case "pact":
@@ -1107,6 +1273,7 @@ export class TutorialController {
 					label("aim"),
 					label("photo"),
 				);
+
 			case "end":
 				return steps.end();
 		}
@@ -1115,6 +1282,7 @@ export class TutorialController {
 	private choices(): TutorialChoice[] {
 		const labels = currentMessages().game.tutorial.choices;
 		const enter = keyLabel(confirmCode());
+
 		if (this.step === "fork") {
 			return [
 				{ key: enter, label: labels.quit },
@@ -1124,9 +1292,11 @@ export class TutorialController {
 				},
 			];
 		}
+
 		if (this.step === "end") {
 			return [{ key: enter, label: labels.quit }];
 		}
+
 		return [];
 	}
 
@@ -1138,8 +1308,10 @@ export class TutorialController {
 	} {
 		const messages = currentMessages().game.tutorial;
 		const chapter = this.spec.chapter;
+
 		if (chapter === null) {
 			const fork = this.step === "fork";
+
 			return {
 				chapter: fork ? messages.forkHeader : messages.endHeader,
 				chapterIndex: fork ? CHAPTERS.indexOf("bonus") : CHAPTERS.length,
@@ -1147,7 +1319,9 @@ export class TutorialController {
 				steps: 0,
 			};
 		}
+
 		const siblings = STEPS.filter((entry) => entry.chapter === chapter);
+
 		return {
 			chapter: messages.chapters[chapter],
 			chapterIndex: CHAPTERS.indexOf(chapter),
@@ -1163,22 +1337,30 @@ export class TutorialController {
 	): void {
 		let arrow: number | null = null;
 		let distance: number | null = null;
+
 		if (target) {
 			const dx = target.x - context.feet.x;
 			const dz = target.z - context.feet.z;
+
 			distance = Math.round(Math.hypot(dx, dz));
+
 			arrow =
 				Math.round(
 					(wrapAngle(Math.atan2(-dx, -dz) - context.yaw) * 180) / Math.PI / 5,
 				) * 5;
 		}
+
 		const choices = this.choices();
 		const key = `${this.index}:${arrow}:${distance}:${this.finished}:${settingsStore.get().language}:${padActive()}:${checks.map((check) => `${check.label}${check.ok}`).join()}`;
+
 		if (key === this.lastPublished) {
 			return;
 		}
+
 		this.lastPublished = key;
+
 		const messages = currentMessages().game.tutorial;
+
 		hudStore.set({
 			tutorial: {
 				...this.header(),

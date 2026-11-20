@@ -58,12 +58,15 @@ export function normalizeWord(word: string): string {
 
 export function phoneticKey(word: string): string {
 	let key = normalizeWord(word);
+
 	for (const [pattern, replacement] of PHONETIC_RULES) {
 		key = key.replace(pattern, replacement);
 	}
+
 	if (key.length > 3 && key.endsWith("e")) {
 		key = key.slice(0, -1);
 	}
+
 	return key;
 }
 
@@ -71,9 +74,12 @@ export function editDistance(a: string, b: string): number {
 	if (a === b) {
 		return 0;
 	}
+
 	let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+
 	for (let i = 1; i <= a.length; i += 1) {
 		const current = [i];
+
 		for (let j = 1; j <= b.length; j += 1) {
 			current.push(
 				Math.min(
@@ -83,8 +89,10 @@ export function editDistance(a: string, b: string): number {
 				),
 			);
 		}
+
 		previous = current;
 	}
+
 	return previous[b.length];
 }
 
@@ -92,7 +100,9 @@ export function phoneticTolerance(key: string, slack = 0): number {
 	if (key.length <= 3) {
 		return 0;
 	}
+
 	const base = key.length <= 6 ? 1 : 2;
+
 	return key.length >= RELAXED_MIN_KEY_LENGTH ? base + slack : base;
 }
 
@@ -103,6 +113,7 @@ export function soundsLike(
 ): boolean {
 	const key = phoneticKey(spoken);
 	const tolerance = phoneticTolerance(expectedKey, slack);
+
 	return (
 		key.length > 0 &&
 		Math.abs(key.length - expectedKey.length) <= tolerance &&
@@ -117,12 +128,14 @@ export function transcriptMatchesFormula(
 ): boolean {
 	const tokens = normalizeSpeech(transcript);
 	const expected = formula.map(phoneticKey);
+
 	if (
 		tokens.length === 0 ||
 		tokens.length > expected.length * MAX_TOKENS_PER_WORD + MAX_EXTRA_TOKENS
 	) {
 		return false;
 	}
+
 	return matchFrom(tokens, expected, 0, 0, 0, slack);
 }
 
@@ -141,17 +154,22 @@ export function matchingFormulas(
 		(formula, index) =>
 			formulas.findIndex((other) => sameFormula(other, formula)) === index,
 	);
+
 	const heard = (slack: number) =>
 		distinct.filter((formula) =>
 			transcripts.some((transcript) =>
 				transcriptMatchesFormula(transcript, formula, slack),
 			),
 		);
+
 	const strict = heard(0);
+
 	if (strict.length > 0) {
 		return strict;
 	}
+
 	const relaxed = heard(RELAXED_SLACK);
+
 	return relaxed.length === 1 ? relaxed : [];
 }
 
@@ -166,21 +184,26 @@ function matchFrom(
 	if (wordIndex === expected.length) {
 		return skipped + tokens.length - tokenIndex <= MAX_EXTRA_TOKENS;
 	}
+
 	const limit =
 		wordIndex === 0
 			? tokens.length
 			: Math.min(tokens.length, tokenIndex + MAX_FILLER_BETWEEN_WORDS + 1);
+
 	for (let index = tokenIndex; index < limit; index += 1) {
 		const extra = skipped + index - tokenIndex;
+
 		if (extra > MAX_EXTRA_TOKENS) {
 			return false;
 		}
+
 		for (
 			let span = 1;
 			span <= MAX_TOKENS_PER_WORD && index + span <= tokens.length;
 			span += 1
 		) {
 			const spoken = tokens.slice(index, index + span).join("");
+
 			if (
 				soundsLike(spoken, expected[wordIndex], slack) &&
 				matchFrom(tokens, expected, index + span, wordIndex + 1, extra, slack)
@@ -189,6 +212,7 @@ function matchFrom(
 			}
 		}
 	}
+
 	return false;
 }
 
@@ -199,16 +223,20 @@ function pickSeparated(
 ): string[] | null {
 	const chosen: string[] = [];
 	const keys: string[] = [];
+
 	for (const word of pool) {
 		const key = phoneticKey(word);
+
 		if (keys.every((other) => editDistance(other, key) >= separation)) {
 			chosen.push(word);
 			keys.push(key);
+
 			if (chosen.length === needed) {
 				return chosen;
 			}
 		}
 	}
+
 	return null;
 }
 
@@ -218,26 +246,33 @@ export function generateFormulas(
 	forbidden: ReadonlySet<string> = new Set(),
 ): Formula[] {
 	const needed = count * FORMULA_WORD_COUNT;
+
 	const fresh = rng.shuffle(
 		INCANTATION_VOCABULARY.filter(
 			(word) => !forbidden.has(formulaKeyWord(word)),
 		),
 	);
+
 	const everything = rng.shuffle([...INCANTATION_VOCABULARY]);
+
 	const words =
 		pickSeparated(fresh, needed, MIN_WORD_SEPARATION) ??
 		pickSeparated(fresh, needed, 2) ??
 		pickSeparated(everything, needed, MIN_WORD_SEPARATION) ??
 		pickSeparated(everything, needed, 2);
+
 	if (!words) {
 		throw new Error(`Vocabulaire insuffisant pour ${needed} mots distincts`);
 	}
+
 	const formulas: Formula[] = [];
+
 	for (let index = 0; index < count; index += 1) {
 		formulas.push(
 			words.slice(index * FORMULA_WORD_COUNT, (index + 1) * FORMULA_WORD_COUNT),
 		);
 	}
+
 	return formulas;
 }
 

@@ -12,6 +12,7 @@ export const FURNITURE_AXES: readonly FurnitureAxis[] = [
 	"top",
 	"bottom",
 ];
+
 export const FALLBACK_FURNITURE = "stoneSlab";
 
 export interface PaletteEntry {

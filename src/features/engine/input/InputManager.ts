@@ -108,7 +108,9 @@ export class InputManager {
 
 	attach(): void {
 		this.rebuildBindings();
+
 		this.unsubscribe = settingsStore.subscribe(() => this.rebuildBindings());
+
 		window.addEventListener("keydown", this.onKeyDown, true);
 		window.addEventListener("keyup", this.onKeyUp, true);
 		window.addEventListener("mousedown", this.onMouseDown, true);
@@ -131,6 +133,7 @@ export class InputManager {
 		window.removeEventListener("blur", this.onBlur);
 		window.removeEventListener("contextmenu", this.onContextMenu);
 		document.removeEventListener("pointerlockchange", this.onPointerLock);
+
 		if (document.pointerLockElement === this.element) {
 			document.exitPointerLock();
 		}
@@ -144,13 +147,17 @@ export class InputManager {
 		if (document.pointerLockElement === this.element || this.lockPending) {
 			return;
 		}
+
 		const request: Promise<void> | undefined = this.element.requestPointerLock({
 			unadjustedMovement: true,
 		});
+
 		if (!request) {
 			return;
 		}
+
 		this.lockPending = true;
+
 		request
 			.catch(() => this.element.requestPointerLock())
 			.catch(() => undefined)
@@ -173,12 +180,14 @@ export class InputManager {
 		this.held.clear();
 		this.arrowsHeld.clear();
 		this.padHeld.clear();
+
 		this.padSprint = false;
 		this.padCrouch = false;
 	}
 
 	frame(): FrameInput {
 		this.pollPad();
+
 		const arrows = {
 			x:
 				(this.arrowsHeld.has("ArrowRight") ? 1 : 0) -
@@ -187,6 +196,7 @@ export class InputManager {
 				(this.arrowsHeld.has("ArrowDown") ? 1 : 0) -
 				(this.arrowsHeld.has("ArrowUp") ? 1 : 0),
 		};
+
 		const result: FrameInput = {
 			held: new Set(this.held),
 			pressed: new Set(this.pressed),
@@ -203,8 +213,10 @@ export class InputManager {
 			menu: this.menu,
 			confirm: this.confirm,
 		};
+
 		this.pressed.clear();
 		this.released.clear();
+
 		this.digits.length = 0;
 		this.mouseX = 0;
 		this.mouseY = 0;
@@ -213,11 +225,13 @@ export class InputManager {
 		this.escape = false;
 		this.menu = false;
 		this.confirm = false;
+
 		return result;
 	}
 
 	private rebuildBindings(): void {
 		const { keys, padKeys } = settingsStore.get();
+
 		this.codeToAction = new Map([
 			...ACTION_IDS.filter((action) => padKeys[action] !== "").map(
 				(action) => [padKeys[action], action] as const,
@@ -230,6 +244,7 @@ export class InputManager {
 		if (!this.held.has(action)) {
 			this.pressed.add(action);
 		}
+
 		this.held.add(action);
 	}
 
@@ -241,15 +256,19 @@ export class InputManager {
 
 	private press(code: string): boolean {
 		const action = this.codeToAction.get(code);
+
 		if (!action) {
 			return false;
 		}
+
 		this.pressAction(action);
+
 		return true;
 	}
 
 	private release(code: string): void {
 		const action = this.codeToAction.get(code);
+
 		if (action) {
 			this.releaseAction(action);
 		}
@@ -268,27 +287,37 @@ export class InputManager {
 		for (const action of [...this.padHeld]) {
 			this.setPadHeld(action, false);
 		}
+
 		this.padSprint = false;
 		this.padCrouch = false;
 		this.move = { x: 0, y: 0 };
 		this.padLook = { x: 0, y: 0 };
+
 		this.padButtons.reset();
+
 		this.padEngaged = false;
 	}
 
 	private pollPad(): void {
 		const now = performance.now();
 		const dt = Math.min(0.05, Math.max(0, (now - this.lastPadPoll) / 1000));
+
 		this.lastPadPoll = now;
+
 		const pad = padFocus.owner === "game" ? readPad() : null;
+
 		if (!pad) {
 			if (this.padEngaged) {
 				this.disengagePad();
 			}
+
 			return;
 		}
+
 		this.padEngaged = true;
+
 		const settings = settingsStore.get();
+
 		const edges = this.padButtons.update(
 			pad.buttons,
 			now,
@@ -296,36 +325,46 @@ export class InputManager {
 				button === PAD_BUTTON.start ||
 				this.codeToAction.has(padCode(button, true)),
 		);
+
 		for (const edge of edges) {
 			markDevice("pad");
 			this.padEdge(edge.code, edge.down);
 		}
+
 		const left = stick(
 			pad.axes[0] ?? 0,
 			pad.axes[1] ?? 0,
 			settings.padDeadzone,
 		);
+
 		const right = stick(
 			pad.axes[2] ?? 0,
 			pad.axes[3] ?? 0,
 			settings.padDeadzone,
 		);
+
 		if (left.magnitude > 0 || right.magnitude > 0) {
 			markDevice("pad");
 		}
+
 		this.move = { x: left.x, y: left.y };
 		this.padLook = { x: right.x, y: right.y };
+
 		if (this.padSprint && left.magnitude < PAD_SPRINT_RELEASE) {
 			this.padSprint = false;
 		}
+
 		this.setPadHeld("sprint", this.padSprint);
 		this.setPadHeld("crouch", this.padCrouch);
+
 		if (right.magnitude > 0) {
 			const curve = right.magnitude ** (PAD_LOOK_EXPONENT - 1);
 			const aiming = this.held.has("aim") ? PAD_AIM_FACTOR : 1;
+
 			const toPixels =
 				(settings.padSensitivity * aiming * dt) /
 				(MOUSE_LOOK_SCALE * settings.mouseSensitivity);
+
 			this.mouseX += right.x * curve * PAD_YAW_RATE * toPixels;
 			this.mouseY += right.y * curve * PAD_PITCH_RATE * toPixels;
 		}
@@ -337,41 +376,54 @@ export class InputManager {
 				this.escape = true;
 				this.menu = true;
 			}
+
 			return;
 		}
+
 		if (code === PAD_MENU_HOLD) {
 			if (down) {
 				this.confirm = true;
 			}
+
 			return;
 		}
+
 		if (code === PAD_CYCLE_PREVIOUS || code === PAD_CYCLE_NEXT) {
 			if (down) {
 				this.wheel += code === PAD_CYCLE_NEXT ? 1 : -1;
 			}
+
 			return;
 		}
+
 		const action = this.codeToAction.get(code);
+
 		if (!action) {
 			return;
 		}
+
 		if (PAD_TOGGLES.has(action)) {
 			if (!down) {
 				return;
 			}
+
 			if (action === "sprint") {
 				this.padSprint = !this.padSprint;
+
 				if (this.padSprint) {
 					this.padCrouch = false;
 				}
 			} else {
 				this.padCrouch = !this.padCrouch;
+
 				if (this.padCrouch) {
 					this.padSprint = false;
 				}
 			}
+
 			return;
 		}
+
 		this.setPadHeld(action, down);
 	}
 
@@ -379,29 +431,39 @@ export class InputManager {
 		if (isTextTarget(event.target)) {
 			return;
 		}
+
 		if (event.isTrusted) {
 			markDevice("keyboard");
 		}
+
 		if (event.code === "Escape") {
 			this.escape = true;
+
 			return;
 		}
+
 		if (event.code.startsWith("Arrow")) {
 			this.arrowsHeld.add(event.code);
 		}
+
 		if (event.code === "Equal" || event.code === "NumpadAdd") {
 			this.zoomKeys += 1;
 		}
+
 		if (event.code === "Minus" || event.code === "NumpadSubtract") {
 			this.zoomKeys -= 1;
 		}
+
 		const digitMatch = /^(?:Digit|Numpad)(\d)$/.exec(event.code);
+
 		const mapped = event.repeat
 			? this.codeToAction.has(event.code)
 			: this.press(event.code);
+
 		if (digitMatch && !mapped) {
 			this.digits.push(Number(digitMatch[1]));
 		}
+
 		if (
 			mapped ||
 			digitMatch ||
@@ -417,7 +479,9 @@ export class InputManager {
 		if (event.code.startsWith("Arrow")) {
 			this.arrowsHeld.delete(event.code);
 		}
+
 		this.release(event.code);
+
 		if (
 			!isTextTarget(event.target) &&
 			(this.codeToAction.has(event.code) || event.code === "Tab")
@@ -428,10 +492,13 @@ export class InputManager {
 
 	private readonly onMouseDown = (event: MouseEvent) => {
 		const code = mouseCode(event.button);
+
 		if (!code || !this.capturing) {
 			return;
 		}
+
 		markDevice("keyboard");
+
 		if (this.press(code)) {
 			event.preventDefault();
 		}
@@ -439,6 +506,7 @@ export class InputManager {
 
 	private readonly onMouseUp = (event: MouseEvent) => {
 		const code = mouseCode(event.button);
+
 		if (code) {
 			this.release(code);
 		}
@@ -455,8 +523,10 @@ export class InputManager {
 		if (isTextTarget(event.target)) {
 			return;
 		}
+
 		if (this.capturing || this.mode === "map") {
 			event.preventDefault();
+
 			this.wheel += Math.sign(event.deltaY);
 		}
 	};
@@ -471,6 +541,7 @@ export class InputManager {
 		for (const action of this.held) {
 			this.released.add(action);
 		}
+
 		this.clearHeld();
 	};
 
@@ -482,18 +553,21 @@ export class InputManager {
 
 	private readonly onPointerLock = () => {
 		this.pointerLocked = document.pointerLockElement === this.element;
+
 		if (!this.pointerLocked) {
 			for (const action of this.held) {
 				if (action !== "crouch" && action !== "leaderboard") {
 					this.released.add(action);
 				}
 			}
+
 			for (const action of [...this.held]) {
 				if (action !== "crouch" && action !== "leaderboard") {
 					this.held.delete(action);
 				}
 			}
 		}
+
 		this.onPointerLockChange?.(this.pointerLocked);
 	};
 }

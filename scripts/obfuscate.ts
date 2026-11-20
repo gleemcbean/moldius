@@ -41,6 +41,7 @@ function obfuscateCode(code: string): string {
 export function obfuscate(vendorChunks: string[]): Plugin {
 	const vendors = new Set(vendorChunks);
 	let publicDir = "";
+
 	return {
 		name: "mycelium-obfuscate",
 		apply: "build",
@@ -70,11 +71,14 @@ export function obfuscate(vendorChunks: string[]): Plugin {
 				if (!publicDir || !options.dir) {
 					return;
 				}
+
 				for (const entry of await readdir(publicDir, { withFileTypes: true })) {
 					if (!entry.isFile() || !entry.name.endsWith(".js")) {
 						continue;
 					}
+
 					const target = join(options.dir, entry.name);
+
 					await writeFile(
 						target,
 						obfuscateCode(await readFile(target, "utf8")),

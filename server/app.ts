@@ -9,7 +9,7 @@ import { createAccountRouter } from "./accounts/routes.js";
 import type { ServerConfig } from "./config.js";
 import type { LobbyManager } from "./lobby/LobbyManager.js";
 
-enum InstallerType {
+export enum InstallerType {
 	WIN = "exe",
 	APPIMAGE = "AppImage",
 	DEB = "deb",
@@ -56,28 +56,37 @@ export function createApp(
 	liveStats: () => AdminLiveStats | null = () => null,
 ): AppHandle {
 	const app = express();
+
 	app.disable("x-powered-by");
+
 	if (config.trustProxy) {
 		app.set("trust proxy", 1);
 	}
+
 	app.use((request, response, next) => {
 		response.setHeader("X-Content-Type-Options", "nosniff");
 		response.setHeader("Referrer-Policy", "same-origin");
+
 		response.setHeader(
 			"Permissions-Policy",
 			"microphone=(self), camera=(), geolocation=()",
 		);
+
 		response.setHeader("X-Frame-Options", "DENY");
 		response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
 		response.setHeader("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+
 		if (request.secure) {
 			response.setHeader("Strict-Transport-Security", "max-age=15552000");
 		}
+
 		next();
 	});
 
 	const accountRouter = createAccountRouter(accounts);
+
 	app.use("/api/account", accountRouter.router);
+
 	app.use(
 		"/api/admin",
 		createAdminRouter(accounts, config.adminEmails, liveStats),
@@ -103,16 +112,20 @@ export function createApp(
 
 		if (!installer) {
 			response.status(404).json({ error: "Installateur indisponible." });
+
 			return;
 		}
+
 		response.setHeader(
 			"Content-Type",
 			"application/vnd.microsoft.portable-executable",
 		);
+
 		response.setHeader(
 			"Content-Disposition",
 			`attachment; filename="${basename(installer)}"`,
 		);
+
 		response.setHeader("Cache-Control", "no-cache");
 		response.sendFile(installer);
 	});
@@ -130,6 +143,7 @@ export function createApp(
 					) {
 						response.setHeader("Cache-Control", "no-cache");
 					}
+
 					if (
 						basename(path) === "worker.js" &&
 						basename(dirname(path)) === "vosk"
@@ -140,17 +154,21 @@ export function createApp(
 				},
 			}),
 		);
+
 		const indexPath = resolve(config.clientDistDir, "index.html");
 		let indexPage: { mtimeMs: number; html: string } | null = null;
+
 		app.get(/^\/(?!socket\.io|api|download).*/, (request, response) => {
 			try {
 				const mtimeMs = statSync(indexPath).mtimeMs;
+
 				if (indexPage?.mtimeMs !== mtimeMs) {
 					indexPage = { mtimeMs, html: readFileSync(indexPath, "utf8") };
 				}
 			} catch {
 				if (!indexPage) {
 					response.setHeader("Retry-After", "5");
+
 					response
 						.status(503)
 						.type("text")
@@ -159,15 +177,19 @@ export function createApp(
 								? "Mise à jour en cours, réessayez dans quelques secondes."
 								: "Update in progress, please try again in a few seconds.",
 						);
+
 					return;
 				}
 			}
+
 			const origin =
 				config.publicUrl ?? `${request.protocol}://${request.get("host")}`;
+
 			response.setHeader("Cache-Control", "no-cache");
 			response.type("html").send(absoluteShareUrls(indexPage.html, origin));
 		});
 	}
+
 	return { app, dispose: accountRouter.dispose };
 }
 
@@ -185,5 +207,6 @@ export function latestInstaller(
 		.filter((name) => regex.test(name))
 		.map((name) => resolve(directory, name))
 		.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
+
 	return candidates[0] ?? null;
 }

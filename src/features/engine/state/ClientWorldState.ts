@@ -98,22 +98,27 @@ export class ClientWorldState {
 	readonly players = new Map<string, RemotePlayerState>();
 	readonly anomalies = new Map<number, AnomalyClientState>();
 	readonly doors = new Map<number, DoorClientState>();
+
 	readonly valves = new Map<
 		number,
 		{ activeUntil: number; cooldownUntil: number }
 	>();
+
 	readonly stakes = new Map<
 		number,
 		{ activeUntil: number; cooldownUntil: number }
 	>();
+
 	readonly walkies = new Map<
 		number,
 		{ holder: string | null; available: boolean }
 	>();
+
 	readonly cameras = new Map<
 		number,
 		{ holder: string | null; available: boolean }
 	>();
+
 	readonly brews = new Map<string, { effect: BrewEffect; until: number }>();
 	readonly puddles = new Map<number, PuddleClientState>();
 	readonly projectiles = new Map<number, ProjectileClientState>();
@@ -122,10 +127,12 @@ export class ClientWorldState {
 	readonly emotes = new Map<string, EmoteClientState>();
 	readonly altarCurses = new Map<number, number>();
 	readonly voters = new Set<string>();
+
 	bounty: { playerId: string | null; value: number } = {
 		playerId: null,
 		value: 0,
 	};
+
 	manorEvent: ManorEventClientState | null = null;
 	ritual: { captures: number; quota: number } | null = null;
 	vote: { endsAt: number; reason: "ritual" | "timeout" } | null = null;
@@ -152,6 +159,7 @@ export class ClientWorldState {
 				latest: null,
 			});
 		}
+
 		for (const entry of init.roster) {
 			this.anomalies.set(entry.id, {
 				id: entry.id,
@@ -164,12 +172,14 @@ export class ClientWorldState {
 				lastSeenAt: -Infinity,
 			});
 		}
+
 		for (const opening of layout.openings) {
 			if (opening.door) {
 				this.doors.set(opening.door.id, {
 					open: opening.door.initiallyOpen,
 					changedAt: -Infinity,
 				});
+
 				world.setDoorClosed(opening.door.id, !opening.door.initiallyOpen);
 			}
 		}
@@ -187,6 +197,7 @@ export class ClientWorldState {
 
 	selfBrew(serverNow: number): { effect: BrewEffect; until: number } | null {
 		const brew = this.brews.get(this.selfId);
+
 		return brew && brew.until > serverNow ? brew : null;
 	}
 
@@ -199,9 +210,11 @@ export class ClientWorldState {
 		serverNow: number,
 	): { emote: EmoteId; time: number } | null {
 		const emote = this.emotes.get(playerId);
+
 		if (!emote || serverNow >= emote.until) {
 			return null;
 		}
+
 		return {
 			emote: emote.emote,
 			time: Math.max(0, (serverNow - emote.startedAt) / 1000),
@@ -214,6 +227,7 @@ export class ClientWorldState {
 				this.pings.delete(id);
 			}
 		}
+
 		return [...this.pings.values()];
 	}
 
@@ -230,23 +244,32 @@ export class ClientWorldState {
 	resetForReplay(doorsOpen: readonly number[]): void {
 		this.lastTick = -1;
 		this.latestSnapshotTime = -Infinity;
+
 		this.puddles.clear();
 		this.projectiles.clear();
 		this.pings.clear();
 		this.emotes.clear();
+
 		for (const player of this.players.values()) {
 			player.buffer.reset();
+
 			player.latest = null;
 		}
+
 		for (const anomaly of this.anomalies.values()) {
 			anomaly.active = false;
+
 			anomaly.buffer.reset();
+
 			anomaly.latest = null;
 			anomaly.screamUntil = 0;
 		}
+
 		const open = new Set(doorsOpen);
+
 		for (const [doorId, door] of this.doors) {
 			door.open = open.has(doorId);
+
 			this.world.setDoorClosed(doorId, !door.open);
 		}
 	}
@@ -255,44 +278,64 @@ export class ClientWorldState {
 		if (snapshot.tick <= this.lastTick) {
 			return;
 		}
+
 		this.lastTick = snapshot.tick;
 		this.latestSnapshotTime = snapshot.t;
 		this.remainingMs = snapshot.remainingMs;
+
 		const present = new Set<string>();
+
 		for (const playerSnapshot of snapshot.players) {
 			const player = this.players.get(playerSnapshot.id);
+
 			if (!player) {
 				continue;
 			}
+
 			present.add(playerSnapshot.id);
+
 			player.latest = playerSnapshot;
+
 			player.buffer.push(snapshot.t, playerSnapshot);
 		}
+
 		for (const player of this.players.values()) {
 			if (!present.has(player.id) && player.latest) {
 				player.latest = null;
+
 				player.buffer.reset();
 			}
 		}
+
 		const seen = new Set<number>();
+
 		for (const anomalySnapshot of snapshot.anomalies) {
 			const anomaly = this.anomalies.get(anomalySnapshot.id);
+
 			if (!anomaly) {
 				continue;
 			}
+
 			seen.add(anomalySnapshot.id);
+
 			if (anomalySnapshot.gen !== anomaly.gen) {
 				anomaly.gen = anomalySnapshot.gen;
+
 				anomaly.buffer.reset();
 			}
+
 			anomaly.active = true;
 			anomaly.latest = anomalySnapshot;
+
 			anomaly.buffer.push(snapshot.t, anomalySnapshot);
 		}
+
 		for (const anomaly of this.anomalies.values()) {
 			if (!seen.has(anomaly.id) && anomaly.active) {
 				anomaly.active = false;
+
 				anomaly.buffer.reset();
+
 				anomaly.latest = null;
 			}
 		}
@@ -301,6 +344,7 @@ export class ClientWorldState {
 	applyEvents(events: GameEvent[], serverTime: number): void {
 		for (const event of events) {
 			this.applyEvent(event, serverTime);
+
 			for (const listener of this.listeners) {
 				listener(event, serverTime);
 			}
@@ -314,26 +358,34 @@ export class ClientWorldState {
 					open: event.open,
 					changedAt: serverTime,
 				});
+
 				this.world.setDoorClosed(event.doorId, !event.open);
 				break;
+
 			case "valve":
 				this.valves.set(event.valveId, {
 					activeUntil: event.activeUntil,
 					cooldownUntil: event.cooldownUntil,
 				});
+
 				break;
+
 			case "stake":
 				this.stakes.set(event.id, {
 					activeUntil: event.activeUntil,
 					cooldownUntil: event.cooldownUntil,
 				});
+
 				break;
+
 			case "walkie":
 				this.walkies.set(event.id, {
 					holder: event.holder,
 					available: event.available,
 				});
+
 				break;
+
 			case "brew":
 				if (event.effect === null) {
 					this.brews.delete(event.playerId);
@@ -343,13 +395,17 @@ export class ClientWorldState {
 						until: event.until,
 					});
 				}
+
 				break;
+
 			case "camera":
 				this.cameras.set(event.id, {
 					holder: event.holder,
 					available: event.available,
 				});
+
 				break;
+
 			case "puddle":
 				this.puddles.set(event.id, {
 					id: event.id,
@@ -360,10 +416,13 @@ export class ClientWorldState {
 					expiresAt: event.expiresAt,
 					createdAt: serverTime,
 				});
+
 				break;
+
 			case "puddleRemoved":
 				this.puddles.delete(event.id);
 				break;
+
 			case "projectile":
 				this.projectiles.set(event.id, {
 					id: event.id,
@@ -373,16 +432,20 @@ export class ClientWorldState {
 					gravity: event.gravity,
 					launchedAt: event.launchedAt,
 				});
+
 				break;
+
 			case "projectileEnd":
 				this.projectiles.delete(event.id);
 				break;
+
 			case "ping":
 				for (const [id, ping] of this.pings) {
 					if (ping.playerId === event.playerId && ping.kind === event.kind) {
 						this.pings.delete(id);
 					}
 				}
+
 				this.pings.set(event.id, {
 					id: event.id,
 					playerId: event.playerId,
@@ -394,7 +457,9 @@ export class ClientWorldState {
 					expiresAt: event.expiresAt,
 					createdAt: serverTime,
 				});
+
 				break;
+
 			case "emote":
 				if (event.emote === null) {
 					this.emotes.delete(event.playerId);
@@ -405,14 +470,18 @@ export class ClientWorldState {
 						until: event.until,
 					});
 				}
+
 				break;
+
 			case "respawn":
 			case "death":
 				this.emotes.delete(event.playerId);
 				break;
+
 			case "bounty":
 				this.bounty = { playerId: event.playerId, value: event.value };
 				break;
+
 			case "manorEvent":
 				this.manorEvent =
 					event.phase === "end"
@@ -423,38 +492,53 @@ export class ClientWorldState {
 								startsAt: event.startsAt,
 								endsAt: event.endsAt,
 							};
+
 				break;
+
 			case "ritual":
 				this.ritual = { captures: event.captures, quota: event.quota };
 				break;
+
 			case "vote":
 				this.vote =
 					event.phase === "start"
 						? { endsAt: event.endsAt, reason: event.reason }
 						: null;
+
 				break;
+
 			case "voteCast":
 				this.voters.add(event.voterId);
 				break;
+
 			case "altarCurse":
 				this.altarCurses.set(event.altarId, event.until);
 				break;
+
 			case "scream": {
 				const anomaly = this.anomalies.get(event.anomalyId);
+
 				if (anomaly) {
 					anomaly.screamUntil = event.until;
 				}
+
 				break;
 			}
+
 			case "anomalyRemoved": {
 				const anomaly = this.anomalies.get(event.anomalyId);
+
 				if (anomaly && anomaly.gen === event.gen) {
 					anomaly.active = false;
+
 					anomaly.buffer.reset();
+
 					anomaly.latest = null;
 				}
+
 				break;
 			}
+
 			default:
 				break;
 		}
@@ -472,6 +556,7 @@ export class ClientWorldState {
 		if (!grounded) {
 			return false;
 		}
+
 		for (const puddle of this.puddles.values()) {
 			if (
 				Math.abs(y - puddle.y) <= 0.14 &&
@@ -480,6 +565,7 @@ export class ClientWorldState {
 				return true;
 			}
 		}
+
 		return false;
 	}
 

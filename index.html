@@ -164,9 +164,15 @@
         font-size: 15px;
         color: #9fa894;
       }
-      .boot-slow a {
+      .boot-slow button {
         margin-left: 6px;
+        padding: 0;
+        border: 0;
+        background: none;
         color: #dce54d;
+        font: inherit;
+        text-decoration: underline;
+        cursor: pointer;
       }
       .boot-spores {
         position: absolute;
@@ -215,7 +221,7 @@
       @media (prefers-reduced-motion: reduce) {
         #boot *,
         #boot *::before {
-          animation: none !important;
+          animation: none;
         }
         .boot-bar span {
           width: 60%;
@@ -246,7 +252,14 @@
             data-fr="Le chargement prend plus de temps que prévu."
             data-en="Loading is taking longer than expected."
             >Le chargement prend plus de temps que prévu.</span
-          ><a href="" data-fr="Recharger" data-en="Reload">Recharger</a>
+          ><button
+            id="boot-reload"
+            type="button"
+            data-fr="Recharger"
+            data-en="Reload"
+          >
+            Recharger
+          </button>
         </p>
       </div>
     </div>

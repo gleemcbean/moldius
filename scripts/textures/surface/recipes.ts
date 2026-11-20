@@ -31,12 +31,16 @@ export function fineSize(recipe: FineRecipe, detail: number): [number, number] {
 
 export function bakeRecipe(key: string, detail: number): BakedSurface {
 	const recipe = FINE_RECIPES[key];
+
 	if (!recipe) {
 		throw new Error(`Matière inconnue : ${key}`);
 	}
+
 	const [width, height] = fineSize(recipe, detail);
 	const seed = hashString(key);
 	const field = new SurfaceField(width, height, seed);
+
 	recipe.paint(field, new SeededRandom(seed));
+
 	return bakeField(field, recipe.tile[0], recipe.tile[1], recipe.depth);
 }

@@ -21,19 +21,25 @@ export function LevelProgress({
 	const start = gained > 0 && !leveledUp ? before.into / before.needed : 0;
 	const end = after.into / after.needed;
 	const [fill, setFill] = useState(gained > 0 ? start : end);
+
 	useEffect(() => {
 		if (gained <= 0) {
 			setFill(end);
+
 			return;
 		}
+
 		const frame = requestAnimationFrame(() =>
 			requestAnimationFrame(() => setFill(end)),
 		);
+
 		return () => cancelAnimationFrame(frame);
 	}, [gained, end]);
+
 	const next = levelRewards().find(
 		(reward) => (reward.level ?? 0) > after.level,
 	);
+
 	return (
 		<div className={styles.progress}>
 			<div className={styles.header}>
@@ -82,6 +88,7 @@ export function LevelProgress({
 export function XpBreakdown({ score, won }: { score: number; won: boolean }) {
 	const t = useT();
 	const parts = matchXpParts({ score, won });
+
 	return (
 		<p className={styles.breakdown}>
 			{t.progression.breakdown(parts.base, parts.score, parts.win)}

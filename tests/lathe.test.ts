@@ -5,12 +5,16 @@ import { orientLatheProfile } from "../shared/latheProfile.js";
 function signedVolume(geometry: THREE.BufferGeometry): number {
 	const position = geometry.getAttribute("position");
 	const index = geometry.getIndex() as THREE.BufferAttribute;
+
 	const point = (at: number) =>
 		new THREE.Vector3().fromBufferAttribute(position, index.getX(at));
+
 	let volume = 0;
+
 	for (let at = 0; at < index.count; at += 3) {
 		volume += point(at).dot(point(at + 1).cross(point(at + 2))) / 6;
 	}
+
 	return volume;
 }
 
@@ -38,6 +42,7 @@ describe("pièces tournées", () => {
 
 	it("donne le même résultat quel que soit le sens du profil", () => {
 		const reversed = [...chessFoot].reverse();
+
 		expect(signedVolume(meterLathe(reversed))).toBeGreaterThan(0);
 	});
 
@@ -48,6 +53,7 @@ describe("pièces tournées", () => {
 			[0.17, 0.3],
 			[0.001, 0.32],
 		];
+
 		expect(signedVolume(meterLathe(vase))).toBeGreaterThan(0);
 	});
 });

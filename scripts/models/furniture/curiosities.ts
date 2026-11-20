@@ -36,6 +36,7 @@ const PLATE: MaterialOptions = {
 	roughness: 0.42,
 	metalness: 0.25,
 };
+
 const SHEET: MaterialOptions = { texture: "sheetCloth", roughness: 1 };
 const PALE_WOOD: MaterialOptions = { texture: "woodLight", roughness: 0.8 };
 const DARK_WOOD: MaterialOptions = { texture: "woodDark", roughness: 0.8 };
@@ -61,8 +62,10 @@ function arc(
 	z: number,
 ): Part {
 	const geometry = meterTorus(radius, tube, 6, 18, sweep);
+
 	geometry.rotateZ(-Math.PI / 2 - sweep / 2);
 	geometry.rotateY(Math.PI / 2);
+
 	return part(placed(geometry, x, y, z), material);
 }
 
@@ -74,6 +77,7 @@ function tripod(
 ): Part[] {
 	return [0, 1, 2].map((index) => {
 		const angle = (index / 3) * Math.PI * 2 + Math.PI / 6;
+
 		return cylinderBetween(
 			material,
 			new THREE.Vector3(0, top, 0),
@@ -87,16 +91,20 @@ function tripod(
 export const armor: FurnitureBuilder = ({ rng }) => {
 	const plate = PLATE;
 	const strap: MaterialOptions = { texture: "tanLeather", roughness: 0.8 };
+
 	const plume: MaterialOptions = {
 		texture: rng.pick(["velvetRed", "velvetBlue", "velvetPurple"] as const),
 		roughness: 1,
 	};
+
 	const parts: Part[] = [
 		box(DARK_WOOD, 0.62, 0.1, 0.46, 0, 0, 0, 0, 0.02),
 		cylinder(IRON, 0.012, 0.012, 1.45, 0, 0.1, -0.12, 6),
 	];
+
 	for (const side of [-1, 1]) {
 		const x = side * 0.1;
+
 		parts.push(
 			ellipsoid(plate, [0.055, 0.035, 0.13], x, 0.135, 0.04, 0, 0, 0, 14),
 			ellipsoid(plate, [0.05, 0.02, 0.05], x, 0.17, 0.11, 0, -0.5, 0, 10),
@@ -155,6 +163,7 @@ export const armor: FurnitureBuilder = ({ rng }) => {
 			),
 		);
 	}
+
 	parts.push(
 		pleated(
 			plate,
@@ -193,8 +202,10 @@ export const armor: FurnitureBuilder = ({ rng }) => {
 			18,
 		),
 	);
+
 	for (const side of [-1, 1]) {
 		const shoulder = new THREE.Vector3(side * 0.24, 1.4, 0.01);
+
 		parts.push(
 			ellipsoid(
 				plate,
@@ -278,6 +289,7 @@ export const armor: FurnitureBuilder = ({ rng }) => {
 			),
 		);
 	}
+
 	parts.push(
 		box(IRON, 0.05, 0.86, 0.008, 0, 0.12, 0.25, 0, 0.002),
 		box(IRON, 0.035, 0.04, 0.008, 0, 0.12, 0.25, 0, 0.002),
@@ -308,6 +320,7 @@ export const armor: FurnitureBuilder = ({ rng }) => {
 		box(DARK, 0.17, 0.014, 0.03, 0, 1.73, 0.135, 0, 0.004),
 		ellipsoid(plate, [0.012, 0.11, 0.03], 0, 1.73, 0.15, 0, 0.1, 0, 8),
 	);
+
 	for (let index = 0; index < 5; index += 1) {
 		parts.push(
 			ellipsoid(
@@ -323,6 +336,7 @@ export const armor: FurnitureBuilder = ({ rng }) => {
 			),
 		);
 	}
+
 	parts.push(
 		pleated(
 			plume,
@@ -339,7 +353,9 @@ export const armor: FurnitureBuilder = ({ rng }) => {
 			0,
 		),
 	);
+
 	const feather = parts[parts.length - 1];
+
 	feather.geometry.applyMatrix4(
 		new THREE.Matrix4().compose(
 			new THREE.Vector3(0, 1.85, -0.02),
@@ -347,6 +363,7 @@ export const armor: FurnitureBuilder = ({ rng }) => {
 			new THREE.Vector3(1, 1, 1),
 		),
 	);
+
 	return parts;
 };
 
@@ -355,6 +372,7 @@ export const displayCase: FurnitureBuilder = ({ item, rng }) => {
 	const { width, height, depth } = item;
 	const caseBottom = 0.78;
 	const caseHeight = height - caseBottom - 0.08;
+
 	const parts: Part[] = [
 		box(wood, width, caseBottom, depth, 0, 0, 0, 0, 0.01),
 		box(wood, width + 0.04, 0.08, depth + 0.04, 0, height - 0.08, 0, 0, 0.01),
@@ -375,6 +393,7 @@ export const displayCase: FurnitureBuilder = ({ item, rng }) => {
 			depth / 2 - 0.01,
 		),
 	];
+
 	for (const x of [-1, 1]) {
 		for (const z of [-1, 1]) {
 			parts.push(
@@ -389,6 +408,7 @@ export const displayCase: FurnitureBuilder = ({ item, rng }) => {
 				),
 			);
 		}
+
 		parts.push(
 			plane(
 				GLASS,
@@ -401,6 +421,7 @@ export const displayCase: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	parts.push(
 		box(
 			{ ...GLASS, opacity: 0.5 },
@@ -412,11 +433,13 @@ export const displayCase: FurnitureBuilder = ({ item, rng }) => {
 			0,
 		),
 	);
+
 	return parts;
 };
 
 export const boneShelf: FurnitureBuilder = ({ item }) => {
 	const { width, height, depth } = item;
+
 	const parts: Part[] = [
 		texturedPlane(
 			{ texture: "ossuary", roughness: 1 },
@@ -431,6 +454,7 @@ export const boneShelf: FurnitureBuilder = ({ item }) => {
 		box(STONE, width, 0.1, depth, 0, height - 0.1, 0),
 		box(STONE, width, 0.1, depth, 0, 0, 0),
 	];
+
 	for (let index = 1; index < 4; index += 1) {
 		parts.push(
 			box(
@@ -444,11 +468,13 @@ export const boneShelf: FurnitureBuilder = ({ item }) => {
 			),
 		);
 	}
+
 	for (const x of [-0.3, 0.05, 0.32]) {
 		if (Math.abs(x) < width / 2 - 0.15) {
 			parts.push(sphere(BONE, 0.075, x, 0.17, 0.02, 1, 0.9, 1.1, 10));
 		}
 	}
+
 	return parts;
 };
 
@@ -458,6 +484,7 @@ export const telescope: FurnitureBuilder = ({ item }) => {
 	const aim = new THREE.Vector3(0, 0.55, 0.84).normalize();
 	const front = pivot.clone().addScaledVector(aim, 0.55);
 	const back = pivot.clone().addScaledVector(aim, -0.42);
+
 	return [
 		...tripod(DARK_WOOD, top, 0.36, 0.02),
 		cylinder(BRASS, 0.045, 0.06, 0.12, 0, top - 0.04, 0, 10),
@@ -483,6 +510,7 @@ export const telescope: FurnitureBuilder = ({ item }) => {
 export const orrery: FurnitureBuilder = ({ item, rng }) => {
 	const wood = pickWood(rng);
 	const center = item.height - 0.35;
+
 	const parts: Part[] = [
 		lathe(
 			wood,
@@ -511,16 +539,22 @@ export const orrery: FurnitureBuilder = ({ item, rng }) => {
 			12,
 		),
 	];
+
 	const planets = [0x6a8ac8, 0xc86a3a, 0x8ab87a, 0xd8c8a0];
+
 	[0.18, 0.27, 0.36].forEach((radius, index) => {
 		const tilt = 0.25 * (index - 1);
+
 		parts.push(torus(BRASS, radius, 0.006, 0, center, 0, Math.PI / 2 + tilt));
+
 		const angle = rng.range(0, Math.PI * 2);
+
 		const point = new THREE.Vector3(
 			Math.cos(angle) * radius,
 			Math.sin(angle) * radius * Math.sin(tilt),
 			Math.sin(angle) * radius,
 		);
+
 		parts.push({
 			...sphere(
 				{ color: planets[index], roughness: 0.5 },
@@ -543,6 +577,7 @@ export const orrery: FurnitureBuilder = ({ item, rng }) => {
 			},
 		});
 	});
+
 	return parts;
 };
 
@@ -550,6 +585,7 @@ export const crib: FurnitureBuilder = ({ item }) => {
 	const { width, height, depth } = item;
 	const railHeight = height - 0.3;
 	const parts: Part[] = [];
+
 	for (const x of [-1, 1]) {
 		for (const z of [-1, 1]) {
 			parts.push(
@@ -564,6 +600,7 @@ export const crib: FurnitureBuilder = ({ item }) => {
 					8,
 				),
 			);
+
 			parts.push(
 				sphere(
 					PALE_WOOD,
@@ -578,6 +615,7 @@ export const crib: FurnitureBuilder = ({ item }) => {
 				),
 			);
 		}
+
 		parts.push(
 			texturedPlane(
 				cutout("spindles"),
@@ -590,6 +628,7 @@ export const crib: FurnitureBuilder = ({ item }) => {
 			),
 		);
 	}
+
 	for (const z of [-1, 1]) {
 		parts.push(
 			texturedPlane(
@@ -602,7 +641,9 @@ export const crib: FurnitureBuilder = ({ item }) => {
 			),
 		);
 	}
+
 	parts.push(box(LINEN, width - 0.1, 0.12, depth - 0.1, 0, 0.3, 0));
+
 	parts.push(
 		box(
 			{ texture: "velvetBlue", roughness: 1 },
@@ -616,26 +657,33 @@ export const crib: FurnitureBuilder = ({ item }) => {
 			0.015,
 		),
 	);
+
 	parts.push(
 		box(LINEN, width * 0.45, 0.06, 0.18, 0, 0.42, -depth / 2 + 0.17, 0, 0.03),
 	);
+
 	return parts;
 };
 
 export const rockingHorse: FurnitureBuilder = ({ rng }) => {
 	const paint: MaterialOptions = { texture: "horsePaint", roughness: 0.6 };
+
 	const mane: MaterialOptions = {
 		texture: "fur",
 		color: rng.pick([0x4a2a14, 0x2a1a12, 0xd8c8a8]),
 		roughness: 1,
 	};
+
 	const saddle: MaterialOptions = { texture: "velvetRed", roughness: 1 };
+
 	const leather: MaterialOptions = {
 		texture: "tanLeather",
 		color: 0x6a3a22,
 		roughness: 0.8,
 	};
+
 	const eye: MaterialOptions = { color: 0x0a0806, roughness: 0.15 };
+
 	const parts: Part[] = [
 		arc(DARK_WOOD, 0.75, 0.025, 1.25, -0.15, 0.78, 0),
 		arc(DARK_WOOD, 0.75, 0.025, 1.25, 0.15, 0.78, 0),
@@ -714,6 +762,7 @@ export const rockingHorse: FurnitureBuilder = ({ rng }) => {
 			4,
 		),
 	];
+
 	for (const side of [-1, 1]) {
 		parts.push(
 			ellipsoid(eye, [0.012, 0.012, 0.01], side * 0.045, 0.83, 0.4, 0, 0, 0, 8),
@@ -747,9 +796,11 @@ export const rockingHorse: FurnitureBuilder = ({ rng }) => {
 				4,
 			),
 		);
+
 		for (const end of [-1, 1]) {
 			const hipZ = end * 0.2;
 			const footZ = end * 0.34;
+
 			parts.push(
 				capsuleBetween(
 					paint,
@@ -779,6 +830,7 @@ export const rockingHorse: FurnitureBuilder = ({ rng }) => {
 			);
 		}
 	}
+
 	return parts;
 };
 
@@ -786,6 +838,7 @@ export const dressForm: FurnitureBuilder = ({ rng }) => {
 	const fabric: MaterialOptions = rng.chance(0.5)
 		? { texture: "linen", color: 0xd0c0a8, roughness: 1 }
 		: { texture: "velvetRed", roughness: 1 };
+
 	return [
 		...tripod(DARK_WOOD, 0.3, 0.22),
 		cylinder(DARK_WOOD, 0.02, 0.02, 0.7, 0, 0.28, 0, 8),
@@ -812,13 +865,16 @@ export const dressForm: FurnitureBuilder = ({ rng }) => {
 
 export const sheetedFurniture: FurnitureBuilder = ({ item }) => {
 	const { width, height, depth } = item;
+
 	if (item.variant === 2) {
 		return [
 			box(SHEET, width, height, depth, 0, 0, 0, 0, 0.14),
 			box(SHEET, width + 0.08, 0.22, depth + 0.08, 0, 0, 0, 0, 0.05),
 		];
 	}
+
 	const seat = height * 0.55;
+
 	return [
 		box(SHEET, width, seat, depth, 0, 0, 0, 0, 0.12),
 		box(
@@ -842,10 +898,12 @@ export const dryingLine: FurnitureBuilder = ({ item, rng }) => {
 	const { width, height } = item;
 	const half = width / 2 - 0.06;
 	const parts: Part[] = [];
+
 	for (const x of [-half, half]) {
 		parts.push(cylinder(DARK_WOOD, 0.035, 0.04, height, x, 0, 0, 8));
 		parts.push(box(DARK_WOOD, 0.08, 0.06, 0.4, x, 0, 0));
 	}
+
 	parts.push(
 		cylinderBetween(
 			{ color: 0x8a7a5a, roughness: 1 },
@@ -855,10 +913,13 @@ export const dryingLine: FurnitureBuilder = ({ item, rng }) => {
 			5,
 		),
 	);
+
 	const sheets = width > 2 ? 2 : 1;
 	const sheetWidth = (width - 0.3) / sheets - 0.04;
+
 	for (let index = 0; index < sheets; index += 1) {
 		const x = -width / 2 + 0.15 + sheetWidth / 2 + index * (sheetWidth + 0.08);
+
 		parts.push(
 			texturedPlane(
 				cutout("sheetHanging"),
@@ -871,11 +932,13 @@ export const dryingLine: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };
 
 export const washtub: FurnitureBuilder = ({ item }) => {
 	const radius = item.width / 2 - 0.02;
+
 	return [
 		lathe(
 			{ texture: "woodMedium", roughness: 0.9 },
@@ -919,6 +982,7 @@ export const washtub: FurnitureBuilder = ({ item }) => {
 
 export const laundryBasket: FurnitureBuilder = ({ item }) => {
 	const width = item.width / 2;
+
 	return [
 		lathe(
 			{ texture: "wicker", roughness: 1 },
@@ -966,6 +1030,7 @@ export const sarcophagus: FurnitureBuilder = ({ item, rng }) => {
 	const { width, height, depth } = item;
 	const lidHeight = 0.16;
 	const shift = rng.chance(0.4) ? 0.12 : 0;
+
 	return [
 		box(material, width * 0.94, 0.12, depth * 0.96, 0, 0, 0),
 		box(
@@ -1005,6 +1070,7 @@ export const sarcophagus: FurnitureBuilder = ({ item, rng }) => {
 
 export const birdcage: FurnitureBuilder = () => {
 	const cageBottom = 1.12;
+
 	return [
 		lathe(
 			DARK_WOOD,
@@ -1078,6 +1144,7 @@ export const bellJar: FurnitureBuilder = ({ item, rng }) => {
 			14,
 		),
 	];
+
 	if (rng.chance(0.5)) {
 		parts.push(
 			cylinder(
@@ -1091,6 +1158,7 @@ export const bellJar: FurnitureBuilder = ({ item, rng }) => {
 				8,
 			),
 		);
+
 		parts.push(
 			sphere(
 				{ color: 0xc83a2a, roughness: 0.6 },
@@ -1119,6 +1187,7 @@ export const bellJar: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };
 
@@ -1129,17 +1198,21 @@ export const doll: FurnitureBuilder = ({ rng }) => {
 				texture: rng.pick(["velvetBlue", "velvetGreen", "clothPale"] as const),
 				roughness: 1,
 			};
+
 	const porcelain: MaterialOptions = { color: 0xf0e2d4, roughness: 0.35 };
+
 	const lace: MaterialOptions = {
 		texture: "linen",
 		color: 0xf4efe4,
 		roughness: 1,
 	};
+
 	const hair: MaterialOptions = {
 		texture: "fur",
 		color: rng.pick([0x6a3a1a, 0xc8a050, 0x2a1a12, 0x8a2a14]),
 		roughness: 1,
 	};
+
 	const parts: Part[] = [
 		pleated(
 			dress,
@@ -1246,6 +1319,7 @@ export const doll: FurnitureBuilder = ({ rng }) => {
 			6,
 		),
 	];
+
 	for (const side of [-1, 1]) {
 		parts.push(
 			capsuleBetween(
@@ -1277,29 +1351,35 @@ export const doll: FurnitureBuilder = ({ rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };
 
 function plaqueShape(): THREE.Shape {
 	const shape = new THREE.Shape();
+
 	shape.moveTo(-0.17, 0.5);
 	shape.quadraticCurveTo(0, 0.56, 0.17, 0.5);
 	shape.quadraticCurveTo(0.2, 0.3, 0.17, 0.12);
 	shape.quadraticCurveTo(0.12, 0.02, 0, -0.02);
 	shape.quadraticCurveTo(-0.12, 0.02, -0.17, 0.12);
 	shape.quadraticCurveTo(-0.2, 0.3, -0.17, 0.5);
+
 	return shape;
 }
 
 export const trophyHead: FurnitureBuilder = ({ rng }) => {
 	const fur: MaterialOptions = { texture: "fur", roughness: 1 };
+
 	const muzzle: MaterialOptions = {
 		texture: "fur",
 		color: 0x6a5040,
 		roughness: 1,
 	};
+
 	const antlerMaterial: MaterialOptions = { ...BONE, color: 0xd8c8a8 };
 	const eye: MaterialOptions = { color: 0x0a0806, roughness: 0.12 };
+
 	const parts: Part[] = [
 		extruded(DARK_WOOD, plaqueShape(), 0.045, 0.01, 0, 0, 0.022),
 		bentTube(
@@ -1339,6 +1419,7 @@ export const trophyHead: FurnitureBuilder = ({ rng }) => {
 		),
 		ellipsoid(fur, [0.05, 0.03, 0.04], 0, 0.245, 0.36, 0, 0.2, 0, 10),
 	];
+
 	for (const side of [-1, 1]) {
 		parts.push(
 			ellipsoid(
@@ -1364,7 +1445,9 @@ export const trophyHead: FurnitureBuilder = ({ rng }) => {
 				10,
 			),
 		);
+
 		const sx = side;
+
 		const beam: [number, number, number][] = [
 			[sx * 0.045, 0.39, 0.25],
 			[sx * 0.11, 0.48, 0.24],
@@ -1372,7 +1455,9 @@ export const trophyHead: FurnitureBuilder = ({ rng }) => {
 			[sx * 0.24, 0.72, 0.16],
 			[sx * 0.22, 0.84, 0.12],
 		];
+
 		parts.push(bentTube(antlerMaterial, beam, (t) => 0.016 - t * 0.011, 18, 8));
+
 		for (const [at, reach, lift] of [
 			[1, 0.07, 0.1],
 			[2, 0.09, 0.14],
@@ -1380,6 +1465,7 @@ export const trophyHead: FurnitureBuilder = ({ rng }) => {
 		] as const) {
 			const [bx, by, bz] = beam[at];
 			const spread = rng.range(0.8, 1.2);
+
 			parts.push(
 				bentTube(
 					antlerMaterial,
@@ -1395,6 +1481,7 @@ export const trophyHead: FurnitureBuilder = ({ rng }) => {
 			);
 		}
 	}
+
 	return parts;
 };
 

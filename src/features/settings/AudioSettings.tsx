@@ -15,17 +15,21 @@ export function AudioSettings() {
 	const t = useT();
 	const labels = t.settings.audio;
 	const percent = t.common.percent;
+
 	const volumes = useStore(
 		settingsStore,
 		(state) => state.volumes,
 		shallowEqual,
 	);
+
 	const voiceGate = useStore(settingsStore, (state) => state.voiceGate);
 	const micDeviceId = useStore(settingsStore, (state) => state.micDeviceId);
+
 	const speakerDeviceId = useStore(
 		settingsStore,
 		(state) => state.speakerDeviceId,
 	);
+
 	const mic = useStore(
 		micStore,
 		(state) => ({
@@ -44,6 +48,7 @@ export function AudioSettings() {
 
 	useEffect(() => {
 		void micManager.refreshDevices();
+
 		if (micStore.get().status === "idle") {
 			void micManager.acquire(settingsStore.get().micDeviceId);
 		}
@@ -51,26 +56,36 @@ export function AudioSettings() {
 
 	const runTest = async () => {
 		const status = micStore.get().status;
+
 		if (
 			status !== "ready" &&
 			status !== "silent" &&
 			!(await micManager.acquire(micDeviceId))
 		) {
 			setTest("failed");
+
 			return;
 		}
+
 		setTest("recording");
+
 		const clip = await micManager.recordClip(3000);
+
 		if (!clip) {
 			setTest("failed");
+
 			return;
 		}
+
 		setTest("playing");
+
 		const { volumes } = settingsStore.get();
+
 		await micManager.playClip(
 			clip,
 			volumes.master * Math.min(1, volumes.voice),
 		);
+
 		setTest("idle");
 	};
 
@@ -160,6 +175,7 @@ export function AudioSettings() {
 					value={micDeviceId ?? mic.deviceId ?? ""}
 					onChange={(event) => {
 						const deviceId = event.target.value || null;
+
 						updateSettings({ micDeviceId: deviceId });
 						void micManager.acquire(deviceId);
 					}}

@@ -19,6 +19,7 @@ interface PoseableModel {
 
 async function loadClient() {
 	const { kit } = await loadClientModels();
+
 	const { createAnomalyModel } = (await import(
 		`${projectRoot}/src/features/models/anomalies/createAnomalyModel.ts`
 	)) as {
@@ -28,6 +29,7 @@ async function loadClient() {
 			color: number,
 		) => PoseableModel;
 	};
+
 	return { createAnomalyModel, kit };
 }
 
@@ -37,6 +39,7 @@ describe("modèles d'anomalies", () => {
 		async (species) => {
 			const { createAnomalyModel, kit } = await loadClient();
 			const model = createAnomalyModel(species, kit, 0xd8442f);
+
 			for (const state of [
 				"idle",
 				"chase",
@@ -46,6 +49,7 @@ describe("modèles d'anomalies", () => {
 				"search",
 			]) {
 				model.root.position.set(3, 4.4, -2);
+
 				model.update({
 					state,
 					stateMs: 500,
@@ -54,8 +58,10 @@ describe("modèles d'anomalies", () => {
 					dt: 0.05,
 					time: 1.3,
 				});
+
 				expect(model.root.position.toArray()).toEqual([3, 4.4, -2]);
 			}
+
 			model.preparePortrait();
 			model.dispose();
 		},
@@ -67,6 +73,7 @@ describe("modèles d'anomalies", () => {
 			const { createAnomalyModel, kit } = await loadClient();
 			const first = createAnomalyModel(species, kit, 0xd8442f);
 			const second = createAnomalyModel(species, kit, 0xd8442f);
+
 			const pose = {
 				state: "windup",
 				stateMs: 400,
@@ -75,22 +82,31 @@ describe("modèles d'anomalies", () => {
 				dt: 0.05,
 				time: 2.1,
 			};
+
 			first.update(pose);
+
 			const snapshot: number[] = [];
+
 			second.root.traverse((object) => {
 				const geometry = (object as THREE.Mesh).geometry;
+
 				if (geometry) {
 					snapshot.push(...Array.from(geometry.getAttribute("position").array));
 				}
 			});
+
 			first.update({ ...pose, time: 5.7 });
+
 			const after: number[] = [];
+
 			second.root.traverse((object) => {
 				const geometry = (object as THREE.Mesh).geometry;
+
 				if (geometry) {
 					after.push(...Array.from(geometry.getAttribute("position").array));
 				}
 			});
+
 			expect(after).toEqual(snapshot);
 		},
 	);

@@ -45,6 +45,7 @@ function loginOf(row: AccountRow): AdminLogin {
 	if (row.discord_id && row.password_hash) {
 		return "both";
 	}
+
 	return row.discord_id ? "discord" : "email";
 }
 
@@ -58,13 +59,16 @@ export class AdminStore {
 		if (emails.length === 0) {
 			return false;
 		}
+
 		const { rows } = await this.database.query<{
 			email_key: string | null;
 			email_verified_at: Date | string | null;
 		}>("SELECT email_key, email_verified_at FROM accounts WHERE id = $1", [
 			accountId,
 		]);
+
 		const row = rows[0];
+
 		return Boolean(
 			row?.email_key && row.email_verified_at && emails.includes(row.email_key),
 		);
@@ -72,11 +76,13 @@ export class AdminStore {
 
 	async samplePresence(live: AdminLiveStats): Promise<void> {
 		const now = this.now();
+
 		await this.database.query(
 			`INSERT INTO presence_samples (sampled_at, connected, signed_in, in_match)
        VALUES ($1, $2, $3, $4)`,
 			[new Date(now), live.connected, live.signedIn, live.inMatch],
 		);
+
 		await this.database.query(
 			"DELETE FROM presence_samples WHERE sampled_at < $1",
 			[new Date(now - SAMPLE_RETENTION_MS)],
@@ -86,6 +92,7 @@ export class AdminStore {
 	async overview(live: AdminLiveStats): Promise<AdminOverview> {
 		const now = this.now();
 		const since = new Date(now - ADMIN_WINDOW_DAYS * DAY_MS);
+
 		const [accounts, history, recent, samples, friendships] = await Promise.all(
 			[
 				this.database.query<AccountRow>(
@@ -126,15 +133,20 @@ export class AdminStore {
 		const historyOf = new Map(
 			history.rows.map((row) => [row.account_id, row] as const),
 		);
+
 		const friendCount = new Map<string, number>();
+
 		for (const row of friendships.rows) {
 			for (const id of [row.account_low, row.account_high]) {
 				friendCount.set(id, (friendCount.get(id) ?? 0) + 1);
 			}
 		}
+
 		const online = new Set(live.onlineAccountIds);
+
 		const players: AdminPlayer[] = accounts.rows.map((row) => {
 			const played = historyOf.get(row.id);
+
 			return {
 				id: row.id,
 				name: row.display_name,
@@ -155,11 +167,13 @@ export class AdminStore {
 				friends: friendCount.get(row.id) ?? 0,
 			};
 		});
+
 		const lastActivity = (player: AdminPlayer) =>
 			[player.lastSeenAt, player.lastLoginAt, player.lastMatchAt]
 				.filter((value): value is string => value !== null)
 				.sort()
 				.at(-1) ?? null;
+
 		players.sort((a, b) =>
 			(lastActivity(b) ?? b.createdAt).localeCompare(
 				lastActivity(a) ?? a.createdAt,
@@ -170,6 +184,7 @@ export class AdminStore {
 			string,
 			{ at: Date; duration: number; players: number }
 		>();
+
 		for (const row of recent.rows) {
 			if (!matches.has(row.match_id)) {
 				matches.set(row.match_id, {
@@ -179,10 +194,13 @@ export class AdminStore {
 				});
 			}
 		}
+
 		const allMatches = [...matches.entries()];
+
 		const recentMatches = allMatches.filter(
 			([, match]) => match.at.getTime() >= since.getTime(),
 		);
+
 		const average = (values: number[]) =>
 			values.length > 0
 				? values.reduce((sum, value) => sum + value, 0) / values.length

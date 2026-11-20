@@ -30,16 +30,20 @@ import { TermsNotice } from "./TermsNotice";
 export function LobbyScreen() {
 	const t = useT();
 	const [rulesOpen, setRulesOpen] = useState(false);
+
 	useEffect(() => ManorApproachScene.prefetch(), []);
+
 	const lobby = useStore(lobbyStore, (state) => state.lobby);
 	const playerId = useStore(sessionStore, (state) => state.playerId);
 	const micStatus = useStore(micStore, (state) => state.status);
 	const accountStatus = useStore(accountStore, (state) => state.status);
 	const account = useStore(accountStore, (state) => state.account);
+
 	const localTermsChoice = useStore(
 		settingsStore,
 		(state) => state.termsAccepted,
 	);
+
 	const accepted = termsAccepted(
 		{ status: accountStatus, account },
 		localTermsChoice,
@@ -63,16 +67,21 @@ export function LobbyScreen() {
 	const isHost = lobby.hostId === playerId;
 	const micReady = micIsUsable(micStatus);
 	const connected = lobby.players.filter((player) => player.connected);
+
 	const everyoneReady = connected.every(
 		(player) => player.ready && player.micReady,
 	);
+
 	const enoughPlayers = connected.length >= lobby.minPlayers;
 	const inMatch = lobby.phase === "loading" || lobby.phase === "playing";
 	const isPrivate = lobby.visibility === "private";
+
 	const friendsAvailable =
 		accountStatus !== "loading" && accountStatus !== "disabled";
+
 	const rulesEditable =
 		isHost && lobby.configEditable && lobby.phase === "waiting";
+
 	const quit = () => {
 		leaveVoice();
 		leaveLobby();

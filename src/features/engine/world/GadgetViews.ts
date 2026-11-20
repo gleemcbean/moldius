@@ -21,13 +21,18 @@ export class GadgetViews {
 		prefix: string,
 	) {
 		this.template = template;
+
 		for (const spot of spots.slice(0, total)) {
 			const model = this.template.clone();
+
 			model.position.set(spot.x, spot.y - 0.03, spot.z);
+
 			model.rotation.y = spot.id * 2.3;
+
 			model.scale.setScalar(1.3);
 			this.models.set(spot.id, model);
 			this.group.add(model);
+
 			this.lights.set(spot.id, {
 				id: `${prefix}-${spot.id}`,
 				position: new THREE.Vector3(spot.x, spot.y + 0.3, spot.z),
@@ -54,15 +59,21 @@ export class GadgetViews {
 
 	update(dt: number, eye: THREE.Vector3, lights: DynamicLight[]): void {
 		this.time += dt;
+
 		const blinking = this.time % BLINK_SECONDS < 0.18;
+
 		for (const [id, model] of this.models) {
 			const near =
 				!this.taken.has(id) &&
 				model.position.distanceToSquared(eye) < VISIBLE_RANGE * VISIBLE_RANGE;
+
 			model.visible = near;
+
 			const light = this.lights.get(id);
+
 			if (near && blinking && light) {
 				light.intensity = 0.9;
+
 				lights.push(light);
 			}
 		}

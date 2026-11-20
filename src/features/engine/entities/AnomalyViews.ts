@@ -34,6 +34,7 @@ import { type SoundHandle, soundBank } from "../../audio/soundBank";
 import type { AnomalyModel } from "../../models/anomalies/AnomalyModel";
 import { createAnomalyModel } from "../../models/anomalies/createAnomalyModel";
 import { DoubleModel } from "../../models/anomalies/creatures";
+import { CinematographeModel } from "../../models/anomalies/machines";
 import type { ModelKit } from "../../models/modelKit";
 import { modelYaw } from "../../models/modelKit";
 import {
@@ -49,6 +50,7 @@ import {
 	Pentacle,
 	RITUAL_FALLBACK_COLOR,
 } from "../effects/CaptureRitual";
+import { ProjectorBeam } from "../effects/ProjectorBeam";
 import type { DynamicLight } from "../lighting/LightPool";
 import { occultColor } from "../player/OccultAura";
 import type { ClientWorldState } from "../state/ClientWorldState";
@@ -77,6 +79,8 @@ const IDLE_SOUNDS: Partial<Record<SpeciesId, string>> = {
 	gorgone: "gorgone-idle",
 	brume: "brume-idle",
 	"rat-roi": "ratroi-idle",
+	cordyceps: "cordyceps-idle",
+	cinematographe: "cinema-idle",
 };
 
 const WINDUP_SOUNDS: Partial<Record<SpeciesId, string>> = {
@@ -91,6 +95,18 @@ const WINDUP_SOUNDS: Partial<Record<SpeciesId, string>> = {
 	fulgurant: "fulgurant-charge",
 	gorgone: "melee-swing",
 	"rat-roi": "ratroi-bite",
+	cordyceps: "cordyceps-windup",
+	cinematographe: "cinema-charge",
+};
+
+const STATE_SOUNDS: Partial<
+	Record<SpeciesId, Partial<Record<AnomalyState, string>>>
+> = {
+	cinematographe: {
+		special: "cinema-roll",
+		stalled: "cinema-stall",
+		recover: "cinema-rewind",
+	},
 };
 
 interface Beam {
@@ -142,6 +158,7 @@ interface View {
 	pentacle: Pentacle | null;
 	resonance: number;
 	sparkClock: number;
+	ripe: boolean;
 }
 
 const TAG_RANGE = 11;
@@ -163,6 +180,7 @@ export class AnomalyViews {
 	readonly group = new THREE.Group();
 	private readonly views = new Map<number, View>();
 	private readonly beams: Beam[] = [];
+	private readonly projectors = new Map<number, ProjectorBeam>();
 	private readonly rituals: CaptureRitual[] = [];
 	private time = 0;
 	private voicesSilenced = false;
@@ -178,6 +196,7 @@ export class AnomalyViews {
 		pose: { x: number; y: number; z: number; yaw: number },
 	): number[] {
 		const cached = this.swarms.get(view.id);
+
 		if (
 			cached &&
 			Math.hypot(cached.x - pose.x, cached.z - pose.z) < 0.1 &&
@@ -186,13 +205,16 @@ export class AnomalyViews {
 		) {
 			return cached.clearance;
 		}
+
 		const clearance = swarmClearance(
 			this.world,
 			{ x: pose.x, y: pose.y, z: pose.z },
 			modelYaw(pose.yaw),
 			RAT_KING_SWARM_RADIUS,
 		);
+
 		this.swarms.set(view.id, { ...pose, clearance });
+
 		return clearance;
 	}
 
@@ -210,8 +232,10 @@ export class AnomalyViews {
 	prewarm(species: SpeciesId[]): void {
 		for (const id of species) {
 			const model = createAnomalyModel(id, this.kit);
+
 			model.root.position.set(0, -100, 0);
 			this.group.add(model.root);
+
 			model.update({
 				state: "idle",
 				stateMs: 0,
@@ -220,6 +244,7 @@ export class AnomalyViews {
 				dt: 0.016,
 				time: 0,
 			});
+
 			this.group.remove(model.root);
 			model.dispose();
 		}
@@ -242,25 +267,34 @@ export class AnomalyViews {
 		dynamicLights: DynamicLight[],
 	): void {
 		this.time += dt;
+
 		this.recordVoices();
+
 		for (const anomaly of this.state.anomalies.values()) {
 			let view = this.views.get(anomaly.id);
+
 			if (!anomaly.active || anomaly.buffer.size === 0) {
 				if (view) {
 					this.hide(view);
 				}
+
 				continue;
 			}
+
 			const sample = anomaly.buffer.sample(renderTime);
+
 			if (!sample) {
 				continue;
 			}
+
 			const impersonated =
 				anomaly.roster.species === "double"
 					? this.impersonate(anomaly.id, sample.value.mimic, sample.value)
 					: null;
+
 			const mimic = impersonated ? this.playerAppearance(impersonated) : null;
 			const mimicKey = disguiseKey(impersonated, mimic);
+
 			if (
 				!view ||
 				(anomaly.roster.species === "double" &&
@@ -270,6 +304,7 @@ export class AnomalyViews {
 				if (view) {
 					this.destroy(view);
 				}
+
 				view = this.create(
 					anomaly.id,
 					anomaly.roster.species,
@@ -277,18 +312,26 @@ export class AnomalyViews {
 					impersonated,
 				);
 			}
+
 			if (view.gen !== anomaly.gen) {
 				view.gen = anomaly.gen;
 				view.lastState = null;
+
 				view.pose.reset();
 			}
+
 			const state = this.state.anomalyState(sample.value);
 			const definition = SPECIES[view.species];
 			const pose = view.pose;
+
 			pose.update(sample, dt);
+
 			view.model.root.visible = true;
+
 			view.model.root.position.set(pose.x, pose.y, pose.z);
+
 			view.model.root.rotation.y = modelYaw(pose.yaw);
+
 			view.model.update({
 				state,
 				stateMs:
@@ -303,11 +346,13 @@ export class AnomalyViews {
 						? this.swarmClearance(view, pose)
 						: undefined,
 			});
+
 			const center = new THREE.Vector3(
 				pose.x,
 				pose.y + definition.bodyHeight * 0.55,
 				pose.z,
 			);
+
 			view.info = {
 				id: view.id,
 				species: view.species,
@@ -322,8 +367,10 @@ export class AnomalyViews {
 				impersonated,
 				renderTime: renderTime - POSE_SMOOTHING_LAG_MS,
 			};
+
 			if (view.tag) {
 				view.tag.position.set(pose.x, pose.y + 2.05, pose.z);
+
 				view.tag.visible =
 					sample.value.mimic !== null &&
 					sample.value.extra < 1 &&
@@ -331,7 +378,9 @@ export class AnomalyViews {
 					view.tag.position.distanceTo(listener) < TAG_RANGE &&
 					lineOfSight(this.world, listener, view.tag.position);
 			}
+
 			this.updateSound(view, state, center, listener);
+
 			this.updateDisguise(
 				view,
 				impersonated,
@@ -342,15 +391,30 @@ export class AnomalyViews {
 				dt,
 				dynamicLights,
 			);
+
 			this.updateGlow(view, dynamicLights);
 			this.emitParticles(view, dt);
 			this.updateCircle(view, sample.value.extra);
+			this.updateRipeness(view, sample.value.extra, center);
+
+			this.updateProjector(
+				view,
+				state,
+				sample.value.target,
+				sample.value.extra,
+				renderTime,
+				dynamicLights,
+			);
+
 			view.lastState = state;
 		}
+
 		this.updateBeams(dynamicLights);
+
 		for (const ritual of [...this.rituals]) {
 			ritual.update(dt);
 			dynamicLights.push(ritual.light);
+
 			if (ritual.done) {
 				ritual.dispose();
 				this.rituals.splice(this.rituals.indexOf(ritual), 1);
@@ -360,8 +424,10 @@ export class AnomalyViews {
 
 	resonate(held: OccultId | null, eye: THREE.Vector3, dt: number): number {
 		let strongest = 0;
+
 		for (const view of this.views.values()) {
 			const occult = this.state.anomalies.get(view.id)?.roster.occult ?? null;
+
 			const target =
 				held !== null && occult === held && view.info
 					? Math.min(
@@ -373,13 +439,18 @@ export class AnomalyViews {
 							),
 						)
 					: 0;
+
 			view.resonance += (target - view.resonance) * Math.min(1, dt * 5);
+
 			if (view.resonance < 0.01 && target === 0) {
 				view.resonance = 0;
 			}
+
 			strongest = Math.max(strongest, view.resonance);
+
 			this.updatePentacle(view, occult, dt);
 		}
+
 		return strongest;
 	}
 
@@ -390,28 +461,38 @@ export class AnomalyViews {
 	): void {
 		if (view.resonance <= 0 || !view.info || !occult) {
 			view.pentacle?.set(0, 0, 0);
+
 			return;
 		}
+
 		if (!view.pentacle) {
 			view.pentacle = new Pentacle(
 				Math.max(0.8, SPECIES[view.species].aimRadius * 1.7),
 			);
+
 			this.group.add(view.pentacle.mesh);
 		}
+
 		const position = view.info.position;
 		const floorY = this.roomAt(position)?.floorY ?? position.y;
 		const color = occultColor(occult);
+
 		view.pentacle.mesh.position.set(position.x, floorY + 0.03, position.z);
+
 		view.pentacle.set(
 			color,
 			view.resonance * (0.5 + Math.sin(this.time * 3.2) * 0.12),
 			this.time * 0.35,
 		);
+
 		view.sparkClock += dt * view.resonance;
+
 		if (view.sparkClock > 0.12) {
 			view.sparkClock = 0;
+
 			const angle = Math.random() * Math.PI * 2;
 			const reach = SPECIES[view.species].aimRadius * 1.5;
+
 			this.particles.emit(
 				new THREE.Vector3(
 					position.x + Math.cos(angle) * reach,
@@ -434,13 +515,16 @@ export class AnomalyViews {
 
 	private startRitual(view: View): void {
 		const info = view.info;
+
 		if (!info) {
 			return;
 		}
+
 		const occult = this.state.anomalies.get(view.id)?.roster.occult ?? null;
 		const definition = SPECIES[view.species];
 		const model = view.model;
 		let stateMs = 0;
+
 		const ritual = new CaptureRitual(
 			{
 				model,
@@ -451,6 +535,7 @@ export class AnomalyViews {
 				color: occult ? occultColor(occult) : RITUAL_FALLBACK_COLOR,
 				animate: (dt) => {
 					stateMs += dt * 1000;
+
 					model.update({
 						state: "flee",
 						stateMs,
@@ -463,11 +548,14 @@ export class AnomalyViews {
 			},
 			this.particles,
 		);
+
 		this.group.add(ritual.group);
 		this.rituals.push(ritual);
 		this.views.delete(view.id);
 		this.hide(view);
+
 		model.root.visible = true;
+
 		this.releaseExtras(view);
 	}
 
@@ -475,7 +563,9 @@ export class AnomalyViews {
 		view.model.emitters.forEach((emitter, index) => {
 			const debt = (view.emitted[index] ?? 0) + emitter.rate * dt;
 			const count = Math.floor(debt);
+
 			view.emitted[index] = debt - count;
+
 			if (count > 0) {
 				this.particles.emit(
 					emitter.anchor.getWorldPosition(new THREE.Vector3()),
@@ -494,11 +584,14 @@ export class AnomalyViews {
 	): void {
 		const length = Math.max(0.01, from.distanceTo(to));
 		const direction = new THREE.Vector3().subVectors(to, from).normalize();
+
 		const orientation = new THREE.Quaternion().setFromUnitVectors(
 			new THREE.Vector3(0, 1, 0),
 			direction,
 		);
+
 		const middle = new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5);
+
 		const make = (radius: number, color: number, opacity: number) => {
 			const mesh = new THREE.Mesh(
 				new THREE.CylinderGeometry(radius, radius, length, 8, 1, true),
@@ -510,13 +603,19 @@ export class AnomalyViews {
 					blending: THREE.AdditiveBlending,
 				}),
 			);
+
 			mesh.position.copy(middle);
 			mesh.quaternion.copy(orientation);
+
 			mesh.renderOrder = 2;
+
 			this.group.add(mesh);
+
 			return mesh;
 		};
+
 		const shot = kind === "shot";
+
 		this.beams.push({
 			anomalyId,
 			mesh: make(
@@ -538,30 +637,39 @@ export class AnomalyViews {
 			if (!mesh) {
 				continue;
 			}
+
 			this.group.remove(mesh);
 			mesh.geometry.dispose();
 			(mesh.material as THREE.Material).dispose();
 		}
+
 		this.beams.splice(this.beams.indexOf(beam), 1);
 	}
 
 	private updateBeams(dynamicLights: DynamicLight[]): void {
 		for (const beam of [...this.beams]) {
 			const age = this.time - beam.born;
+
 			if (age >= beam.life) {
 				this.removeBeam(beam);
 				continue;
 			}
+
 			const material = beam.mesh.material as THREE.MeshBasicMaterial;
+
 			if (beam.kind === "telegraph") {
 				material.opacity = 0.3 + 0.35 * Math.abs(Math.sin(age * 14));
 				continue;
 			}
+
 			const fade = 1 - age / beam.life;
+
 			material.opacity = fade;
+
 			if (beam.glow) {
 				(beam.glow.material as THREE.MeshBasicMaterial).opacity = fade * 0.45;
 			}
+
 			if (age < 0.18) {
 				dynamicLights.push({
 					id: `laser-${beam.anomalyId}`,
@@ -578,8 +686,10 @@ export class AnomalyViews {
 
 	disguises(): DisguiseBody[] {
 		const bodies: DisguiseBody[] = [];
+
 		for (const view of this.views.values()) {
 			const info = view.info;
+
 			if (
 				info?.mimic &&
 				info.impersonated &&
@@ -595,6 +705,7 @@ export class AnomalyViews {
 				});
 			}
 		}
+
 		return bodies;
 	}
 
@@ -605,30 +716,42 @@ export class AnomalyViews {
 	): string | null {
 		if (!mimic || mimic !== this.state.selfId) {
 			this.standIns.delete(anomalyId);
+
 			return mimic;
 		}
+
 		const alive = (id: string) =>
 			((this.state.players.get(id)?.latest?.flags ?? 0) & PLAYER_FLAG.dead) ===
 			0;
+
 		const cached = this.standIns.get(anomalyId);
+
 		if (cached && this.state.players.has(cached) && alive(cached)) {
 			return cached;
 		}
+
 		const others = [...this.state.players.keys()]
 			.filter((id) => id !== this.state.selfId)
 			.sort();
+
 		if (others.length === 0) {
 			return mimic;
 		}
+
 		const away = (id: string) => {
 			const latest = this.state.players.get(id)?.latest;
+
 			return latest ? Math.hypot(latest.x - at.x, latest.z - at.z) : 0;
 		};
+
 		const pool = others.some(alive) ? others.filter(alive) : others;
+
 		const standIn = pool.reduce((best, id) =>
 			away(id) > away(best) ? id : best,
 		);
+
 		this.standIns.set(anomalyId, standIn);
+
 		return standIn;
 	}
 
@@ -636,10 +759,13 @@ export class AnomalyViews {
 		if (this.voicesSilenced) {
 			return;
 		}
+
 		this.voicesSilenced = true;
+
 		for (const view of this.views.values()) {
 			view.voice?.stop();
 		}
+
 		doubleVoices.clear();
 	}
 
@@ -647,6 +773,7 @@ export class AnomalyViews {
 		if (this.voicesSilenced) {
 			return;
 		}
+
 		doubleVoices.update(
 			new Set(
 				[...this.state.players.keys()].filter((id) => id !== this.state.selfId),
@@ -663,18 +790,26 @@ export class AnomalyViews {
 		dynamicLights: DynamicLight[],
 	): void {
 		const model = view.model;
+
 		if (!(model instanceof DoubleModel)) {
 			return;
 		}
+
 		const position = model.root.position;
+
 		const flags =
 			(impersonated && this.state.players.get(impersonated)?.latest?.flags) ||
 			0;
+
 		const lanternOpen = disguised && (flags & PLAYER_FLAG.lantern) !== 0;
+
 		model.copiedLantern = lanternOpen;
+
 		if (lanternOpen) {
 			model.root.updateMatrixWorld(true);
+
 			const held = model.mushroom.lanternLightPosition;
+
 			view.lantern ??= {
 				id: `double-lantern-${view.id}`,
 				position: new THREE.Vector3(),
@@ -688,6 +823,7 @@ export class AnomalyViews {
 				priority: 4,
 				flicker: 0.12,
 			};
+
 			view.lantern.position.copy(
 				pullBackToSight(
 					this.world,
@@ -696,27 +832,38 @@ export class AnomalyViews {
 					0.06,
 				),
 			);
+
 			dynamicLights.push(view.lantern);
 		}
+
 		if (view.voice?.ended) {
 			view.voice = null;
 		}
+
 		const distance = position.distanceTo(listener);
+
 		if (!disguised) {
 			view.voice?.stop();
+
 			view.voice = null;
 			model.copiedTalking = 0;
+
 			return;
 		}
+
 		const speed = view.pose.speed;
+
 		if (speed >= 0.6 && distance <= 22) {
 			view.stepPhase += dt * speed * 0.9;
+
 			if (view.stepPhase >= 1) {
 				view.stepPhase = 0;
+
 				const room = this.world.roomAt(
 					{ x: position.x, z: position.z },
 					position.y + 0.1,
 				);
+
 				soundBank.play(footstepSound(room?.style.floor), {
 					position,
 					volume: 0.55,
@@ -726,6 +873,7 @@ export class AnomalyViews {
 				});
 			}
 		}
+
 		if (
 			!this.voicesSilenced &&
 			!view.voice &&
@@ -738,15 +886,19 @@ export class AnomalyViews {
 				this.time +
 				DOUBLE_VOICE_MIN_GAP +
 				Math.random() * DOUBLE_VOICE_EXTRA_GAP;
+
 			const clip = doubleVoices.clipFor(impersonated);
+
 			if (clip) {
 				view.voice = speakClip(clip);
 			}
 		}
+
 		view.voice?.place(
 			{ x: position.x, y: position.y + 1.5, z: position.z },
 			view.occlusion,
 		);
+
 		model.copiedTalking = view.voice ? 0.5 + Math.sin(this.time * 14) * 0.3 : 0;
 	}
 
@@ -760,18 +912,24 @@ export class AnomalyViews {
 			impersonated && impersonated !== this.state.selfId
 				? this.state.players.get(impersonated)
 				: undefined;
+
 		const tag = disguise ? nameTag(disguise.name, disguise.color) : null;
+
 		if (tag) {
 			tag.visible = false;
+
 			this.group.add(tag);
 		}
+
 		const model = createAnomalyModel(
 			species,
 			this.kit,
 			mimic?.color ?? 0xd8442f,
 			mimic?.pattern ?? DEFAULT_HAT_PATTERN,
 		);
+
 		this.group.add(model.root);
+
 		const view: View = {
 			id,
 			species,
@@ -795,26 +953,40 @@ export class AnomalyViews {
 			pentacle: null,
 			resonance: 0,
 			sparkClock: 0,
+			ripe: false,
 		};
+
 		this.views.set(id, view);
+
 		return view;
 	}
 
 	private hide(view: View): void {
 		view.model.root.visible = false;
+
 		if (view.tag) {
 			view.tag.visible = false;
 		}
+
 		view.info = null;
+
 		view.idle?.stop(0.4);
+
 		view.idle = null;
+
 		view.voice?.stop();
+
 		view.voice = null;
+
 		if (view.circle) {
 			view.circle.visible = false;
 		}
+
 		view.resonance = 0;
+
 		view.pentacle?.set(0, 0, 0);
+
+		this.projectors.get(view.id)?.hide();
 	}
 
 	private destroy(view: View): void {
@@ -828,18 +1000,23 @@ export class AnomalyViews {
 		if (view.pentacle) {
 			this.group.remove(view.pentacle.mesh);
 			view.pentacle.dispose();
+
 			view.pentacle = null;
 		}
+
 		if (view.circle) {
 			this.group.remove(view.circle);
 			view.circle.geometry.dispose();
 			(view.circle.material as THREE.Material).dispose();
 		}
+
 		if (view.tag) {
 			this.group.remove(view.tag);
 			(view.tag.material as THREE.SpriteMaterial).map?.dispose();
 			(view.tag.material as THREE.SpriteMaterial).dispose();
 		}
+
+		this.releaseProjector(view.id);
 		this.views.delete(view.id);
 	}
 
@@ -850,12 +1027,16 @@ export class AnomalyViews {
 		listener: THREE.Vector3,
 	): void {
 		const distance = center.distanceTo(listener);
+
 		if (this.time - view.occlusionCheckedAt > 0.25) {
 			view.occlusionCheckedAt = this.time;
+
 			view.occlusion =
 				distance < 30 ? countWallsBetween(this.world, center, listener, 3) : 3;
 		}
+
 		const idleKey = IDLE_SOUNDS[view.species];
+
 		if (idleKey && distance < 26) {
 			if (!view.idle || view.idle.ended) {
 				view.idle = soundBank.play(idleKey, {
@@ -867,12 +1048,15 @@ export class AnomalyViews {
 					rolloff: 1.5,
 				});
 			}
+
 			view.idle?.setPosition(center.x, center.y, center.z);
 			view.idle?.setOcclusion(view.occlusion);
 		} else if (view.idle) {
 			view.idle.stop(0.5);
+
 			view.idle = null;
 		}
+
 		if (state !== view.lastState && view.lastState !== null) {
 			const options = {
 				position: center,
@@ -880,12 +1064,15 @@ export class AnomalyViews {
 				maxDistance: 34,
 				occlusion: view.occlusion,
 			};
+
 			if (state === "windup") {
 				const windup = WINDUP_SOUNDS[view.species];
+
 				if (windup) {
 					soundBank.play(windup, options);
 				}
 			}
+
 			if (
 				state === "chase" &&
 				view.lastState !== "recover" &&
@@ -900,18 +1087,29 @@ export class AnomalyViews {
 					);
 				}
 			}
+
 			if (state === "special" && view.species === "brume") {
 				soundBank.play("brume-cling", options);
 			}
+
 			if (state === "special" && view.species === "rat-roi") {
 				soundBank.play("ratroi-scatter", options);
 			}
+
 			if (state === "special" && view.species === "murmure") {
 				soundBank.play("murmure-awaken", options);
 			}
+
 			if (state === "special" && view.species === "fulgurant") {
 				soundBank.play("fulgurant-vent", options);
 			}
+
+			const stateSound = STATE_SOUNDS[view.species]?.[state];
+
+			if (stateSound) {
+				soundBank.play(stateSound, options);
+			}
+
 			if (
 				state === "chase" &&
 				view.species === "colosse" &&
@@ -928,11 +1126,108 @@ export class AnomalyViews {
 		}
 	}
 
+	private updateRipeness(
+		view: View,
+		extra: number,
+		center: THREE.Vector3,
+	): void {
+		if (view.species !== "cordyceps") {
+			return;
+		}
+
+		const ripe = extra >= 1;
+
+		if (ripe && !view.ripe) {
+			soundBank.play("cordyceps-ripe", {
+				position: center,
+				refDistance: 2,
+				maxDistance: 24,
+				occlusion: view.occlusion,
+			});
+		}
+
+		view.ripe = ripe;
+	}
+
+	private playerHead(id: string, renderTime: number): THREE.Vector3 | null {
+		const sample = this.state.players.get(id)?.buffer.sample(renderTime);
+
+		if (!sample) {
+			return null;
+		}
+
+		return new THREE.Vector3(
+			sample.value.x,
+			sample.value.y + 1.45 - sample.value.crouch * 0.5,
+			sample.value.z,
+		);
+	}
+
+	private updateProjector(
+		view: View,
+		state: AnomalyState,
+		targetId: string | null,
+		extra: number,
+		renderTime: number,
+		dynamicLights: DynamicLight[],
+	): void {
+		if (!(view.model instanceof CinematographeModel)) {
+			return;
+		}
+
+		const beam = this.projectors.get(view.id);
+		const aiming = state === "windup" || state === "special";
+
+		const head =
+			aiming && targetId ? this.playerHead(targetId, renderTime) : null;
+
+		if (!head) {
+			beam?.hide();
+
+			return;
+		}
+
+		const projector = beam ?? new ProjectorBeam(view.id);
+
+		if (!beam) {
+			this.projectors.set(view.id, projector);
+			this.group.add(projector.mesh);
+		}
+
+		view.model.root.updateMatrixWorld(true);
+
+		const strength = state === "special" ? 1 : 0.2 + 0.65 * extra;
+
+		projector.update(
+			view.model.lensPosition(new THREE.Vector3()),
+			head,
+			strength,
+			state === "special" ? 1 : 0,
+			this.time,
+		);
+
+		dynamicLights.push(projector.light);
+	}
+
+	private releaseProjector(id: number): void {
+		const projector = this.projectors.get(id);
+
+		if (!projector) {
+			return;
+		}
+
+		this.group.remove(projector.mesh);
+		projector.dispose();
+		this.projectors.delete(id);
+	}
+
 	private updateGlow(view: View, dynamicLights: DynamicLight[]): void {
 		const glow = view.model.glow;
+
 		if (!glow) {
 			return;
 		}
+
 		if (!view.glow) {
 			view.glow = {
 				id: `anomaly-${view.id}`,
@@ -944,11 +1239,14 @@ export class AnomalyViews {
 				flicker: 0.1,
 			};
 		}
+
 		view.glow.position
 			.copy(glow.offset)
 			.applyQuaternion(view.model.root.quaternion)
 			.add(view.model.root.position);
+
 		view.glow.intensity = glow.intensity;
+
 		dynamicLights.push(view.glow);
 	}
 
@@ -956,16 +1254,23 @@ export class AnomalyViews {
 		if (view.species !== "archiviste") {
 			return;
 		}
+
 		if (!view.circle) {
 			const room = this.roomAt(view.model.root.position);
+
 			if (!room) {
 				return;
 			}
+
 			view.circle = this.buildCircle(room, view.model.root.position);
+
 			this.group.add(view.circle);
 		}
+
 		view.circle.visible = true;
+
 		const material = view.circle.material as THREE.MeshStandardMaterial;
+
 		material.emissiveIntensity =
 			0.4 + charge * 2.6 + Math.sin(this.time * 2) * 0.1;
 	}
@@ -981,13 +1286,18 @@ export class AnomalyViews {
 		const shape = new THREE.Shape(
 			room.polygon.map((point) => new THREE.Vector2(point.x, -point.z)),
 		);
+
 		const geometry = new THREE.ShapeGeometry(shape);
+
 		geometry.rotateX(-Math.PI / 2);
+
 		const positions = geometry.getAttribute(
 			"position",
 		) as THREE.BufferAttribute;
+
 		const uv = geometry.getAttribute("uv") as THREE.BufferAttribute;
 		const size = ARCHIVIST_CIRCLE_RADIUS * 2;
+
 		for (let index = 0; index < positions.count; index += 1) {
 			uv.setXY(
 				index,
@@ -995,12 +1305,18 @@ export class AnomalyViews {
 				(positions.getZ(index) - center.z) / size + 0.5,
 			);
 		}
+
 		geometry.translate(0, room.floorY + 0.03, 0);
+
 		const texture = this.textures.get("archivistCircle").clone();
+
 		texture.wrapS = THREE.ClampToEdgeWrapping;
 		texture.wrapT = THREE.ClampToEdgeWrapping;
+
 		texture.repeat.set(1, 1);
+
 		texture.needsUpdate = true;
+
 		const material = new THREE.MeshStandardMaterial({
 			map: texture,
 			emissiveMap: texture,
@@ -1011,14 +1327,18 @@ export class AnomalyViews {
 			alphaTest: 0.05,
 			roughness: 1,
 		});
+
 		const mesh = new THREE.Mesh(geometry, material);
+
 		mesh.renderOrder = 1;
+
 		return mesh;
 	}
 
 	private onEvent(event: GameEvent): void {
 		if (event.type === "capture") {
 			const view = this.views.get(event.anomalyId);
+
 			if (view && view.gen === event.gen) {
 				if (view.info && event.playerId !== this.state.selfId) {
 					soundBank.play("capture", {
@@ -1027,11 +1347,14 @@ export class AnomalyViews {
 						occlusion: view.occlusion,
 					});
 				}
+
 				this.startRitual(view);
 			}
 		}
+
 		if (event.type === "attack" && event.phase === "strike") {
 			const view = this.views.get(event.anomalyId);
+
 			if (view?.info) {
 				if (view.species === "crache-cendre") {
 					soundBank.play("cendre-spit", {
@@ -1067,6 +1390,7 @@ export class AnomalyViews {
 				}
 			}
 		}
+
 		if (event.type === "laserCharge") {
 			for (const beam of this.beams.filter(
 				(candidate) =>
@@ -1075,6 +1399,7 @@ export class AnomalyViews {
 			)) {
 				this.removeBeam(beam);
 			}
+
 			this.addBeam(
 				event.anomalyId,
 				new THREE.Vector3(event.from.x, event.from.y, event.from.z),
@@ -1082,6 +1407,7 @@ export class AnomalyViews {
 				"telegraph",
 			);
 		}
+
 		if (event.type === "laser") {
 			for (const beam of this.beams.filter(
 				(candidate) =>
@@ -1090,16 +1416,21 @@ export class AnomalyViews {
 			)) {
 				this.removeBeam(beam);
 			}
+
 			const from = new THREE.Vector3(event.from.x, event.from.y, event.from.z);
 			const to = new THREE.Vector3(event.to.x, event.to.y, event.to.z);
+
 			this.addBeam(event.anomalyId, from, to, "shot");
+
 			soundBank.play("fulgurant-fire", {
 				position: from,
 				volume: 1.3,
 				refDistance: 3,
 				maxDistance: 40,
 			});
+
 			soundBank.play("ember-impact", { position: to, volume: 0.8 });
+
 			this.particles.emit(to, 26, {
 				color: 0xff8a50,
 				speed: 3.5,
@@ -1109,15 +1440,19 @@ export class AnomalyViews {
 				gravity: 6,
 			});
 		}
+
 		if (event.type === "thrown") {
 			const from = new THREE.Vector3(
 				event.from.x,
 				event.from.y + 1,
 				event.from.z,
 			);
+
 			const to = new THREE.Vector3(event.to.x, event.to.y + 0.2, event.to.z);
+
 			soundBank.play("colosse-throw", { position: from, volume: 1.1 });
 			soundBank.play("throw-impact", { position: to, volume: 1.2 });
+
 			this.particles.emit(to, 30, {
 				color: 0x9a8a72,
 				speed: 1.8,
@@ -1128,8 +1463,10 @@ export class AnomalyViews {
 				spread: 0.5,
 			});
 		}
+
 		if (event.type === "scream") {
 			const view = this.views.get(event.anomalyId);
+
 			if (view?.info && view.species === "gorgone") {
 				soundBank.play("gorgone-shriek", {
 					position: view.info.center,
@@ -1148,14 +1485,18 @@ export class AnomalyViews {
 				});
 			}
 		}
+
 		if (event.type === "reveal") {
 			const view = this.views.get(event.anomalyId);
+
 			if (view?.info) {
 				soundBank.play("double-reveal", { position: view.info.center });
 			}
 		}
+
 		if (event.type === "pulse") {
 			const position = new THREE.Vector3(event.x, event.y + 0.1, event.z);
+
 			soundBank.play(
 				event.phase === "charge" ? "archiviste-charge" : "archiviste-pulse",
 				{
@@ -1163,9 +1504,11 @@ export class AnomalyViews {
 					refDistance: 3,
 				},
 			);
+
 			if (event.phase === "release") {
 				for (let index = 0; index < 24; index += 1) {
 					const angle = (index / 24) * Math.PI * 2;
+
 					this.particles.emit(
 						new THREE.Vector3(
 							event.x + Math.cos(angle) * event.radius * 0.9,
@@ -1185,14 +1528,17 @@ export class AnomalyViews {
 				}
 			}
 		}
+
 		if (event.type === "explosion") {
 			const position = new THREE.Vector3(event.x, event.y, event.z);
+
 			soundBank.play("explosion", {
 				position,
 				volume: 1.6,
 				refDistance: 4,
 				maxDistance: 60,
 			});
+
 			this.particles.emit(position, 160, {
 				color: 0xc86a5a,
 				speed: 7,
@@ -1201,6 +1547,7 @@ export class AnomalyViews {
 				gravity: 9,
 				spread: 0.6,
 			});
+
 			this.particles.emit(position, 60, {
 				color: 0xffd080,
 				speed: 4,
@@ -1210,11 +1557,14 @@ export class AnomalyViews {
 				spread: 0.4,
 			});
 		}
+
 		if (event.type === "projectileEnd") {
 			const position = new THREE.Vector3(event.at.x, event.at.y, event.at.z);
 			const projectile = this.state.projectiles.get(event.id);
 			const ember = projectile ? projectile.kind === "ember" : true;
+
 			soundBank.play(ember ? "ember-impact" : "slime-splat", { position });
+
 			this.particles.emit(position, ember ? 30 : 24, {
 				color: ember ? 0xff8a30 : 0x7aca3a,
 				speed: ember ? 3 : 2,
@@ -1230,9 +1580,11 @@ export class AnomalyViews {
 		for (const view of [...this.views.values()]) {
 			this.destroy(view);
 		}
+
 		for (const ritual of this.rituals.splice(0)) {
 			ritual.dispose();
 		}
+
 		for (const beam of [...this.beams]) {
 			this.removeBeam(beam);
 		}

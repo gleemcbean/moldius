@@ -10,9 +10,11 @@ export function isWsl() {
 	if (process.platform !== "linux") {
 		return false;
 	}
+
 	if (process.env.WSL_DISTRO_NAME) {
 		return true;
 	}
+
 	try {
 		return /microsoft/i.test(readFileSync("/proc/version", "utf8"));
 	} catch {
@@ -41,6 +43,7 @@ function ipv4(entries) {
 
 export function wslAddress() {
 	const interfaces = networkInterfaces();
+
 	return ipv4(interfaces.eth0 ?? Object.values(interfaces).flat())[0] ?? null;
 }
 
@@ -76,10 +79,12 @@ export function windowsLanAddresses() {
 export function portProxyTarget(port = LAN_PORT) {
 	try {
 		const output = powershell("netsh interface portproxy show v4tov4");
+
 		for (const line of output.split("\n")) {
 			const [listenAddress, listenPort, connectAddress, connectPort] = line
 				.trim()
 				.split(/\s+/);
+
 			if (
 				listenAddress === "0.0.0.0" &&
 				Number(listenPort) === port &&
@@ -91,6 +96,7 @@ export function portProxyTarget(port = LAN_PORT) {
 	} catch {
 		return null;
 	}
+
 	return null;
 }
 
@@ -111,6 +117,7 @@ export function openCommands(mode, target) {
 		`Remove-NetFirewallRule -DisplayName '${FIREWALL_RULE}' -ErrorAction SilentlyContinue`,
 		`New-NetFirewallRule -DisplayName '${FIREWALL_RULE}' -Direction Inbound -Action Allow -Protocol TCP -LocalPort ${LAN_PORT} -RemoteAddress LocalSubnet -Profile Any | Out-Null`,
 	];
+
 	if (mode === "mirrored") {
 		return [
 			...firewall,
@@ -118,6 +125,7 @@ export function openCommands(mode, target) {
 			`New-NetFirewallHyperVRule -Name 'MYCELIUM-LAN-${LAN_PORT}' -DisplayName '${FIREWALL_RULE}' -Direction Inbound -VMCreatorId '${WSL_VM_CREATOR}' -Protocol TCP -LocalPorts ${LAN_PORT} -Action Allow | Out-Null`,
 		];
 	}
+
 	return [
 		`netsh interface portproxy delete v4tov4 listenport=${LAN_PORT} listenaddress=0.0.0.0 | Out-Null`,
 		`netsh interface portproxy add v4tov4 listenport=${LAN_PORT} listenaddress=0.0.0.0 connectport=${LAN_PORT} connectaddress=${target}`,
@@ -137,7 +145,9 @@ export function runElevated(commands) {
 	const script = ['$ErrorActionPreference = "Continue"', ...commands].join(
 		"\n",
 	);
+
 	const encoded = Buffer.from(script, "utf16le").toString("base64");
+
 	powershell(
 		`Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand','${encoded}'`,
 	);
@@ -145,31 +155,42 @@ export function runElevated(commands) {
 
 export function lanReport() {
 	const lines = [];
+
 	if (!isWsl()) {
 		const addresses = localAddresses();
+
 		lines.push(`Sur ce PC : https://localhost:${LAN_PORT}`);
+
 		for (const address of addresses) {
 			lines.push(`Sur le réseau local : https://${address}:${LAN_PORT}`);
 		}
+
 		lines.push(
 			`Autorisez le port TCP ${LAN_PORT} dans le pare-feu si les autres appareils n'y accèdent pas.`,
 		);
+
 		return lines;
 	}
+
 	const mode = wslNetworkingMode();
 	const addresses = windowsLanAddresses();
+
 	lines.push(`Sur ce PC : https://localhost:${LAN_PORT}`);
+
 	for (const address of addresses) {
 		lines.push(`Sur le réseau local : https://${address}:${LAN_PORT}`);
 	}
+
 	if (addresses.length === 0) {
 		lines.push(
 			"Adresse du PC sur le réseau local introuvable (Windows injoignable depuis WSL).",
 		);
 	}
+
 	if (mode !== "mirrored") {
 		const target = portProxyTarget();
 		const wsl = wslAddress();
+
 		if (!target || target.address !== wsl || !firewallRuleExists()) {
 			lines.push(
 				`Redirection Windows → WSL absente ou périmée (WSL : ${wsl ?? "inconnue"}) : exécutez « npm run lan:open » pour l'activer.`,
@@ -180,5 +201,6 @@ export function lanReport() {
 			"Règle de pare-feu absente : exécutez « npm run lan:open » pour l'ajouter.",
 		);
 	}
+
 	return lines;
 }

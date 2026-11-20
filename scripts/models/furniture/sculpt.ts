@@ -25,24 +25,31 @@ function interiorNormal(
 export function hollowProfile(outer: Profile, wall: number): Profile {
 	const count = outer.length;
 	const inner: Profile = [];
+
 	for (let index = 1; index < count; index += 1) {
 		const before = interiorNormal(outer[index - 1], outer[index]);
+
 		const after =
 			index + 1 < count
 				? interiorNormal(outer[index], outer[index + 1])
 				: before;
+
 		const normal = before.add(after).normalize();
+
 		inner.push([
 			Math.max(0.001, outer[index][0] + normal.x * wall),
 			outer[index][1] + normal.y * wall,
 		]);
 	}
+
 	const rim = outer[count - 1];
 	const rimInner = inner[inner.length - 1];
+
 	const lip: [number, number] = [
 		(rim[0] + rimInner[0]) / 2,
 		Math.max(rim[1], rimInner[1]) + wall * 0.35,
 	];
+
 	return [...outer, lip, ...inner.reverse(), [0.001, outer[0][1] + wall]];
 }
 
@@ -67,6 +74,7 @@ function smoothLatheSeam(
 	segments: number,
 ): void {
 	const normal = geometry.getAttribute("normal") as THREE.BufferAttribute;
+
 	for (let row = 0; row < rows; row += 1) {
 		const first = row;
 		const last = segments * rows + row;
@@ -74,6 +82,7 @@ function smoothLatheSeam(
 		const y = normal.getY(first) + normal.getY(last);
 		const z = normal.getZ(first) + normal.getZ(last);
 		const length = Math.hypot(x, y, z) || 1;
+
 		normal.setXYZ(first, x / length, y / length, z / length);
 		normal.setXYZ(last, x / length, y / length, z / length);
 	}
@@ -104,6 +113,7 @@ export function pleated(
 	const low = Math.min(...heights);
 	const span = Math.max(...heights) - low || 1;
 	const phase = options.phase ?? 0;
+
 	for (let index = 0; index < position.count; index += 1) {
 		const px = position.getX(index);
 		const py = position.getY(index);
@@ -111,9 +121,12 @@ export function pleated(
 		const t = Math.min(1, Math.max(0, (py - low) / span));
 		const angle = Math.atan2(pz, px);
 		const wobble = Math.sin(angle * 3 + phase * 1.7) * 0.35;
+
 		const fold =
 			1 + Math.sin(angle * options.folds + phase + wobble) * options.depth(t);
+
 		const sway = (options.sway ?? 0) * (1 - t) * (1 - t);
+
 		position.setXYZ(
 			index,
 			px * fold + sway,
@@ -121,8 +134,10 @@ export function pleated(
 			pz * fold * (options.squash ?? 1),
 		);
 	}
+
 	geometry.computeVertexNormals();
 	smoothLatheSeam(geometry, profile.length, segments);
+
 	return part(placed(geometry, x, y, z, rotationY), material);
 }
 
@@ -137,21 +152,29 @@ function tubeGeometry(
 	const position = geometry.getAttribute("position") as THREE.BufferAttribute;
 	const center = new THREE.Vector3();
 	const vertex = new THREE.Vector3();
+
 	for (let ring = 0; ring <= tubular; ring += 1) {
 		curve.getPointAt(ring / tubular, center);
+
 		const scale = radius(ring / tubular);
+
 		for (let side = 0; side <= radial; side += 1) {
 			const index = ring * (radial + 1) + side;
+
 			vertex
 				.fromBufferAttribute(position, index)
 				.sub(center)
 				.multiplyScalar(scale)
 				.add(center);
+
 			position.setXYZ(index, vertex.x, vertex.y, vertex.z);
 		}
 	}
+
 	geometry.computeVertexNormals();
+
 	const average = (radius(0) + radius(0.5) + radius(1)) / 3;
+
 	return scaleUv(geometry, curve.getLength(), Math.PI * 2 * average);
 }
 
@@ -165,11 +188,13 @@ export function bentTube(
 	const profile = typeof radius === "number" ? () => radius : radius;
 	const vectors = path.map(([x, y, z]) => new THREE.Vector3(x, y, z));
 	const pieces = [tubeGeometry(vectors, profile, tubular, radial)];
+
 	for (const [end, point] of [
 		[0, vectors[0]],
 		[1, vectors[vectors.length - 1]],
 	] as const) {
 		const size = profile(end);
+
 		if (size > 0.0015) {
 			pieces.push(
 				placed(
@@ -181,6 +206,7 @@ export function bentTube(
 			);
 		}
 	}
+
 	return part(mergeGeometries(pieces, false) as THREE.BufferGeometry, material);
 }
 
@@ -194,7 +220,9 @@ export function capsuleBetween(
 	const direction = new THREE.Vector3().subVectors(to, from);
 	const length = direction.length();
 	const geometry = new THREE.CapsuleGeometry(radius, length, 3, radial);
+
 	scaleUv(geometry, Math.PI * 2 * radius, length + radius * 2);
+
 	geometry.applyMatrix4(
 		new THREE.Matrix4().compose(
 			new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5),
@@ -205,6 +233,7 @@ export function capsuleBetween(
 			new THREE.Vector3(1, 1, 1),
 		),
 	);
+
 	return part(geometry, material);
 }
 
@@ -228,7 +257,9 @@ export function extruded(
 		bevelSegments: 2,
 		curveSegments: 10,
 	});
+
 	geometry.translate(0, 0, -(depth - bevel * 2) / 2);
+
 	return part(
 		placed(geometry, x, y, z, rotationY, rotationX, rotationZ),
 		material,
@@ -247,12 +278,15 @@ export function ellipsoid(
 	segments = 14,
 ): Part {
 	const average = (radius[0] + radius[1] + radius[2]) / 3;
+
 	const geometry = meterSphere(
 		average,
 		segments,
 		Math.max(8, Math.round(segments * 0.7)),
 	);
+
 	geometry.scale(radius[0] / average, radius[1] / average, radius[2] / average);
+
 	return part(
 		placed(geometry, x, y, z, rotationY, rotationX, rotationZ),
 		material,
@@ -269,6 +303,7 @@ export function transformed(
 	rotationZ = 0,
 ): Part {
 	placed(piece.geometry, x, y, z, rotationY, rotationX, rotationZ);
+
 	return piece;
 }
 
@@ -281,6 +316,7 @@ export function sculptedHead(
 	options: { beard?: boolean; hair?: boolean } = {},
 ): Part[] {
 	const s = scale;
+
 	const parts: Part[] = [
 		ellipsoid(
 			material,
@@ -360,6 +396,7 @@ export function sculptedHead(
 			8,
 		),
 	];
+
 	if (options.hair) {
 		const hair = pleated(
 			material,
@@ -375,6 +412,7 @@ export function sculptedHead(
 			0,
 			0,
 		);
+
 		hair.geometry.applyMatrix4(
 			new THREE.Matrix4().compose(
 				new THREE.Vector3(x, y + 0.02 * s, z - 0.03 * s),
@@ -382,8 +420,10 @@ export function sculptedHead(
 				new THREE.Vector3(1, 1, 1),
 			),
 		);
+
 		parts.push(hair);
 	}
+
 	if (options.beard) {
 		parts.push(
 			pleated(
@@ -408,5 +448,6 @@ export function sculptedHead(
 			),
 		);
 	}
+
 	return parts;
 }

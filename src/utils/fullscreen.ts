@@ -7,6 +7,7 @@ function keyboardLockApi(): KeyboardLockApi | null {
 	const candidate = (
 		navigator as Navigator & { keyboard?: Partial<KeyboardLockApi> }
 	).keyboard;
+
 	if (
 		candidate &&
 		typeof candidate.lock === "function" &&
@@ -14,6 +15,7 @@ function keyboardLockApi(): KeyboardLockApi | null {
 	) {
 		return candidate as KeyboardLockApi;
 	}
+
 	return null;
 }
 

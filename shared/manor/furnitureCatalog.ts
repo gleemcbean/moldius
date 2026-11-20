@@ -18,7 +18,7 @@ export interface FurnitureLightSpec {
 	color: number;
 	intensity: number;
 	radius: number;
-	kind: "candle" | "chandelier" | "fire" | "lamp" | "cauldron";
+	kind: "candle" | "chandelier" | "fire" | "lamp" | "cauldron" | "glow";
 }
 
 export interface FurnitureDefinition {
@@ -75,6 +75,15 @@ const CANDLE_LIGHT: FurnitureLightSpec = {
 	intensity: 0.55,
 	radius: 4.5,
 	kind: "candle",
+};
+
+const GLOW_LIGHT: FurnitureLightSpec = {
+	offsetY: 0,
+	offsetZ: 0,
+	color: 0x6affd8,
+	intensity: 0.5,
+	radius: 4.2,
+	kind: "glow",
 };
 
 const DEFINITIONS: FurnitureDefinition[] = [
@@ -1277,6 +1286,192 @@ const DEFINITIONS: FurnitureDefinition[] = [
 		"corner",
 		variants([0.7, 0.7, 0.7], [1.0, 1.0, 0.9], [0.5, 0.5, 1.2]),
 	),
+
+	define(
+		"giantMushroom",
+		"Champignon géant",
+		"floor",
+		variants([1.1, 1.1, 2.3], [1.7, 1.4, 1.7]),
+		{
+			light: { ...GLOW_LIGHT, offsetY: -0.55 },
+		},
+	),
+	define(
+		"mushroomPatch",
+		"Touffe de champignons",
+		"floor",
+		variants([0.6, 0.5, 0.3], [0.9, 0.7, 0.35]),
+		{
+			collides: false,
+		},
+	),
+	define(
+		"mushroomRing",
+		"Cercle de champignons",
+		"floor",
+		variants([2.6, 2.6, 0.25], [3.4, 3.4, 0.3]),
+		{
+			collides: false,
+		},
+	),
+	define(
+		"mushroomBed",
+		"Couche à champignons",
+		"floor",
+		variants([1.6, 0.8, 0.75], [1.2, 0.7, 0.6]),
+	),
+	define(
+		"bracketFungus",
+		"Polypores",
+		"wallDecor",
+		variants([0.7, 0.24, 0.5], [0.45, 0.2, 0.35]),
+		{
+			mountHeight: [0.5, 1.5],
+		},
+	),
+	define(
+		"sporeSac",
+		"Sac de spores",
+		"ceiling",
+		variants([0.45, 0.45, 1.1], [0.35, 0.35, 0.8]),
+		{
+			light: {
+				...GLOW_LIGHT,
+				color: 0xc8ff6a,
+				offsetY: -0.75,
+				intensity: 0.45,
+				radius: 4,
+			},
+		},
+	),
+	define(
+		"fungusJar",
+		"Bocal de culture",
+		"surface",
+		variants([0.18, 0.18, 0.3]),
+	),
+	define(
+		"myceliumVeins",
+		"Veines de mycélium",
+		"wallDecor",
+		variants([1.6, 0.05, 1.7], [1.0, 0.05, 1.1]),
+		{
+			mountHeight: [0, 0.2],
+		},
+	),
+	define(
+		"hangingMycelium",
+		"Filaments suspendus",
+		"ceiling",
+		variants([0.9, 0.9, 1.2], [0.6, 0.6, 0.8]),
+	),
+	define(
+		"wallMushrooms",
+		"Champignons muraux",
+		"wallDecor",
+		variants([0.7, 0.34, 0.6], [0.45, 0.26, 0.45]),
+		{
+			mountHeight: [0.35, 1.5],
+			light: {
+				...GLOW_LIGHT,
+				offsetY: -0.25,
+				offsetZ: 0.3,
+				intensity: 0.38,
+				radius: 3.6,
+			},
+		},
+	),
+	define(
+		"mossCarpet",
+		"Tapis de mousse",
+		"floor",
+		variants([1.6, 1.2, 0.05], [1.0, 0.8, 0.04]),
+		{
+			collides: false,
+		},
+	),
+
+	define(
+		"rubblePile",
+		"Éboulis",
+		"floor",
+		variants([1.5, 1.2, 0.55], [1.0, 0.85, 0.4]),
+		{
+			walkableTop: true,
+		},
+	),
+	define(
+		"floorDebris",
+		"Gravats",
+		"floor",
+		variants([1.2, 0.9, 0.1], [0.8, 0.7, 0.08]),
+		{
+			collides: false,
+		},
+	),
+	define(
+		"brokenColumn",
+		"Colonne brisée",
+		"floor",
+		variants([0.75, 0.75, 1.7], [2.1, 0.8, 0.9]),
+	),
+	define(
+		"fallenBeam",
+		"Poutre effondrée",
+		"floor",
+		variants([2.6, 0.45, 1.5], [2.0, 0.4, 1.1]),
+	),
+	define(
+		"wallRoots",
+		"Racines",
+		"wallDecor",
+		variants([1.4, 0.3, 1.8], [1.0, 0.25, 1.3]),
+		{
+			mountHeight: [0, 0.15],
+		},
+	),
+
+	define(
+		"floatingCrystal",
+		"Cristal flottant",
+		"floor",
+		variants([0.7, 0.7, 1.7]),
+		{
+			light: {
+				...GLOW_LIGHT,
+				color: 0xb07aff,
+				offsetY: -0.5,
+				intensity: 0.6,
+				radius: 4.5,
+			},
+		},
+	),
+	define(
+		"crystalCluster",
+		"Druse de cristaux",
+		"floor",
+		variants([0.95, 0.85, 1.0], [0.6, 0.55, 0.65]),
+		{
+			light: { ...GLOW_LIGHT, color: 0x6ad8ff, offsetY: -0.3 },
+		},
+	),
+	define("floatingBooks", "Livres envolés", "floor", variants([1.3, 1.3, 2.0])),
+	define(
+		"runeStone",
+		"Pierre runique",
+		"floor",
+		variants([0.65, 0.5, 1.6], [0.5, 0.42, 1.2]),
+	),
+	define("fairyPortal", "Porte des fées", "wall", variants([1.5, 0.45, 2.3]), {
+		light: {
+			...GLOW_LIGHT,
+			color: 0xd28aff,
+			offsetY: -1.1,
+			offsetZ: 0.3,
+			intensity: 0.7,
+			radius: 5,
+		},
+	}),
 ];
 
 export const FURNITURE: Record<string, FurnitureDefinition> =
@@ -1286,9 +1481,11 @@ export const FURNITURE: Record<string, FurnitureDefinition> =
 
 export function furnitureDefinition(kind: string): FurnitureDefinition {
 	const definition = FURNITURE[kind];
+
 	if (!definition) {
 		throw new Error(`Unknown furniture kind ${kind}`);
 	}
+
 	return definition;
 }
 

@@ -1,9 +1,11 @@
 export type LegalLanguage = "fr" | "en";
 export type LegalDocument = "terms" | "privacy";
+
 export interface LegalSection {
 	heading: string;
 	paragraphs: string[];
 }
+
 export interface LegalCopy {
 	title: string;
 	eyebrow: string;

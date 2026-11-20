@@ -29,6 +29,7 @@ function mixChannel(a: number[], b: number[], t: number): number[] {
 function paintFace(index: number): PixelData {
 	const size = REFLECTION_FACE_SIZE;
 	const data = new Uint8ClampedArray(size * size * 4);
+
 	const rect = (
 		x: number,
 		y: number,
@@ -39,6 +40,7 @@ function paintFace(index: number): PixelData {
 		for (let py = y; py < y + height; py += 1) {
 			for (let px = x; px < x + width; px += 1) {
 				const offset = (py * size + px) * 4;
+
 				data[offset] = color[0];
 				data[offset + 1] = color[1];
 				data[offset + 2] = color[2];
@@ -46,18 +48,24 @@ function paintFace(index: number): PixelData {
 			}
 		}
 	};
+
 	if (index === 2) {
 		rect(0, 0, size, size, CEILING);
 		rect(8, 8, 16, 16, [112, 92, 72]);
 		rect(13, 13, 6, 6, [150, 122, 90]);
+
 		return { width: size, height: size, data };
 	}
+
 	if (index === 3) {
 		rect(0, 0, size, size, FLOOR);
+
 		return { width: size, height: size, data };
 	}
+
 	for (let y = 0; y < size; y += 1) {
 		const t = y / (size - 1);
+
 		rect(
 			0,
 			y,
@@ -68,9 +76,11 @@ function paintFace(index: number): PixelData {
 				: mixChannel(HORIZON, FLOOR, (t - 0.5) * 2),
 		);
 	}
+
 	for (const [x, y, width, height, r, g, b] of FACE_GLINTS[index]) {
 		rect(x, y, width, height, [r, g, b]);
 	}
+
 	return { width: size, height: size, data };
 }
 

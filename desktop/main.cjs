@@ -6,6 +6,7 @@ const {
 	session,
 	shell,
 } = require("electron");
+
 const fs = require("node:fs");
 const path = require("node:path");
 const { createDiscord } = require("./discord.cjs");
@@ -13,8 +14,10 @@ const { createDiscord } = require("./discord.cjs");
 const config = JSON.parse(
 	fs.readFileSync(path.join(__dirname, "app-config.json"), "utf8"),
 );
+
 const GAME_URL = new URL(process.env.MOLDIUS_URL || config.url);
 const GAME_ORIGIN = GAME_URL.origin;
+
 const LOGIN_HOSTS = new Set([
 	"discord.com",
 	"www.discord.com",
@@ -28,6 +31,7 @@ const PERMISSIONS = new Set([
 	"clipboard-sanitized-write",
 	"keyboardLock",
 ]);
+
 const SMOKE_TEST = process.env.MOLDIUS_SMOKE_TEST || null;
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
@@ -61,6 +65,7 @@ function isGame(url) {
 function isLogin(url) {
 	try {
 		const parsed = new URL(url);
+
 		return parsed.protocol === "https:" && LOGIN_HOSTS.has(parsed.hostname);
 	} catch {
 		return false;
@@ -70,6 +75,7 @@ function isLogin(url) {
 function openOutside(url) {
 	try {
 		const parsed = new URL(url);
+
 		if (
 			parsed.protocol === "https:" ||
 			parsed.protocol === "http:" ||
@@ -84,6 +90,7 @@ function showOffline() {
 	if (!window) {
 		return;
 	}
+
 	void window.loadFile(path.join(__dirname, "pages", "offline.html"), {
 		query: {
 			url: GAME_URL.toString(),
@@ -118,6 +125,7 @@ function createWindow() {
 	});
 
 	const contents = window.webContents;
+
 	contents.setVisualZoomLevelLimits(1, 1);
 
 	window.once("ready-to-show", () => {
@@ -128,9 +136,11 @@ function createWindow() {
 
 	const sendFullscreen = () =>
 		contents.send("moldius:fullscreen-changed", window.isFullScreen());
+
 	window.on("enter-full-screen", sendFullscreen);
 	window.on("leave-full-screen", sendFullscreen);
 	contents.on("did-finish-load", sendFullscreen);
+
 	window.on("closed", () => {
 		window = null;
 	});
@@ -139,20 +149,26 @@ function createWindow() {
 		if (input.type !== "keyDown") {
 			return;
 		}
+
 		const fullscreenKey =
 			input.key === "F11" || (input.alt && input.key === "Enter");
+
 		if (fullscreenKey) {
 			event.preventDefault();
 			window.setFullScreen(!window.isFullScreen());
+
 			return;
 		}
 
 		const zoomKey = input.control && ["+", "=", "-", "0"].includes(input.key);
+
 		const reloadKey =
 			input.key === "F5" || (input.control && input.key.toLowerCase() === "r");
+
 		if (zoomKey || (app.isPackaged && reloadKey)) {
 			event.preventDefault();
 		}
+
 		if (
 			!app.isPackaged &&
 			input.control &&
@@ -165,6 +181,7 @@ function createWindow() {
 
 	contents.setWindowOpenHandler(({ url }) => {
 		openOutside(url);
+
 		return { action: "deny" };
 	});
 
@@ -172,6 +189,7 @@ function createWindow() {
 		if (isGame(url) || isLogin(url)) {
 			return;
 		}
+
 		event.preventDefault();
 		openOutside(url);
 	});
@@ -186,6 +204,7 @@ function createWindow() {
 	);
 
 	const workerLogs = [];
+
 	if (
 		SMOKE_TEST &&
 		process.env.MOLDIUS_SMOKE_VOSK &&
@@ -193,11 +212,13 @@ function createWindow() {
 	) {
 		try {
 			contents.debugger.attach("1.3");
+
 			contents.debugger.on("message", (_event, method, params, sessionId) => {
 				if (method === "Target.attachedToTarget") {
 					void contents.debugger
 						.sendCommand("Runtime.enable", {}, params.sessionId)
 						.catch(() => undefined);
+
 					void contents.debugger
 						.sendCommand(
 							"Runtime.runIfWaitingForDebugger",
@@ -206,6 +227,7 @@ function createWindow() {
 						)
 						.catch(() => undefined);
 				}
+
 				if (method === "Runtime.consoleAPICalled" && sessionId) {
 					workerLogs.push(
 						`${params.type}: ${params.args.map((arg) => arg.value ?? arg.description ?? "").join(" ")}`.slice(
@@ -214,6 +236,7 @@ function createWindow() {
 						),
 					);
 				}
+
 				if (method === "Runtime.exceptionThrown" && sessionId) {
 					workerLogs.push(
 						`exception: ${params.exceptionDetails.exception?.description ?? params.exceptionDetails.text}`.slice(
@@ -223,6 +246,7 @@ function createWindow() {
 					);
 				}
 			});
+
 			void contents.debugger.sendCommand("Target.setAutoAttach", {
 				autoAttach: true,
 				waitForDebuggerOnStart: false,
@@ -308,7 +332,7 @@ function createWindow() {
 							const bytes = Uint8Array.from(atob(file), (c) => c.charCodeAt(0));
 							const audio = await context.decodeAudioData(bytes.buffer);
 							const id = "test" + index;
-							worker.postMessage({ action: "create", recognizerId: id, sampleRate: audio.sampleRate${process.env.MOLDIUS_SMOKE_GRAMMAR ? ", grammar: " + JSON.stringify(fs.readFileSync(process.env.MOLDIUS_SMOKE_GRAMMAR, "utf8")) : ""} });
+							worker.postMessage({ action: "create", recognizerId: id, sampleRate: audio.sampleRate${process.env.MOLDIUS_SMOKE_GRAMMAR ? `, grammar: ${JSON.stringify(fs.readFileSync(process.env.MOLDIUS_SMOKE_GRAMMAR, "utf8"))}` : ""} });
 							const samples = audio.getChannelData(0);
 							const texts = [];
 							const collect = (event) => { if (event.data.recognizerId === id && event.data.event === "result" && event.data.result.text) texts.push(event.data.result.text); };
@@ -334,11 +358,13 @@ function createWindow() {
 					: "";
 
 				const image = await contents.capturePage();
+
 				const page = await contents.executeJavaScript(
 					`JSON.stringify({ controls: Boolean(document.getElementById("moldius-window-controls")), desktop: Boolean(window.moldiusDesktop), root: document.getElementById("root")?.childElementCount ?? 0, boot: Boolean(document.getElementById("boot")), title: document.querySelector("h1")?.textContent ?? null, fullscreen: window.moldiusDesktop?.isFullscreen() ?? null, nativeSpeech: typeof window.webkitSpeechRecognition, wasm: typeof WebAssembly, worker: typeof Worker })`,
 				);
 
 				fs.writeFileSync(SMOKE_TEST, image.toPNG());
+
 				fs.writeFileSync(
 					`${SMOKE_TEST}.txt`,
 					`${contents.getURL()}\n${contents.getTitle()}\n${image.isEmpty() ? "image vide" : "image ok"}\n${JSON.stringify({ bounds: window.getBounds(), visible: window.isVisible(), fullscreen: window.isFullScreen(), crashed: contents.isCrashed(), size: image.getSize() })}\n${page}\n${vosk}\n${mic}\n${heard}\n${many}\n${workerLogs.join("\n")}\n`,
@@ -357,17 +383,20 @@ app.on("second-instance", () => {
 		if (window.isMinimized()) {
 			window.restore();
 		}
+
 		window.focus();
 	}
 });
 
 app.whenReady().then(() => {
 	Menu.setApplicationMenu(null);
+
 	const gameSession = session.defaultSession;
 
 	gameSession.setPermissionRequestHandler(
 		(contents, permission, callback, details) => {
 			const origin = details.requestingUrl || contents.getURL();
+
 			callback(isGame(origin) && PERMISSIONS.has(permission));
 		},
 	);
@@ -378,6 +407,7 @@ app.whenReady().then(() => {
 	);
 
 	ipcMain.on("moldius:quit", () => app.quit());
+
 	ipcMain.on("moldius:minimize", () => {
 		if (window) {
 			window.minimize();
@@ -395,7 +425,9 @@ app.whenReady().then(() => {
 			void window.loadURL(GAME_URL.toString());
 		}
 	});
+
 	createWindow();
+
 	if (!SMOKE_TEST) {
 		discord.start();
 	}

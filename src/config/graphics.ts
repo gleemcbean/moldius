@@ -51,6 +51,7 @@ export const QUALITY_PRESETS: Record<GraphicsQuality, QualityPreset> = {
 
 export function surfaceQuality(quality: GraphicsQuality): SurfaceQuality {
 	const preset = QUALITY_PRESETS[quality];
+
 	return { detail: preset.surfaceDetail, parallax: preset.parallaxSteps };
 }
 
@@ -59,8 +60,10 @@ export function renderPixelRatio(
 	renderScale: number,
 ): number {
 	const preset = QUALITY_PRESETS[quality];
+
 	const device =
 		typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+
 	return (
 		Math.min(device, preset.maxDevicePixelRatio) *
 		preset.pixelRatio *

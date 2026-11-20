@@ -1,22 +1,27 @@
 {
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "composite": true,
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "types": ["node"],
-    "allowJs": true,
-    "noEmit": true
-  },
-  "include": [
-    "tests",
-    "server",
-    "shared",
-    "scripts",
-    "src/features/audio/musicLoop.ts",
-    "vite.config.ts",
-    "vitest.config.ts"
-  ],
-  "exclude": ["scripts/models", "scripts/textures", "scripts/export-glb.ts", "scripts/export-textures.ts"]
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"composite": true,
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"types": ["node"],
+		"allowJs": true,
+		"noEmit": true
+	},
+	"include": [
+		"tests",
+		"server",
+		"shared",
+		"scripts",
+		"src/features/audio/musicLoop.ts",
+		"vite.config.ts",
+		"vitest.config.ts"
+	],
+	"exclude": [
+		"scripts/models",
+		"scripts/textures",
+		"scripts/export-glb.ts",
+		"scripts/export-textures.ts"
+	]
 }

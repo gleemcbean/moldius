@@ -48,37 +48,50 @@ function KeyCapture({ action }: { action: ActionId }) {
 		if (!listening) {
 			return;
 		}
+
 		const assign = (next: string) => {
 			setListening(false);
+
 			if (RESERVED_CODES.has(next)) {
 				setMessage(labels.reserved);
+
 				return;
 			}
+
 			const change = bindKey(action, next);
+
 			setMessage(
 				change.swappedWith
 					? labels.swapped(labels.actions[change.swappedWith])
 					: null,
 			);
 		};
+
 		const onKey = (event: KeyboardEvent) => {
 			event.preventDefault();
 			event.stopPropagation();
+
 			if (event.code === "Escape") {
 				setListening(false);
+
 				return;
 			}
+
 			assign(event.code);
 		};
+
 		const onMouse = (event: MouseEvent) => {
 			const codeName = mouseCode(event.button);
+
 			if (codeName && codeName !== "MouseLeft") {
 				event.preventDefault();
 				assign(codeName);
 			}
 		};
+
 		window.addEventListener("keydown", onKey, true);
 		window.addEventListener("mousedown", onMouse, true);
+
 		return () => {
 			window.removeEventListener("keydown", onKey, true);
 			window.removeEventListener("mousedown", onMouse, true);
@@ -118,20 +131,27 @@ function PadCapture({ action }: { action: ActionId }) {
 		if (!listening) {
 			return;
 		}
+
 		padFocus.captureActive = true;
+
 		const tracker = new PadButtons();
 		const startedAt = performance.now();
 		let frame = 0;
 		let done = false;
+
 		const stop = () => {
 			done = true;
+
 			setListening(false);
 		};
+
 		const tick = (now: number) => {
 			if (done) {
 				return;
 			}
+
 			const pad = readPad();
+
 			const edges = pad
 				? tracker.update(
 						pad.buttons,
@@ -139,27 +159,38 @@ function PadCapture({ action }: { action: ActionId }) {
 						(button) => !PAD_RESERVED_BUTTONS.has(button),
 					)
 				: [];
+
 			const pressed = edges.find((edge) => edge.down);
+
 			if (pressed) {
 				stop();
+
 				if (!isBindablePadCode(pressed.code)) {
 					setMessage(labels.padReserved);
+
 					return;
 				}
+
 				const change = bindPad(action, pressed.code);
+
 				setMessage(
 					change.swappedWith
 						? labels.swapped(labels.actions[change.swappedWith])
 						: null,
 				);
+
 				return;
 			}
+
 			if (now - startedAt > PAD_CAPTURE_TIMEOUT_MS) {
 				stop();
+
 				return;
 			}
+
 			frame = requestAnimationFrame(tick);
 		};
+
 		const onKey = (event: KeyboardEvent) => {
 			if (event.code === "Escape") {
 				event.preventDefault();
@@ -167,12 +198,17 @@ function PadCapture({ action }: { action: ActionId }) {
 				stop();
 			}
 		};
+
 		frame = requestAnimationFrame(tick);
+
 		window.addEventListener("keydown", onKey, true);
+
 		return () => {
 			done = true;
+
 			cancelAnimationFrame(frame);
 			window.removeEventListener("keydown", onKey, true);
+
 			padFocus.captureActive = false;
 		};
 	}, [listening, action, labels]);
@@ -188,6 +224,7 @@ function PadCapture({ action }: { action: ActionId }) {
 			</button>
 		);
 	}
+
 	return (
 		<>
 			<button
@@ -219,17 +256,22 @@ function PadCapture({ action }: { action: ActionId }) {
 export function ControlsSettings() {
 	const t = useT();
 	const labels = t.settings.controls;
+
 	const sensitivity = useStore(
 		settingsStore,
 		(state) => state.mouseSensitivity,
 	);
+
 	const invertY = useStore(settingsStore, (state) => state.invertY);
+
 	const padSensitivity = useStore(
 		settingsStore,
 		(state) => state.padSensitivity,
 	);
+
 	const padDeadzone = useStore(settingsStore, (state) => state.padDeadzone);
 	const padVibration = useStore(settingsStore, (state) => state.padVibration);
+
 	return (
 		<div>
 			<h3 className={styles.section}>{labels.mouse}</h3>

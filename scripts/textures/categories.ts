@@ -170,9 +170,12 @@ export function textureCategory(key: string): TextureCategory {
 	if (key.startsWith("cap-")) {
 		return "caps";
 	}
+
 	const category = CATEGORIES.get(key);
+
 	if (!category) {
 		throw new Error(`Texture sans catégorie : ${key}`);
 	}
+
 	return category;
 }

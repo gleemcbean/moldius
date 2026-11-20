@@ -25,16 +25,20 @@ export function transitionKind(
 		if (to.screen === "game") {
 			return "dive";
 		}
+
 		if (from.screen === "game" && to.screen === "results") {
 			return "rise";
 		}
+
 		return SCREEN_ORDER[to.screen] > SCREEN_ORDER[from.screen]
 			? "forward"
 			: "back";
 	}
+
 	if (from.overlay !== null && to.overlay === null) {
 		return "close";
 	}
+
 	return null;
 }
 
@@ -58,13 +62,20 @@ export function runTransition(
 		motionReduced()
 	) {
 		update();
+
 		return;
 	}
+
 	const root = document.documentElement;
+
 	current += 1;
+
 	const token = current;
+
 	root.dataset.transition = kind;
+
 	const transition = document.startViewTransition(() => flushSync(update));
+
 	void transition.finished.finally(() => {
 		if (token === current) {
 			delete root.dataset.transition;

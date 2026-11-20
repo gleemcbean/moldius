@@ -28,15 +28,20 @@ export class VoiceTimeline {
 	push(samples: Int16Array, now: number): void {
 		const duration = (samples.length / VOICE_SAMPLE_RATE) * 1000;
 		const expected = now - duration;
+
 		const start =
 			this.nextStart !== null && Math.abs(this.nextStart - expected) < RESYNC_MS
 				? this.nextStart
 				: expected;
+
 		this.nextStart = start + duration;
+
 		let peak = 0;
+
 		for (const sample of samples) {
 			peak = Math.max(peak, Math.abs(sample));
 		}
+
 		if (peak >= SILENCE_PEAK) {
 			this.chunks.push({ start, end: start + duration, samples });
 		}
@@ -44,6 +49,7 @@ export class VoiceTimeline {
 
 	trim(now: number, keep: readonly TimeWindow[]): void {
 		const recent = now - VOICE_ROLLING_MS;
+
 		this.chunks = this.chunks.filter(
 			(chunk) =>
 				chunk.end >= recent ||
@@ -58,23 +64,29 @@ export class VoiceTimeline {
 			0,
 			Math.round(((to - from) / 1000) * VOICE_SAMPLE_RATE),
 		);
+
 		const output = new Float32Array(new ArrayBuffer(length * 4));
 		let found = false;
+
 		for (const chunk of this.chunks) {
 			if (chunk.end <= from || chunk.start >= to) {
 				continue;
 			}
+
 			const offset = Math.round(
 				((chunk.start - from) / 1000) * VOICE_SAMPLE_RATE,
 			);
+
 			for (let index = 0; index < chunk.samples.length; index += 1) {
 				const position = offset + index;
+
 				if (position >= 0 && position < length) {
 					output[position] = chunk.samples[index] / INT16_SCALE;
 					found = true;
 				}
 			}
 		}
+
 		return found ? output : null;
 	}
 

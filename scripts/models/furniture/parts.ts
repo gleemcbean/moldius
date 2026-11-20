@@ -72,8 +72,10 @@ export function roundedBox(
 		segments,
 		Math.min(radius, width / 2, height / 2, depth / 2),
 	);
+
 	const uv = geometry.getAttribute("uv") as THREE.BufferAttribute;
 	const perFace = uv.count / 6;
+
 	const faceSizes: [number, number][] = [
 		[depth, height],
 		[depth, height],
@@ -82,13 +84,17 @@ export function roundedBox(
 		[width, height],
 		[width, height],
 	];
+
 	for (let face = 0; face < 6; face += 1) {
 		const [su, sv] = faceSizes[face];
+
 		for (let index = face * perFace; index < (face + 1) * perFace; index += 1) {
 			uv.setXY(index, uv.getX(index) * su, uv.getY(index) * sv);
 		}
 	}
+
 	uv.needsUpdate = true;
+
 	return geometry;
 }
 
@@ -115,7 +121,9 @@ function edgeBevel(
 	) {
 		return 0;
 	}
+
 	const smallest = Math.min(width, height, depth);
+
 	return smallest < BEVEL_THINNEST
 		? 0
 		: Math.min(BEVEL_LARGEST, smallest * 0.15);
@@ -130,6 +138,7 @@ function bevelledBox(
 ): THREE.BufferGeometry {
 	const radius =
 		rounded > 0 ? rounded : edgeBevel(material, width, height, depth);
+
 	return radius > 0
 		? roundedBox(width, height, depth, radius)
 		: meterBox(width, height, depth);
@@ -207,14 +216,18 @@ export function cylinderBetween(
 	const direction = new THREE.Vector3().subVectors(to, from);
 	const length = direction.length();
 	const geometry = meterCylinder(radius, radius, length, segments);
+
 	const quaternion = new THREE.Quaternion().setFromUnitVectors(
 		new THREE.Vector3(0, 1, 0),
 		direction.normalize(),
 	);
+
 	const middle = new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5);
+
 	geometry.applyMatrix4(
 		new THREE.Matrix4().compose(middle, quaternion, new THREE.Vector3(1, 1, 1)),
 	);
+
 	return part(geometry, material);
 }
 
@@ -234,7 +247,9 @@ export function sphere(
 		segments,
 		Math.max(8, Math.round(segments * 0.7)),
 	);
+
 	geometry.scale(scaleX, scaleY, scaleZ);
+
 	return part(placed(geometry, x, y, z), material);
 }
 
@@ -249,6 +264,7 @@ export function lathe(
 	const points = profile.map(
 		([radius, height]) => new THREE.Vector2(radius, height),
 	);
+
 	return part(placed(meterLathe(points, segments), x, y, z), material);
 }
 
@@ -284,6 +300,7 @@ export function plane(
 		width,
 		height,
 	);
+
 	return part(placed(geometry, x, y, z, rotationY, rotationX), material);
 }
 
@@ -326,21 +343,25 @@ export const FLAME: MaterialOptions = {
 
 export const FIRE: MaterialOptions = { ...FLAME, wave: "fire" };
 export const WAX: MaterialOptions = { texture: "wax", roughness: 0.6 };
+
 export const IRON: MaterialOptions = {
 	texture: "iron",
 	roughness: 0.55,
 	metalness: 0.6,
 };
+
 export const BRASS: MaterialOptions = {
 	texture: "brass",
 	roughness: 0.4,
 	metalness: 0.75,
 };
+
 export const COPPER: MaterialOptions = {
 	texture: "copper",
 	roughness: 0.45,
 	metalness: 0.7,
 };
+
 export const GLASS: MaterialOptions = {
 	color: 0x9ab8a8,
 	roughness: 0.08,
@@ -349,7 +370,9 @@ export const GLASS: MaterialOptions = {
 	opacity: 0.32,
 	depthWrite: false,
 };
+
 export const CERAMIC: MaterialOptions = { texture: "ceramic", roughness: 0.35 };
+
 export { carvedForSeed, MARBLE, STONE };
 
 const CAST_STATUARY: readonly MaterialOptions[] = [
@@ -376,6 +399,7 @@ export const DARK: MaterialOptions = { color: 0x0b0907, roughness: 1 };
 
 function positionHash(x: number, z: number, salt: number): number {
 	const value = Math.sin(x * 12.9898 + z * 78.233 + salt * 37.719) * 43758.5453;
+
 	return value - Math.floor(value);
 }
 
@@ -387,6 +411,7 @@ export function candle(
 	radius = 0.025,
 ): Part[] {
 	const crater = radius * 0.22;
+
 	const parts: Part[] = [
 		lathe(
 			WAX,
@@ -409,10 +434,13 @@ export function candle(
 		texturedPlane(FLAME, 0.05, 0.09, x, y + height + 0.045, z),
 		texturedPlane(FLAME, 0.05, 0.09, x, y + height + 0.045, z, Math.PI / 2),
 	];
+
 	const drips = 1 + Math.floor(positionHash(x, z, 1) * 3);
+
 	for (let index = 0; index < drips; index += 1) {
 		const angle = positionHash(x, z, index + 2) * Math.PI * 2;
 		const length = 1.6 + positionHash(x, z, index + 7) * 2.2;
+
 		parts.push(
 			sphere(
 				WAX,
@@ -427,5 +455,6 @@ export function candle(
 			),
 		);
 	}
+
 	return parts;
 }

@@ -9,9 +9,11 @@ const VISIBLE_RANGE = 30;
 
 export class StakeViews {
 	readonly group = new THREE.Group();
+
 	private readonly geometry = (
 		modelLibrary.template("world/stake_orb") as THREE.Mesh
 	).geometry;
+
 	private readonly orbs: {
 		id: number;
 		mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
@@ -19,6 +21,7 @@ export class StakeViews {
 		y: number;
 		color: THREE.Color;
 	}[] = [];
+
 	private time = 0;
 
 	constructor(
@@ -29,12 +32,15 @@ export class StakeViews {
 			const furniture = layout.furniture[stake.furnitureId];
 			const y = stake.y + (furniture?.height ?? 1) + 0.55;
 			const color = new THREE.Color(STAKE_COLORS[stake.kind]);
+
 			const mesh = new THREE.Mesh(
 				this.geometry,
 				new THREE.MeshBasicMaterial({ color, fog: false }),
 			);
+
 			mesh.position.set(stake.x, y, stake.z);
 			this.group.add(mesh);
+
 			this.orbs.push({
 				id: stake.id,
 				mesh,
@@ -60,29 +66,39 @@ export class StakeViews {
 		lights: DynamicLight[],
 	): void {
 		this.time += dt;
+
 		for (const orb of this.orbs) {
 			const near =
 				orb.mesh.position.distanceToSquared(eye) <
 				VISIBLE_RANGE * VISIBLE_RANGE;
+
 			orb.mesh.visible = near;
+
 			if (!near) {
 				continue;
 			}
+
 			const stake = this.state.stakes.get(orb.id);
 			const active = stake !== undefined && serverNow < stake.activeUntil;
 			const ready = stake === undefined || serverNow >= stake.cooldownUntil;
+
 			orb.mesh.position.y = orb.y + Math.sin(this.time * 1.5 + orb.id) * 0.05;
+
 			const scale = active
 				? 1.5 + Math.sin(this.time * 7) * 0.2
 				: ready
 					? 1
 					: 0.45;
+
 			orb.mesh.scale.setScalar(scale);
+
 			orb.mesh.material.color
 				.copy(orb.color)
 				.multiplyScalar(ready || active ? 1 : 0.25);
+
 			if (ready || active) {
 				orb.light.intensity = active ? 7 : 2.2;
+
 				lights.push(orb.light);
 			}
 		}

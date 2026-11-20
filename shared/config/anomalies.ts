@@ -108,6 +108,30 @@ export const RAT_KING_BITE_INTERVAL_MS = 600;
 export const RAT_KING_BITE_DAMAGE = 5;
 export const RAT_KING_SWARM_RADIUS = 2.6;
 
+export const CORDYCEPS_RIPEN_MS = 25_000;
+export const CORDYCEPS_INFECT_DAMAGE = 10;
+
+export const INFECTION_MS = 25_000;
+export const INFECTION_INCUBATION_MS = 4_000;
+export const INFECTION_IMMUNITY_MS = 30_000;
+export const COMPULSION_GAP_MIN_MS = 6_500;
+export const COMPULSION_GAP_MAX_MS = 10_000;
+export const COMPULSION_SCREAM_MS = 1_800;
+export const COMPULSION_LURE_MS = 4_500;
+export const COMPULSION_LEAP_MS = 5_500;
+export const COMPULSION_LANTERN_MS = 5_000;
+export const COMPULSION_LURE_RANGE = 30;
+export const COMPULSION_LURE_STOP = 2.4;
+export const COMPULSION_LEAP_RANGE = 18;
+export const INFECTED_SCREAM_LOUDNESS = 24;
+
+export const CINEMA_UNWATCHED_MS = 8_000;
+export const CINEMA_MIN_STAY_MS = 7_000;
+export const CINEMA_REARM_MS = 3_000;
+export const CINEMA_STALL_MS = 45_000;
+export const CINEMA_RESULT_GRACE_MS = 3_000;
+export const CINEMA_BREAK_DISTANCE = 1.2;
+
 export const WISP_HOME_RADIUS = 3.5;
 export const WISP_FLEE_DISTANCE = 1.7;
 

@@ -4,7 +4,7 @@ import type { ParticleSystem } from "../engine/effects/Particles";
 import { decorTime } from "./MaterialLibrary";
 
 export interface PartAnimation {
-	kind: "swing" | "spin";
+	kind: "swing" | "spin" | "float";
 	pivot: [number, number, number];
 	axis: [number, number, number];
 	speed: number;
@@ -15,8 +15,11 @@ export interface PartAnimation {
 export interface AnimatedDecor {
 	holder: THREE.Object3D;
 	base: THREE.Quaternion;
+	origin: THREE.Vector3;
 	animation: PartAnimation;
 }
+
+const FLOAT_SPIN_RATIO = 0.4;
 
 const MAX_DISTANCE = 26;
 const SPARK_DISTANCE = 12;
@@ -28,12 +31,14 @@ export class DecorAnimator {
 	private readonly axis = new THREE.Vector3();
 	private readonly spin = new THREE.Quaternion();
 	private readonly scratch = new THREE.Vector3();
+
 	private readonly fires: {
 		position: THREE.Vector3;
 		roomId: number;
 		front: THREE.Vector3;
 		width: number;
 	}[];
+
 	reduceMotion = false;
 
 	constructor(
@@ -55,37 +60,63 @@ export class DecorAnimator {
 			}));
 	}
 
+	private angleOf(animation: PartAnimation): number {
+		const wave = this.time * animation.speed + animation.phase;
+
+		switch (animation.kind) {
+			case "spin":
+				return wave;
+			case "float":
+				return wave * FLOAT_SPIN_RATIO;
+			case "swing":
+				return Math.sin(wave) * animation.amplitude;
+		}
+	}
+
 	update(dt: number, eye: THREE.Vector3): void {
 		if (this.reduceMotion) {
 			return;
 		}
+
 		this.time += dt;
 		decorTime.value = this.time;
-		for (const { holder, base, animation } of this.items) {
+
+		for (const decor of this.items) {
+			const { holder, base, animation } = decor;
+
 			if (
 				!holder.parent?.visible ||
 				holder.position.distanceToSquared(eye) > MAX_DISTANCE * MAX_DISTANCE
 			) {
 				continue;
 			}
-			const angle =
-				animation.kind === "spin"
-					? this.time * animation.speed + animation.phase
-					: Math.sin(this.time * animation.speed + animation.phase) *
-						animation.amplitude;
+
 			this.axis.fromArray(animation.axis);
-			this.spin.setFromAxisAngle(this.axis, angle);
+			this.spin.setFromAxisAngle(this.axis, this.angleOf(animation));
 			holder.quaternion.copy(base).multiply(this.spin);
+
+			if (animation.kind === "float") {
+				holder.position.copy(decor.origin);
+
+				holder.position.y +=
+					Math.sin(this.time * animation.speed + animation.phase) *
+					animation.amplitude;
+			}
 		}
+
 		this.sparkClock += dt;
+
 		if (this.sparkClock < SPARK_INTERVAL) {
 			return;
 		}
+
 		this.sparkClock = 0;
+
 		for (const fire of this.fires) {
 			if (fire.position.distanceToSquared(eye) > SPARK_DISTANCE ** 2) {
 				continue;
 			}
+
 			this.scratch
 				.copy(fire.position)
 				.addScaledVector(fire.front, 0.1)
@@ -96,6 +127,7 @@ export class DecorAnimator {
 						(Math.random() - 0.5) * fire.width,
 					),
 				);
+
 			this.particles.emit(this.scratch, 1, {
 				color: 0xff9a3c,
 				speed: 0.12,

@@ -1,8 +1,8 @@
+import { MAX_UPPER_FLOORS } from "../../shared/config/index.js";
 import {
 	generateManor,
 	type ManorOptions,
 } from "../../shared/manor/generateManor.js";
-import { MAX_UPPER_FLOORS } from "../../shared/config/index.js";
 import { spansLevelAbove } from "../../shared/manor/roomCatalog.js";
 import type { ManorLayout, Room } from "../../shared/manor/types.js";
 import {
@@ -41,12 +41,15 @@ export function fixture(
 ): ManorFixture {
 	const key = `${seed}:${size}:${floors}`;
 	const cached = cache.get(key);
+
 	if (cached) {
 		return cached;
 	}
+
 	const layout = generateManor(seed, manorOptions(size, floors));
 	const world = new CollisionWorld(layout);
 	const grid = new NavGrid(world);
+
 	const created = {
 		seed,
 		size,
@@ -56,7 +59,9 @@ export function fixture(
 		grid,
 		finder: new PathFinder(grid),
 	};
+
 	cache.set(key, created);
+
 	return created;
 }
 
@@ -64,6 +69,7 @@ export const SEEDS: readonly number[] = Array.from(
 	{ length: 12 },
 	(_, index) => 1009 + index * 7919,
 );
+
 export const SIZES: readonly ManorSize[] = ["small", "medium", "large"];
 
 export function allFixtures(seeds: readonly number[] = SEEDS): ManorFixture[] {
@@ -79,6 +85,7 @@ export function occupiedLevels(room: Room): number[] {
 			(_, index) => room.level + index,
 		);
 	}
+
 	return spansLevelAbove(room.type, room.height)
 		? [room.level, room.level + 1]
 		: [room.level];

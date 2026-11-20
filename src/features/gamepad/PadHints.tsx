@@ -9,9 +9,11 @@ export function PadHints() {
 	const labels = t.settings.controls;
 	const visible = useStore(padHintsStore, (state) => state.visible);
 	const tabs = useStore(padHintsStore, (state) => state.tabs);
+
 	if (!visible) {
 		return null;
 	}
+
 	return (
 		<div className={styles.bar} aria-hidden="true">
 			<span className={styles.hint}>

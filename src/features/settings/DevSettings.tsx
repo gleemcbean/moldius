@@ -9,6 +9,7 @@ export function DevSettings() {
 	const t = useT();
 	const labels = t.settings.dev;
 	const modes = useStore(devModesStore, (state) => state);
+
 	return (
 		<div>
 			<h3 className={styles.section}>{labels.title}</h3>

@@ -8,6 +8,7 @@ import { obfuscate } from "./scripts/obfuscate.js";
 const backendPort = Number(process.env.PORT ?? 3001);
 const backend = `http://127.0.0.1:${backendPort}`;
 const lan = process.env.MYCELIUM_LAN === "true";
+
 const vendorChunks = {
 	three: ["three"],
 	react: ["react", "react-dom", "react-dom/client"],

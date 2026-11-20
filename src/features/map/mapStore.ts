@@ -23,11 +23,13 @@ export function zoomMap(delta: number): void {
 		MAP_MAX_ZOOM,
 		Math.max(MAP_MIN_ZOOM, mapStore.get().zoom * (delta > 0 ? 1.25 : 0.8)),
 	);
+
 	mapStore.set({ zoom });
 }
 
 export function panMap(dx: number, dz: number): void {
 	const state = mapStore.get();
+
 	mapStore.set({ panX: state.panX + dx, panZ: state.panZ + dz });
 }
 

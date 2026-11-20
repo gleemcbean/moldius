@@ -67,11 +67,14 @@ export class VoskEngine {
 
 	constructor(directory: string, modelFile: string, sampleRate: number) {
 		this.sampleRate = sampleRate;
+
 		this.worker = new Worker(THREAD_SOURCE, {
 			eval: true,
 			workerData: { dir: directory },
 		});
+
 		this.worker.unref();
+
 		this.loaded = new Promise<boolean>((resolve) => {
 			const fail = (reason: string) => {
 				if (!this.failed && !this.disposed) {
@@ -79,37 +82,49 @@ export class VoskEngine {
 						`Moldius : reconnaissance vocale serveur en panne (${reason})`,
 					);
 				}
+
 				this.failed = true;
 				this.ready = false;
+
 				for (const listener of this.listeners.values()) {
 					listener({ event: "error", error: reason });
 				}
+
 				this.listeners.clear();
 				resolve(false);
 			};
+
 			this.worker.on("message", (reply: WorkerReply) => {
 				if (!reply) {
 					return;
 				}
+
 				if (reply.event === "load") {
 					this.ready = reply.result;
+
 					if (reply.result) {
 						resolve(true);
 					} else {
 						fail("modèle non chargé");
 					}
+
 					return;
 				}
+
 				if (!reply.recognizerId) {
 					if (reply.event === "error" && !this.ready) {
 						fail(reply.error);
 					}
+
 					return;
 				}
+
 				const listener = this.listeners.get(reply.recognizerId);
+
 				if (!listener) {
 					return;
 				}
+
 				if (reply.event === "error") {
 					listener({ event: "error", error: reply.error });
 				} else if (reply.event === "partialresult") {
@@ -121,10 +136,13 @@ export class VoskEngine {
 					listener({ event: "result", text: reply.result.text ?? "" });
 				}
 			});
+
 			this.worker.on("error", (error) => fail(error.message));
 			this.worker.on("exit", (code) => fail(`thread arrêté (${code})`));
 		});
+
 		this.worker.postMessage({ action: "set", key: "logLevel", value: -2 });
+
 		this.worker.postMessage({
 			action: "load",
 			modelUrl: `http://vosk.local/${modelFile}`,
@@ -137,7 +155,9 @@ export class VoskEngine {
 		listener: (reply: EngineReply) => void,
 	): void {
 		this.usedAt = Date.now();
+
 		this.listeners.set(recognizerId, listener);
+
 		this.worker.postMessage({
 			action: "create",
 			recognizerId,
@@ -148,7 +168,9 @@ export class VoskEngine {
 
 	feed(recognizerId: string, samples: Int16Array): void {
 		this.usedAt = Date.now();
+
 		const data = Float32Array.from(samples);
+
 		this.worker.postMessage(
 			{
 				action: "audioChunk",
@@ -176,6 +198,7 @@ export class VoskEngine {
 
 	dispose(): void {
 		this.disposed = true;
+
 		this.listeners.clear();
 		void this.worker.terminate();
 	}

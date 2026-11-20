@@ -234,6 +234,7 @@ export async function serverEncoding(
 		const { rows } = await database.query<{ encoding: string }>(
 			"SELECT pg_encoding_to_char(encoding) AS encoding FROM pg_database WHERE datname = current_database()",
 		);
+
 		return rows[0]?.encoding ?? null;
 	} catch {
 		return null;
@@ -247,26 +248,34 @@ export async function migrate(database: Database): Promise<number> {
       applied_at timestamptz NOT NULL DEFAULT now()
     )`,
 	);
+
 	return database.transaction(async (client) => {
 		await client.query("SELECT pg_advisory_xact_lock($1)", [MIGRATION_LOCK]);
+
 		const { rows } = await client.query<{ version: number }>(
 			"SELECT version FROM schema_migrations",
 		);
+
 		const applied = new Set(rows.map((row) => Number(row.version)));
 		let count = 0;
+
 		for (const migration of MIGRATIONS) {
 			if (applied.has(migration.version)) {
 				continue;
 			}
+
 			for (const statement of migration.statements) {
 				await client.query(statement);
 			}
+
 			await client.query(
 				"INSERT INTO schema_migrations (version) VALUES ($1)",
 				[migration.version],
 			);
+
 			count += 1;
 		}
+
 		return count;
 	});
 }

@@ -10,6 +10,7 @@ export function MicLevelMeter({
 	label?: string;
 }) {
 	const lit = Math.round(Math.min(1, level) * SEGMENTS);
+
 	return (
 		<div
 			className={styles.meter}

@@ -21,19 +21,26 @@ function leafCard(
 	spin: number,
 ): Part {
 	const geometry = new THREE.PlaneGeometry(size, size);
+
 	geometry.rotateZ(spin);
+
 	const direction = facing.clone().normalize();
+
 	geometry.applyQuaternion(
 		new THREE.Quaternion().setFromUnitVectors(
 			new THREE.Vector3(0, 0, 1),
 			direction,
 		),
 	);
+
 	const normals = geometry.getAttribute("normal") as THREE.BufferAttribute;
+
 	for (let index = 0; index < normals.count; index += 1) {
 		normals.setXYZ(index, direction.x, direction.y, direction.z);
 	}
+
 	geometry.translate(at.x, at.y, at.z);
+
 	return { geometry, material };
 }
 
@@ -48,13 +55,16 @@ function strand(
 	const parts: Part[] = [];
 	let point = start.clone();
 	const step = 0.32;
+
 	for (let run = 0; run < length; run += step) {
 		const next = new THREE.Vector3(
 			point.x + rng.range(-0.09, 0.09),
 			point.y - step,
 			offset(),
 		);
+
 		parts.push(cylinderBetween(VINE, point, next, 0.009, 4));
+
 		for (let leaf = 0; leaf < 2; leaf += 1) {
 			parts.push(
 				leafCard(
@@ -74,8 +84,10 @@ function strand(
 				),
 			);
 		}
+
 		point = next;
 	}
+
 	return parts;
 }
 
@@ -83,9 +95,11 @@ export const ivyWall: FurnitureBuilder = ({ item, rng }) => {
 	const material = leafMaterial(rng, "leafSprig");
 	const parts: Part[] = [];
 	const strands = Math.max(3, Math.round(item.width / 0.3));
+
 	for (let index = 0; index < strands; index += 1) {
 		const x = -item.width / 2 + ((index + 0.5) / strands) * item.width;
 		const reach = item.height * rng.range(0.45, 1);
+
 		parts.push(
 			...strand(
 				material,
@@ -97,6 +111,7 @@ export const ivyWall: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };
 
@@ -104,11 +119,14 @@ export const railVine: FurnitureBuilder = ({ item, rng }) => {
 	const material = leafMaterial(rng, "leafSprig");
 	const parts: Part[] = [];
 	const strands = Math.max(3, Math.round(item.width / 0.28));
+
 	for (let index = 0; index < strands; index += 1) {
 		const x = -item.width / 2 + ((index + 0.5) / strands) * item.width;
 		const top = new THREE.Vector3(x, 1.02, 0.02);
 		const lip = new THREE.Vector3(x, 0.95, 0.1);
+
 		parts.push(cylinderBetween(VINE, top, lip, 0.009, 4));
+
 		parts.push(
 			...strand(
 				material,
@@ -120,6 +138,7 @@ export const railVine: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };
 
@@ -131,18 +150,23 @@ export const climbingVine: FurnitureBuilder = ({ item, rng }) => {
 	const steps = Math.round(turns * 9);
 	let previous: THREE.Vector3 | null = null;
 	const phase = rng.next() * Math.PI * 2;
+
 	for (let index = 0; index <= steps; index += 1) {
 		const t = index / steps;
 		const angle = phase + t * turns * Math.PI * 2;
+
 		const point = new THREE.Vector3(
 			Math.cos(angle) * radius,
 			t * item.height,
 			Math.sin(angle) * radius,
 		);
+
 		if (previous) {
 			parts.push(cylinderBetween(VINE, previous, point, 0.012, 4));
 		}
+
 		previous = point;
+
 		parts.push(
 			leafCard(
 				material,
@@ -153,6 +177,7 @@ export const climbingVine: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };
 
@@ -160,6 +185,7 @@ export const hangingFern: FurnitureBuilder = ({ item, rng }) => {
 	const material = leafMaterial(rng, "leafBlade");
 	const basket = 0.22;
 	const y = 0.32;
+
 	const parts: Part[] = [
 		lathe(
 			WICKER,
@@ -176,8 +202,10 @@ export const hangingFern: FurnitureBuilder = ({ item, rng }) => {
 			12,
 		),
 	];
+
 	for (let index = 0; index < 3; index += 1) {
 		const angle = (index / 3) * Math.PI * 2;
+
 		parts.push(
 			cylinderBetween(
 				ROPE,
@@ -192,7 +220,9 @@ export const hangingFern: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	const fronds = rng.int(11, 15);
+
 	for (let index = 0; index < fronds; index += 1) {
 		parts.push(
 			curvedLeaf(
@@ -206,6 +236,7 @@ export const hangingFern: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };
 
@@ -213,6 +244,7 @@ export const palmTree: FurnitureBuilder = ({ item, rng }) => {
 	const material = leafMaterial(rng, "palmFrond");
 	const potRadius = item.width * 0.36;
 	const potHeight = 0.55;
+
 	const parts: Part[] = [
 		lathe(
 			potMaterial(),
@@ -240,8 +272,10 @@ export const palmTree: FurnitureBuilder = ({ item, rng }) => {
 			8,
 		),
 	];
+
 	const crown = new THREE.Vector3(0, potHeight + item.height * 0.53, 0);
 	const fronds = rng.int(9, 12);
+
 	for (let index = 0; index < fronds; index += 1) {
 		parts.push(
 			curvedLeaf(
@@ -255,5 +289,6 @@ export const palmTree: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };

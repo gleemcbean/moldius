@@ -35,6 +35,8 @@
 				QUALITY_PRESETS,
 				surfaceQuality,
 			} from "/src/config/graphics.ts";
+			import { atmosphereOf } from "/src/features/engine/effects/atmospheres.ts";
+			import { RoomAtmospheres } from "/src/features/engine/effects/RoomAtmospheres.ts";
 			import { LightPool } from "/src/features/engine/lighting/LightPool.ts";
 			import {
 				FIRST_PERSON_LAYER,
@@ -45,13 +47,13 @@
 			import { GrimoireModel } from "/src/features/grimoire/GrimoireModel.ts";
 			import { createAnomalyModel } from "/src/features/models/anomalies/createAnomalyModel.ts";
 			import { LanternModel } from "/src/features/models/LanternModel.ts";
+			import { modelLibrary } from "/src/features/models/ModelLibrary.ts";
 			import { MushroomModel } from "/src/features/models/MushroomModel.ts";
 			import { ModelKit } from "/src/features/models/modelKit.ts";
 			import { ManorMeshBuilder } from "/src/features/world/ManorMeshBuilder.ts";
 			import { MaterialLibrary } from "/src/features/world/MaterialLibrary.ts";
-			import { modelLibrary } from "/src/features/models/ModelLibrary.ts";
-			import { preloadSpecialTextures } from "/src/features/world/textures/textureFiles.ts";
 			import { TextureLibrary } from "/src/features/world/textures/TextureLibrary.ts";
+			import { preloadSpecialTextures } from "/src/features/world/textures/textureFiles.ts";
 
 			const params = new URLSearchParams(location.search);
 			const quality = params.get("quality") ?? "high";
@@ -358,7 +360,10 @@
 					subject = model.root;
 				} else if (name === "anomaly") {
 					const model = createAnomalyModel(params.get("species") ?? "reverbere", kit, 0xd8442f);
-					model.update({ state: "idle", stateMs: 400, extra: 0, speed: 0, dt: 0.016, time: 1.2 });
+					const pose = { state: params.get("state") ?? "idle", stateMs: Number(params.get("stateMs") ?? 400), extra: Number(params.get("extra") ?? 0), speed: Number(params.get("speed") ?? 0), dt: 0.016, time: Number(params.get("time") ?? 1.2) };
+					for (let step = 0; step < Number(params.get("steps") ?? 1); step += 1) {
+						model.update({ ...pose, time: pose.time + step * 0.016 });
+					}
 					subject = model.root;
 				}
 				subject.traverse((object) => { if (object.isMesh) { object.castShadow = true; } });
@@ -383,6 +388,7 @@
 				const rim = new THREE.PointLight(0xffd9a0, Number(params.get("rim") ?? 1.5), 0, 2);
 				rim.position.copy(center).add(new THREE.Vector3(-radius * 1.5, radius * 1.2, -radius));
 				scene.add(rim);
+				scene.add(new THREE.HemisphereLight(0xfff2dc, 0x3a3028, Number(params.get("ambient") ?? 0)));
 				scene.updateMatrixWorld(true);
 				for (let frame = 0; frame < 4; frame += 1) {
 					const draw = () => {
@@ -647,6 +653,17 @@
 				rig = new FirstPersonRig(new ModelKit(new MaterialLibrary(textures)), null, null);
 				camera.add(rig.root);
 				rig.lantern.update(1, true);
+			}
+
+			if (params.get("atmosphere") === "1") {
+				const atmospheres = new RoomAtmospheres(layout, 1);
+				scene.add(atmospheres.group);
+				atmospheres.update(Number(params.get("airTime") ?? 6), camera, renderer.domElement.height);
+				const air = atmosphereOf(room.type);
+				if (air && scene.fog) {
+					scene.fog.color.lerp(new THREE.Color(air.style.air), air.style.airMix);
+					scene.fog.density *= air.style.airDensity;
+				}
 			}
 
 			scene.updateMatrixWorld(true);

@@ -15,6 +15,7 @@ export function releaseClaim(match: Match, entity: AnomalyEntity): void {
 	) {
 		match.roomClaims.delete(entity.destinationRoom);
 	}
+
 	entity.destinationRoom = null;
 }
 
@@ -30,37 +31,48 @@ function roomScore(
 			room.labelPoint.z - entity.position.z,
 		) +
 		Math.abs(room.floorY - entity.position.y) * 3;
+
 	let score = distance < 6 ? 0.2 : distance > 45 ? 0.6 : 1.4;
+
 	if (room.id === currentRoom) {
 		score *= 0.05;
 	}
+
 	const visitedAt = match.roomVisits.get(room.id);
+
 	score *=
 		0.35 +
 		(visitedAt === undefined
 			? 1
 			: Math.min(1, (match.now - visitedAt) / PATROL_REVISIT_MS));
+
 	const claimant = match.roomClaims.get(room.id);
+
 	if (claimant !== undefined && claimant !== entity.id) {
 		score *= 0.08;
 	}
+
 	for (const other of match.anomalies) {
 		if (other === entity || !other.active) {
 			continue;
 		}
+
 		const near =
 			Math.hypot(
 				other.position.x - room.labelPoint.x,
 				other.position.z - room.labelPoint.z,
 			) +
 			Math.abs(other.position.y - room.floorY) * 3;
+
 		if (near < 10) {
 			score *= 0.25;
 		}
+
 		const destination =
 			other.destinationRoom !== null
 				? match.layout.rooms[other.destinationRoom]
 				: null;
+
 		if (
 			destination &&
 			destination.level === room.level &&
@@ -72,11 +84,13 @@ function roomScore(
 			score *= 0.4;
 		}
 	}
+
 	return score * (0.6 + match.rng.next() * 0.8);
 }
 
 function withSpace(match: Match, entity: AnomalyEntity, rooms: Room[]): Room[] {
 	const open = rooms.filter((room) => roomHasSpace(match, room.id, entity));
+
 	return open.length > 0 ? open : rooms;
 }
 
@@ -85,9 +99,11 @@ export function chooseSpreadDestination(
 	entity: AnomalyEntity,
 ): boolean {
 	releaseClaim(match, entity);
+
 	const others = match.anomalies.filter(
 		(other) => other !== entity && other.active,
 	);
+
 	const ranked = withSpace(
 		match,
 		entity,
@@ -106,6 +122,7 @@ export function chooseSpreadDestination(
 						other.destinationRoom !== null
 							? match.layout.rooms[other.destinationRoom]
 							: null;
+
 					const spots = [
 						other.position,
 						...(destination
@@ -118,6 +135,7 @@ export function chooseSpreadDestination(
 								]
 							: []),
 					];
+
 					return spots.map(
 						(spot) =>
 							Math.hypot(
@@ -128,12 +146,14 @@ export function chooseSpreadDestination(
 					);
 				}),
 			);
+
 			const travel =
 				Math.hypot(
 					room.labelPoint.x - entity.position.x,
 					room.labelPoint.z - entity.position.z,
 				) +
 				Math.abs(room.floorY - entity.position.y) * 3;
+
 			return {
 				room,
 				score: separation - travel * 0.25 + match.rng.next() * 3,
@@ -141,14 +161,19 @@ export function chooseSpreadDestination(
 		})
 		.sort((a, b) => b.score - a.score)
 		.slice(0, 4);
+
 	for (const { room } of ranked) {
 		const point = randomPointInRoom(match, room);
+
 		if (point && requestPath(match, entity, point)) {
 			entity.destinationRoom = room.id;
+
 			match.roomClaims.set(room.id, entity.id);
+
 			return true;
 		}
 	}
+
 	return false;
 }
 
@@ -157,8 +182,11 @@ export function choosePatrolDestination(
 	entity: AnomalyEntity,
 ): boolean {
 	releaseClaim(match, entity);
+
 	entity.hurrying = false;
+
 	const currentRoom = match.roomIdAt(entity.position);
+
 	const rooms = withSpace(
 		match,
 		entity,
@@ -168,6 +196,7 @@ export function choosePatrolDestination(
 				(match.grid.roomCells.get(room.id)?.length ?? 0) > 4,
 		),
 	);
+
 	const ranked = rooms
 		.map((room) => ({
 			room,
@@ -175,14 +204,19 @@ export function choosePatrolDestination(
 		}))
 		.sort((a, b) => b.score - a.score)
 		.slice(0, 4);
+
 	for (const { room } of ranked) {
 		const point = randomPointInRoom(match, room);
+
 		if (point && requestPath(match, entity, point)) {
 			entity.destinationRoom = room.id;
+
 			match.roomClaims.set(room.id, entity.id);
+
 			return true;
 		}
 	}
+
 	return false;
 }
 
@@ -190,9 +224,11 @@ export function randomPointInRoom(match: Match, room: Room): Vec3 | null {
 	const cells = (match.grid.roomCells.get(room.id) ?? []).filter((node) =>
 		match.grid.isInMainComponent(node),
 	);
+
 	if (cells.length === 0) {
 		return null;
 	}
+
 	return match.grid.nodePosition(match.rng.pick(cells));
 }
 
@@ -204,14 +240,18 @@ export function randomPointNear(
 	for (let attempt = 0; attempt < 12; attempt += 1) {
 		const angle = match.rng.range(0, Math.PI * 2);
 		const distance = match.rng.range(0.8, radius);
+
 		const candidate = {
 			x: origin.x + Math.cos(angle) * distance,
 			y: origin.y,
 			z: origin.z + Math.sin(angle) * distance,
 		};
+
 		const node = match.grid.nearestNode(candidate, 1);
+
 		if (node !== null) {
 			const position = match.grid.nodePosition(node);
+
 			if (
 				Math.abs(position.y - origin.y) < 1.5 &&
 				match.finder.walkableLine(origin, position, match.gridLevelOf(origin))
@@ -220,5 +260,6 @@ export function randomPointNear(
 			}
 		}
 	}
+
 	return null;
 }

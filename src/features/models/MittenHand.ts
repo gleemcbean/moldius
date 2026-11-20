@@ -32,12 +32,15 @@ export class MittenHand {
 
 	setPose(pose: HandPose): void {
 		this.mitt.rotation.x = -pose.curl * 0.35;
+
 		this.mitt.scale.set(1, 1 - pose.curl * 0.12, 1 + pose.curl * 0.1);
+
 		this.thumb.position.set(
 			this.thumbSide * 0.046,
 			MITT_CENTER + 0.018 - pose.thumb * 0.012,
 			0.02 + pose.thumb * 0.018,
 		);
+
 		this.thumb.rotation.z = this.thumbSide * (0.7 - pose.thumb * 0.3);
 	}
 

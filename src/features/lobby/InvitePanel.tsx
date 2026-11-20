@@ -21,20 +21,24 @@ export function InvitePanel({
 	const t = useT();
 	const [copied, setCopied] = useState(false);
 	const waiting = lobby.phase === "waiting" || lobby.phase === "countdown";
+
 	const copy = async () => {
 		if (!lobby.code) {
 			return;
 		}
+
 		try {
 			await navigator.clipboard.writeText(
 				inviteUrl(window.location.origin, lobby.code),
 			);
+
 			setCopied(true);
 			window.setTimeout(() => setCopied(false), 1600);
 		} catch {
 			setCopied(false);
 		}
 	};
+
 	return (
 		<section className={[styles.card, styles.invite].join(" ")}>
 			<h2 className={styles.cardTitle}>{t.lobby.inviteTitle}</h2>

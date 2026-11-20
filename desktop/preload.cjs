@@ -13,16 +13,20 @@ let fullscreen = measureFullscreen();
 
 function updateFullscreen() {
 	const next = measureFullscreen();
+
 	if (next === fullscreen) {
 		return;
 	}
+
 	fullscreen = next;
+
 	for (const listener of listeners) {
 		listener(fullscreen);
 	}
 }
 
 window.addEventListener("resize", updateFullscreen);
+
 ipcRenderer.on("moldius:fullscreen-changed", () =>
 	setTimeout(updateFullscreen, 120),
 );
@@ -50,13 +54,16 @@ contextBridge.exposeInMainWorld("moldiusDesktop", {
 	isFullscreen: () => fullscreen,
 	onFullscreenChange: (listener) => {
 		listeners.add(listener);
+
 		return () => listeners.delete(listener);
 	},
 	discord: {
 		getState: () => ipcRenderer.invoke("moldius:discord-state"),
 		onState: (listener) => {
 			const handler = (_event, state) => listener(state);
+
 			ipcRenderer.on("moldius:discord-state", handler);
+
 			return () => ipcRenderer.removeListener("moldius:discord-state", handler);
 		},
 		account: (intent, language) =>
@@ -76,8 +83,10 @@ contextBridge.exposeInMainWorld("moldiusDesktop", {
 						}
 					})
 					.catch(() => undefined);
+
 			ipcRenderer.on("moldius:discord-join", take);
 			take();
+
 			return () => ipcRenderer.removeListener("moldius:discord-join", take);
 		},
 	},
@@ -113,12 +122,17 @@ svg { width: 14px; height: 14px; fill: currentColor; }
 
 function button(name, label, onClick) {
 	const element = document.createElement("button");
+
 	element.type = "button";
 	element.className = name;
 	element.title = label;
+
 	element.setAttribute("aria-label", label);
+
 	element.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${ICONS[name === "fullscreen" ? "enter" : name]}"/></svg>`;
+
 	element.addEventListener("click", onClick);
+
 	return element;
 }
 
@@ -129,31 +143,44 @@ function mountControls() {
 	) {
 		return;
 	}
+
 	const french =
 		(navigator.language || "").toLowerCase().startsWith("fr") ||
 		document.documentElement.lang === "fr";
+
 	const host = document.createElement("div");
+
 	host.id = "moldius-window-controls";
+
 	const shadow = host.attachShadow({ mode: "closed" });
 	const style = document.createElement("style");
+
 	style.textContent = STYLE;
+
 	const bar = document.createElement("div");
+
 	bar.className = "bar";
+
 	const buttons = document.createElement("div");
+
 	buttons.className = "buttons";
+
 	const minimize = button("minimize", french ? "Réduire" : "Minimise", () =>
 		ipcRenderer.send("moldius:minimize"),
 	);
+
 	const toggle = button(
 		"fullscreen",
 		french ? "Plein écran" : "Fullscreen",
 		() => ipcRenderer.send("moldius:fullscreen"),
 	);
+
 	const close = button(
 		"close",
 		french ? "Quitter vers le bureau" : "Exit to desktop",
 		() => ipcRenderer.send("moldius:quit"),
 	);
+
 	buttons.append(minimize, toggle, close);
 	bar.append(buttons);
 	shadow.append(style, bar);
@@ -164,10 +191,13 @@ function mountControls() {
 			"hidden",
 			fullscreen || Boolean(document.pointerLockElement),
 		);
+
 		bar.classList.toggle("windowed", !fullscreen);
+
 		toggle
 			.querySelector("path")
 			.setAttribute("d", fullscreen ? ICONS.leave : ICONS.enter);
+
 		toggle.title = fullscreen
 			? french
 				? "Quitter le plein écran"
@@ -176,6 +206,7 @@ function mountControls() {
 				? "Plein écran"
 				: "Fullscreen";
 	};
+
 	document.addEventListener("pointerlockchange", refresh);
 	listeners.add(refresh);
 	refresh();

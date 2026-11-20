@@ -22,6 +22,7 @@ export function meleeProfile(
 			inMeleeReach(match, entity, target, -0.05),
 		strike: (match: Match, entity: AnomalyEntity, target: MatchPlayer) => {
 			const hit = meleeStrike(match, entity, target);
+
 			match.emit({
 				type: "attack",
 				anomalyId: entity.id,

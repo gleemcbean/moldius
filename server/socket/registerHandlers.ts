@@ -4,7 +4,6 @@ import { sanitizeDevModes } from "../../shared/devModes.js";
 import { type HatPattern, isHatPattern } from "../../shared/hatPatterns.js";
 import { layoutChecksum } from "../../shared/manor/generateManor.js";
 import { isPlayerColor } from "../../shared/playerColors.js";
-import { isTutorialStage } from "../../shared/tutorial.js";
 import type {
 	ClientToServerEvents,
 	ServerToClientEvents,
@@ -21,7 +20,9 @@ import {
 	type LanternTint,
 	lanternUnlocked,
 } from "../../shared/rewards.js";
+import { isTutorialStage } from "../../shared/tutorial.js";
 import type { FriendStore } from "../accounts/FriendStore.js";
+import { isEmoteId, isMaterialId, isPingKind } from "../game/systems/social.js";
 import { normalizeLobbyCode } from "../lobby/codes.js";
 import type { LobbyManager } from "../lobby/LobbyManager.js";
 import {
@@ -45,7 +46,6 @@ import type {
 	SessionAccount,
 	SessionRegistry,
 } from "../sessions/SessionRegistry.js";
-import { isEmoteId, isMaterialId, isPingKind } from "../game/systems/social.js";
 import type { SpeechService } from "../speech/SpeechService.js";
 import {
 	accountPresenceChanged,
@@ -75,10 +75,12 @@ const INVALID: LobbyError = {
 	code: "invalid-request",
 	message: "Requête invalide.",
 };
+
 const RATE_LIMITED: LobbyError = {
 	code: "rate-limited",
 	message: "Trop de requêtes, patientez un instant.",
 };
+
 const NO_SESSION: LobbyError = {
 	code: "session-missing",
 	message: "Session absente : rechargez la page.",
@@ -136,6 +138,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	const limiter = new RateLimiter(SOCKET_RATE_RULES, DEFAULT_RATE_RULE);
 	const allow = (event: string) => limiter.allow(event, deps.clock());
 	const session = (): Session | null => deps.sessions.fromSocket(socket.id);
+
 	const identity = deps.identify
 		? deps.identify(socket.handshake.headers.cookie).catch(() => null)
 		: Promise.resolve(null);
@@ -144,14 +147,19 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 		if (typeof ack !== "function" || !allow("session:hello")) {
 			return;
 		}
+
 		const token = isRecord(payload)
 			? sanitizeToken(payload.sessionToken)
 			: null;
+
 		const account = await identity;
+
 		if (!socket.connected) {
 			return;
 		}
+
 		const current = deps.sessions.hello(socket.id, token);
+
 		current.account = account
 			? {
 					accountId: account.accountId,
@@ -159,6 +167,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					progress: account.progress,
 				}
 			: null;
+
 		ack({
 			ok: true,
 			value: {
@@ -168,7 +177,9 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 				dev: deps.dev ?? false,
 			},
 		});
+
 		deps.lobbies.handleReconnect(current);
+
 		if (current.account) {
 			accountPresenceChanged(deps, current.account.accountId);
 		}
@@ -177,6 +188,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	socket.on("lobby:joinPublic", (payload, ack) => {
 		respond(ack, allow("lobby:join"), session(), (current) => {
 			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+
 			if (!name) {
 				return {
 					ok: false,
@@ -186,10 +198,12 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					},
 				};
 			}
+
 			const lobbyId =
 				isRecord(payload) && typeof payload.lobbyId === "string"
 					? payload.lobbyId
 					: "";
+
 			return deps.lobbies.joinPublic(
 				current,
 				name,
@@ -203,16 +217,23 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 		if (typeof ack !== "function") {
 			return;
 		}
+
 		if (!allow("lobby:join")) {
 			ack({ ok: false, error: RATE_LIMITED });
+
 			return;
 		}
+
 		const current = session();
+
 		if (!current) {
 			ack({ ok: false, error: NO_SESSION });
+
 			return;
 		}
+
 		const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+
 		if (!name) {
 			ack({
 				ok: false,
@@ -221,14 +242,17 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					message: "Choisissez un pseudonyme de 2 à 18 caractères.",
 				},
 			});
+
 			return;
 		}
+
 		const lobbyId =
 			isRecord(payload) &&
 			typeof payload.lobbyId === "string" &&
 			payload.lobbyId.length <= 64
 				? payload.lobbyId
 				: "";
+
 		void friendsOf(deps, current)
 			.then((friends) => {
 				if (socket.connected) {
@@ -252,6 +276,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	socket.on("lobby:quickJoin", (payload, ack) => {
 		respond(ack, allow("lobby:join"), session(), (current) => {
 			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+
 			if (!name) {
 				return {
 					ok: false,
@@ -261,6 +286,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					},
 				};
 			}
+
 			return deps.lobbies.quickJoin(
 				current,
 				name,
@@ -272,6 +298,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	socket.on("lobby:createPrivate", (payload, ack) => {
 		respond(ack, allow("lobby:join"), session(), (current) => {
 			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+
 			if (!name) {
 				return {
 					ok: false,
@@ -281,6 +308,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					},
 				};
 			}
+
 			return deps.lobbies.createPrivate(
 				current,
 				name,
@@ -292,6 +320,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	socket.on("lobby:createDaily", (payload, ack) => {
 		respond(ack, allow("lobby:join"), session(), (current) => {
 			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+
 			if (!name) {
 				return {
 					ok: false,
@@ -301,6 +330,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					},
 				};
 			}
+
 			return deps.lobbies.createDaily(
 				current,
 				name,
@@ -312,6 +342,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	socket.on("lobby:joinPossessed", (payload, ack) => {
 		respond(ack, allow("lobby:join"), session(), (current) => {
 			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+
 			if (!name) {
 				return {
 					ok: false,
@@ -321,6 +352,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					},
 				};
 			}
+
 			return deps.lobbies.joinPossessed(
 				current,
 				name,
@@ -333,6 +365,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 		respond(ack, allow("lobby:join"), session(), (current) => {
 			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
 			const code = isRecord(payload) ? normalizeLobbyCode(payload.code) : null;
+
 			if (!name) {
 				return {
 					ok: false,
@@ -342,6 +375,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					},
 				};
 			}
+
 			if (!code) {
 				return {
 					ok: false,
@@ -351,6 +385,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					},
 				};
 			}
+
 			return deps.lobbies.joinPrivate(
 				current,
 				name,
@@ -363,6 +398,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	socket.on("lobby:startTutorial", (payload, ack) => {
 		respond(ack, allow("lobby:join"), session(), (current) => {
 			const name = isRecord(payload) ? sanitizeName(payload.name) : null;
+
 			if (!name) {
 				return {
 					ok: false,
@@ -372,6 +408,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 					},
 				};
 			}
+
 			return deps.lobbies.startTutorial(
 				current,
 				name,
@@ -382,6 +419,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 
 	socket.on("lobby:leave", () => {
 		const current = session();
+
 		if (current && allow("lobby:leave")) {
 			deps.lobbies.leave(current);
 		}
@@ -389,6 +427,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 
 	socket.on("lobby:ready", (payload) => {
 		const current = session();
+
 		if (
 			current &&
 			allow("lobby:ready") &&
@@ -401,6 +440,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 
 	socket.on("lobby:microphone", (payload) => {
 		const current = session();
+
 		if (
 			current &&
 			allow("lobby:microphone") &&
@@ -416,6 +456,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 			if (!isRecord(payload)) {
 				return { ok: false, error: INVALID };
 			}
+
 			return deps.lobbies.updateConfig(current, payload.config);
 		});
 	});
@@ -425,17 +466,21 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 			if (!isRecord(payload) || typeof payload.open !== "boolean") {
 				return { ok: false, error: INVALID };
 			}
+
 			const result = deps.lobbies.setOpenToFriends(current, payload.open);
 			const host = current.account?.accountId;
+
 			if (result.ok && host) {
 				notifyFriendsOf(deps, host);
 			}
+
 			return result;
 		});
 	});
 
 	socket.on("lobby:team", (payload) => {
 		const current = session();
+
 		if (
 			current &&
 			allow("lobby:team") &&
@@ -449,12 +494,14 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	socket.on("lobby:start", (ack) => {
 		respond(ack, allow("lobby:start"), session(), (current) => {
 			const error = deps.lobbies.start(current);
+
 			return error ? { ok: false, error } : { ok: true, value: null };
 		});
 	});
 
 	socket.on("game:radio", (payload) => {
 		const current = session();
+
 		if (
 			current &&
 			allow("game:radio") &&
@@ -468,10 +515,13 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	socket.on("voice:signal", (payload) => {
 		const current = session();
 		const envelope = parseVoiceSignal(payload);
+
 		if (!current || !envelope || !allow("voice:signal")) {
 			return;
 		}
+
 		const target = deps.lobbies.relayVoice(current, envelope.peerId);
+
 		if (target) {
 			deps.io.to(target).emit("voice:signal", {
 				peerId: current.playerId,
@@ -483,11 +533,14 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 	socket.on("voice:relay", (payload) => {
 		const current = session();
 		const relay = parseVoiceRelay(payload);
+
 		if (!current || !relay || !allow("voice:relay")) {
 			return;
 		}
+
 		for (const peerId of new Set(relay.peerIds)) {
 			const target = deps.lobbies.relayVoice(current, peerId);
+
 			if (target) {
 				deps.io.to(target).volatile.emit("voice:relay", {
 					peerId: current.playerId,
@@ -501,6 +554,7 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 		const clientTime = isRecord(payload)
 			? finiteNumber(payload.clientTime, 0, 1e13)
 			: null;
+
 		if (clientTime !== null && allow("time:ping")) {
 			socket.emit("time:pong", { clientTime, serverTime: deps.clock() });
 		}
@@ -508,14 +562,17 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 
 	registerGameHandlers(socket, deps, session, allow);
 	registerFriendHandlers(socket, deps, session, allow);
+
 	if (deps.speech) {
 		registerSpeechHandlers(socket, deps.speech, session, allow);
 	}
 
 	socket.on("disconnect", () => {
 		const current = deps.sessions.detach(socket.id, deps.clock());
+
 		if (current && !current.socketId) {
 			deps.lobbies.handleDisconnect(current);
+
 			if (current.account) {
 				accountPresenceChanged(deps, current.account.accountId);
 			}
@@ -539,8 +596,10 @@ function registerGameHandlers(
 		if (!allow(event)) {
 			return;
 		}
+
 		const current = session();
 		const match = current ? deps.lobbies.matchOf(current) : null;
+
 		if (current && match?.players.has(current.playerId)) {
 			handler(current, match);
 		}
@@ -561,6 +620,7 @@ function registerGameHandlers(
 					matchId: match.id,
 					layoutJson: JSON.stringify(match.layout),
 				});
+
 				if (layoutChecksum(match.layout) !== match.checksum) {
 					socket.emit("game:aborted", { reason: "layout-mismatch" });
 				}
@@ -571,6 +631,7 @@ function registerGameHandlers(
 	socket.on("game:state", (payload) => {
 		withMatch("game:state", (current, match) => {
 			const message = parseClientState(payload);
+
 			if (message) {
 				match.handleClientState(current.playerId, message);
 			}
@@ -588,6 +649,7 @@ function registerGameHandlers(
 	socket.on("game:interact", (payload) => {
 		withMatch("game:interact", (current, match) => {
 			const request = parseInteract(payload);
+
 			if (request) {
 				match.handleInteract(current.playerId, request);
 			}
@@ -609,6 +671,7 @@ function registerGameHandlers(
 	socket.on("game:cast", (payload) => {
 		withMatch("game:cast", (current, match) => {
 			const request = parseCast(payload);
+
 			if (request) {
 				match.handleCast(current.playerId, request);
 			}
@@ -620,6 +683,7 @@ function registerGameHandlers(
 			const yaw = isRecord(payload)
 				? finiteNumber(payload.yaw, -100, 100)
 				: null;
+
 			if (yaw !== null) {
 				match.handlePush(current.playerId, yaw);
 			}
@@ -631,7 +695,9 @@ function registerGameHandlers(
 			const altarId = isRecord(payload)
 				? finiteNumber(payload.altarId, 0, 1000)
 				: null;
+
 			const object = isRecord(payload) ? payload.object : null;
+
 			if (
 				altarId !== null &&
 				(OCCULT_IDS as readonly unknown[]).includes(object)
@@ -644,6 +710,7 @@ function registerGameHandlers(
 	socket.on("game:tutorial", (payload) => {
 		withMatch("game:tutorial", (current, match) => {
 			const stage = isRecord(payload) ? payload.stage : null;
+
 			if (isTutorialStage(stage)) {
 				match.handleTutorialStage(current.playerId, stage);
 			}
@@ -667,16 +734,20 @@ function registerGameHandlers(
 			if (!isRecord(payload) || !isPingKind(payload.kind)) {
 				return;
 			}
+
 			const x = finiteNumber(payload.x, -500, 500);
 			const y = finiteNumber(payload.y, -20, 60);
 			const z = finiteNumber(payload.z, -500, 500);
+
 			const anomalyId =
 				payload.anomalyId === null
 					? null
 					: finiteNumber(payload.anomalyId, 0, 1000);
+
 			if (x === null || y === null || z === null) {
 				return;
 			}
+
 			match.handlePing(current.playerId, {
 				kind: payload.kind,
 				x,
@@ -716,7 +787,9 @@ function registerGameHandlers(
 			if (!isRecord(payload)) {
 				return;
 			}
+
 			const id = finiteNumber(payload.id, -1, 100000);
+
 			if (
 				(payload.kind === "door" || payload.kind === "knock") &&
 				id !== null
@@ -731,10 +804,12 @@ function registerGameHandlers(
 			if (!isRecord(payload)) {
 				return;
 			}
+
 			const altarId = finiteNumber(payload.altarId, -1, 1000);
 			const x = finiteNumber(payload.x, -500, 500);
 			const y = finiteNumber(payload.y, -20, 60);
 			const z = finiteNumber(payload.z, -500, 500);
+
 			if (altarId !== null && x !== null && y !== null && z !== null) {
 				match.handlePower(current.playerId, {
 					altarId: Math.round(altarId),
@@ -758,8 +833,26 @@ function registerGameHandlers(
 		});
 	});
 
+	socket.on("game:film", (payload) => {
+		withMatch("game:film", (current, match) => {
+			if (!isRecord(payload) || !Array.isArray(payload.inputs)) {
+				return;
+			}
+
+			const anomalyId = finiteNumber(payload.anomalyId, 0, 1000);
+
+			if (anomalyId !== null) {
+				match.handleFilm(current.playerId, {
+					anomalyId: Math.round(anomalyId),
+					inputs: payload.inputs as number[],
+				});
+			}
+		});
+	});
+
 	socket.on("game:leave", () => {
 		const current = session();
+
 		if (current && allow("game:leave")) {
 			deps.lobbies.leave(current);
 		}
@@ -772,6 +865,7 @@ async function friendsOf(
 ): Promise<ReadonlySet<string>> {
 	const accountId = current.account?.accountId;
 	const store = deps.friends?.();
+
 	return accountId && store
 		? new Set(await store.friendIds(accountId))
 		: new Set();
@@ -788,13 +882,18 @@ function respond<T>(
 	if (typeof ack !== "function") {
 		return;
 	}
+
 	if (!allowed) {
 		ack({ ok: false, error: RATE_LIMITED });
+
 		return;
 	}
+
 	if (!current) {
 		ack({ ok: false, error: NO_SESSION });
+
 		return;
 	}
+
 	ack(action(current));
 }

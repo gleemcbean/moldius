@@ -533,8 +533,13 @@
     list-style: none;
   }
 
-  a {
+  .photoThumb {
     display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
     aspect-ratio: 1;
     overflow: hidden;
     border-radius: $radius-s;
@@ -558,6 +563,31 @@
     height: 100%;
     object-fit: cover;
   }
+}
+
+.photoViewer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+  img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: calc(100vh - 260px);
+    object-fit: contain;
+    border-radius: $radius-s;
+    box-shadow: 0 0 0 1px $line-hi;
+  }
+}
+
+.photoViewerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
 }
 
 .photosHead {

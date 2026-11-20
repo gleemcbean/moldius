@@ -38,6 +38,7 @@ export function finiteNumber(
 	) {
 		return null;
 	}
+
 	return value;
 }
 
@@ -49,6 +50,7 @@ export function sanitizeName(value: unknown): string | null {
 	if (typeof value !== "string") {
 		return null;
 	}
+
 	const characters = Array.from(
 		value
 			.normalize("NFC")
@@ -60,7 +62,9 @@ export function sanitizeName(value: unknown): string | null {
 			.replace(/\s+/g, " ")
 			.trim(),
 	).slice(0, PLAYER_NAME_MAX_LENGTH);
+
 	const cleaned = characters.join("").trim();
+
 	return Array.from(cleaned).length >= 2 ? cleaned : null;
 }
 
@@ -68,6 +72,7 @@ export function sanitizeToken(value: unknown): string | null {
 	if (typeof value !== "string" || !/^[A-Za-z0-9_-]{16,64}$/.test(value)) {
 		return null;
 	}
+
 	return value;
 }
 
@@ -75,6 +80,7 @@ export function parseClientState(payload: unknown): ClientStateMessage | null {
 	if (!isRecord(payload)) {
 		return null;
 	}
+
 	const seq = finiteNumber(payload.seq, 0, 1e9);
 	const x = finiteNumber(payload.x, -500, 500);
 	const y = finiteNumber(payload.y, -20, 40);
@@ -95,6 +101,7 @@ export function parseClientState(payload: unknown): ClientStateMessage | null {
 	const moveInput = bool(payload.moveInput);
 	const grimoire = bool(payload.grimoire);
 	const camera = bool(payload.camera);
+
 	if (
 		seq === null ||
 		x === null ||
@@ -117,6 +124,7 @@ export function parseClientState(payload: unknown): ClientStateMessage | null {
 	) {
 		return null;
 	}
+
 	return {
 		seq,
 		x,
@@ -145,8 +153,10 @@ export function parseInteract(payload: unknown): InteractRequest | null {
 	if (!isRecord(payload)) {
 		return null;
 	}
+
 	const kind = payload.kind;
 	const id = finiteNumber(payload.id, -1, 100000);
+
 	if (
 		(kind !== "door" &&
 			kind !== "hide" &&
@@ -160,6 +170,7 @@ export function parseInteract(payload: unknown): InteractRequest | null {
 	) {
 		return null;
 	}
+
 	return { kind, id: Math.round(id) };
 }
 
@@ -167,16 +178,20 @@ export function parseCast(payload: unknown): CastRequest | null {
 	if (!isRecord(payload)) {
 		return null;
 	}
+
 	const method = payload.method;
+
 	const transcripts = Array.isArray(payload.transcripts)
 		? payload.transcripts
 				.filter((entry): entry is string => typeof entry === "string")
 				.slice(0, 6)
 				.map((entry) => entry.slice(0, 160))
 		: null;
+
 	if (transcripts === null || transcripts.length === 0 || method !== "speech") {
 		return null;
 	}
+
 	return { transcripts, method };
 }
 
@@ -194,6 +209,7 @@ export function parseVoiceRelay(
 	) {
 		return null;
 	}
+
 	return { peerIds: payload.peerIds as string[], data: payload.data };
 }
 
@@ -205,8 +221,10 @@ export function parseVoiceSignal(payload: unknown): VoiceSignalEnvelope | null {
 	) {
 		return null;
 	}
+
 	const signal = payload.signal;
 	let parsed: VoiceSignal | null = null;
+
 	if (
 		(signal.kind === "offer" || signal.kind === "answer") &&
 		typeof signal.sdp === "string" &&
@@ -230,9 +248,11 @@ export function parseVoiceSignal(payload: unknown): VoiceSignalEnvelope | null {
 					: null,
 		};
 	}
+
 	if (!parsed) {
 		return null;
 	}
+
 	return { peerId: payload.peerId.slice(0, 64), signal: parsed };
 }
 
@@ -256,6 +276,7 @@ export function parseSpeechLanguage(payload: unknown): Language | null {
 export function parseSpeechStart(payload: unknown): SpeechStartRequest | null {
 	const id = parseSpeechId(payload);
 	const language = parseSpeechLanguage(payload);
+
 	if (
 		!isRecord(payload) ||
 		!id ||
@@ -264,6 +285,7 @@ export function parseSpeechStart(payload: unknown): SpeechStartRequest | null {
 	) {
 		return null;
 	}
+
 	const grammar = payload.grammar
 		.slice(0, SPEECH_MAX_GRAMMAR)
 		.filter(
@@ -272,6 +294,7 @@ export function parseSpeechStart(payload: unknown): SpeechStartRequest | null {
 				phrase.length <= SPEECH_MAX_PHRASE &&
 				SPEECH_PHRASE.test(phrase),
 		);
+
 	return { id, language, grammar };
 }
 
@@ -279,6 +302,7 @@ export function parseSpeechAudio(
 	payload: unknown,
 ): { id: string; data: Buffer } | null {
 	const id = parseSpeechId(payload);
+
 	return id && isRecord(payload) && Buffer.isBuffer(payload.data)
 		? { id, data: payload.data }
 		: null;

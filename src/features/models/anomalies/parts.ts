@@ -17,15 +17,19 @@ export function deform(
 	const positions = mesh.geometry.getAttribute(
 		"position",
 	) as THREE.BufferAttribute;
+
 	for (let index = 0; index < positions.count; index += 1) {
 		const x = base[index * 3];
 		const y = base[index * 3 + 1];
 		const z = base[index * 3 + 2];
+
 		const wave =
 			1 +
 			Math.sin(time * frequency + x * 9 + y * 7) * amount +
 			Math.sin(time * frequency * 1.7 + z * 11) * amount * 0.6;
+
 		const squash = y < 0 ? 1 - flatten : 1;
+
 		positions.setXYZ(
 			index,
 			x * wave * (1 + flatten * 0.5),
@@ -33,6 +37,8 @@ export function deform(
 			z * wave * (1 + flatten * 0.5),
 		);
 	}
+
 	positions.needsUpdate = true;
+
 	mesh.geometry.computeVertexNormals();
 }

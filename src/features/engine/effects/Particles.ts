@@ -22,12 +22,15 @@ export class ParticleSystem {
 
 	constructor() {
 		const geometry = new THREE.BufferGeometry();
+
 		geometry.setAttribute(
 			"position",
 			new THREE.BufferAttribute(this.positions, 3),
 		);
+
 		geometry.setAttribute("color", new THREE.BufferAttribute(this.colors, 3));
 		geometry.setAttribute("size", new THREE.BufferAttribute(this.sizes, 1));
+
 		const material = new THREE.ShaderMaterial({
 			transparent: true,
 			depthWrite: false,
@@ -52,6 +55,7 @@ export class ParticleSystem {
           gl_FragColor = vec4(vColor, 1.0);
         }`,
 		});
+
 		this.points = new THREE.Points(geometry, material);
 		this.points.frustumCulled = false;
 	}
@@ -70,20 +74,25 @@ export class ParticleSystem {
 		},
 	): void {
 		const amount = Math.round(count * this.scale);
+
 		for (let index = 0; index < amount; index += 1) {
 			if (this.particles.length >= CAPACITY) {
 				this.particles.shift();
 			}
+
 			const direction = new THREE.Vector3(
 				Math.random() - 0.5,
 				Math.random() - 0.5 + (options.up ?? 0),
 				Math.random() - 0.5,
 			).normalize();
+
 			const speed = options.speed * (0.4 + Math.random() * 0.8);
 			const life = (options.life ?? 0.8) * (0.6 + Math.random() * 0.6);
+
 			const color = new THREE.Color(options.color).multiplyScalar(
 				0.7 + Math.random() * 0.5,
 			);
+
 			this.particles.push({
 				position: origin
 					.clone()
@@ -112,19 +121,26 @@ export class ParticleSystem {
 	update(dt: number): void {
 		for (let index = this.particles.length - 1; index >= 0; index -= 1) {
 			const particle = this.particles[index];
+
 			particle.life -= dt;
+
 			if (particle.life <= 0) {
 				this.particles.splice(index, 1);
 				continue;
 			}
+
 			particle.velocity.y -= particle.gravity * dt;
+
 			particle.velocity.multiplyScalar(1 - dt * 0.8);
 			particle.position.addScaledVector(particle.velocity, dt);
 		}
+
 		const count = this.particles.length;
+
 		for (let index = 0; index < count; index += 1) {
 			const particle = this.particles[index];
 			const fade = particle.life / particle.maxLife;
+
 			this.positions[index * 3] = particle.position.x;
 			this.positions[index * 3 + 1] = particle.position.y;
 			this.positions[index * 3 + 2] = particle.position.z;
@@ -133,12 +149,17 @@ export class ParticleSystem {
 			this.colors[index * 3 + 2] = particle.color.b * fade;
 			this.sizes[index] = particle.size;
 		}
+
 		const geometry = this.points.geometry;
+
 		geometry.setDrawRange(0, count);
+
 		(geometry.getAttribute("position") as THREE.BufferAttribute).needsUpdate =
 			true;
+
 		(geometry.getAttribute("color") as THREE.BufferAttribute).needsUpdate =
 			true;
+
 		(geometry.getAttribute("size") as THREE.BufferAttribute).needsUpdate = true;
 	}
 

@@ -19,9 +19,9 @@ import {
 	CHAOS_BREW_INTERVAL_MS,
 	cameraCount,
 	DOOR_INTERACT_RANGE,
+	type EmoteId,
 	ENERGY_MAX,
 	ENERGY_USE_REGEN_PAUSE_SECONDS,
-	type EmoteId,
 	FOG_VISION_FACTOR,
 	FRENZY_SPEED_FACTOR,
 	HEALTH_MAX,
@@ -94,6 +94,7 @@ import type {
 	CastRequest,
 	ClientStateMessage,
 	DamageCause,
+	FilmReport,
 	ForcedMoveKind,
 	GameEvent,
 	GhostActionKind,
@@ -119,33 +120,35 @@ import { hoverHeight } from "./ai/locomotion.js";
 import { releaseClaim } from "./ai/patrol.js";
 import type { SoundEvent } from "./ai/perception.js";
 import { separateAnomalies } from "./ai/separation.js";
+import { abortSeance, reportFilm } from "./ai/species/cinematographe.js";
 import { anomalyExtra, updateAnomaly } from "./ai/updateAnomaly.js";
 import { AwardTracker, liveChallengeMetrics, pickAwards } from "./awards.js";
 import { HighlightRecorder } from "./highlights.js";
+import { MatchPlayer } from "./MatchPlayer.js";
+import { formulaWords, planRoster, type RosterPlan } from "./roster.js";
 import { BountySystem } from "./systems/bounty.js";
+import { CameraSystem } from "./systems/cameras.js";
+import { validateCast } from "./systems/captures.js";
+import { type DoorState, DoorSystem } from "./systems/doors.js";
+import { drainEnergy, pauseEnergyRegen, stepEnergy } from "./systems/energy.js";
 import { ghostAction, isGhost } from "./systems/ghosts.js";
+import { HazardSystem } from "./systems/hazards.js";
+import { cureVictimsOf, updateInfections } from "./systems/infection.js";
+import { LightingMap } from "./systems/lighting.js";
+import { LootSystem } from "./systems/loot.js";
 import { ManorEventSystem } from "./systems/manorEvents.js";
+import {
+	applyClientState,
+	archivistPullVector,
+} from "./systems/playerMotion.js";
 import { PossessedSystem } from "./systems/possessed.js";
+import { checkVoiceSabotage, tryPush, tryShout } from "./systems/sabotage.js";
 import {
 	giveFragment,
 	playEmote,
 	sendPing,
 	stopEmote,
 } from "./systems/social.js";
-import { MatchPlayer } from "./MatchPlayer.js";
-import { formulaWords, planRoster, type RosterPlan } from "./roster.js";
-import { CameraSystem } from "./systems/cameras.js";
-import { validateCast } from "./systems/captures.js";
-import { type DoorState, DoorSystem } from "./systems/doors.js";
-import { drainEnergy, pauseEnergyRegen, stepEnergy } from "./systems/energy.js";
-import { HazardSystem } from "./systems/hazards.js";
-import { LightingMap } from "./systems/lighting.js";
-import { LootSystem } from "./systems/loot.js";
-import {
-	applyClientState,
-	archivistPullVector,
-} from "./systems/playerMotion.js";
-import { checkVoiceSabotage, tryPush, tryShout } from "./systems/sabotage.js";
 import {
 	archivistDangerZones,
 	pickAnomalySpawn,
@@ -282,10 +285,12 @@ export class Match {
 		this.now = this.clock();
 		this.createdAt = this.now;
 		this.pickupTotal = pickupTotal(this.config, options.participants.length);
+
 		this.layout = generateManor(this.seed, {
 			...this.config,
 			pickupTotal: this.pickupTotal,
 		});
+
 		this.checksum = layoutChecksum(this.layout);
 		this.world = new CollisionWorld(this.layout);
 		this.grid = new NavGrid(this.world);
@@ -296,41 +301,52 @@ export class Match {
 		this.valves = new ValveSystem(this.layout.valves);
 		this.hazards = new HazardSystem(this.world);
 		this.liquids = liquidVolumes(this.layout.furniture);
+
 		this.walkieTotal = Math.min(
 			this.layout.walkies.length,
 			walkieCount(options.participants.length),
 		);
+
 		this.walkies = new WalkieSystem(
 			this.layout.walkies.slice(0, this.walkieTotal).map((spot) => spot.id),
 		);
+
 		this.cameraTotal = Math.min(
 			this.layout.cameras.length,
 			cameraCount(options.participants.length),
 		);
+
 		this.cameras = new CameraSystem(
 			this.layout.cameras.slice(0, this.cameraTotal).map((spot) => spot.id),
 		);
+
 		this.stakes = new StakeSystem(this.layout.stakes);
+
 		this.highlights = this.tutorial
 			? null
 			: new HighlightRecorder(
 					(id) => this.anomalies[id]?.species ?? null,
 					(windows) => this.emit({ type: "voiceWindows", windows }),
 				);
+
 		this.roster = planRoster(
 			this.rng.fork("roster"),
 			this.tutorial ? 1 : anomalyRosterSize(this.config.simultaneousAnomalies),
 			options.previousWords,
 			this.config.species,
 		);
+
 		const tutorialObject = this.roster.instances[0]?.occult;
+
 		if (this.tutorial && tutorialObject) {
 			assignRecipeMaterials(
 				this.layout.pickups,
 				OCCULT_RECIPES[tutorialObject],
 			);
+
 			this.loot.respawnPool = recipeDeck(OCCULT_RECIPES[tutorialObject]);
 		}
+
 		this.anomalies = this.roster.instances.map(
 			(instance, index) =>
 				new AnomalyEntity(
@@ -342,10 +358,12 @@ export class Match {
 					instance.occult,
 				),
 		);
+
 		const spawns = pickPlayerSpawns(
 			this.spawnContext(),
 			options.participants.length,
 		);
+
 		options.participants.forEach((participant, index) => {
 			const spawn = spawns[index % Math.max(1, spawns.length)] ?? {
 				x: 0,
@@ -353,6 +371,7 @@ export class Match {
 				z: 0,
 				yaw: 0,
 			};
+
 			const player = new MatchPlayer(
 				participant.id,
 				participant.name,
@@ -360,30 +379,39 @@ export class Match {
 				spawn,
 				this.now,
 			);
+
 			player.pattern = participant.pattern ?? DEFAULT_HAT_PATTERN;
 			player.lantern = participant.lantern ?? DEFAULT_LANTERN_TINT;
 			player.tagline = participant.tagline ?? null;
+
 			player.team =
 				this.config.teamCount > 0 ? (participant.team ?? null) : null;
+
 			player.roomId = this.roomIdAt(player.position);
+
 			this.players.set(participant.id, player);
 			this.awards.addPlayer(participant.id);
 		});
+
 		this.tutorialDirector = this.tutorial ? new TutorialDirector(this) : null;
 		this.ghostBounds = ghostBounds(this.layout);
 		this.ghostsAllowed = !this.tutorial;
+
 		this.manorEvents = new ManorEventSystem(
 			this.config.events && !this.tutorial,
 		);
+
 		this.bounty = new BountySystem(
 			bountyEnabled(this.config) &&
 				!this.tutorial &&
 				options.participants.length >= 2,
 		);
+
 		this.possessed =
 			this.config.mode === "possessed" && !this.tutorial
 				? new PossessedSystem(this)
 				: null;
+
 		if (options.autoStart !== false) {
 			this.startLoop();
 		}
@@ -453,21 +481,28 @@ export class Match {
 	stop(): void {
 		if (this.timer) {
 			clearInterval(this.timer);
+
 			this.timer = null;
 		}
 	}
 
 	private pump(): void {
 		const current = this.clock();
+
 		this.accumulator = Math.min(
 			this.accumulator + (current - this.lastClock),
 			SERVER_TICK_MS * 6,
 		);
+
 		this.lastClock = current;
+
 		let steps = 0;
+
 		while (this.accumulator >= SERVER_TICK_MS && steps < 4) {
 			this.accumulator -= SERVER_TICK_MS;
+
 			this.step(current - this.accumulator);
+
 			steps += 1;
 		}
 	}
@@ -475,20 +510,28 @@ export class Match {
 	step(time = this.clock()): void {
 		this.now = time;
 		this.tick += 1;
+
 		const dt = SERVER_TICK_MS / 1000;
+
 		if (this.phase === "loading") {
 			this.updateLoading();
 			this.flushEvents();
+
 			return;
 		}
+
 		if (this.phase === "voting") {
 			this.stepVoting();
+
 			return;
 		}
+
 		if (this.phase !== "playing") {
 			return;
 		}
+
 		this.sounds.length = 0;
+
 		this.updatePlayers(dt);
 		this.valves.heal(this.players.values(), this.now, dt);
 		this.updateHazards();
@@ -498,20 +541,26 @@ export class Match {
 		this.stakes.update(this, dt);
 		this.manorEvents.update(this);
 		this.updateChaosBrews();
+		updateInfections(this);
 		this.updateAnomalies(dt);
 		checkVoiceSabotage(this);
 		this.updateCasting();
 		this.bounty.update(this);
 		this.trackAwards();
+
 		if (this.tick % CHALLENGE_SYNC_TICKS === 0) {
 			this.syncChallenges();
 		}
+
 		if (this.tick % SNAPSHOT_INTERVAL_TICKS === 0) {
 			const snapshot = this.snapshot();
+
 			this.transport.broadcastVolatile("game:snapshot", snapshot);
 			this.highlights?.frame(snapshot, this);
 		}
+
 		this.flushEvents();
+
 		if (
 			this.phase === "playing" &&
 			(this.now >= this.endsAt || this.allFallen())
@@ -524,7 +573,9 @@ export class Match {
 		if (this.tick % SNAPSHOT_INTERVAL_TICKS === 0) {
 			this.transport.broadcastVolatile("game:snapshot", this.snapshot());
 		}
+
 		this.flushEvents();
+
 		if (this.possessed?.voteFinished(this)) {
 			this.finish();
 		}
@@ -534,7 +585,9 @@ export class Match {
 		if (this.phase !== "playing") {
 			return;
 		}
+
 		this.phase = "voting";
+
 		for (const player of this.players.values()) {
 			player.casting = null;
 			player.radioOn = false;
@@ -545,9 +598,11 @@ export class Match {
 		if (!hasMutator(this.config, "oneLife") || this.tutorial) {
 			return false;
 		}
+
 		const connected = [...this.players.values()].filter(
 			(player) => player.connected,
 		);
+
 		return connected.length > 0 && connected.every((player) => !player.alive);
 	}
 
@@ -555,19 +610,25 @@ export class Match {
 		if (this.now < this.nextChaosBrewAt) {
 			return;
 		}
+
 		this.nextChaosBrewAt = this.now + CHAOS_BREW_INTERVAL_MS;
 		this.chaosRng ??= this.rng.fork("chaos-brews");
+
 		for (const player of this.players.values()) {
 			if (!player.active) {
 				continue;
 			}
+
 			const effect = this.chaosRng.pick(BREW_EFFECTS);
+
 			player.brew = effect;
 			player.brewUntil = this.now + BREW_DURATION_MS[effect];
+
 			if (effect === "vigor") {
 				player.energy = ENERGY_MAX;
 				player.sprintLocked = false;
 			}
+
 			this.emit({
 				type: "brew",
 				playerId: player.id,
@@ -618,7 +679,9 @@ export class Match {
 
 	ignoredByAnomalies(player: MatchPlayer): boolean {
 		return (
-			player.possessed || (this.tutorialDirector?.isDummy(player) ?? false)
+			player.possessed ||
+			player.entranced ||
+			(this.tutorialDirector?.isDummy(player) ?? false)
 		);
 	}
 
@@ -628,6 +691,7 @@ export class Match {
 
 	pushTuning(): { distance: number; cooldownMs: number; energy: number } {
 		const strong = hasMutator(this.config, "strongPush");
+
 		return {
 			distance: PUSH_DISTANCE * (strong ? STRONG_PUSH_DISTANCE_FACTOR : 1),
 			cooldownMs: PUSH_COOLDOWN_MS * (strong ? STRONG_PUSH_COOLDOWN_FACTOR : 1),
@@ -644,6 +708,7 @@ export class Match {
 			if (!door?.open) {
 				continue;
 			}
+
 			const blocked = [...this.players.values()].some(
 				(player) =>
 					player.alive &&
@@ -652,6 +717,7 @@ export class Match {
 						player.position.z - door.center.z,
 					) < 1.05,
 			);
+
 			if (!blocked) {
 				this.setDoor(door.id, false, null);
 			}
@@ -662,14 +728,17 @@ export class Match {
 		const connected = [...this.players.values()].filter(
 			(player) => player.connected,
 		);
+
 		const everyoneLoaded =
 			connected.length > 0 && connected.every((player) => player.loaded);
+
 		if (
 			everyoneLoaded ||
 			this.now - this.createdAt > MATCH_LOADING_TIMEOUT_MS
 		) {
 			this.begin();
 		}
+
 		if (connected.length === 0 && this.now - this.createdAt > 5000) {
 			this.abort("all-left");
 		}
@@ -679,33 +748,42 @@ export class Match {
 		if (this.phase !== "loading") {
 			return;
 		}
+
 		this.phase = "playing";
 		this.startedAt = this.now;
 		this.endsAt = this.now + matchDurationMs(this.config);
+
 		this.anomaliesStartAt = this.tutorial
 			? Infinity
 			: this.now + ANOMALY_FIRST_SPAWN_DELAY_MS;
+
 		for (const entity of this.anomalies) {
 			entity.spawnDueAt = this.anomaliesStartAt + entity.id * 150;
 		}
+
 		for (const player of this.players.values()) {
 			player.lastStateAt = this.now;
 			player.protectedUntil = this.now + PLAYER_SPAWN_PROTECTION_MS;
 		}
+
 		this.manorEvents.start(this);
+
 		if (hasMutator(this.config, "chaosBrews") && !this.tutorial) {
 			this.nextChaosBrewAt = this.now + CHAOS_BREW_INTERVAL_MS;
 		}
+
 		this.transport.broadcast("game:begin", {
 			matchId: this.id,
 			serverTime: this.clock(),
 			startedAt: this.startedAt,
 			endsAt: this.endsAt,
 		});
+
 		if (this.possessed) {
 			for (const player of this.players.values()) {
 				this.possessed.sendRole(this, player);
 			}
+
 			this.emit({
 				type: "ritual",
 				captures: 0,
@@ -734,8 +812,10 @@ export class Match {
 					: [],
 			),
 		);
+
 		this.awards.remainingMs =
 			this.endsAt > 0 ? this.endsAt - this.now : Number.POSITIVE_INFINITY;
+
 		for (const player of this.players.values()) {
 			this.awards.tick(player, this.now, chased.has(player.id));
 		}
@@ -745,13 +825,17 @@ export class Match {
 		if (!this.challenges) {
 			return;
 		}
+
 		for (const player of this.players.values()) {
 			const stats = this.awards.stats.get(player.id);
+
 			if (!stats) {
 				continue;
 			}
+
 			const metrics = liveChallengeMetrics(stats);
 			const key = JSON.stringify(metrics);
+
 			if (this.challengesSent.get(player.id) !== key) {
 				this.challengesSent.set(player.id, key);
 				this.transport.toPlayer(player.id, "game:challenges", metrics);
@@ -765,13 +849,16 @@ export class Match {
 		if (this.tutorial) {
 			return {};
 		}
+
 		return Object.fromEntries(
 			results.entries.map((entry) => {
 				const stats = this.awards.stats.get(entry.playerId);
 				const won = entryWon(results, entry);
 				const unscathed = entry.deaths === 0;
+
 				const possessedWin =
 					won && results.possessed?.possessedId === entry.playerId;
+
 				return [
 					entry.playerId,
 					{
@@ -797,7 +884,9 @@ export class Match {
 		if (this.pendingEvents.length === 0) {
 			return;
 		}
+
 		const events = this.pendingEvents.splice(0, this.pendingEvents.length);
+
 		this.transport.broadcast("game:events", { t: this.now, events });
 	}
 
@@ -839,9 +928,11 @@ export class Match {
 
 	gridLevelOf(position: Vec3): Level {
 		const node = this.grid.nearestNode(position, 1, false);
+
 		if (node === null || this.grid.isPortal(node)) {
 			return this.grid.levelForHeight(position.y, 1.8);
 		}
+
 		return this.grid.levelOfNode(node);
 	}
 
@@ -855,21 +946,26 @@ export class Match {
 
 	illuminationOf(player: MatchPlayer): number {
 		let light = this.lighting.staticAt(player.position);
+
 		if (player.lanternOpen) {
 			light += 1;
 		}
+
 		for (const other of this.players.values()) {
 			if (other === player || !other.lanternOpen || !other.active) {
 				continue;
 			}
+
 			const distance = Math.hypot(
 				other.position.x - player.position.x,
 				other.position.z - player.position.z,
 			);
+
 			if (distance < 6 && Math.abs(other.position.y - player.position.y) < 2) {
 				light += 0.6 * (1 - distance / 6);
 			}
 		}
+
 		return light;
 	}
 
@@ -892,23 +988,30 @@ export class Match {
 				player.respawnAt = Infinity;
 				continue;
 			}
+
 			if (!player.alive) {
 				if (this.now >= player.respawnAt && player.connected) {
 					this.respawn(player);
 				}
+
 				continue;
 			}
+
 			const energy = stepEnergy(player, dt);
+
 			if (energy.sprintLockedNow) {
 				this.sprintLockTimes.set(player.id, this.now);
 			}
+
 			if (hasMutator(this.config, "infiniteEnergy")) {
 				player.energy = ENERGY_MAX;
 				player.sprintLocked = false;
 			}
+
 			if (player.moveInput || player.hidden || player.carried) {
 				stopEmote(this, player);
 			}
+
 			this.updateSlime(player);
 			this.updateBrew(player);
 			this.trackRoom(player);
@@ -920,25 +1023,35 @@ export class Match {
 		if (player.brew !== null && this.now >= player.brewUntil) {
 			player.brew = null;
 		}
+
 		const liquid =
 			player.hidden || player.carried
 				? null
 				: liquidAt(this.liquids, player.position);
+
 		const cauldron = liquid?.brew ? liquid : null;
+
 		const entered =
 			cauldron !== null && cauldron.itemId !== player.brewCauldron;
+
 		player.brewCauldron = cauldron?.itemId ?? null;
+
 		if (!entered || !cauldron.brew) {
 			return;
 		}
+
 		this.awards.brewed(player.id);
+
 		const effect = cauldron.brew.effect;
+
 		player.brew = effect;
 		player.brewUntil = this.now + BREW_DURATION_MS[effect];
+
 		if (effect === "vigor") {
 			player.energy = ENERGY_MAX;
 			player.sprintLocked = false;
 		}
+
 		this.emit({
 			type: "brew",
 			playerId: player.id,
@@ -949,25 +1062,32 @@ export class Match {
 
 	private clearBrew(player: MatchPlayer): void {
 		player.brewCauldron = null;
+
 		if (player.brew === null) {
 			return;
 		}
+
 		player.brew = null;
 		player.brewUntil = 0;
+
 		this.emit({ type: "brew", playerId: player.id, effect: null, until: 0 });
 	}
 
 	private updateSlime(player: MatchPlayer): void {
 		const slimed = this.hazards.isOnSlime(player);
+
 		if (slimed && !player.slimed) {
 			player.slimeDamageAt = this.now;
 		}
+
 		player.slimed = slimed;
+
 		if (
 			slimed &&
 			this.now - player.slimeDamageAt >= SLIME_PUDDLE_DAMAGE_INTERVAL_MS
 		) {
 			player.slimeDamageAt = this.now;
+
 			this.applyDamage(player, SLIME_PUDDLE_DAMAGE, "suinteur", null, true);
 		}
 	}
@@ -976,20 +1096,26 @@ export class Match {
 		if (player.hidden || player.carried) {
 			return;
 		}
+
 		const room = this.roomIdAt(player.position);
+
 		if (room === player.roomId) {
 			return;
 		}
+
 		player.roomId = room;
+
 		if (room === null) {
 			return;
 		}
+
 		const archivist = this.anomalies.find(
 			(entity) =>
 				entity.active &&
 				entity.species === "archiviste" &&
 				entity.homeRoom === room,
 		);
+
 		if (archivist) {
 			this.closeRoomDoors(room, archivist);
 		}
@@ -997,17 +1123,22 @@ export class Match {
 
 	private closeRoomDoors(roomId: number, archivist: AnomalyEntity): void {
 		const room = this.layout.rooms[roomId];
+
 		for (const openingId of room.openingIds) {
 			const opening = this.layout.openings[openingId];
+
 			if (!opening.door) {
 				continue;
 			}
+
 			const doorId = opening.door.id;
 			const door = this.doors.get(doorId);
 			const cooldown = archivist.doorCooldowns.get(doorId) ?? 0;
+
 			if (!door?.open || this.now < cooldown) {
 				continue;
 			}
+
 			const blocked = [...this.players.values()].some(
 				(player) =>
 					player.alive &&
@@ -1016,9 +1147,11 @@ export class Match {
 						player.position.z - door.center.z,
 					) < 1.05,
 			);
+
 			if (blocked) {
 				continue;
 			}
+
 			archivist.doorCooldowns.set(doorId, this.now + 6000);
 			this.setDoor(doorId, false, null);
 		}
@@ -1026,6 +1159,7 @@ export class Match {
 
 	private emitPlayerSounds(player: MatchPlayer): void {
 		const voice = player.audibleVoice(this.now);
+
 		if (player.hidden || player.carried) {
 			if (voice !== null) {
 				this.sounds.push({
@@ -1035,21 +1169,27 @@ export class Match {
 					kind: "voice",
 				});
 			}
+
 			return;
 		}
+
 		const sprinting =
 			player.sprintIntent &&
 			player.moveInput &&
 			!player.sprintLocked &&
 			player.crouch < 0.5;
+
 		const last = this.footstepTimes.get(player.id) ?? 0;
+
 		if (
 			player.moveInput &&
 			player.grounded &&
 			this.now - last > (sprinting ? 350 : 600)
 		) {
 			this.footstepTimes.set(player.id, this.now);
+
 			const loudness = sprinting ? 9 : player.crouching ? 1.2 : 3.2;
+
 			this.sounds.push({
 				position: { ...player.position },
 				loudness,
@@ -1057,6 +1197,7 @@ export class Match {
 				kind: "footsteps",
 			});
 		}
+
 		if (voice !== null) {
 			this.sounds.push({
 				position: { ...player.position },
@@ -1073,13 +1214,16 @@ export class Match {
 			this.now,
 		)) {
 			const projectile = outcome.projectile;
+
 			this.emit({
 				type: "projectileEnd",
 				id: projectile.id,
 				at: outcome.at,
 				hitPlayer: outcome.player?.id ?? null,
 			});
+
 			const owner = this.anomalies[projectile.ownerId];
+
 			if (outcome.player && owner && owner.definition.damage > 0) {
 				this.applyDamage(
 					outcome.player,
@@ -1088,8 +1232,10 @@ export class Match {
 					outcome.at,
 				);
 			}
+
 			if (projectile.kind === "slime" && outcome.ground) {
 				const puddle = this.hazards.addPuddle(outcome.ground, this.now);
+
 				this.emit({
 					type: "puddle",
 					id: puddle.id,
@@ -1101,6 +1247,7 @@ export class Match {
 				});
 			}
 		}
+
 		for (const puddle of this.hazards.expirePuddles(this.now)) {
 			this.emit({ type: "puddleRemoved", id: puddle.id });
 		}
@@ -1121,6 +1268,7 @@ export class Match {
 			this.now,
 			owner.id,
 		);
+
 		this.emit({
 			type: "projectile",
 			id: projectile.id,
@@ -1134,14 +1282,18 @@ export class Match {
 
 	private updateAnomalies(dt: number): void {
 		this.spawnWaitingAnomalies();
+
 		for (const entity of this.anomalies) {
 			if (!entity.active || this.tutorialDirector?.holds(entity)) {
 				continue;
 			}
+
 			updateAnomaly(this, entity, dt);
 		}
+
 		this.tutorialDirector?.update();
 		separateAnomalies(this);
+
 		for (const entity of this.anomalies) {
 			if (entity.active) {
 				entity.history.push({
@@ -1157,50 +1309,68 @@ export class Match {
 		if (this.now < this.anomaliesStartAt) {
 			return;
 		}
+
 		const running = this.anomalies.filter((entity) => entity.active);
+
 		if (running.length >= this.config.simultaneousAnomalies) {
 			this.vacantSince = null;
+
 			return;
 		}
+
 		this.vacantSince ??= this.now;
+
 		if (this.now < this.nextAnomalyAt) {
 			return;
 		}
+
 		const vacancy = this.now - this.vacantSince;
 		const overdue = vacancy >= ANOMALY_VACANCY_GRACE_MS;
 		const relaxed = vacancy >= ANOMALY_VACANCY_RELAX_MS;
 		const perTier = { 1: 0, 2: 0, 3: 0 };
+
 		for (const entity of running) {
 			perTier[entity.definition.tier] += 1;
 		}
+
 		const caps = this.tierCaps;
+
 		const earlyLimit =
 			this.now + ANOMALY_RETURN_DELAY_MS - ANOMALY_MIN_RETURN_DELAY_MS;
+
 		const due = (entity: AnomalyEntity) =>
 			this.now >= entity.spawnDueAt ||
 			(overdue && entity.spawnDueAt <= earlyLimit);
+
 		const waiting = this.anomalies
 			.filter((entity) => !entity.active && due(entity))
 			.sort(
 				(first, second) =>
 					first.spawnDueAt - second.spawnDueAt || first.id - second.id,
 			);
+
 		const fitting = (entity: AnomalyEntity) =>
 			perTier[entity.definition.tier] < caps[entity.definition.tier];
+
 		const candidates = [
 			...waiting.filter(fitting),
 			...(overdue ? waiting.filter((entity) => !fitting(entity)) : []),
 		];
+
 		let active = running.length;
 		let attempts = 0;
+
 		for (const entity of candidates) {
 			if (active >= this.config.simultaneousAnomalies || attempts >= 2) {
 				return;
 			}
+
 			if (entity.active || (!overdue && !fitting(entity))) {
 				continue;
 			}
+
 			attempts += 1;
+
 			if (this.placeAnomaly(entity, relaxed)) {
 				active += 1;
 				perTier[entity.definition.tier] += 1;
@@ -1214,37 +1384,47 @@ export class Match {
 		const wanted = this.config.simultaneousAnomalies;
 		const caps = anomalyTierCaps(wanted);
 		const available = { 1: 0, 2: 0, 3: 0 };
+
 		for (const entity of this.anomalies) {
 			available[entity.definition.tier] += 1;
 		}
+
 		const reachable =
 			Math.min(caps[1], available[1]) +
 			Math.min(caps[2], available[2]) +
 			Math.min(caps[3], available[3]);
+
 		return reachable >= wanted ? caps : { 1: wanted, 2: wanted, 3: wanted };
 	}
 
 	placeAnomaly(entity: AnomalyEntity, relaxed = false): boolean {
 		const spot = pickAnomalySpawn(this.spawnContext(), entity, relaxed);
+
 		if (!spot) {
 			return false;
 		}
+
 		entity.resetForSpawn(
 			{ ...spot.position, y: spot.position.y + hoverHeight(entity) },
 			spot.yaw,
 			this.now,
 		);
+
 		entity.homeRoom = entity.species === "archiviste" ? spot.roomId : null;
+
 		entity.homePoint =
 			entity.species === "luciole" ? { ...spot.position } : null;
+
 		entity.nextPulseAt = this.now + 2000;
 		entity.nextScreamAt = this.now + 3000;
+
 		this.emit({
 			type: "anomalySpawn",
 			anomalyId: entity.id,
 			gen: entity.gen,
 			species: entity.species,
 		});
+
 		return true;
 	}
 
@@ -1266,16 +1446,20 @@ export class Match {
 		if (this.tutorial) {
 			return source === "pact" && this.hurtSoftly(player, amount, source);
 		}
+
 		if (
 			!player.alive ||
 			player.hidden ||
 			player.protectedUntil > this.now ||
 			player.devModes.immortal ||
+			(player.entranced && source !== "cinematographe") ||
 			(player.possessed && source !== "fall" && source !== "pact")
 		) {
 			return false;
 		}
-		const lethal = source === "explosion";
+
+		const lethal = source === "explosion" || source === "cinematographe";
+
 		if (
 			!lethal &&
 			!periodic &&
@@ -1283,10 +1467,13 @@ export class Match {
 		) {
 			return false;
 		}
+
 		if (!periodic) {
 			player.lastDamageAt = this.now;
 		}
+
 		player.health = lethal ? 0 : Math.max(0, player.health - amount);
+
 		this.emit({
 			type: "damage",
 			playerId: player.id,
@@ -1296,17 +1483,21 @@ export class Match {
 			from,
 			periodic,
 		});
+
 		if (player.health <= 0) {
 			this.kill(player, source);
 		}
+
 		return true;
 	}
 
 	applyFallDamage(player: MatchPlayer, amount: number, drop = 0): void {
 		if (this.tutorial) {
 			this.hurtSoftly(player, amount, "fall");
+
 			return;
 		}
+
 		if (this.applyDamage(player, amount, "fall", null)) {
 			this.highlights?.fall(player.id, drop, !player.alive, this);
 		}
@@ -1318,11 +1509,15 @@ export class Match {
 		source: SpeciesId | DamageCause,
 	): boolean {
 		const health = Math.max(1, player.health - amount);
+
 		if (!player.alive || health >= player.health || player.devModes.immortal) {
 			return false;
 		}
+
 		const lost = player.health - health;
+
 		player.health = health;
+
 		this.emit({
 			type: "damage",
 			playerId: player.id,
@@ -1332,27 +1527,35 @@ export class Match {
 			from: null,
 			periodic: false,
 		});
+
 		return true;
 	}
 
 	private kill(player: MatchPlayer, cause: SpeciesId | DamageCause): void {
 		this.bounty.onDeath(this, player);
+
 		player.emoteUntil = 0;
+
 		this.walkies.release(this, player);
 		this.cameras.release(this, player);
+
 		const fragmentsLost = this.tutorial
 			? 0
 			: this.loot.loseFragments(this, player);
+
 		player.alive = false;
 		player.deaths += 1;
+
 		player.respawnAt = hasMutator(this.config, "oneLife")
 			? Infinity
 			: this.now + PLAYER_RESPAWN_DELAY_MS;
+
 		player.lanternOpen = false;
 		player.casting = null;
 		player.radioOn = false;
 		player.velocity = { x: 0, y: 0, z: 0 };
 		player.movementBudget = 1.5;
+
 		this.emit({
 			type: "death",
 			playerId: player.id,
@@ -1364,10 +1567,13 @@ export class Match {
 
 	private respawn(player: MatchPlayer): void {
 		const spawn = pickRespawn(this.spawnContext(), player);
+
 		if (!spawn) {
 			player.respawnAt = this.now + 1000;
+
 			return;
 		}
+
 		player.alive = true;
 		player.health = HEALTH_MAX;
 		player.energy = ENERGY_MAX;
@@ -1378,9 +1584,14 @@ export class Match {
 		player.protectedUntil = this.now + PLAYER_RESPAWN_PROTECTION_MS;
 		player.petrifiedUntil = 0;
 		player.castBlockedUntil = 0;
+		player.entrancedBy = -1;
+		player.compulsion = null;
+
 		this.clearBrew(player);
 		this.forcedMove(player, "respawn", spawn, spawn.yaw, 0);
+
 		player.roomId = this.roomIdAt(player.position);
+
 		this.emit({
 			type: "respawn",
 			playerId: player.id,
@@ -1401,10 +1612,13 @@ export class Match {
 		player.velocity = { x: 0, y: 0, z: 0 };
 		player.fallPeakY = null;
 		player.movementBudget = 1.5;
+
 		if (yaw !== null) {
 			player.yaw = yaw;
 		}
+
 		player.history.push({ t: this.now, ...position, yaw: player.yaw });
+
 		this.transport.toPlayer(player.id, "game:forcedMove", {
 			playerId: player.id,
 			moveId: player.lastForcedMoveId,
@@ -1426,14 +1640,18 @@ export class Match {
 		if (!this.doors.setOpen(doorId, open, this.now)) {
 			return false;
 		}
+
 		const door = this.doors.get(doorId) as DoorState;
+
 		this.emit({ type: "door", doorId, open, by });
+
 		this.sounds.push({
 			position: { ...door.center, y: door.center.y - 1.1 },
 			loudness: 7,
 			playerId: by,
 			kind: "door",
 		});
+
 		return true;
 	}
 
@@ -1443,15 +1661,19 @@ export class Match {
 
 	handleClientState(playerId: string, message: ClientStateMessage): void {
 		const player = this.players.get(playerId);
+
 		if (!player || this.phase === "ended") {
 			return;
 		}
+
 		this.now = this.clock();
+
 		applyClientState(this, player, message);
 	}
 
 	handleLantern(playerId: string, open: boolean): void {
 		const player = this.players.get(playerId);
+
 		if (
 			!player?.alive ||
 			player.hidden ||
@@ -1460,6 +1682,7 @@ export class Match {
 		) {
 			return;
 		}
+
 		if (
 			open &&
 			(player.energy < LANTERN_MIN_ENERGY_TO_OPEN ||
@@ -1467,15 +1690,26 @@ export class Match {
 		) {
 			return;
 		}
+
 		if (open && !player.lanternOpen) {
 			drainEnergy(player, LANTERN_OPEN_ENERGY_COST);
 			pauseEnergyRegen(player, ENERGY_USE_REGEN_PAUSE_SECONDS);
 		}
+
+		if (
+			!open &&
+			player.compelled(this.now) &&
+			player.compulsion?.kind === "lantern"
+		) {
+			return;
+		}
+
 		player.lanternOpen = open;
 	}
 
 	handleInteract(playerId: string, request: InteractRequest): void {
 		const player = this.players.get(playerId);
+
 		if (
 			!player ||
 			this.phase !== "playing" ||
@@ -1484,29 +1718,38 @@ export class Match {
 		) {
 			return;
 		}
+
 		this.now = this.clock();
+
 		switch (request.kind) {
 			case "door":
 				this.interactDoor(player, request.id);
 				break;
+
 			case "hide":
 				this.hidePlayer(player, request.id);
 				break;
+
 			case "unhide":
 				this.unhidePlayer(player, "unhide");
 				break;
+
 			case "valve":
 				this.interactValve(player, request.id);
 				break;
+
 			case "pickup":
 				this.loot.take(this, player, request.id);
 				break;
+
 			case "walkie":
 				this.walkies.take(this, player, request.id);
 				break;
+
 			case "camera":
 				this.cameras.take(this, player, request.id);
 				break;
+
 			case "stake":
 				this.stakes.interact(this, player, request.id);
 				break;
@@ -1515,8 +1758,10 @@ export class Match {
 
 	handleCraft(playerId: string, altarId: number, object: OccultId): void {
 		const player = this.players.get(playerId);
+
 		if (player?.alive && !player.carried && this.phase === "playing") {
 			this.now = this.clock();
+
 			this.loot.craft(this, player, altarId, object);
 		}
 	}
@@ -1530,6 +1775,7 @@ export class Match {
 
 	handleTutorialStage(playerId: string, stage: TutorialStage): void {
 		const player = this.players.get(playerId);
+
 		if (
 			player &&
 			this.tutorialDirector &&
@@ -1537,21 +1783,26 @@ export class Match {
 			this.phase === "playing"
 		) {
 			this.now = this.clock();
+
 			this.tutorialDirector.setStage(player, stage);
 		}
 	}
 
 	private interactDoor(player: MatchPlayer, doorId: number): void {
 		const door = this.doors.get(doorId);
+
 		if (!door || player.hidden || this.doorsLocked()) {
 			return;
 		}
+
 		const eye = player.eyePosition();
+
 		const distance = Math.hypot(
 			door.center.x - eye.x,
 			door.center.y - eye.y,
 			door.center.z - eye.z,
 		);
+
 		if (
 			distance > DOOR_INTERACT_RANGE + 0.6 ||
 			!lineOfSight(this.world, eye, door.center, {
@@ -1561,23 +1812,29 @@ export class Match {
 		) {
 			return;
 		}
+
 		this.setDoor(doorId, !door.open, player.id);
 	}
 
 	private interactValve(player: MatchPlayer, valveId: number): void {
 		const valve = this.valves.valves[valveId];
+
 		if (!valve || player.hidden) {
 			return;
 		}
+
 		const eye = player.eyePosition();
 		const point = valve.station.valve;
+
 		if (
 			Math.hypot(point.x - eye.x, point.y - eye.y, point.z - eye.z) >
 			VALVE_INTERACT_RANGE + 0.5
 		) {
 			return;
 		}
+
 		const activated = this.valves.activate(valveId, this.now);
+
 		if (activated) {
 			this.emit({
 				type: "valve",
@@ -1585,6 +1842,7 @@ export class Match {
 				activeUntil: activated.activeUntil,
 				cooldownUntil: activated.cooldownUntil,
 			});
+
 			this.sounds.push({
 				position: { ...point },
 				loudness: 6,
@@ -1596,17 +1854,22 @@ export class Match {
 
 	private hidePlayer(player: MatchPlayer, spotId: number): void {
 		const spot = this.layout.hideSpots[spotId];
+
 		if (!spot || player.hidden) {
 			return;
 		}
+
 		const occupied = [...this.players.values()].some(
 			(other) => other.hiddenSpot === spotId,
 		);
+
 		const distance = Math.hypot(
 			spot.entry.x - player.position.x,
 			spot.entry.z - player.position.z,
 		);
+
 		const furniture = this.layout.furniture[spot.furnitureId];
+
 		if (
 			occupied ||
 			distance > HIDE_INTERACT_RANGE + 0.45 ||
@@ -1614,10 +1877,12 @@ export class Match {
 		) {
 			return;
 		}
+
 		player.hiddenSpot = spotId;
 		player.lanternOpen = false;
 		player.casting = null;
 		player.crouch = 0;
+
 		this.forcedMove(
 			player,
 			"hide",
@@ -1625,6 +1890,7 @@ export class Match {
 			spot.facing,
 			380,
 		);
+
 		for (const entity of this.anomalies) {
 			if (entity.active && entity.hostile) {
 				witnessHide(this, entity, player, spotId);
@@ -1636,14 +1902,18 @@ export class Match {
 		if (!player.hidden) {
 			return;
 		}
+
 		const spot = this.layout.hideSpots[player.hiddenSpot];
 		const furniture = this.layout.furniture[spot.furnitureId];
+
 		const exit = this.safeExit({
 			x: spot.entry.x,
 			y: furniture.y,
 			z: spot.entry.z,
 		});
+
 		player.hiddenSpot = -1;
+
 		this.forcedMove(
 			player,
 			kind,
@@ -1651,6 +1921,7 @@ export class Match {
 			spot.facing,
 			kind === "extract" ? 260 : 360,
 		);
+
 		player.roomId = this.roomIdAt(exit);
 	}
 
@@ -1665,28 +1936,36 @@ export class Match {
 				null
 		) {
 			const node = this.grid.nearestNode(preferred, 0);
+
 			if (node !== null) {
 				return preferred;
 			}
 		}
+
 		const node = this.grid.nearestNode(preferred, 4);
+
 		return node === null ? preferred : this.grid.nodePosition(node);
 	}
 
 	handleCastBegin(playerId: string): void {
 		const player = this.players.get(playerId);
+
 		if (!player?.active || this.phase !== "playing") {
 			return;
 		}
+
 		this.now = this.clock();
+
 		if (player.castBlockedUntil > this.now) {
 			return;
 		}
+
 		player.casting ??= { since: this.now };
 	}
 
 	handleCastCancel(playerId: string): void {
 		const player = this.players.get(playerId);
+
 		if (player) {
 			player.casting = null;
 		}
@@ -1694,21 +1973,31 @@ export class Match {
 
 	handleCast(playerId: string, request: CastRequest): void {
 		const player = this.players.get(playerId);
+
 		if (!player || this.phase !== "playing") {
 			return;
 		}
+
 		this.now = this.clock();
+
 		const result = validateCast(this, player, request);
+
 		player.casting = null;
+
 		if (result.ok) {
 			const entity = this.anomalies[result.anomalyId];
+
 			if (entity.occult && OCCULT_CONSUMED_ON_CAPTURE) {
 				player.objects[entity.occult] -= 1;
+
 				this.sendInventory(player);
 			}
+
 			const points = Math.round(entity.definition.points * this.pointsFactor());
+
 			player.score += points;
 			player.captures += 1;
+
 			this.emit({
 				type: "capture",
 				playerId: player.id,
@@ -1718,69 +2007,88 @@ export class Match {
 				points,
 				score: player.score,
 			});
+
 			this.removeAnomaly(entity, "captured");
+
 			this.transport.toPlayer(player.id, "game:castResult", {
 				...result,
 				points,
 			});
+
 			this.possessed?.onCapture(this);
+
 			return;
 		}
+
 		this.transport.toPlayer(player.id, "game:castResult", result);
 	}
 
 	handlePush(playerId: string, yaw: number): void {
 		const player = this.players.get(playerId);
+
 		if (player && this.phase === "playing") {
 			this.now = this.clock();
+
 			tryPush(this, player, yaw);
 		}
 	}
 
 	handlePing(playerId: string, request: PingRequest): void {
 		const player = this.players.get(playerId);
+
 		if (player && this.phase === "playing") {
 			this.now = this.clock();
+
 			sendPing(this, player, request);
 		}
 	}
 
 	handleEmote(playerId: string, emote: EmoteId | null): void {
 		const player = this.players.get(playerId);
+
 		if (player && (this.phase === "playing" || this.phase === "voting")) {
 			this.now = this.clock();
+
 			playEmote(this, player, emote);
 		}
 	}
 
 	handleGift(playerId: string, targetId: string, material: MaterialId): void {
 		const player = this.players.get(playerId);
+
 		if (player && this.phase === "playing") {
 			this.now = this.clock();
+
 			giveFragment(this, player, targetId, material);
 		}
 	}
 
 	handleGhostAction(playerId: string, kind: GhostActionKind, id: number): void {
 		const player = this.players.get(playerId);
+
 		if (player && this.phase === "playing") {
 			this.now = this.clock();
+
 			ghostAction(this, player, kind, id);
 		}
 	}
 
 	handlePower(playerId: string, request: PowerRequest): void {
 		const player = this.players.get(playerId);
+
 		if (player && this.phase === "playing" && this.possessed) {
 			this.now = this.clock();
+
 			this.possessed.castPower(this, player, request);
 		}
 	}
 
 	handleVote(playerId: string, targetId: string): void {
 		const player = this.players.get(playerId);
+
 		if (player && this.phase === "voting" && this.possessed) {
 			this.now = this.clock();
+
 			this.possessed.castVote(this, player, targetId);
 		}
 	}
@@ -1791,6 +2099,7 @@ export class Match {
 
 	altarNear(player: MatchPlayer): number | null {
 		const eye = player.eyePosition();
+
 		const altar = this.layout.altars.find(
 			(candidate) =>
 				Math.hypot(
@@ -1800,11 +2109,13 @@ export class Match {
 				) <=
 				ALTAR_INTERACT_RANGE + 0.5,
 		);
+
 		return altar?.id ?? null;
 	}
 
 	handleRadio(playerId: string, on: boolean): void {
 		const player = this.players.get(playerId);
+
 		if (player && this.phase === "playing") {
 			this.walkies.setTransmitting(player, on);
 		}
@@ -1813,10 +2124,13 @@ export class Match {
 	slamRoomDoors(roomId: number): void {
 		for (const openingId of this.layout.rooms[roomId]?.openingIds ?? []) {
 			const opening = this.layout.openings[openingId];
+
 			if (!opening.door || !this.doors.get(opening.door.id)?.open) {
 				continue;
 			}
+
 			const door = this.doors.get(opening.door.id) as DoorState;
+
 			const blocked = [...this.players.values()].some(
 				(player) =>
 					player.alive &&
@@ -1825,6 +2139,7 @@ export class Match {
 						player.position.z - door.center.z,
 					) < 1.05,
 			);
+
 			if (!blocked) {
 				this.setDoor(door.id, false, null);
 			}
@@ -1833,8 +2148,10 @@ export class Match {
 
 	handleDevModes(playerId: string, modes: DevModes): void {
 		const player = this.players.get(playerId);
+
 		if (player && this.dev) {
 			player.devModes = modes;
+
 			if (modes.infiniteEnergy) {
 				player.energy = ENERGY_MAX;
 				player.sprintLocked = false;
@@ -1842,10 +2159,22 @@ export class Match {
 		}
 	}
 
-	handleShout(playerId: string): void {
+	handleFilm(playerId: string, report: FilmReport): void {
 		const player = this.players.get(playerId);
+
 		if (player && this.phase === "playing") {
 			this.now = this.clock();
+
+			reportFilm(this, player, report);
+		}
+	}
+
+	handleShout(playerId: string): void {
+		const player = this.players.get(playerId);
+
+		if (player && this.phase === "playing") {
+			this.now = this.clock();
+
 			tryShout(this, player);
 		}
 	}
@@ -1857,24 +2186,36 @@ export class Match {
 		if (!entity.active) {
 			return;
 		}
+
 		if (entity.carryingPlayerId) {
 			const carried = this.players.get(entity.carryingPlayerId);
+
 			entity.carryingPlayerId = null;
+
 			if (carried && carried.carriedBy === entity.id) {
 				this.dropCarried(carried, entity);
 			}
 		}
+
 		releaseClaim(this, entity);
+		abortSeance(this, entity);
+
+		if (reason === "captured") {
+			cureVictimsOf(this, entity);
+		}
+
 		entity.active = false;
 		entity.state = "gone";
 		entity.witnessed = null;
 		entity.spawnDueAt = this.now + ANOMALY_RETURN_DELAY_MS;
 		this.nextAnomalyAt = this.now + ANOMALY_NEXT_DELAY_MS;
+
 		for (const other of this.anomalies) {
 			if (other.hostId === entity.id) {
 				other.hostId = -1;
 			}
 		}
+
 		this.emit({
 			type: "anomalyRemoved",
 			anomalyId: entity.id,
@@ -1886,11 +2227,13 @@ export class Match {
 
 	explode(entity: AnomalyEntity, exposed: MatchPlayer[]): void {
 		const killed: string[] = [];
+
 		for (const player of exposed) {
 			if (this.applyDamage(player, HEALTH_MAX, "explosion", entity.center())) {
 				killed.push(player.id);
 			}
 		}
+
 		this.emit({
 			type: "explosion",
 			anomalyId: entity.id,
@@ -1898,6 +2241,7 @@ export class Match {
 			radius: 5,
 			killed,
 		});
+
 		this.removeAnomaly(entity, "exploded");
 	}
 
@@ -1905,6 +2249,7 @@ export class Match {
 		player.carriedBy = entity.id;
 		player.casting = null;
 		player.lanternOpen = false;
+
 		this.emit({
 			type: "carry",
 			anomalyId: entity.id,
@@ -1919,17 +2264,23 @@ export class Match {
 			y: entity.position.y + 0.2,
 			z: entity.position.z,
 		};
+
 		player.history.push({ t: this.now, ...player.position, yaw: entity.yaw });
 	}
 
 	dropCarried(player: MatchPlayer, entity: AnomalyEntity): void {
 		const node = this.grid.nearestNode(entity.position, 4);
+
 		const position =
 			node === null ? { ...entity.position } : this.grid.nodePosition(node);
+
 		player.carriedBy = -1;
+
 		this.forcedMove(player, "drop", position, entity.yaw + Math.PI, 300);
+
 		player.roomId = this.roomIdAt(position);
 		player.protectedUntil = Math.max(player.protectedUntil, this.now + 1200);
+
 		this.emit({
 			type: "carry",
 			anomalyId: entity.id,
@@ -1940,6 +2291,7 @@ export class Match {
 
 	playerLoaded(playerId: string): void {
 		const player = this.players.get(playerId);
+
 		if (player) {
 			player.loaded = true;
 		}
@@ -1947,19 +2299,25 @@ export class Match {
 
 	playerDisconnected(playerId: string): void {
 		const player = this.players.get(playerId);
+
 		if (!player) {
 			return;
 		}
+
 		player.connected = false;
 		player.disconnectedAt = this.now;
 		player.casting = null;
+
 		this.tutorialDirector?.removeDummy();
 		this.walkies.release(this, player);
 		this.cameras.release(this, player);
+
 		if (player.hidden) {
 			this.unhidePlayer(player, "unhide");
 		}
+
 		const anyone = [...this.players.values()].some((other) => other.connected);
+
 		if (!anyone && this.phase === "playing") {
 			this.abort("all-disconnected");
 		}
@@ -1967,13 +2325,17 @@ export class Match {
 
 	playerReconnected(playerId: string): void {
 		const player = this.players.get(playerId);
+
 		if (!player) {
 			return;
 		}
+
 		player.connected = true;
 		player.disconnectedAt = null;
 		player.lastSeq = -1;
+
 		this.transport.toPlayer(playerId, "game:init", this.initPayload());
+
 		if (this.phase === "playing") {
 			this.transport.toPlayer(playerId, "game:begin", {
 				matchId: this.id,
@@ -1982,13 +2344,16 @@ export class Match {
 				endsAt: this.endsAt,
 			});
 		}
+
 		this.transport.toPlayer(playerId, "game:events", {
 			t: this.now,
 			events: this.currentStateEvents(),
 		});
+
 		this.sendInventory(player);
 		this.possessed?.sendRole(this, player);
 		this.challengesSent.delete(playerId);
+
 		if (player.alive) {
 			this.forcedMove(player, "spawn", player.position, player.yaw, 0);
 		}
@@ -1996,9 +2361,11 @@ export class Match {
 
 	currentStateEvents(): GameEvent[] {
 		const events: GameEvent[] = [];
+
 		for (const [id, material] of this.loot.respawned) {
 			events.push({ type: "pickupBack", id, material });
 		}
+
 		for (const id of this.loot.returnsAt.keys()) {
 			events.push({
 				type: "pickup",
@@ -2007,6 +2374,7 @@ export class Match {
 				material: this.loot.materialOf(this, id),
 			});
 		}
+
 		for (const door of this.doors.doors) {
 			if (door) {
 				events.push({
@@ -2017,6 +2385,7 @@ export class Match {
 				});
 			}
 		}
+
 		this.valves.valves.forEach((valve, valveId) => {
 			if (valve.cooldownUntil > this.now) {
 				events.push({
@@ -2027,6 +2396,7 @@ export class Match {
 				});
 			}
 		});
+
 		events.push(
 			...this.walkies.stateEvents(),
 			...this.cameras.stateEvents(),
@@ -2035,6 +2405,7 @@ export class Match {
 			...this.bounty.stateEvents(),
 			...(this.possessed?.stateEvents(this.now) ?? []),
 		);
+
 		for (const puddle of this.hazards.puddles) {
 			events.push({
 				type: "puddle",
@@ -2046,6 +2417,7 @@ export class Match {
 				expiresAt: puddle.expiresAt,
 			});
 		}
+
 		return events;
 	}
 
@@ -2053,9 +2425,12 @@ export class Match {
 		if (this.phase === "ended") {
 			return;
 		}
+
 		this.phase = "ended";
+
 		this.stop();
 		this.tutorialDirector?.removeDummy();
+
 		const entries = [...this.players.values()]
 			.map((player) => ({
 				playerId: player.id,
@@ -2069,15 +2444,18 @@ export class Match {
 				team: player.team,
 			}))
 			.sort((a, b) => b.score - a.score || a.deaths - b.deaths);
+
 		const teams =
 			this.config.teamCount > 0 && !this.possessed
 				? teamStandings(entries)
 				: [];
+
 		const possessed = this.possessed?.outcome() ?? null;
 		const top = entries[0];
 		const tie = entries.length > 1 && entries[1].score === top?.score;
 		const topTeam = teams[0];
 		const teamTie = teams.length > 1 && teams[1].score === topTeam?.score;
+
 		const results: MatchResults = {
 			matchId: this.id,
 			entries,
@@ -2098,7 +2476,9 @@ export class Match {
 			challenges: this.challenges,
 			possessed,
 		};
+
 		results.metrics = this.finalChallengeMetrics(results);
+
 		this.transport.broadcast("game:end", results);
 		this.onFinished(results);
 	}
@@ -2107,7 +2487,9 @@ export class Match {
 		if (this.phase === "ended") {
 			return;
 		}
+
 		this.phase = "ended";
+
 		this.stop();
 		this.transport.broadcast("game:aborted", { reason });
 		this.onFinished(null);

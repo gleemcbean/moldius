@@ -29,6 +29,7 @@ export function StatsSettings() {
 	const labels = t.party.stats;
 	const stats = useStore(settingsStore, (state) => state.stats, shallowEqual);
 	const preset = matchingStatsPreset(stats);
+
 	return (
 		<div>
 			<h3 className={styles.section}>{labels.section}</h3>

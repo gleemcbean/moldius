@@ -16,6 +16,7 @@ export function createCameraModel(
 ): CameraModel {
 	const rig = kit.rig("tools/camera");
 	const screen = rig.mesh("screen");
+
 	screen.material = screenTexture
 		? new THREE.MeshBasicMaterial({ map: screenTexture, toneMapped: false })
 		: new THREE.MeshStandardMaterial({
@@ -23,10 +24,13 @@ export function createCameraModel(
 				roughness: 0.2,
 				metalness: 0.4,
 			});
+
 	const flash = rig.mesh("flash") as THREE.Mesh<
 		THREE.BufferGeometry,
 		THREE.MeshBasicMaterial
 	>;
+
 	flash.material = new THREE.MeshBasicMaterial({ color: 0xd8dde4 });
+
 	return { root: rig.root, screen, flash };
 }

@@ -6,6 +6,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function fromEnvFile(name) {
 	const envFile = join(root, "..", ".env");
+
 	if (!existsSync(envFile)) {
 		return null;
 	}
@@ -26,6 +27,7 @@ const raw =
 	process.env.MOLDIUS_URL ||
 	fromEnvFile("PUBLIC_URL") ||
 	"http://localhost:5173";
+
 let url;
 
 try {
@@ -46,6 +48,7 @@ if (
 
 const discordApplicationId =
 	process.env.MOLDIUS_DISCORD_APP_ID || fromEnvFile("DISCORD_CLIENT_ID") || "";
+
 if (discordApplicationId && !/^[0-9]{5,25}$/.test(discordApplicationId)) {
 	console.error("Identifiant d'application Discord invalide.");
 	process.exit(1);
@@ -57,10 +60,13 @@ writeFileSync(
 );
 
 const bridge = join(root, "discord-bridge", "dist");
+
 mkdirSync(bridge, { recursive: true });
+
 const bridgeBuilt = ["moldius-discord.exe", "moldius-discord"].some((name) =>
 	existsSync(join(bridge, name)),
 );
+
 if (discordApplicationId && !bridgeBuilt) {
 	console.warn(
 		"Pont Discord absent (discord-bridge/dist) : amis et présence Discord désactivés. Voir npm run bridge:build.",

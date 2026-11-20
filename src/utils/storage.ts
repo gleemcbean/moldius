@@ -1,6 +1,7 @@
 export function readJson<T>(key: string): T | null {
 	try {
 		const raw = window.localStorage.getItem(key);
+
 		return raw ? (JSON.parse(raw) as T) : null;
 	} catch {
 		return null;

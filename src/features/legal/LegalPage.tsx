@@ -6,12 +6,15 @@ import { legalContent } from "./legalContent";
 export function LegalPage({ document }: { document: LegalDocument }) {
 	const preferred = useLanguage();
 	const params = new URLSearchParams(window.location.search);
+
 	const lang: LegalLanguage =
 		params.get("lang") === "en" || params.get("lang") === "fr"
 			? (params.get("lang") as LegalLanguage)
 			: preferred;
+
 	const copy = legalContent[document][lang];
 	const other: LegalDocument = document === "terms" ? "privacy" : "terms";
+
 	const link = (doc: LegalDocument, language = lang) =>
 		`/${doc}?lang=${language}`;
 

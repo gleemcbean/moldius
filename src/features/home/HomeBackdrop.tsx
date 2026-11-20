@@ -11,14 +11,18 @@ export function HomeBackdrop() {
 	const color = useStore(settingsStore, (state) => state.playerColor);
 	const pattern = useStore(settingsStore, (state) => state.playerPattern);
 	const lantern = useStore(settingsStore, (state) => state.playerLantern);
+
 	useEffect(() => {
 		const element = host.current;
+
 		if (!element) {
 			return;
 		}
+
 		const release = holdBoot();
 		let cancelled = false;
 		const settings = settingsStore.get();
+
 		HomeScene.create(
 			element,
 			settings.playerColor,
@@ -28,30 +32,41 @@ export function HomeBackdrop() {
 			.then((created) => {
 				if (cancelled) {
 					created.dispose();
+
 					return;
 				}
+
 				scene.current = created;
+
 				const current = settingsStore.get();
+
 				created.setAppearance(
 					current.playerColor,
 					current.playerPattern,
 					current.playerLantern,
 				);
+
 				created.onFirstFrame = release;
 			})
 			.catch(() => {
 				scene.current = null;
+
 				release();
 			});
+
 		return () => {
 			cancelled = true;
+
 			release();
 			scene.current?.dispose();
+
 			scene.current = null;
 		};
 	}, []);
+
 	useEffect(() => {
 		scene.current?.setAppearance(color, pattern, lantern);
 	}, [color, pattern, lantern]);
+
 	return <div ref={host} className={styles.backdrop} aria-hidden="true" />;
 }

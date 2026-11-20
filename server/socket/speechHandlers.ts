@@ -27,26 +27,33 @@ export function registerSpeechHandlers(
 
 	socket.on("speech:prepare", async (payload, ack) => {
 		const language = parseSpeechLanguage(payload);
+
 		if (typeof ack !== "function") {
 			return;
 		}
+
 		if (!language || !session() || !allow("speech:prepare")) {
 			ack("unavailable");
+
 			return;
 		}
+
 		ack(await speech.prepare(language));
 	});
 
 	socket.on("speech:start", (payload) => {
 		const request = parseSpeechStart(payload);
+
 		if (!request) {
 			return;
 		}
+
 		const refused = !session()
 			? "no-session"
 			: !allow("speech:start")
 				? "rate-limited"
 				: speech.start(client, request);
+
 		if (refused) {
 			client.reply({ id: request.id, event: "error", error: refused });
 		}
@@ -54,6 +61,7 @@ export function registerSpeechHandlers(
 
 	socket.on("speech:audio", (payload) => {
 		const audio = parseSpeechAudio(payload);
+
 		if (audio) {
 			speech.audio(
 				client,
@@ -65,6 +73,7 @@ export function registerSpeechHandlers(
 
 	socket.on("speech:end", (payload) => {
 		const id = parseSpeechId(payload);
+
 		if (id) {
 			speech.end(client, id);
 		}
@@ -72,6 +81,7 @@ export function registerSpeechHandlers(
 
 	socket.on("speech:cancel", (payload) => {
 		const id = parseSpeechId(payload);
+
 		if (id) {
 			speech.cancel(client, id);
 		}

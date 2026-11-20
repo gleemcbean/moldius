@@ -14,6 +14,7 @@ export function Field({
 	children: ReactNode;
 }) {
 	const labelId = useId();
+
 	return (
 		<fieldset className={styles.field} aria-labelledby={labelId}>
 			<span id={labelId} className={styles.fieldLabel}>
@@ -48,6 +49,7 @@ export function Slider({
 }: SliderProps) {
 	const labelledBy = useContext(FieldLabel);
 	const percent = ((value - min) / (max - min)) * 100;
+
 	return (
 		<span className={styles.slider}>
 			<input
@@ -82,6 +84,7 @@ export function Toggle({
 }) {
 	const t = useT();
 	const labelledBy = useContext(FieldLabel);
+
 	return (
 		<button
 			type="button"
@@ -121,6 +124,7 @@ export function Segmented<T extends string | number>({
 	tabs?: boolean;
 }) {
 	const labelledBy = useContext(FieldLabel);
+
 	return (
 		<span
 			className={styles.segmented}
@@ -168,6 +172,7 @@ export function Meter({
 	label?: string;
 }) {
 	const percent = Math.max(0, Math.min(100, (value / max) * 100));
+
 	return (
 		<span
 			className={[styles.meter, METER_TONES[tone]].join(" ")}

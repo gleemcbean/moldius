@@ -21,6 +21,7 @@ function pips(value: number, scale: number): number {
 	if (value <= 0) {
 		return 0;
 	}
+
 	return Math.max(
 		1,
 		Math.min(PIP_COUNT, Math.round((value / scale) * PIP_COUNT)),
@@ -31,6 +32,7 @@ function damageLabel(species: SpeciesDefinition, t: Messages): string {
 	if (species.damage <= 0) {
 		return t.bestiary.noDamage;
 	}
+
 	return species.damage >= LETHAL_DAMAGE
 		? t.bestiary.lethal
 		: String(species.damage);
@@ -57,6 +59,7 @@ function Gauge({ label, filled }: { label: string; filled: number }) {
 export function BestiaryModal({ onClose }: { onClose: () => void }) {
 	const t = useT();
 	const language = useLanguage();
+
 	const ordered = useMemo(
 		() =>
 			[...ENABLED_SPECIES_IDS].sort((a, b) =>
@@ -68,15 +71,18 @@ export function BestiaryModal({ onClose }: { onClose: () => void }) {
 			),
 		[t, language],
 	);
+
 	const [selected, setSelected] = useState<SpeciesId>(() => ordered[0]);
 	const [art, setArt] = useState<BestiaryArt | null>(null);
 	const page = useRef<HTMLElement>(null);
 
 	useEffect(() => {
 		let alive = true;
+
 		loadBestiaryArt()
 			.then((drawn) => alive && setArt(drawn))
 			.catch(() => {});
+
 		return () => {
 			alive = false;
 		};
@@ -89,6 +95,7 @@ export function BestiaryModal({ onClose }: { onClose: () => void }) {
 	const species = SPECIES[selected];
 	const text = t.grimoire.species[selected];
 	const illustration = art?.get(selected);
+
 	const tags = [
 		species.hostile ? t.bestiary.hostile : t.bestiary.peaceful,
 		species.flying ? t.bestiary.flying : null,
@@ -101,6 +108,7 @@ export function BestiaryModal({ onClose }: { onClose: () => void }) {
 				<nav className={styles.index} aria-label={t.bestiary.index}>
 					{ordered.map((id) => {
 						const thumbnail = art?.get(id);
+
 						return (
 							<button
 								key={id}

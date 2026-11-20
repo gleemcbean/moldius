@@ -30,6 +30,7 @@ const room = layout.rooms[0];
 function catalogued(kind: string): boolean {
 	try {
 		furnitureDefinition(kind);
+
 		return true;
 	} catch {
 		return false;
@@ -41,6 +42,7 @@ const kinds = Object.keys(FURNITURE_BUILDERS).filter(catalogued);
 describe("modèles de meubles", () => {
 	it.each(kinds)("%s ne produit que des sommets finis", (kind) => {
 		const definition = furnitureDefinition(kind);
+
 		for (const [variantIndex, variant] of definition.variants.entries()) {
 			for (const seed of [3, 11, 29]) {
 				const item: FurnitureItem = {
@@ -62,18 +64,23 @@ describe("modèles de meubles", () => {
 					parentId: null,
 					seed,
 				};
+
 				const parts = FURNITURE_BUILDERS[kind]({
 					item,
 					room,
 					rng: new SeededRandom(seed),
 				});
+
 				expect(parts.length).toBeGreaterThan(0);
+
 				parts.forEach((piece, index) => {
 					const position = piece.geometry.getAttribute("position");
 					let finite = true;
+
 					for (let value = 0; value < position.array.length; value += 1) {
 						finite &&= Number.isFinite(position.array[value]);
 					}
+
 					expect(
 						finite,
 						`${kind} variante ${variantIndex} pièce ${index}`,

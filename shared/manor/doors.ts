@@ -21,24 +21,32 @@ export function doorGeometry(opening: Opening): DoorGeometry {
 		x: (opening.end.x - opening.start.x) / opening.width,
 		z: (opening.end.z - opening.start.z) / opening.width,
 	};
+
 	const halfDepth = opening.depth / 2;
+
 	const middle = {
 		x: (opening.start.x + opening.end.x) / 2 + opening.normal.x * halfDepth,
 		z: (opening.start.z + opening.end.z) / 2 + opening.normal.z * halfDepth,
 	};
+
 	const door = opening.door as DoorSpec;
 	const panelLength = opening.width - DOOR_FRAME_WIDTH * 2 - DOOR_CLEARANCE * 2;
 	const hingeSign = door.hingeAtStart ? -1 : 1;
+
 	const hinge = {
 		x: middle.x + along.x * hingeSign * (panelLength / 2),
 		z: middle.z + along.z * hingeSign * (panelLength / 2),
 	};
+
 	const towardFree = { x: -along.x * hingeSign, z: -along.z * hingeSign };
 	const closedAngle = Math.atan2(towardFree.z, towardFree.x);
+
 	const swingNormal = door.swingIntoA
 		? { x: -opening.normal.x, z: -opening.normal.z }
 		: opening.normal;
+
 	const openAngle = Math.atan2(swingNormal.z, swingNormal.x);
+
 	return {
 		hinge,
 		closedAngle,
@@ -57,6 +65,7 @@ export function doorPanelBox(
 ): OrientedBox {
 	const direction = { x: Math.cos(angle), z: Math.sin(angle) };
 	const half = geometry.panelLength / 2;
+
 	return {
 		cx: geometry.hinge.x + direction.x * half,
 		cz: geometry.hinge.z + direction.z * half,

@@ -20,18 +20,24 @@ function rug(
 			const fieldColor = hexToRgb(field);
 			const borderColor = hexToRgb(border);
 			const accentColor = hexToRgb(accent);
+
 			p.clear();
+
 			for (let y = 0; y < 64; y += 1) {
 				for (let x = 0; x < 48; x += 1) {
 					const nx = (x - 23.5) / 24;
 					const ny = (y - 31.5) / 32;
+
 					if (round && nx * nx + ny * ny > 1) {
 						continue;
 					}
+
 					const edge = round
 						? 1 - Math.sqrt(nx * nx + ny * ny)
 						: Math.min(x, y, 47 - x, 63 - y) / 24;
+
 					let color = fieldColor;
+
 					if (edge < 0.12) {
 						color = borderColor;
 					} else if (edge < 0.16) {
@@ -39,12 +45,15 @@ function rug(
 					} else if (edge < 0.24) {
 						color = (x + y) % 4 < 2 ? shade(borderColor, 1.2) : borderColor;
 					}
+
 					const diamond = Math.abs(x - 23.5) / 12 + Math.abs(y - 31.5) / 16;
+
 					if (diamond < 1 && diamond > 0.8) {
 						color = accentColor;
 					} else if (diamond < 0.35) {
 						color = shade(accentColor, 0.85);
 					}
+
 					p.setRaw(x, y, shade(color, 0.92 + p.rng.next() * 0.14), 255);
 				}
 			}
@@ -78,18 +87,24 @@ function glyphCircle(
 ): (p: PixelPainter) => void {
 	return (p) => {
 		p.clear();
+
 		const center = size / 2 - 0.5;
+
 		for (let ring = 0; ring < ringCount; ring += 1) {
 			const radius = center - 2 - ring * (size / 9);
+
 			p.circle(center, center, radius, color, 230, false);
 			p.circle(center, center, radius - 1, color, 150, false);
+
 			const marks = 10 + ring * 6;
+
 			for (let index = 0; index < marks; index += 1) {
 				const angle = (index / marks) * Math.PI * 2 + ring * 0.3;
 				const inner = radius - size / 18;
 				const x = center + (Math.cos(angle) * (radius + inner)) / 2;
 				const y = center + (Math.sin(angle) * (radius + inner)) / 2;
 				const glyph = p.rng.int(0, 3);
+
 				if (glyph === 0) {
 					p.line(
 						Math.round(x - 1),
@@ -107,11 +122,14 @@ function glyphCircle(
 				}
 			}
 		}
+
 		const points = 5;
 		const radius = center - 2 - (ringCount - 1) * (size / 9) - size / 14;
+
 		for (let index = 0; index < points; index += 1) {
 			const a = (index / points) * Math.PI * 2 - Math.PI / 2;
 			const b = ((index + 2) / points) * Math.PI * 2 - Math.PI / 2;
+
 			p.line(
 				Math.round(center + Math.cos(a) * radius),
 				Math.round(center + Math.sin(a) * radius),
@@ -132,10 +150,13 @@ export const DECOR_TEXTURES: Record<string, TextureRecipe> = {
 	rugRunner: rug(0x5c1a1e, 0x2a1a12, 0xb8913c, false),
 	paintingLandscape: painting((p) => {
 		gradientSky(p, 0x2a3a5a, 0xa57a4a);
+
 		for (let x = 0; x < 32; x += 1) {
 			const hill = 26 + Math.round(Math.sin(x * 0.3) * 3);
+
 			p.rect(x, hill, 1, 40 - hill, hexToRgb(0x2a3a1e));
 		}
+
 		p.circle(22, 12, 3, hexToRgb(0xe9d48a));
 		p.rect(8, 18, 3, 9, hexToRgb(0x1e1a14));
 		p.rect(6, 15, 7, 4, hexToRgb(0x223018));
@@ -175,6 +196,7 @@ export const DECOR_TEXTURES: Record<string, TextureRecipe> = {
 	}),
 	paintingAbstract: painting((p) => {
 		gradientSky(p, 0x40284a, 0x182030);
+
 		for (let index = 0; index < 6; index += 1) {
 			p.circle(
 				p.rng.int(6, 26),
@@ -192,6 +214,7 @@ export const DECOR_TEXTURES: Record<string, TextureRecipe> = {
 			p.fill(hexToRgb(0x3a1a22));
 			p.frame(0, 0, 32, 48, hexToRgb(0xb8913c), 2);
 			glyphCircle(32, hexToRgb(0xc9a24a), 2)(p);
+
 			for (let y = 0; y < 48; y += 1) {
 				for (let x = 0; x < 32; x += 1) {
 					if (p.get(x, y)[0] === 0 && p.get(x, y)[1] === 0) {
@@ -204,8 +227,10 @@ export const DECOR_TEXTURES: Record<string, TextureRecipe> = {
 					}
 				}
 			}
+
 			p.frame(0, 0, 32, 48, hexToRgb(0xb8913c), 2);
 			p.rect(0, 44, 32, 4, hexToRgb(0x2a1218));
+
 			for (let x = 1; x < 32; x += 3) {
 				p.rect(x, 46, 1, 2, hexToRgb(0xb8913c));
 			}
@@ -226,17 +251,22 @@ export const DECOR_TEXTURES: Record<string, TextureRecipe> = {
 		tile: 1,
 		draw: (p) => {
 			const turquoise = hexToRgb(0x2ee6d6);
+
 			glyphCircle(128, turquoise, 2)(p);
+
 			const tips = Array.from({ length: 5 }, (_, index) => {
 				const angle = (index / 5) * Math.PI * 2 - Math.PI / 2;
+
 				return [
 					Math.round(63.5 + Math.cos(angle) * 44),
 					Math.round(63.5 + Math.sin(angle) * 44),
 				];
 			});
+
 			for (let index = 0; index < 5; index += 1) {
 				const [x0, y0] = tips[index];
 				const [x1, y1] = tips[(index + 2) % 5];
+
 				p.line(x0, y0, x1, y1, turquoise, 240);
 				p.line(x0 + 1, y0, x1 + 1, y1, turquoise, 200);
 			}
@@ -247,8 +277,10 @@ export const DECOR_TEXTURES: Record<string, TextureRecipe> = {
 		tile: 1,
 		draw: (p) => {
 			p.clear();
+
 			const dark = hexToRgb(0x4a0606);
 			const fresh = hexToRgb(0x7c0e0e);
+
 			for (let index = 0; index < 7; index += 1) {
 				p.circle(
 					32 + p.rng.range(-9, 9),
@@ -258,9 +290,11 @@ export const DECOR_TEXTURES: Record<string, TextureRecipe> = {
 					235,
 				);
 			}
+
 			for (let index = 0; index < 18; index += 1) {
 				const angle = p.rng.range(0, Math.PI * 2);
 				const distance = p.rng.range(16, 30);
+
 				p.circle(
 					32 + Math.cos(angle) * distance,
 					32 + Math.sin(angle) * distance,
@@ -276,18 +310,23 @@ export const DECOR_TEXTURES: Record<string, TextureRecipe> = {
 		tile: 1,
 		draw: (p) => {
 			p.clear();
+
 			const dark = hexToRgb(0x520808);
 			const fresh = hexToRgb(0x861212);
+
 			for (let x = 6; x < 58; x += 1) {
 				const thickness = 5 + Math.sin(x * 0.21) * 2 + (58 - x) * 0.08;
 				const y = 32 + Math.sin(x * 0.09) * 6;
+
 				for (let dy = -thickness; dy <= thickness; dy += 1) {
 					if (p.rng.next() < 0.85 - Math.abs(dy) / (thickness * 2.2)) {
 						p.set(x, y + dy, x % 5 === 0 ? dark : fresh, 225);
 					}
 				}
 			}
+
 			p.circle(10, 32, 9, dark, 235);
+
 			for (let index = 0; index < 10; index += 1) {
 				p.circle(
 					p.rng.range(4, 60),
@@ -305,7 +344,9 @@ export const DECOR_TEXTURES: Record<string, TextureRecipe> = {
 		draw: (p) => {
 			p.fill(hexToRgb(0x1d4743));
 			p.noise(0.18, 2);
+
 			const ripple = hexToRgb(0x4f8f86);
+
 			for (let index = 0; index < 14; index += 1) {
 				p.circle(
 					p.rng.int(0, 63),
@@ -316,6 +357,7 @@ export const DECOR_TEXTURES: Record<string, TextureRecipe> = {
 					false,
 				);
 			}
+
 			p.speckle(30, hexToRgb(0xa9d6cc), 90);
 		},
 	},

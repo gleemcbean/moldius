@@ -6,5 +6,6 @@ startServer()
 	})
 	.catch((error: unknown) => {
 		console.error("Échec du démarrage du serveur", error);
+
 		process.exitCode = 1;
 	});

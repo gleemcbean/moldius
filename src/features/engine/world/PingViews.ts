@@ -10,8 +10,10 @@ const COLOR_DIMMING = 0.62;
 
 function dimmed(color: string): string {
 	const value = Number.parseInt(color.slice(1), 16);
+
 	const channel = (shift: number) =>
 		Math.round(((value >> shift) & 0xff) * COLOR_DIMMING);
+
 	return `rgb(${channel(16)}, ${channel(8)}, ${channel(0)})`;
 }
 
@@ -47,6 +49,7 @@ export function createPingMaterial(
 function easeOutBack(t: number): number {
 	const c = 1.9;
 	const x = t - 1;
+
 	return 1 + (c + 1) * x * x * x + c * x * x;
 }
 
@@ -63,12 +66,16 @@ export class PingViews {
 		describe: (ping: PingClientState) => PingLook,
 	): void {
 		this.time += dt;
+
 		const seen = new Set<number>();
 		const height = SCREEN_SHARE * 2 * Math.tan((fov * Math.PI) / 360);
+
 		for (const ping of pings) {
 			seen.add(ping.id);
+
 			const view = this.views.get(ping.id) ?? this.create(ping);
 			const look = describe(ping);
+
 			if (
 				!view.look ||
 				view.look.label !== look.label ||
@@ -77,19 +84,24 @@ export class PingViews {
 			) {
 				this.draw(view, look);
 			}
+
 			const age = Math.max(0, (serverNow - view.createdAt) / 1000);
 			const remaining = Math.max(0, (view.expiresAt - serverNow) / 1000);
 			const pop = age < 0.3 ? easeOutBack(age / 0.3) : 1;
 			const scale = height * Math.max(0.05, pop);
+
 			view.sprite.scale.set(scale * 2, scale, 1);
+
 			view.sprite.position.set(
 				ping.x,
 				ping.y + LIFT + Math.sin(this.time * 2.2 + ping.id) * 0.035,
 				ping.z,
 			);
+
 			view.material.opacity =
 				MAX_OPACITY * Math.min(1, age / 0.12, remaining / 0.9);
 		}
+
 		for (const [id, view] of this.views) {
 			if (!seen.has(id)) {
 				this.remove(id, view);
@@ -110,16 +122,23 @@ export class PingViews {
 
 	private create(ping: PingClientState): PingView {
 		const canvas = document.createElement("canvas");
+
 		canvas.width = CANVAS_WIDTH;
 		canvas.height = CANVAS_HEIGHT;
+
 		const context = canvas.getContext("2d") as CanvasRenderingContext2D;
 		const texture = new THREE.CanvasTexture(canvas);
+
 		texture.colorSpace = THREE.SRGBColorSpace;
+
 		const material = createPingMaterial(texture);
 		const sprite = new THREE.Sprite(material);
+
 		sprite.renderOrder = 999;
 		sprite.frustumCulled = false;
+
 		this.group.add(sprite);
+
 		const view: PingView = {
 			sprite,
 			material,
@@ -129,45 +148,63 @@ export class PingViews {
 			createdAt: ping.createdAt,
 			expiresAt: ping.expiresAt,
 		};
+
 		this.views.set(ping.id, view);
+
 		return view;
 	}
 
 	private draw(view: PingView, look: PingLook): void {
 		view.look = look;
+
 		const context = view.context;
 		const middle = CANVAS_WIDTH / 2;
+
 		context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
 		context.textAlign = "center";
 		context.textBaseline = "middle";
 		context.lineJoin = "round";
+
 		const color = dimmed(look.color);
+
 		context.beginPath();
 		context.moveTo(middle, 46);
 		context.lineTo(middle + 15, 64);
 		context.lineTo(middle, 82);
 		context.lineTo(middle - 15, 64);
 		context.closePath();
+
 		context.fillStyle = color;
+
 		context.fill();
+
 		context.strokeStyle = "rgba(0, 0, 0, 0.9)";
 		context.lineWidth = 4;
+
 		context.stroke();
+
 		const text = (value: string, y: number, font: string, color: string) => {
 			context.font = font;
 			context.strokeStyle = "rgba(0, 0, 0, 0.9)";
 			context.lineWidth = 6;
+
 			context.strokeText(value, middle, y);
+
 			context.fillStyle = color;
+
 			context.fillText(value, middle, y);
 		};
+
 		text(look.label, 22, '700 30px "Barlow Condensed", sans-serif', color);
+
 		text(
 			look.detail,
 			108,
 			'600 24px "Barlow Condensed", sans-serif',
 			"#bfc2b4",
 		);
+
 		view.texture.needsUpdate = true;
 	}
 

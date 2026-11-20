@@ -52,10 +52,13 @@ function glOrder(width: number, height: number, data: Uint8Array): PixelData {
 
 async function clean(directory: string): Promise<void> {
 	await mkdir(directory, { recursive: true });
+
 	for (const entry of await readdir(directory)) {
 		const target = path.join(directory, entry);
+
 		if ((await stat(target)).isDirectory()) {
 			await clean(target);
+
 			if ((await readdir(target)).length === 0) {
 				await rmdir(target);
 			}
@@ -69,16 +72,21 @@ async function main(): Promise<void> {
 	const outDir = path.resolve(
 		process.argv[2] ?? path.join(root, "src/assets/textures"),
 	);
+
 	await clean(outDir);
+
 	const overlap = Object.keys(PIXEL_RECIPES).filter(
 		(key) => key in FINE_RECIPES || key in SPECIAL_TEXTURES,
 	);
+
 	if (overlap.length > 0) {
 		throw new Error(`Textures en double : ${overlap.join(", ")}`);
 	}
+
 	let files = 0;
 	let bytes = 0;
 	const counts = new Map<TextureCategory, number>();
+
 	const write = async (
 		key: string,
 		map: TextureMap,
@@ -87,18 +95,28 @@ async function main(): Promise<void> {
 	) => {
 		const category = textureCategory(key);
 		const file = path.join(outDir, textureFile(category, key, map, low));
+
 		await mkdir(path.dirname(file), { recursive: true });
+
 		const png = encodePng(pixels);
+
 		await writeFile(file, png);
+
 		files += 1;
 		bytes += png.byteLength;
+
 		counts.set(category, (counts.get(category) ?? 0) + 1);
 	};
+
 	const surfaces: Record<string, PixelEntry | FineEntry> = {};
+
 	for (const [key, recipe] of Object.entries(PIXEL_RECIPES)) {
 		const albedo = paintPixelRecipe(key);
+
 		await write(key, "albedo", albedo);
+
 		const strength = pixelReliefStrength(key);
+
 		if (strength > 0) {
 			const normal = pixelNormals(
 				albedo.data,
@@ -106,8 +124,10 @@ async function main(): Promise<void> {
 				albedo.height,
 				strength,
 			);
+
 			await write(key, "normal", glOrder(albedo.width, albedo.height, normal));
 		}
+
 		surfaces[key] = {
 			category: textureCategory(key),
 			fine: false,
@@ -116,14 +136,17 @@ async function main(): Promise<void> {
 			normal: strength > 0,
 		};
 	}
+
 	for (const [key, recipe] of Object.entries(FINE_RECIPES)) {
 		for (const low of [false, true]) {
 			const baked = bakeRecipe(key, low ? LOW_DETAIL : 1);
 			const { width, height } = baked;
+
 			await write(key, "albedo", glOrder(width, height, baked.albedo), low);
 			await write(key, "normal", glOrder(width, height, baked.normal), low);
 			await write(key, "orm", glOrder(width, height, baked.orm), low);
 		}
+
 		surfaces[key] = {
 			category: textureCategory(key),
 			fine: true,
@@ -135,26 +158,36 @@ async function main(): Promise<void> {
 			parallax: recipe.parallax,
 		};
 	}
+
 	await mkdir(path.join(outDir, REFLECTION_DIR), { recursive: true });
+
 	for (const [index, face] of reflectionFaces().entries()) {
 		const png = encodePng(face);
+
 		await writeFile(path.join(outDir, REFLECTION_DIR, `${index}.png`), png);
+
 		files += 1;
 		bytes += png.byteLength;
 	}
+
 	const special: Record<string, { category: TextureCategory; color: boolean }> =
 		{};
+
 	for (const [key, { paint, color }] of Object.entries(SPECIAL_TEXTURES)) {
 		await write(key, "albedo", paint());
+
 		special[key] = { category: textureCategory(key), color };
 	}
+
 	await writeFile(
 		path.join(outDir, MANIFEST_FILE),
 		`${JSON.stringify({ lowDetail: LOW_DETAIL, surfaces, special }, null, "\t")}\n`,
 	);
+
 	console.log(
 		`${files} textures (${(bytes / 1e6).toFixed(1)} Mo) écrites dans ${path.relative(root, outDir) || "."}`,
 	);
+
 	console.log(
 		[...counts]
 			.sort(([a], [b]) => a.localeCompare(b))
@@ -165,5 +198,6 @@ async function main(): Promise<void> {
 
 main().catch((error: unknown) => {
 	console.error(error);
+
 	process.exitCode = 1;
 });

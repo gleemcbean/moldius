@@ -144,13 +144,17 @@ export class HighlightRecorder {
 			})),
 			anomalies: snapshot.anomalies,
 		});
+
 		const cutoff = snapshot.t - BUFFER_MS;
+
 		while (this.frames.length > 0 && this.frames[0].t < cutoff) {
 			this.frames.shift();
 		}
+
 		while (this.log.length > 0 && this.log[0].t < cutoff) {
 			this.log.shift();
 		}
+
 		this.scan(snapshot, match);
 		this.seal(snapshot.t);
 		this.announceWindows(snapshot.t);
@@ -163,8 +167,10 @@ export class HighlightRecorder {
 		) {
 			return;
 		}
+
 		this.windowsChanged = false;
 		this.windowsSentAt = now;
+
 		this.onWindows(
 			this.candidates.map((candidate) => ({
 				from: candidate.startT,
@@ -175,20 +181,26 @@ export class HighlightRecorder {
 
 	private scan(snapshot: WorldSnapshot, match: RecorderMatch): void {
 		const elapsed = 100;
+
 		for (const player of match.players.values()) {
 			const track = this.track(player.id);
+
 			const chaser = snapshot.anomalies.find(
 				(anomaly) =>
 					anomaly.target === player.id &&
 					CHASING.has(ANOMALY_STATES[anomaly.state] ?? ""),
 			);
+
 			const level = player.voiceLevelNow(snapshot.t);
+
 			if (chaser && player.alive) {
 				track.chaseMs += elapsed;
 				track.chaser = chaser.id;
+
 				if (level >= SCREAM_LEVEL) {
 					track.loudMs += elapsed;
 					track.peak = Math.max(track.peak, level);
+
 					if (track.loudMs >= SCREAM_MIN_MS) {
 						this.mark(match, {
 							kind: "scream",
@@ -212,11 +224,13 @@ export class HighlightRecorder {
 						score: 20 + Math.min(25, track.chaseMs / 800),
 					});
 				}
+
 				track.chaseMs = 0;
 				track.chaser = null;
 				track.loudMs = 0;
 				track.peak = 0;
 			}
+
 			this.scanDoubleChat(snapshot, match, player, track, level);
 		}
 	}
@@ -235,6 +249,7 @@ export class HighlightRecorder {
 		) {
 			return;
 		}
+
 		const double = snapshot.anomalies.find(
 			(anomaly) =>
 				anomaly.mimic !== null &&
@@ -245,13 +260,17 @@ export class HighlightRecorder {
 					anomaly.z - player.position.z,
 				) < DOUBLE_CHAT_RANGE,
 		);
+
 		if (!double) {
 			return;
 		}
+
 		track.doubleMs += 100;
+
 		if (track.doubleMs >= DOUBLE_CHAT_MIN_MS) {
 			track.doubleMs = 0;
 			track.doubleBlockedUntil = snapshot.t + 20_000;
+
 			this.mark(match, {
 				kind: "doubleChat",
 				playerId: player.id,
@@ -267,18 +286,23 @@ export class HighlightRecorder {
 		if (REPLAYED_EVENTS.has(event.type)) {
 			this.log.push({ t: match.now, event });
 		}
+
 		switch (event.type) {
 			case "push":
 				this.pushedBy.set(event.targetId, {
 					by: event.fromId,
 					at: match.now,
 				});
+
 				break;
+
 			case "death":
 				this.onDeath(event, match);
 				break;
+
 			case "explosion": {
 				const first = event.killed[0];
+
 				if (first) {
 					this.mark(match, {
 						kind: "explosion",
@@ -289,13 +313,17 @@ export class HighlightRecorder {
 						score: 45 + event.killed.length * 18,
 					});
 				}
+
 				break;
 			}
+
 			case "extractWarning": {
 				const player = match.players.get(event.playerId);
+
 				const radio =
 					player !== undefined &&
 					match.now - player.radioNoiseAt < RADIO_BETRAYAL_MS;
+
 				this.mark(match, {
 					kind: radio ? "radioBetrayal" : "extracted",
 					playerId: event.playerId,
@@ -303,8 +331,10 @@ export class HighlightRecorder {
 					species: this.speciesOf(event.anomalyId),
 					score: radio ? 82 : 58,
 				});
+
 				break;
 			}
+
 			case "carry":
 				if (event.active) {
 					this.mark(match, {
@@ -315,7 +345,9 @@ export class HighlightRecorder {
 						score: 40,
 					});
 				}
+
 				break;
+
 			case "thrown":
 				this.mark(match, {
 					kind: "thrown",
@@ -324,13 +356,17 @@ export class HighlightRecorder {
 					species: this.speciesOf(event.anomalyId),
 					score: 52,
 				});
+
 				break;
+
 			case "capture": {
 				const player = match.players.get(event.playerId);
 				const track = this.track(event.playerId);
+
 				const clutch =
 					(player !== undefined && player.health <= LOW_HEALTH) ||
 					(track.chaser !== null && track.chaser !== event.anomalyId);
+
 				this.mark(match, {
 					kind: clutch ? "clutch" : "capture",
 					playerId: event.playerId,
@@ -339,8 +375,10 @@ export class HighlightRecorder {
 					value: event.points,
 					score: clutch ? 68 : 16 + Math.min(14, event.points / 20),
 				});
+
 				break;
 			}
+
 			case "stake":
 				if (event.playerId && event.stake === "reliquary") {
 					this.mark(match, {
@@ -355,7 +393,9 @@ export class HighlightRecorder {
 						score: 28,
 					});
 				}
+
 				break;
+
 			default:
 				break;
 		}
@@ -366,18 +406,23 @@ export class HighlightRecorder {
 		match: RecorderMatch,
 	): void {
 		const track = this.track(event.playerId);
+
 		if (event.cause === "fall" || event.cause === "explosion") {
 			return;
 		}
+
 		if (event.cause === "pact") {
 			this.mark(match, {
 				kind: "pactDeath",
 				playerId: event.playerId,
 				score: 74,
 			});
+
 			return;
 		}
+
 		const push = this.pushedBy.get(event.playerId);
+
 		if (push && match.now - push.at < BETRAYAL_MS) {
 			this.mark(match, {
 				kind: "betrayed",
@@ -387,8 +432,10 @@ export class HighlightRecorder {
 				species: event.cause,
 				score: 88,
 			});
+
 			return;
 		}
+
 		this.mark(match, {
 			kind: "death",
 			playerId: event.playerId,
@@ -414,19 +461,25 @@ export class HighlightRecorder {
 
 	private mark(match: RecorderMatch, moment: MomentInput): void {
 		const now = match.now;
+
 		const close = this.candidates.find(
 			(other) =>
 				other.playerId === moment.playerId &&
 				Math.abs(other.focusT - now) < MERGE_MS,
 		);
+
 		if (close) {
 			if (close.score >= moment.score) {
 				return;
 			}
+
 			this.candidates.splice(this.candidates.indexOf(close), 1);
 		}
+
 		const startT = now - HIGHLIGHT_LEAD_MS;
+
 		this.windowsChanged = true;
+
 		this.candidates.push({
 			kind: moment.kind,
 			playerId: moment.playerId,
@@ -440,21 +493,26 @@ export class HighlightRecorder {
 			doorsOpen: this.openDoorsAt(startT, match),
 			clip: null,
 		});
+
 		if (this.candidates.length > MAX_CANDIDATES) {
 			const weakest = this.candidates.reduce((low, other) =>
 				other.score < low.score ? other : low,
 			);
+
 			this.candidates.splice(this.candidates.indexOf(weakest), 1);
 		}
 	}
 
 	private openDoorsAt(t: number, match: RecorderMatch): number[] {
 		const open = new Set(match.openDoors());
+
 		for (let index = this.log.length - 1; index >= 0; index -= 1) {
 			const entry = this.log[index];
+
 			if (entry.t <= t) {
 				break;
 			}
+
 			if (entry.event.type === "door") {
 				if (entry.event.open) {
 					open.delete(entry.event.doorId);
@@ -463,6 +521,7 @@ export class HighlightRecorder {
 				}
 			}
 		}
+
 		return [...open];
 	}
 
@@ -476,41 +535,51 @@ export class HighlightRecorder {
 
 	private cut(candidate: Candidate): Pick<Highlight, "frames" | "events"> {
 		const endT = candidate.focusT + HIGHLIGHT_TAIL_MS;
+
 		const frames = this.frames.filter(
 			(frame) => frame.t >= candidate.startT && frame.t <= endT,
 		);
+
 		const keptPlayers = new Set([candidate.playerId]);
 		const keptAnomalies = new Set<number>();
+
 		if (candidate.anomalyId !== null) {
 			keptAnomalies.add(candidate.anomalyId);
 		}
+
 		if (candidate.otherId) {
 			keptPlayers.add(candidate.otherId);
 		}
+
 		for (const frame of frames) {
 			const subject = frame.players.find(
 				(player) => player.id === candidate.playerId,
 			);
+
 			if (!subject) {
 				continue;
 			}
+
 			const near = (other: { x: number; y: number; z: number }) =>
 				Math.hypot(
 					other.x - subject.x,
 					other.y - subject.y,
 					other.z - subject.z,
 				) < NEARBY_RANGE;
+
 			for (const player of frame.players) {
 				if (near(player)) {
 					keptPlayers.add(player.id);
 				}
 			}
+
 			for (const anomaly of frame.anomalies) {
 				if (near(anomaly)) {
 					keptAnomalies.add(anomaly.id);
 				}
 			}
 		}
+
 		return {
 			frames: frames.map((frame) => ({
 				t: frame.t,
@@ -529,10 +598,13 @@ export class HighlightRecorder {
 		for (const candidate of this.candidates) {
 			candidate.clip ??= this.cut(candidate);
 		}
+
 		const usable = this.candidates.filter(
 			(candidate) => (candidate.clip?.frames.length ?? 0) > 5,
 		);
+
 		const chosen: Candidate[] = [];
+
 		while (chosen.length < HIGHLIGHT_COUNT && usable.length > 0) {
 			const adjusted = (candidate: Candidate) =>
 				candidate.score -
@@ -542,12 +614,15 @@ export class HighlightRecorder {
 					.length *
 					REPEAT_PENALTY) /
 					2;
+
 			const best = usable.reduce((top, other) =>
 				adjusted(other) > adjusted(top) ? other : top,
 			);
+
 			usable.splice(usable.indexOf(best), 1);
 			chosen.push(best);
 		}
+
 		return chosen.map((candidate) => ({
 			kind: candidate.kind,
 			playerId: candidate.playerId,
@@ -564,10 +639,13 @@ export class HighlightRecorder {
 
 	private track(playerId: string): PlayerTrack {
 		let track = this.tracks.get(playerId);
+
 		if (!track) {
 			track = newTrack();
+
 			this.tracks.set(playerId, track);
 		}
+
 		return track;
 	}
 }

@@ -66,9 +66,11 @@ export async function loadKeyboardLayout(): Promise<void> {
 			keyboard?: { getLayoutMap?: () => Promise<Map<string, string>> };
 		}
 	).keyboard;
+
 	if (!keyboard?.getLayoutMap) {
 		return;
 	}
+
 	try {
 		layoutMap = await keyboard.getLayoutMap();
 	} catch {
@@ -82,9 +84,11 @@ export function padActive(): boolean {
 
 export function activeBindings(): Record<ActionId, string> {
 	const { keys, padKeys } = settingsStore.get();
+
 	if (!padActive()) {
 		return keys;
 	}
+
 	return Object.fromEntries(
 		ACTION_IDS.map((action) => [
 			action,
@@ -105,33 +109,45 @@ export function confirmCode(): string {
 
 export function keyLabel(code: string): string {
 	const labels = currentMessages().settings.controls;
+
 	if (code === PAD_STICK_CODE) {
 		return labels.padStick;
 	}
+
 	const pad = parsePadCode(code);
+
 	if (pad) {
 		const glyph = buttonGlyph(pad.button);
+
 		const button = glyph
 			? glyphChar(glyph)
 			: (labels.padButtons[pad.button] ?? code);
+
 		return pad.hold ? labels.padHold(button) : button;
 	}
+
 	const named = labels.keys[code];
 	const mapped = layoutMap?.get(code);
+
 	if (mapped && mapped.trim().length > 0 && !named) {
 		return mapped.toUpperCase();
 	}
+
 	if (named) {
 		return named;
 	}
+
 	if (code.startsWith("Key")) {
 		return code.slice(3);
 	}
+
 	if (code.startsWith("Digit")) {
 		return code.slice(5);
 	}
+
 	if (code.startsWith("Numpad")) {
 		return labels.numpad(code.slice(6));
 	}
+
 	return code;
 }

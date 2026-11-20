@@ -159,6 +159,13 @@ export interface HudState {
 	voting: boolean;
 	stats: StatsHud | null;
 	pushCooldownMs: number;
+	infection: InfectionHud | null;
+	film: boolean;
+}
+
+export interface InfectionHud {
+	until: number;
+	compelled: boolean;
 }
 
 export interface DevCastEntry {
@@ -240,6 +247,8 @@ export function initialHud(): HudState {
 		voting: false,
 		stats: null,
 		pushCooldownMs: 0,
+		infection: null,
+		film: false,
 	};
 }
 
@@ -249,5 +258,6 @@ let feedbackCounter = 0;
 
 export function pushFeedback(text: string, tone: HudFeedback["tone"]): void {
 	feedbackCounter += 1;
+
 	hudStore.set({ feedback: { id: feedbackCounter, text, tone } });
 }

@@ -14,6 +14,7 @@ const PROFILE = meleeProfile(SPECIES.colosse, {
 			targetIsStrikeable(match, target) &&
 			inMeleeReach(match, entity, target, 0.45) &&
 			throwPlayer(match, entity, target);
+
 		match.emit({
 			type: "attack",
 			anomalyId: entity.id,

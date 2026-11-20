@@ -1,5 +1,5 @@
 {
-	"totalModels": 338,
+	"totalModels": 378,
 	"models": [
 		{
 			"path": "anomalies/archiviste.glb",
@@ -108,6 +108,43 @@
 			}
 		},
 		{
+			"path": "anomalies/cinematographe.glb",
+			"category": "anomalies",
+			"bytes": 404052,
+			"nodes": [
+				"body",
+				"chimney",
+				"crank",
+				"legMount_0",
+				"legMount_1",
+				"legMount_2",
+				"leg_0",
+				"leg_1",
+				"leg_2",
+				"lens",
+				"reel_0",
+				"reel_1",
+				"shin_0",
+				"shin_1",
+				"shin_2",
+				"sight_0",
+				"sight_1",
+				"snout"
+			],
+			"bbox": {
+				"min": [
+					-0.7774,
+					-0.02,
+					-0.8629
+				],
+				"max": [
+					0.7771,
+					2.246,
+					0.91
+				]
+			}
+		},
+		{
 			"path": "anomalies/collecteur.glb",
 			"category": "anomalies",
 			"bytes": 199196,
@@ -176,6 +213,55 @@
 					0.848,
 					2.56,
 					0.55
+				]
+			}
+		},
+		{
+			"path": "anomalies/cordyceps.glb",
+			"category": "anomalies",
+			"bytes": 645176,
+			"nodes": [
+				"antenna_0",
+				"antenna_1",
+				"body",
+				"club",
+				"flagellum_0",
+				"flagellum_1",
+				"gaster",
+				"head",
+				"hipMount_0",
+				"hipMount_1",
+				"hipMount_2",
+				"hipMount_3",
+				"hipMount_4",
+				"hipMount_5",
+				"hip_0",
+				"hip_1",
+				"hip_2",
+				"hip_3",
+				"hip_4",
+				"hip_5",
+				"knee_0",
+				"knee_1",
+				"knee_2",
+				"knee_3",
+				"knee_4",
+				"knee_5",
+				"mandible_0",
+				"mandible_1",
+				"neck",
+				"stalk"
+			],
+			"bbox": {
+				"min": [
+					-0.8332,
+					0.0004,
+					-1.1965
+				],
+				"max": [
+					0.8332,
+					2.0726,
+					1.14
 				]
 			}
 		},
@@ -1262,6 +1348,94 @@
 			}
 		},
 		{
+			"path": "furniture/bracketFungus_v1.glb",
+			"category": "furniture",
+			"bytes": 263696,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.2083,
+					0.066,
+					-0.2144
+				],
+				"max": [
+					0.2265,
+					0.3191,
+					0.2144
+				]
+			}
+		},
+		{
+			"path": "furniture/bracketFungus.glb",
+			"category": "furniture",
+			"bytes": 263688,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.3197,
+					0.0932,
+					-0.2573
+				],
+				"max": [
+					0.3513,
+					0.4576,
+					0.2573
+				]
+			}
+		},
+		{
+			"path": "furniture/brokenColumn_v1.glb",
+			"category": "furniture",
+			"bytes": 74096,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-1.0304,
+					-0.0715,
+					-0.3781
+				],
+				"max": [
+					1.0125,
+					0.6782,
+					0.4328
+				]
+			}
+		},
+		{
+			"path": "furniture/brokenColumn.glb",
+			"category": "furniture",
+			"bytes": 65508,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.3391,
+					-0.0653,
+					-0.3443
+				],
+				"max": [
+					0.5769,
+					1.6698,
+					0.3443
+				]
+			}
+		},
+		{
 			"path": "furniture/broom.glb",
 			"category": "furniture",
 			"bytes": 7700,
@@ -2119,6 +2293,50 @@
 			}
 		},
 		{
+			"path": "furniture/crystalCluster_v1.glb",
+			"category": "furniture",
+			"bytes": 69772,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.2701,
+					-0.155,
+					-0.2476
+				],
+				"max": [
+					0.2701,
+					0.6538,
+					0.2476
+				]
+			}
+		},
+		{
+			"path": "furniture/crystalCluster.glb",
+			"category": "furniture",
+			"bytes": 69768,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.4276,
+					-0.155,
+					-0.3826
+				],
+				"max": [
+					0.4276,
+					0.9843,
+					0.3826
+				]
+			}
+		},
+		{
 			"path": "furniture/curtainAlcove_v1.glb",
 			"category": "furniture",
 			"bytes": 45892,
@@ -2548,6 +2766,75 @@
 			}
 		},
 		{
+			"path": "furniture/fairyPortal.glb",
+			"category": "furniture",
+			"bytes": 280632,
+			"nodes": [
+				"sample_0",
+				"sample_0_anim_0",
+				"sample_1",
+				"sample_1_anim_0",
+				"sample_2",
+				"sample_2_anim_0"
+			],
+			"bbox": {
+				"min": [
+					-0.7949,
+					-0.0474,
+					-0.205
+				],
+				"max": [
+					0.8376,
+					2.3121,
+					0.2922
+				]
+			}
+		},
+		{
+			"path": "furniture/fallenBeam_v1.glb",
+			"category": "furniture",
+			"bytes": 99996,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-1.0956,
+					-0.0687,
+					-0.2777
+				],
+				"max": [
+					0.9646,
+					1.1039,
+					0.2886
+				]
+			}
+		},
+		{
+			"path": "furniture/fallenBeam.glb",
+			"category": "furniture",
+			"bytes": 99984,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-1.3933,
+					-0.0687,
+					-0.3005
+				],
+				"max": [
+					1.2183,
+					1.5139,
+					0.3214
+				]
+			}
+		},
+		{
 			"path": "furniture/fileCabinet_v1.glb",
 			"category": "furniture",
 			"bytes": 77444,
@@ -2628,6 +2915,62 @@
 			}
 		},
 		{
+			"path": "furniture/floatingBooks.glb",
+			"category": "furniture",
+			"bytes": 67288,
+			"nodes": [
+				"sample_0",
+				"sample_0_anim_0",
+				"sample_0_anim_1",
+				"sample_1",
+				"sample_1_anim_0",
+				"sample_1_anim_1",
+				"sample_2",
+				"sample_2_anim_0",
+				"sample_2_anim_1"
+			],
+			"bbox": {
+				"min": [
+					-0.5517,
+					0.9616,
+					-0.5523
+				],
+				"max": [
+					0.5529,
+					1.9363,
+					0.5515
+				]
+			}
+		},
+		{
+			"path": "furniture/floatingCrystal.glb",
+			"category": "furniture",
+			"bytes": 110716,
+			"nodes": [
+				"sample_0",
+				"sample_0_anim_0",
+				"sample_0_anim_1",
+				"sample_1",
+				"sample_1_anim_0",
+				"sample_1_anim_1",
+				"sample_2",
+				"sample_2_anim_0",
+				"sample_2_anim_1"
+			],
+			"bbox": {
+				"min": [
+					-0.3501,
+					-0.0001,
+					-0.3501
+				],
+				"max": [
+					0.3501,
+					1.5504,
+					0.3501
+				]
+			}
+		},
+		{
 			"path": "furniture/floorBall_v1.glb",
 			"category": "furniture",
 			"bytes": 8580,
@@ -2686,6 +3029,50 @@
 					0.1472,
 					0.327,
 					0.1662
+				]
+			}
+		},
+		{
+			"path": "furniture/floorDebris_v1.glb",
+			"category": "furniture",
+			"bytes": 107532,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.4001,
+					-0.0477,
+					-0.3501
+				],
+				"max": [
+					0.4001,
+					0.1117,
+					0.3501
+				]
+			}
+		},
+		{
+			"path": "furniture/floorDebris.glb",
+			"category": "furniture",
+			"bytes": 107532,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.6002,
+					-0.0477,
+					-0.4501
+				],
+				"max": [
+					0.6002,
+					0.1117,
+					0.4501
 				]
 			}
 		},
@@ -2776,6 +3163,26 @@
 			}
 		},
 		{
+			"path": "furniture/fungusJar.glb",
+			"category": "furniture",
+			"bytes": 24588,
+			"nodes": [
+				"sample_0"
+			],
+			"bbox": {
+				"min": [
+					-0.08,
+					-0.0001,
+					-0.08
+				],
+				"max": [
+					0.08,
+					0.3,
+					0.08
+				]
+			}
+		},
+		{
 			"path": "furniture/gardenLantern.glb",
 			"category": "furniture",
 			"bytes": 43580,
@@ -2792,6 +3199,50 @@
 					0.2402,
 					1.3301,
 					0.2402
+				]
+			}
+		},
+		{
+			"path": "furniture/giantMushroom_v1.glb",
+			"category": "furniture",
+			"bytes": 664548,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-1.1739,
+					-0.2047,
+					-0.777
+				],
+				"max": [
+					1.1264,
+					1.7129,
+					0.8173
+				]
+			}
+		},
+		{
+			"path": "furniture/giantMushroom.glb",
+			"category": "furniture",
+			"bytes": 441352,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.9604,
+					-0.303,
+					-0.7127
+				],
+				"max": [
+					0.868,
+					2.3141,
+					0.8338
 				]
 			}
 		},
@@ -3069,6 +3520,50 @@
 					0.1301,
 					1.0001,
 					0.1301
+				]
+			}
+		},
+		{
+			"path": "furniture/hangingMycelium_v1.glb",
+			"category": "furniture",
+			"bytes": 259328,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.2721,
+					0.0167,
+					-0.2759
+				],
+				"max": [
+					0.2433,
+					0.8223,
+					0.278
+				]
+			}
+		},
+		{
+			"path": "furniture/hangingMycelium.glb",
+			"category": "furniture",
+			"bytes": 259324,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.3742,
+					0.0393,
+					-0.3937
+				],
+				"max": [
+					0.3399,
+					1.2434,
+					0.3974
 				]
 			}
 		},
@@ -3631,6 +4126,182 @@
 			}
 		},
 		{
+			"path": "furniture/mossCarpet_v1.glb",
+			"category": "furniture",
+			"bytes": 203568,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.5731,
+					-0.0073,
+					-0.4673
+				],
+				"max": [
+					0.5856,
+					0.1105,
+					0.479
+				]
+			}
+		},
+		{
+			"path": "furniture/mossCarpet.glb",
+			"category": "furniture",
+			"bytes": 203556,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.917,
+					-0.0073,
+					-0.701
+				],
+				"max": [
+					0.937,
+					0.1105,
+					0.7167
+				]
+			}
+		},
+		{
+			"path": "furniture/mushroomBed_v1.glb",
+			"category": "furniture",
+			"bytes": 263676,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.6008,
+					-0.0001,
+					-0.3504
+				],
+				"max": [
+					0.6008,
+					0.6701,
+					0.3504
+				]
+			}
+		},
+		{
+			"path": "furniture/mushroomBed.glb",
+			"category": "furniture",
+			"bytes": 329876,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.801,
+					-0.0002,
+					-0.4005
+				],
+				"max": [
+					0.801,
+					0.8201,
+					0.4005
+				]
+			}
+		},
+		{
+			"path": "furniture/mushroomPatch_v1.glb",
+			"category": "furniture",
+			"bytes": 232792,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.5172,
+					-0.0098,
+					-0.4014
+				],
+				"max": [
+					0.5178,
+					0.4056,
+					0.3995
+				]
+			}
+		},
+		{
+			"path": "furniture/mushroomPatch.glb",
+			"category": "furniture",
+			"bytes": 232796,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.3448,
+					-0.0084,
+					-0.2867
+				],
+				"max": [
+					0.3492,
+					0.3477,
+					0.2854
+				]
+			}
+		},
+		{
+			"path": "furniture/mushroomRing_v1.glb",
+			"category": "furniture",
+			"bytes": 361792,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-1.8004,
+					-0.0113,
+					-1.8004
+				],
+				"max": [
+					1.8004,
+					0.8174,
+					1.8004
+				]
+			}
+		},
+		{
+			"path": "furniture/mushroomRing.glb",
+			"category": "furniture",
+			"bytes": 264308,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-1.4003,
+					-0.0094,
+					-1.4003
+				],
+				"max": [
+					1.4003,
+					0.8174,
+					1.4003
+				]
+			}
+		},
+		{
 			"path": "furniture/musicStand.glb",
 			"category": "furniture",
 			"bytes": 7388,
@@ -3647,6 +4318,50 @@
 					0.2252,
 					1.3521,
 					0.18
+				]
+			}
+		},
+		{
+			"path": "furniture/myceliumVeins_v1.glb",
+			"category": "furniture",
+			"bytes": 370032,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.5368,
+					-0.029,
+					-0.0389
+				],
+				"max": [
+					0.5097,
+					1.1081,
+					0.0826
+				]
+			}
+		},
+		{
+			"path": "furniture/myceliumVeins.glb",
+			"category": "furniture",
+			"bytes": 370020,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.8097,
+					-0.029,
+					-0.0389
+				],
+				"max": [
+					0.8097,
+					1.7081,
+					0.0826
 				]
 			}
 		},
@@ -4636,6 +5351,50 @@
 			}
 		},
 		{
+			"path": "furniture/rubblePile_v1.glb",
+			"category": "furniture",
+			"bytes": 128112,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.5501,
+					-0.1399,
+					-0.4676
+				],
+				"max": [
+					0.5501,
+					0.4656,
+					0.4676
+				]
+			}
+		},
+		{
+			"path": "furniture/rubblePile.glb",
+			"category": "furniture",
+			"bytes": 265632,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.8252,
+					-0.1399,
+					-0.6928
+				],
+				"max": [
+					0.8252,
+					0.6124,
+					0.6602
+				]
+			}
+		},
+		{
 			"path": "furniture/rug_v1.glb",
 			"category": "furniture",
 			"bytes": 2432,
@@ -4712,6 +5471,50 @@
 					1.5004,
 					0.012,
 					1.0002
+				]
+			}
+		},
+		{
+			"path": "furniture/runeStone_v1.glb",
+			"category": "furniture",
+			"bytes": 47204,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.3502,
+					-0.06,
+					-0.3362
+				],
+				"max": [
+					0.3502,
+					1.2002,
+					0.3362
+				]
+			}
+		},
+		{
+			"path": "furniture/runeStone.glb",
+			"category": "furniture",
+			"bytes": 47244,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.4552,
+					-0.06,
+					-0.4002
+				],
+				"max": [
+					0.4552,
+					1.6002,
+					0.4002
 				]
 			}
 		},
@@ -5309,6 +6112,50 @@
 					0.4502,
 					0.9622,
 					0.1125
+				]
+			}
+		},
+		{
+			"path": "furniture/sporeSac_v1.glb",
+			"category": "furniture",
+			"bytes": 70524,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.1242,
+					-0.282,
+					-0.1223
+				],
+				"max": [
+					0.1242,
+					0.8001,
+					0.1223
+				]
+			}
+		},
+		{
+			"path": "furniture/sporeSac.glb",
+			"category": "furniture",
+			"bytes": 70504,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.1738,
+					-0.277,
+					-0.1712
+				],
+				"max": [
+					0.1738,
+					1.1001,
+					0.1712
 				]
 			}
 		},
@@ -6250,6 +7097,94 @@
 					0.1001,
 					0.4305,
 					0.2801
+				]
+			}
+		},
+		{
+			"path": "furniture/wallMushrooms_v1.glb",
+			"category": "furniture",
+			"bytes": 135012,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.189,
+					0.0378,
+					-0.1521
+				],
+				"max": [
+					0.189,
+					0.421,
+					0.2906
+				]
+			}
+		},
+		{
+			"path": "furniture/wallMushrooms.glb",
+			"category": "furniture",
+			"bytes": 135000,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.2941,
+					0.0194,
+					-0.1989
+				],
+				"max": [
+					0.2941,
+					0.5066,
+					0.3614
+				]
+			}
+		},
+		{
+			"path": "furniture/wallRoots_v1.glb",
+			"category": "furniture",
+			"bytes": 184236,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-0.8336,
+					-0.0022,
+					-0.053
+				],
+				"max": [
+					0.7532,
+					1.1153,
+					0.2182
+				]
+			}
+		},
+		{
+			"path": "furniture/wallRoots.glb",
+			"category": "furniture",
+			"bytes": 184216,
+			"nodes": [
+				"sample_0",
+				"sample_1",
+				"sample_2"
+			],
+			"bbox": {
+				"min": [
+					-1.184,
+					-0.0022,
+					-0.0531
+				],
+				"max": [
+					0.9784,
+					1.5442,
+					0.255
 				]
 			}
 		},

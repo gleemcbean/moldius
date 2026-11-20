@@ -33,8 +33,10 @@ import { rewardName } from "./rewardLabels";
 function ChallengeRewards({ id }: { id: ChallengeId }) {
 	const t = useT();
 	const hatColor = useStore(settingsStore, (state) => state.playerColor);
+
 	return rewardsForChallenge(id).map((reward) => {
 		const name = rewardName(t, reward);
+
 		return (
 			<span key={reward.value} className={styles.reward}>
 				{reward.kind === "hat" ? (
@@ -68,12 +70,16 @@ export function ChallengesModal({ onClose }: { onClose: () => void }) {
 	const labels = t.challenges;
 	const progress = useChallengeProgress();
 	const status = useStore(accountStore, (state) => state.status);
+
 	const amount = (metric: ChallengeMetric, value: number) => {
 		const unit = METRIC_UNITS[metric];
 		const text = t.common.number(Math.floor(value));
+
 		return unit ? labels.units[unit](text) : text;
 	};
+
 	const number = (value: number) => t.common.number(value);
+
 	return (
 		<Modal title={labels.title} onClose={onClose} wide>
 			<p className={styles.summary}>
@@ -91,6 +97,7 @@ export function ChallengesModal({ onClose }: { onClose: () => void }) {
 						{CLASSIC_CHALLENGES.map((challenge) => {
 							const state = classicStatus(challenge, progress);
 							const text = labels.list[challenge.id];
+
 							return (
 								<li
 									key={challenge.id}
@@ -121,6 +128,7 @@ export function ChallengesModal({ onClose }: { onClose: () => void }) {
 						{INCREMENTAL_CHALLENGES.map((challenge) => {
 							const state = incrementalStatus(challenge, progress);
 							const text = labels.list[challenge.id];
+
 							return (
 								<li
 									key={challenge.id}

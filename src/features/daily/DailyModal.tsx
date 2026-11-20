@@ -20,6 +20,7 @@ import { useDailyClock } from "./useDailyClock";
 
 function ScoreRow({ entry }: { entry: DailyScoreEntry }) {
 	const t = useT();
+
 	return (
 		<li className={entry.self ? styles.self : ""} data-selector-row="">
 			<span className={styles.rank}>{entry.rank}</span>
@@ -54,30 +55,38 @@ export function DailyModal({ onClose }: { onClose: () => void }) {
 	const connection = useStore(sessionStore, (state) => state.status);
 	const pending = useStore(lobbyStore, (state) => state.pending);
 	const screenLobby = useStore(lobbyStore, (state) => state.lobby);
+
 	useEffect(() => {
 		let cancelled = false;
+
 		void accountApi.daily(challenge.date).then((result) => {
 			if (cancelled) {
 				return;
 			}
+
 			if (result.ok) {
 				setBoard(result.value);
 			} else {
 				setFailed(true);
 			}
 		});
+
 		return () => {
 			cancelled = true;
 		};
 	}, [challenge.date]);
+
 	const { config } = challenge;
+
 	const facts = [
 		t.world.manorSizes[config.manorSize],
 		labels.anomalies(config.simultaneousAnomalies),
 		t.lobby.rules.minutes(config.durationMinutes),
 	];
+
 	const canPlay =
 		connection === "connected" && name.length >= 2 && !pending && !screenLobby;
+
 	return (
 		<Modal title={labels.title} onClose={onClose}>
 			<section className={styles.theme}>

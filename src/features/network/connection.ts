@@ -11,8 +11,11 @@ export function initConnection(): void {
 	if (initialized) {
 		return;
 	}
+
 	initialized = true;
+
 	const socket = getSocket();
+
 	const hello = () => {
 		socket.emit(
 			"session:hello",
@@ -21,7 +24,9 @@ export function initConnection(): void {
 				if (!response.ok) {
 					return;
 				}
+
 				writeSession(TOKEN_KEY, response.value.sessionToken);
+
 				sessionStore.set({
 					status: "connected",
 					playerId: response.value.playerId,
@@ -31,16 +36,20 @@ export function initConnection(): void {
 			},
 		);
 	};
+
 	socket.on("connect", hello);
 	socket.on("disconnect", () => sessionStore.set({ status: "disconnected" }));
+
 	if (socket.connected) {
 		hello();
 	}
+
 	clockSync.start();
 }
 
 export function reconnectSocket(): void {
 	const socket = getSocket();
+
 	socket.disconnect();
 	sessionStore.set({ status: "connecting" });
 	socket.connect();

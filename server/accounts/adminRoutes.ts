@@ -8,22 +8,28 @@ export function createAdminRouter(
 	live: () => AdminLiveStats | null,
 ): Router {
 	const router = Router();
+
 	const notFound = (response: Response) => {
 		response.status(404).json({ error: "not-found" });
 	};
+
 	router.get("/overview", async (request: Request, response: Response) => {
 		response.setHeader("Cache-Control", "no-store");
+
 		try {
 			const store = accounts.admin;
 			const session = await accounts.identify(request.headers.cookie);
+
 			if (
 				!store ||
 				!session ||
 				!(await store.isAdmin(session.accountId, emails))
 			) {
 				notFound(response);
+
 				return;
 			}
+
 			response.json(
 				await store.overview(
 					live() ?? {
@@ -42,5 +48,6 @@ export function createAdminRouter(
 			response.status(500).json({ error: "internal" });
 		}
 	});
+
 	return router;
 }

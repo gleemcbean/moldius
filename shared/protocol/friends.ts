@@ -44,10 +44,12 @@ export function normalizeFriendCode(value: unknown): string | null {
 	if (typeof value !== "string") {
 		return null;
 	}
+
 	const code = value
 		.trim()
 		.toUpperCase()
 		.replace(/[^A-Z0-9]/g, "");
+
 	return code.length === FRIEND_CODE_LENGTH ? code : null;
 }
 
@@ -65,6 +67,8 @@ export function lobbyFromJoinSecret(secret: unknown): string | null {
 	if (typeof secret !== "string" || !secret.startsWith(JOIN_SECRET_PREFIX)) {
 		return null;
 	}
+
 	const lobbyId = secret.slice(JOIN_SECRET_PREFIX.length);
+
 	return /^[A-Za-z0-9_-]{1,64}$/.test(lobbyId) ? lobbyId : null;
 }

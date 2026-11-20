@@ -29,14 +29,18 @@ function reportError(error: LobbyError): void {
 function applyOverview(reply: Reply<FriendsOverview>, silent = false): boolean {
 	if (reply.ok) {
 		friendsStore.set({ overview: reply.value });
+
 		return true;
 	}
+
 	if (reply.error.code === "sign-in-required") {
 		friendsStore.set({ overview: null });
 	}
+
 	if (!silent) {
 		reportError(reply.error);
 	}
+
 	return false;
 }
 
@@ -48,8 +52,10 @@ export function refreshFriends(): void {
 		if (accountStore.get().status !== "signed-in") {
 			friendsStore.set({ overview: null, invites: [] });
 		}
+
 		return;
 	}
+
 	getSocket().emit("friends:list", (reply) => applyOverview(reply, true));
 }
 
@@ -85,6 +91,7 @@ export function inviteFriend(
 		if (!reply.ok) {
 			reportError(reply.error);
 		}
+
 		refreshFriends();
 		done(reply.ok);
 	});
@@ -105,6 +112,7 @@ export function joinFriend(lobbyId: string): void {
 	if (appStore.get().overlay === "friends") {
 		closeOverlay();
 	}
+
 	joinFriendLobby(settingsStore.get().playerName.trim(), lobbyId);
 }
 
@@ -116,10 +124,13 @@ export function dismissInvite(invite: FriendInvite): void {
 
 export function acceptInvite(invite: FriendInvite): void {
 	const name = settingsStore.get().playerName.trim();
+
 	friendsStore.set({ invites: [] });
+
 	if (appStore.get().overlay === "friends") {
 		closeOverlay();
 	}
+
 	if (invite.code) {
 		joinPrivateLobby(name, invite.code);
 	} else {
@@ -133,24 +144,34 @@ export function initFriends(): void {
 	if (initialized) {
 		return;
 	}
+
 	initialized = true;
+
 	const socket = getSocket();
+
 	socket.on("friends:changed", refreshFriends);
+
 	socket.on("friends:invited", (invite) => {
 		const others = friendsStore
 			.get()
 			.invites.filter((entry) => entry.fromAccountId !== invite.fromAccountId);
+
 		friendsStore.set({ invites: [...others, invite] });
 		window.setTimeout(() => dismissInvite(invite), INVITE_LIFETIME_MS);
 	});
+
 	let previous = "";
+
 	const onChange = () => {
 		const key = `${accountStore.get().status}|${sessionStore.get().status}|${sessionStore.get().playerId}`;
+
 		if (key !== previous) {
 			previous = key;
+
 			refreshFriends();
 		}
 	};
+
 	accountStore.subscribe(onChange);
 	sessionStore.subscribe(onChange);
 	onChange();

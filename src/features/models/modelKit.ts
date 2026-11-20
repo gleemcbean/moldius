@@ -27,7 +27,9 @@ export class ModelKit {
 
 	model(id: string): THREE.Group {
 		const group = new THREE.Group();
+
 		group.add(this.rig(id).root);
+
 		return group;
 	}
 }

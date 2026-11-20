@@ -45,18 +45,23 @@ function shown(value: string, password: boolean): string {
 
 function fieldName(target: HTMLElement): string {
 	const labelled = target.getAttribute("aria-label");
+
 	if (labelled) {
 		return labelled;
 	}
+
 	const label =
 		target.closest("label") ??
 		(target.id
 			? document.querySelector<HTMLLabelElement>(`label[for="${target.id}"]`)
 			: null);
+
 	const text = label?.textContent?.trim();
+
 	if (text) {
 		return text;
 	}
+
 	return target.getAttribute("placeholder") ?? "";
 }
 
@@ -73,11 +78,15 @@ export function PadKeyboard() {
 		if (!target) {
 			return;
 		}
+
 		setShift(false);
 		setSymbols(false);
 		setValue(target.value);
+
 		const sync = () => setValue(target.value);
+
 		target.addEventListener("input", sync);
+
 		const onKey = (event: KeyboardEvent) => {
 			if (event.code === "Escape") {
 				event.preventDefault();
@@ -85,7 +94,9 @@ export function PadKeyboard() {
 				closePadKeyboard();
 			}
 		};
+
 		window.addEventListener("keydown", onKey, true);
+
 		const watch = window.setInterval(() => {
 			if (!target.isConnected) {
 				padKeyboardStore.set({ target: null });
@@ -93,26 +104,36 @@ export function PadKeyboard() {
 				setValue(target.value);
 			}
 		}, 250);
+
 		padFocus.repeatButtons = REPEATING;
+
 		padFocus.onButton = (button) => {
 			if (button === PAD_BUTTON.x) {
 				eraseText();
+
 				return true;
 			}
+
 			if (button === PAD_BUTTON.y) {
 				typeText(" ");
+
 				return true;
 			}
+
 			if (button === PAD_BUTTON.b || button === PAD_BUTTON.start) {
 				closePadKeyboard();
+
 				return true;
 			}
+
 			return false;
 		};
+
 		return () => {
 			target.removeEventListener("input", sync);
 			window.removeEventListener("keydown", onKey, true);
 			window.clearInterval(watch);
+
 			padFocus.onButton = null;
 			padFocus.repeatButtons = null;
 		};
@@ -121,11 +142,15 @@ export function PadKeyboard() {
 	if (!target) {
 		return null;
 	}
+
 	const password =
 		target instanceof HTMLInputElement && target.type === "password";
+
 	const rows = symbols ? SYMBOLS : LETTERS[language === "en" ? "en" : "fr"];
+
 	const press = (key: string) => {
 		typeText(shift ? key.toUpperCase() : key);
+
 		if (shift) {
 			setShift(false);
 		}

@@ -20,6 +20,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 	const t = useT();
 	const [tab, setTab] = useState<Tab>("controls");
 	const dev = useStore(sessionStore, (state) => state.dev);
+
 	return (
 		<Modal title={t.settings.title} onClose={onClose} wide fixed>
 			<div className={styles.tabs}>

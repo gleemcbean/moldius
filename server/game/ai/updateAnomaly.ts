@@ -1,11 +1,17 @@
+import { CINEMA_STALL_MS } from "../../../shared/config/index.js";
 import type { SpeciesId } from "../../../shared/config/species.js";
 import type { Match } from "../Match.js";
 import type { AnomalyEntity } from "./AnomalyEntity.js";
 import { pulseProgress, updateArchiviste } from "./species/archiviste.js";
 import { updateBoursoufle } from "./species/boursoufle.js";
 import { hazeStrength, updateBrume } from "./species/brume.js";
-import { updateColosse } from "./species/colosse.js";
+import {
+	seanceProgress,
+	updateCinematographe,
+} from "./species/cinematographe.js";
 import { updateCollecteur } from "./species/collecteur.js";
+import { updateColosse } from "./species/colosse.js";
+import { cordycepsRipeness, updateCordyceps } from "./species/cordyceps.js";
 import { updateDouble } from "./species/double.js";
 import { updateFulgurant } from "./species/fulgurant.js";
 import { gazeFraction, updateGorgone } from "./species/gorgone.js";
@@ -34,6 +40,8 @@ const UPDATERS: Record<SpeciesId, Updater> = {
 	gorgone: updateGorgone,
 	brume: updateBrume,
 	"rat-roi": updateRatRoi,
+	cordyceps: updateCordyceps,
+	cinematographe: updateCinematographe,
 };
 
 export function updateAnomaly(
@@ -52,12 +60,14 @@ export function anomalyExtra(entity: AnomalyEntity, now: number): number {
 				: entity.state === "special"
 					? Math.min(0.99, entity.stateAge(now) / 1200)
 					: 0;
+
 		case "double":
 			return entity.revealed
 				? 1
 				: entity.state === "special"
 					? Math.min(0.99, entity.stateAge(now) / 900)
 					: 0;
+
 		case "boursoufle":
 			return entity.swell;
 		case "hurleur":
@@ -70,19 +80,39 @@ export function anomalyExtra(entity: AnomalyEntity, now: number): number {
 			if (entity.state === "windup") {
 				return Math.min(1, entity.stateAge(now) / entity.definition.windupMs);
 			}
+
 			return entity.state === "special"
 				? Math.max(0, 1 - entity.stateAge(now) / entity.definition.recoveryMs)
 				: 0;
+
 		case "gorgone":
 			return entity.state === "special" ||
 				entity.state === "chase" ||
 				entity.state === "windup"
 				? 1
 				: Math.min(0.99, gazeFraction(entity));
+
 		case "brume":
 			return hazeStrength(entity, now);
 		case "rat-roi":
 			return entity.scatter;
+		case "cordyceps":
+			return cordycepsRipeness(entity, now);
+		case "cinematographe":
+			return cinematographeExtra(entity, now);
+		default:
+			return 0;
+	}
+}
+
+function cinematographeExtra(entity: AnomalyEntity, now: number): number {
+	switch (entity.state) {
+		case "windup":
+			return Math.min(1, entity.stateAge(now) / entity.definition.windupMs);
+		case "special":
+			return seanceProgress(entity, now);
+		case "stalled":
+			return Math.max(0, 1 - entity.stateAge(now) / CINEMA_STALL_MS);
 		default:
 			return 0;
 	}

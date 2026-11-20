@@ -15,7 +15,9 @@ const EXCLUDED_DIRECTORIES = new Set([
 	".dev-mail",
 	"vosk",
 ]);
+
 const EXCLUDED_FILES = new Set([".env", ".DS_Store"]);
+
 const EXCLUDED_EXTENSIONS = [
 	".log",
 	".zip",
@@ -30,27 +32,35 @@ function isExcludedFile(name: string): boolean {
 	) {
 		return true;
 	}
+
 	return name.startsWith(".env") && name !== ".env.example";
 }
 
 export function collectSourceFiles(root: string): string[] {
 	const files: string[] = [];
+
 	const walk = (directory: string) => {
 		for (const entry of readdirSync(directory, { withFileTypes: true })) {
 			const path = join(directory, entry.name);
+
 			if (entry.isDirectory()) {
 				if (!EXCLUDED_DIRECTORIES.has(entry.name)) {
 					walk(path);
 				}
+
 				continue;
 			}
+
 			if (isExcludedFile(entry.name)) {
 				continue;
 			}
+
 			files.push(path);
 		}
 	};
+
 	walk(root);
+
 	return files.sort();
 }
 

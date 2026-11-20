@@ -6,6 +6,7 @@ const readline = require("node:readline");
 
 const BRIDGE_NAME =
 	process.platform === "win32" ? "moldius-discord.exe" : "moldius-discord";
+
 const MAX_RESTARTS = 3;
 const INVITE_TIMEOUT_MS = 10_000;
 const AUTHORIZE_TIMEOUT_MS = 180_000;
@@ -13,6 +14,7 @@ const ACCOUNT_TIMEOUT_MS = 15_000;
 const ACCOUNT_INTENTS = new Set(["login", "link", "proof"]);
 const LOG_LIMIT = 256 * 1024;
 const MAX_FRIENDS = 1000;
+
 const STATUSES = new Set([
 	"unavailable",
 	"signed-out",
@@ -21,12 +23,14 @@ const STATUSES = new Set([
 	"ready",
 	"error",
 ]);
+
 const FRIEND_STATUSES = new Set(["online", "idle", "dnd", "offline"]);
 
 function bridgePath() {
 	const candidate = app.isPackaged
 		? path.join(process.resourcesPath, "discord", BRIDGE_NAME)
 		: path.join(__dirname, "discord-bridge", "dist", BRIDGE_NAME);
+
 	return fs.existsSync(candidate) ? candidate : null;
 }
 
@@ -44,6 +48,7 @@ function cleanUser(user) {
 	if (!user || typeof user !== "object" || !isDiscordId(user.id)) {
 		return null;
 	}
+
 	return {
 		id: user.id,
 		username: shortText(user.username, 64) ?? "",
@@ -64,7 +69,9 @@ function cleanActivity(input) {
 	if (!input || typeof input !== "object") {
 		return null;
 	}
+
 	const activity = {};
+
 	for (const key of [
 		"state",
 		"details",
@@ -73,10 +80,12 @@ function cleanActivity(input) {
 		"joinSecret",
 	]) {
 		const value = shortText(input[key]);
+
 		if (value) {
 			activity[key] = value;
 		}
 	}
+
 	if (
 		Number.isSafeInteger(input.startedAt) &&
 		input.startedAt > 0 &&
@@ -84,7 +93,9 @@ function cleanActivity(input) {
 	) {
 		activity.startedAt = input.startedAt;
 	}
+
 	const party = input.party;
+
 	if (
 		party &&
 		typeof party === "object" &&
@@ -105,6 +116,7 @@ function cleanActivity(input) {
 	} else {
 		delete activity.joinSecret;
 	}
+
 	return activity;
 }
 
@@ -112,23 +124,29 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 	const tokenFile = path.join(app.getPath("userData"), "discord-token.bin");
 	const logFile = path.join(app.getPath("userData"), "discord.log");
 	let logSize = 0;
+
 	try {
 		fs.writeFileSync(logFile, "");
 	} catch {}
 
 	function writeLog(level, text) {
 		const line = `${new Date().toISOString()} ${level} ${String(text).replace(/\s+/g, " ").slice(0, 600)}\n`;
+
 		if (!app.isPackaged) {
 			process.stdout.write(`[discord] ${line}`);
 		}
+
 		if (logSize + line.length > LOG_LIMIT) {
 			return;
 		}
+
 		logSize += line.length;
+
 		try {
 			fs.appendFileSync(logFile, line);
 		} catch {}
 	}
+
 	const state = {
 		available: false,
 		status: "unavailable",
@@ -136,6 +154,7 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 		user: null,
 		friends: [],
 	};
+
 	const pendingJoins = [];
 	const pendingInvites = new Map();
 	let child = null;
@@ -151,6 +170,7 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 
 	function publish() {
 		const window = getWindow();
+
 		if (window && !window.isDestroyed()) {
 			window.webContents.send("moldius:discord-state", state);
 		}
@@ -161,6 +181,7 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 			if (!safeStorage.isEncryptionAvailable() || !fs.existsSync(tokenFile)) {
 				return null;
 			}
+
 			return safeStorage.decryptString(fs.readFileSync(tokenFile));
 		} catch {
 			return null;
@@ -191,10 +212,12 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 
 	function focusWindow() {
 		const window = getWindow();
+
 		if (window && !window.isDestroyed()) {
 			if (window.isMinimized()) {
 				window.restore();
 			}
+
 			window.focus();
 		}
 	}
@@ -205,62 +228,85 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 				if (STATUSES.has(message.status)) {
 					state.status = message.status;
 					state.error = shortText(message.error, 300);
+
 					if (message.status === "signed-out") {
 						state.user = null;
 						state.friends = [];
 					}
+
 					publish();
 				}
+
 				break;
+
 			case "token":
 				writeToken(
 					typeof message.refreshToken === "string"
 						? message.refreshToken
 						: null,
 				);
+
 				accessToken =
 					typeof message.accessToken === "string" ? message.accessToken : null;
+
 				break;
+
 			case "authorized":
 				settleAuthorize({
 					ok: message.ok === true,
 					error: shortText(message.error, 300),
 				});
+
 				break;
+
 			case "user":
 				state.user = cleanUser(message.user);
+
 				publish();
 				break;
+
 			case "friends":
 				state.friends = Array.isArray(message.friends)
 					? message.friends.slice(0, MAX_FRIENDS).map(cleanUser).filter(Boolean)
 					: [];
+
 				publish();
 				break;
+
 			case "join": {
 				const secret = shortText(message.secret);
+
 				if (secret) {
 					pendingJoins.push(secret);
+
 					const window = getWindow();
+
 					if (window && !window.isDestroyed()) {
 						window.webContents.send("moldius:discord-join");
 					}
+
 					focusWindow();
 				}
+
 				break;
 			}
+
 			case "invite": {
 				const waiting = pendingInvites.get(message.userId);
+
 				if (waiting) {
 					pendingInvites.delete(message.userId);
 					clearTimeout(waiting.timer);
+
 					waiting.resolve({
 						ok: message.ok === true,
 						error: shortText(message.error, 300),
 					});
 				}
+
 				break;
 			}
+
 			case "log":
 				writeLog(shortText(message.level, 10) ?? "info", message.message);
 				break;
@@ -279,33 +325,46 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 			windowsHide: true,
 			stdio: ["pipe", "pipe", "ignore"],
 		});
+
 		readline.createInterface({ input: child.stdout }).on("line", (line) => {
 			try {
 				onMessage(JSON.parse(line));
 			} catch {}
 		});
+
 		child.on("error", () => {});
+
 		child.on("exit", () => {
 			child = null;
 			accessToken = null;
+
 			settleAuthorize({ ok: false, error: "bridge" });
+
 			for (const waiting of pendingInvites.values()) {
 				clearTimeout(waiting.timer);
 				waiting.resolve({ ok: false, error: "bridge" });
 			}
+
 			pendingInvites.clear();
+
 			if (stopping) {
 				return;
 			}
+
 			if (restarts < MAX_RESTARTS) {
 				restarts += 1;
+
 				setTimeout(() => spawnBridge(executable), 2000 * restarts);
+
 				return;
 			}
+
 			state.available = false;
 			state.status = "unavailable";
+
 			publish();
 		});
+
 		send({
 			type: "init",
 			role: "social",
@@ -320,30 +379,38 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 			windowsHide: true,
 			stdio: ["pipe", "pipe", "ignore"],
 		});
+
 		readline
 			.createInterface({ input: presenceChild.stdout })
 			.on("line", (line) => {
 				try {
 					const message = JSON.parse(line);
+
 					if (message?.type === "join" || message?.type === "log") {
 						onMessage(message);
 					}
 				} catch {}
 			});
+
 		presenceChild.on("error", () => {});
+
 		presenceChild.on("exit", () => {
 			presenceChild = null;
+
 			if (!stopping && presenceRestarts < MAX_RESTARTS) {
 				presenceRestarts += 1;
+
 				setTimeout(() => spawnPresence(executable), 2000 * presenceRestarts);
 			}
 		});
+
 		sendPresence({
 			type: "init",
 			role: "presence",
 			applicationId,
 			launchCommand: launchCommand(),
 		});
+
 		if (lastPresence) {
 			sendPresence({ type: "presence", activity: lastPresence });
 		}
@@ -352,13 +419,16 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 	ipcMain.handle("moldius:discord-state", (event) =>
 		fromGame(event) ? state : null,
 	);
+
 	ipcMain.handle("moldius:discord-take-joins", (event) =>
 		fromGame(event) ? pendingJoins.splice(0) : [],
 	);
+
 	function settleAuthorize(result) {
 		if (pendingAuthorize) {
 			clearTimeout(pendingAuthorize.timer);
 			pendingAuthorize.resolve(result);
+
 			pendingAuthorize = null;
 		}
 	}
@@ -367,10 +437,13 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 		if (pendingAuthorize) {
 			return pendingAuthorize.promise;
 		}
+
 		let resolve;
+
 		const promise = new Promise((done) => {
 			resolve = done;
 		});
+
 		pendingAuthorize = {
 			promise,
 			resolve,
@@ -379,13 +452,16 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 				AUTHORIZE_TIMEOUT_MS,
 			),
 		};
+
 		send({ type: "authorize" });
+
 		return promise;
 	}
 
 	function postAccount(body) {
 		return new Promise((resolve) => {
 			let request;
+
 			try {
 				request = net.request({
 					method: "POST",
@@ -395,41 +471,54 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 				});
 			} catch {
 				resolve({ status: 0, json: null });
+
 				return;
 			}
+
 			const timer = setTimeout(() => {
 				request.abort();
 				resolve({ status: 0, json: null });
 			}, ACCOUNT_TIMEOUT_MS);
+
 			request.setHeader("Content-Type", "application/json");
+
 			request.on("response", (response) => {
 				const chunks = [];
+
 				response.on("data", (chunk) => chunks.push(chunk));
+
 				response.on("end", () => {
 					clearTimeout(timer);
+
 					let json = null;
+
 					try {
 						json = JSON.parse(Buffer.concat(chunks).toString("utf8"));
 					} catch {}
+
 					resolve({ status: response.statusCode, json });
 				});
 			});
+
 			request.on("error", () => {
 				clearTimeout(timer);
 				resolve({ status: 0, json: null });
 			});
+
 			request.end(JSON.stringify(body));
 		});
 	}
 
 	function accountResult(reply, intent) {
 		const json = reply.json && typeof reply.json === "object" ? reply.json : {};
+
 		if (reply.status !== 200) {
 			writeLog(
 				"error",
 				`compte ${intent} : réponse ${reply.status} du serveur`,
 			);
 		}
+
 		return {
 			ok: reply.status === 200,
 			outcome: shortText(json.outcome, 40),
@@ -448,23 +537,29 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 		if (!fromGame(event) || !ACCOUNT_INTENTS.has(intent) || !child) {
 			return { ok: false, error: "unavailable" };
 		}
+
 		const body = (token) => ({
 			intent,
 			accessToken: token,
 			language: shortText(language, 8),
 		});
+
 		if (accessToken) {
 			const reply = await postAccount(body(accessToken));
+
 			if (reply.status !== 401) {
 				return accountResult(reply, intent);
 			}
 		}
+
 		const authorized = await authorizeBridge();
+
 		if (!authorized.ok || !accessToken) {
 			writeLog(
 				"error",
 				`autorisation Discord refusée : ${authorized.error ?? "jeton absent"}`,
 			);
+
 			return {
 				ok: false,
 				error:
@@ -473,29 +568,37 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 						: "cancelled",
 			};
 		}
+
 		return accountResult(await postAccount(body(accessToken)), intent);
 	});
+
 	ipcMain.on("moldius:discord-disconnect", (event) => {
 		if (fromGame(event)) {
 			send({ type: "logout" });
 		}
 	});
+
 	ipcMain.on("moldius:discord-presence", (event, activity) => {
 		if (fromGame(event)) {
 			lastPresence = cleanActivity(activity);
+
 			sendPresence({ type: "presence", activity: lastPresence });
 		}
 	});
+
 	ipcMain.handle("moldius:discord-invite", (event, userId, message) => {
 		if (!fromGame(event) || !isDiscordId(userId) || !child) {
 			return { ok: false, error: "unavailable" };
 		}
+
 		return new Promise((resolve) => {
 			pendingInvites.get(userId)?.resolve({ ok: false, error: "replaced" });
+
 			const timer = setTimeout(() => {
 				pendingInvites.delete(userId);
 				resolve({ ok: false, error: "timeout" });
 			}, INVITE_TIMEOUT_MS);
+
 			pendingInvites.set(userId, { resolve, timer });
 			send({ type: "invite", userId, message: shortText(message) ?? "" });
 		});
@@ -504,16 +607,20 @@ function createDiscord({ applicationId, gameOrigin, isGame, getWindow }) {
 	return {
 		start() {
 			const executable = applicationId ? bridgePath() : null;
+
 			if (!executable || !/^[0-9]{5,25}$/.test(applicationId)) {
 				return;
 			}
+
 			state.available = true;
 			state.status = "connecting";
+
 			spawnPresence(executable);
 			spawnBridge(executable);
 		},
 		stop() {
 			stopping = true;
+
 			for (const process of [child, presenceChild]) {
 				process?.stdin.end();
 				process?.kill();

@@ -12,6 +12,7 @@ import type { MatchPlayer } from "../MatchPlayer.js";
 import type { AnomalyEntity } from "./AnomalyEntity.js";
 
 export const SPREAD_RADIUS = 9;
+
 const ANCHORED: ReadonlySet<SpeciesId> = new Set([
 	"luciole",
 	"archiviste",
@@ -27,9 +28,11 @@ export function engagedPlayer(entity: AnomalyEntity): string | null {
 	if (!isRoaming(entity)) {
 		return null;
 	}
+
 	if (entity.carryingPlayerId) {
 		return entity.carryingPlayerId;
 	}
+
 	switch (entity.state) {
 		case "chase":
 		case "recover":
@@ -67,10 +70,13 @@ function roomTooBusy(
 	player: MatchPlayer,
 ): boolean {
 	const room = match.roomIdAt(player.position);
+
 	if (room === null || match.roomIdAt(entity.position) === room) {
 		return false;
 	}
+
 	let busy = 0;
+
 	for (const other of match.anomalies) {
 		if (
 			other !== entity &&
@@ -80,6 +86,7 @@ function roomTooBusy(
 			busy += 1;
 		}
 	}
+
 	return busy >= ANOMALY_ROOM_CAPACITY;
 }
 
@@ -94,12 +101,15 @@ export function canEngage(
 	) {
 		return false;
 	}
+
 	if (!isRoaming(entity) || engagedPlayer(entity) === player.id) {
 		return true;
 	}
+
 	const rivals = pursuersOf(match, player.id).filter(
 		(other) => other !== entity,
 	);
+
 	return (
 		rivals.length < ANOMALY_PURSUERS_PER_PLAYER &&
 		!roomTooBusy(match, entity, player)
@@ -113,24 +123,31 @@ export function interestToDrop(
 	if (entity.state !== "chase" && entity.state !== "investigate") {
 		return null;
 	}
+
 	const playerId = engagedPlayer(entity);
+
 	if (!playerId) {
 		return null;
 	}
+
 	const player = match.players.get(playerId);
 	const rivals = pursuersOf(match, playerId);
+
 	if (rivals.length > ANOMALY_PURSUERS_PER_PLAYER) {
 		const anchor = player?.position ?? entity.position;
+
 		rivals.sort(
 			(a, b) =>
 				Number(committed(b)) - Number(committed(a)) ||
 				separation(a, anchor) - separation(b, anchor) ||
 				a.id - b.id,
 		);
+
 		if (rivals.indexOf(entity) >= ANOMALY_PURSUERS_PER_PLAYER) {
 			return playerId;
 		}
 	}
+
 	if (
 		entity.state === "chase" &&
 		player &&
@@ -138,6 +155,7 @@ export function interestToDrop(
 	) {
 		return playerId;
 	}
+
 	return null;
 }
 
@@ -148,11 +166,13 @@ function countedRoom(match: Match, entity: AnomalyEntity): number | null {
 	) {
 		return entity.destinationRoom;
 	}
+
 	return match.roomIdAt(entity.position);
 }
 
 function roomLoad(match: Match, roomId: number, entity: AnomalyEntity): number {
 	let load = 0;
+
 	for (const other of match.anomalies) {
 		if (
 			other !== entity &&
@@ -162,6 +182,7 @@ function roomLoad(match: Match, roomId: number, entity: AnomalyEntity): number {
 			load += 1;
 		}
 	}
+
 	return load;
 }
 
@@ -175,20 +196,25 @@ export function roomHasSpace(
 
 function overRoomCapacity(match: Match, entity: AnomalyEntity): boolean {
 	const room = match.roomIdAt(entity.position);
+
 	if (room === null || countedRoom(match, entity) !== room) {
 		return false;
 	}
+
 	const occupants = match.anomalies.filter(
 		(other) => isRoaming(other) && countedRoom(match, other) === room,
 	);
+
 	if (occupants.length <= ANOMALY_ROOM_CAPACITY) {
 		return false;
 	}
+
 	occupants.sort(
 		(a, b) =>
 			Number(engagedPlayer(b) !== null) - Number(engagedPlayer(a) !== null) ||
 			a.id - b.id,
 	);
+
 	return occupants.indexOf(entity) >= ANOMALY_ROOM_CAPACITY;
 }
 
@@ -197,20 +223,25 @@ export function observedByPlayers(
 	entity: AnomalyEntity,
 ): boolean {
 	const center = entity.center();
+
 	for (const player of match.players.values()) {
 		if (!player.alive || !player.connected || player.hidden) {
 			continue;
 		}
+
 		const eye = player.eyePosition();
 		const dx = center.x - eye.x;
 		const dy = center.y - eye.y;
 		const dz = center.z - eye.z;
 		const distance = Math.hypot(dx, dy, dz);
+
 		if (distance > 40) {
 			continue;
 		}
+
 		const look = lookDirection(player.yaw, player.pitch);
 		const facing = (look.x * dx + look.y * dy + look.z * dz) / (distance || 1);
+
 		if (
 			(distance < 4 || facing > DISPERSAL_OBSERVED_CONE_COS) &&
 			lineOfSight(match.world, eye, center, { ignoreFurniture: true })
@@ -218,6 +249,7 @@ export function observedByPlayers(
 			return true;
 		}
 	}
+
 	return false;
 }
 
@@ -229,9 +261,11 @@ export function crowdingNeighbor(
 		if (other === entity || !other.active || ANCHORED.has(other.species)) {
 			continue;
 		}
+
 		if (Math.abs(other.position.y - entity.position.y) > 2.5) {
 			continue;
 		}
+
 		if (
 			Math.hypot(
 				other.position.x - entity.position.x,
@@ -241,6 +275,7 @@ export function crowdingNeighbor(
 			return other;
 		}
 	}
+
 	return null;
 }
 
@@ -248,14 +283,19 @@ export function shouldDisperse(match: Match, entity: AnomalyEntity): boolean {
 	if (ANCHORED.has(entity.species) || match.now < entity.nextSpreadCheckAt) {
 		return false;
 	}
+
 	entity.nextSpreadCheckAt = match.now + DISPERSAL_CHECK_INTERVAL_MS;
+
 	if (entity.state === "travel") {
 		entity.hurrying = entity.hurrying && !observedByPlayers(match, entity);
+
 		return false;
 	}
+
 	if (overRoomCapacity(match, entity)) {
 		return true;
 	}
+
 	return (
 		crowdingNeighbor(match, entity) !== null &&
 		!observedByPlayers(match, entity)

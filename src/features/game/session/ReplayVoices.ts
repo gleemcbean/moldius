@@ -20,19 +20,26 @@ export class ReplayVoices {
 		at: number,
 	): void {
 		const context = audioEngine.ctx;
+
 		for (const id of playerIds) {
 			const buffer = momentVoices.extract(id, from, to);
+
 			if (!buffer) {
 				continue;
 			}
+
 			const source = context.createBufferSource();
+
 			source.buffer = buffer;
+
 			const panner = audioEngine.createPanner(
 				VOICE_PROXIMITY_FULL_RANGE,
 				VOICE_PROXIMITY_MAX_RANGE,
 				1,
 			);
+
 			panner.distanceModel = "linear";
+
 			source.connect(panner);
 			panner.connect(audioEngine.bus("voice"));
 			source.start(at);
@@ -42,6 +49,7 @@ export class ReplayVoices {
 
 	place(playerId: string, x: number, y: number, z: number): void {
 		const voice = this.voices.get(playerId);
+
 		if (voice) {
 			setPannerPosition(voice.panner, x, y, z);
 		}
@@ -52,9 +60,11 @@ export class ReplayVoices {
 			try {
 				voice.source.stop();
 			} catch {}
+
 			voice.source.disconnect();
 			voice.panner.disconnect();
 		}
+
 		this.voices.clear();
 	}
 }

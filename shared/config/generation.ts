@@ -21,6 +21,7 @@ export const MEZZANINE_STAIR_WIDTH = 2.2;
 export const MEZZANINE_RAIL_COLLIDER = 0.95;
 export const MEZZANINE_POST_RADIUS = 0.18;
 export const MEZZANINE_POST_SPACING = 4;
+
 export const MANOR_GRAND_ROOMS: Record<ManorSize, number> = {
 	small: 1,
 	medium: 2,
@@ -32,28 +33,34 @@ export const MANOR_GROUND_ROOM_COUNT: Record<ManorSize, number> = {
 	medium: 23,
 	large: 32,
 };
+
 export const MANOR_UPPER_ROOM_COUNT: Record<ManorSize, number> = {
 	small: 5,
 	medium: 8,
 	large: 12,
 };
+
 export const MANOR_UPPER_LEVEL_SHARE = [1, 0.85, 0.7];
 export const MANOR_MIN_UPPER_ROOMS = 4;
 export const MANOR_LAYOUT_RETRIES = 6;
+
 export const MANOR_HALF_EXTENT: Record<ManorSize, number> = {
 	small: 30,
 	medium: 38,
 	large: 48,
 };
+
 export const MANOR_LOOPS: Record<ManorSize, number> = {
 	small: 2,
 	medium: 4,
 	large: 6,
 };
+
 export const MANOR_WINDOWS: Record<ManorSize, number> = {
 	small: 2,
 	medium: 3,
 	large: 4,
 };
+
 export const MANOR_OPENING_EDGE_MARGIN = 0.4;
 export const MANOR_OPENING_SPACING = 0.7;

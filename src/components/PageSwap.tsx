@@ -16,6 +16,7 @@ export function PageSwap<T extends string>({
 		page,
 		direction: null,
 	});
+
 	if (state.page !== page) {
 		setState({
 			page,
@@ -23,7 +24,9 @@ export function PageSwap<T extends string>({
 				order.indexOf(page) >= order.indexOf(state.page) ? "next" : "previous",
 		});
 	}
+
 	const direction = state.page === page ? state.direction : null;
+
 	return (
 		<div
 			key={page}

@@ -25,6 +25,7 @@ const ARMS: Record<Exclude<PadGlyph, "a" | "b" | "x" | "y">, string> = {
 export function PadGlyphIcon({ glyph }: { glyph: PadGlyph }) {
 	if (isFaceGlyph(glyph)) {
 		const color = FACE_COLORS[glyph];
+
 		return (
 			<svg className={styles.glyph} viewBox="0 0 20 20" aria-hidden="true">
 				<circle
@@ -46,6 +47,7 @@ export function PadGlyphIcon({ glyph }: { glyph: PadGlyph }) {
 			</svg>
 		);
 	}
+
 	return (
 		<svg className={styles.glyph} viewBox="0 0 20 20" aria-hidden="true">
 			<path
@@ -62,15 +64,21 @@ export function PadGlyphIcon({ glyph }: { glyph: PadGlyph }) {
 
 export function KeyText({ text }: { text: string }) {
 	const runs = splitGlyphs(text);
+
 	if (runs.every((run) => "text" in run)) {
 		return <>{text}</>;
 	}
+
 	let offset = 0;
+
 	const keyed = runs.map((run) => {
 		const at = offset;
+
 		offset += "glyph" in run ? 1 : run.text.length;
+
 		return { at, run };
 	});
+
 	return (
 		<>
 			{keyed.map(({ at, run }) =>

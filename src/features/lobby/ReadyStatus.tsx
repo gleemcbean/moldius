@@ -18,15 +18,18 @@ export function ReadyStatus({
 	const t = useT();
 	const status = t.lobby.status;
 	const connected = lobby.players.filter((player) => player.connected);
+
 	const readyCount = connected.filter(
 		(player) => player.ready && player.micReady,
 	).length;
+
 	const enoughPlayers = connected.length >= lobby.minPlayers;
 	const everyoneReady = readyCount === connected.length;
 	const inMatch = lobby.phase === "loading" || lobby.phase === "playing";
 
 	let message: ReactNode;
 	let urgent = false;
+
 	if (inMatch) {
 		message = t.lobby.inMatch;
 	} else if (lobby.phase === "countdown" && lobby.countdownEndsAt) {

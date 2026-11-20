@@ -81,10 +81,13 @@ export function useT(): Messages {
 export function initLanguage(): () => void {
 	const apply = () => {
 		const language = currentLanguage();
+
 		document.documentElement.lang = language;
 		document.title = MESSAGES[language].common.documentTitle;
 	};
+
 	apply();
+
 	return settingsStore.subscribe((state, previous) => {
 		if (state.language !== previous.language) {
 			apply();

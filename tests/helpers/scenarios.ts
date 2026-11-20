@@ -26,6 +26,7 @@ export function findClearLine(
 	sideClearance = 0,
 ): ClearLine {
 	const { match } = sim;
+
 	const rooms = [...match.layout.rooms]
 		.filter(
 			(room) =>
@@ -34,14 +35,17 @@ export function findClearLine(
 				room.area >= minimumRoomSize,
 		)
 		.sort((a, b) => b.area - a.area);
+
 	for (const room of rooms) {
 		for (const origin of candidateOrigins(sim, room.id)) {
 			const line = clearLineFrom(sim, origin, room.id, distance, sideClearance);
+
 			if (line) {
 				return line;
 			}
 		}
 	}
+
 	throw new Error(`Aucune ligne dégagée de ${distance} m dans ce manoir`);
 }
 
@@ -51,12 +55,14 @@ function candidateOrigins(sim: MatchSimulation, roomId: number): Vec3[] {
 	const center = { x: room.labelPoint.x, y: room.floorY, z: room.labelPoint.z };
 	const origins: Vec3[] = [];
 	const node = match.grid.nearestNode(center, 2);
+
 	if (
 		node !== null &&
 		Math.abs(match.grid.heights[node] - room.floorY) < 0.01
 	) {
 		origins.push(match.grid.nodePosition(node));
 	}
+
 	const cells = (match.grid.roomCells.get(roomId) ?? [])
 		.filter((cell) => match.grid.component[cell] === match.grid.mainComponent)
 		.map((cell) => match.grid.nodePosition(cell))
@@ -66,9 +72,11 @@ function candidateOrigins(sim: MatchSimulation, roomId: number): Vec3[] {
 				Math.hypot(a.x - center.x, a.z - center.z) -
 				Math.hypot(b.x - center.x, b.z - center.z),
 		);
+
 	for (let index = 0; index < cells.length; index += 5) {
 		origins.push(cells[index]);
 	}
+
 	return origins;
 }
 
@@ -80,34 +88,42 @@ function clearLineFrom(
 	sideClearance: number,
 ): ClearLine | null {
 	const { match } = sim;
+
 	for (let step = 0; step < 32; step += 1) {
 		const yaw = (step / 32) * Math.PI * 2 - Math.PI;
 		const direction = yawToDirection(yaw);
+
 		const target = {
 			x: origin.x + direction.x * distance,
 			y: origin.y,
 			z: origin.z + direction.z * distance,
 		};
+
 		const targetNode = match.grid.nearestNode(target, 0);
+
 		if (
 			targetNode === null ||
 			Math.abs(match.grid.nodePosition(targetNode).y - origin.y) > 0.05
 		) {
 			continue;
 		}
+
 		if (
 			match.roomIdAt(target) !== roomId ||
 			!match.finder.walkableLine(origin, target, 0)
 		) {
 			continue;
 		}
+
 		const eye = {
 			...origin,
 			y: origin.y + EYE_HEIGHT_STANDING - CROUCH_EYE_DROP,
 		};
+
 		const clear = [0.4, 1, 1.6].every((height) =>
 			lineOfSight(match.world, eye, { ...target, y: target.y + height }),
 		);
+
 		const sides =
 			sideClearance === 0 ||
 			[1, -1].every((side) =>
@@ -121,10 +137,12 @@ function clearLineFrom(
 					0,
 				),
 			);
+
 		if (clear && sides) {
 			return { origin, yaw, target, roomId };
 		}
 	}
+
 	return null;
 }
 
@@ -146,19 +164,25 @@ export function installAnomaly(
 ): AnomalyEntity {
 	const { match } = sim;
 	const entity = new AnomalyEntity(slot, species, 1, 1, [...formula]);
+
 	match.anomalies[slot] = entity;
+
 	entity.resetForSpawn(
 		{ ...feet, y: feet.y + hoverHeight(entity) },
 		yaw,
 		match.now,
 	);
+
 	entity.spawnDueAt = Infinity;
+
 	if (species === "archiviste") {
 		entity.homeRoom = match.roomIdAt(feet);
 	}
+
 	if (species === "luciole") {
 		entity.homePoint = { ...feet };
 	}
+
 	return entity;
 }
 
@@ -169,14 +193,18 @@ export function aimAt(
 	crouched: boolean,
 ): { yaw: number; pitch: number } {
 	const bot = sim.bot(playerId);
+
 	const eyeY =
 		bot.character.y + EYE_HEIGHT_STANDING - (crouched ? CROUCH_EYE_DROP : 0);
+
 	const dx = point.x - bot.character.x;
 	const dz = point.z - bot.character.z;
 	const yaw = Math.atan2(-dx, -dz);
 	const pitch = Math.atan2(point.y - eyeY, Math.hypot(dx, dz));
+
 	bot.input.yaw = yaw;
 	bot.pitch = pitch;
+
 	return { yaw, pitch };
 }
 
@@ -193,6 +221,7 @@ export function speak(
 	level: number,
 ): void {
 	const bot = sim.bot(playerId);
+
 	bot.voiceLevel = level;
 	bot.voicePeakMs = level > 0 ? 50 : 0;
 }
@@ -203,10 +232,12 @@ export function prepareCaster(
 	setup: CastSetup,
 ): void {
 	const bot = sim.bot(playerId);
+
 	bot.input.forward = 0;
 	bot.input.strafe = 0;
 	bot.input.crouch = setup.crouch ?? false;
 	bot.lantern = setup.lantern ?? false;
+
 	speak(sim, playerId, setup.voiceLevel ?? 0.3);
 	sim.run(setup.stillSeconds ?? 1.6);
 }
@@ -220,8 +251,10 @@ export function castAt(
 	const bot = sim.bot(playerId);
 	const center = entity.center();
 	const crouched = bot.input.crouch;
+
 	aimAt(sim, playerId, center, crouched);
 	sim.run(0.1);
+
 	return speakFormula(sim, playerId, words);
 }
 
@@ -231,12 +264,15 @@ export function speakFormula(
 	words: readonly string[],
 ): CastResult {
 	const { match } = sim;
+
 	match.handleCastBegin(playerId);
 	sim.run(0.1);
+
 	match.handleCast(playerId, {
 		transcripts: [words.join(" ")],
 		method: "speech",
 	});
+
 	return lastCastResult(sim, playerId) as CastResult;
 }
 
@@ -248,7 +284,9 @@ export function lastCastResult(
 		(message) =>
 			message.event === "game:castResult" && message.target === playerId,
 	);
+
 	const last = messages[messages.length - 1];
+
 	return last ? (last.payload as CastResult) : null;
 }
 
@@ -259,9 +297,12 @@ export function placeBot(
 	yaw: number,
 ): void {
 	sim.teleportBot(playerId, feet, yaw);
+
 	const bot = sim.bot(playerId);
+
 	bot.input.yaw = yaw;
 	bot.input.forward = 0;
 	bot.input.strafe = 0;
+
 	sim.run(0.3);
 }

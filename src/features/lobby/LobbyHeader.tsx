@@ -12,6 +12,7 @@ export function LobbyHeader({
 	actions: ReactNode;
 }) {
 	const t = useT();
+
 	return (
 		<header className={styles.header}>
 			<div className={styles.heading}>

@@ -22,12 +22,16 @@ export function buildMatchRecords(
 ): MatchRecord[] {
 	const records: MatchRecord[] = [];
 	const rules = config ? detailRules(config) : null;
+
 	for (const entry of results.entries) {
 		const accountId = accounts.get(entry.playerId);
+
 		if (!accountId) {
 			continue;
 		}
+
 		const won = entryWon(results, entry);
+
 		records.push({
 			accountId,
 			matchId: results.matchId,
@@ -57,6 +61,7 @@ export function buildMatchRecords(
 			details: matchDetails(results, entry.playerId, rules, accounts),
 		});
 	}
+
 	return records;
 }
 
@@ -108,11 +113,13 @@ function matchDetails(
 function rankOf(results: MatchResults, entry: MatchResultEntry): number {
 	if (results.teams.length > 0) {
 		const team = results.teams.find((standing) => standing.team === entry.team);
+
 		return (
 			1 +
 			results.teams.filter((other) => other.score > (team?.score ?? 0)).length
 		);
 	}
+
 	return (
 		1 + results.entries.filter((other) => other.score > entry.score).length
 	);

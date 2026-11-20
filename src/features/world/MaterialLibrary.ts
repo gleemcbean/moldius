@@ -34,10 +34,14 @@ const WAVE_SHADERS: Record<MaterialWave, string> = {
 function applyWave(material: THREE.Material, wave: MaterialWave): void {
 	const previous = material.onBeforeCompile.bind(material);
 	const previousKey = material.customProgramCacheKey.bind(material);
+
 	material.customProgramCacheKey = () => `${previousKey()}-wave-${wave}`;
+
 	material.onBeforeCompile = (shader, renderer) => {
 		previous(shader, renderer);
+
 		shader.uniforms.uDecorTime = decorTime;
+
 		shader.vertexShader = shader.vertexShader
 			.replace(
 				"#include <common>",
@@ -52,6 +56,7 @@ function applyWave(material: THREE.Material, wave: MaterialWave): void {
 
 export interface MaterialOptions {
 	wave?: MaterialWave;
+	pulse?: number;
 	texture?: string;
 	color?: number;
 	roughness?: number;
@@ -69,6 +74,47 @@ export interface MaterialOptions {
 	relief?: number;
 }
 
+function applyPulse(material: THREE.MeshStandardMaterial, pulse: number): void {
+	const previous = material.onBeforeCompile.bind(material);
+	const previousKey = material.customProgramCacheKey.bind(material);
+
+	material.customProgramCacheKey = () => `${previousKey()}-pulse`;
+
+	material.onBeforeCompile = (shader, renderer) => {
+		previous(shader, renderer);
+
+		shader.uniforms.uDecorTime = decorTime;
+		shader.uniforms.uPulse = { value: pulse };
+
+		shader.vertexShader = shader.vertexShader
+			.replace(
+				"#include <common>",
+				"#include <common>\nvarying vec3 vPulseWorld;",
+			)
+			.replace(
+				"#include <begin_vertex>",
+				`#include <begin_vertex>
+	#ifdef USE_INSTANCING
+	vPulseWorld = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+	#else
+	vPulseWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;
+	#endif`,
+			);
+
+		shader.fragmentShader = shader.fragmentShader
+			.replace(
+				"#include <common>",
+				"#include <common>\nuniform float uDecorTime;\nuniform float uPulse;\nvarying vec3 vPulseWorld;",
+			)
+			.replace(
+				"#include <emissivemap_fragment>",
+				`#include <emissivemap_fragment>
+	float pulseWave = 0.5 + 0.5 * sin(uDecorTime * 1.3 + vPulseWorld.x * 0.9 + vPulseWorld.z * 0.7 + vPulseWorld.y * 1.7);
+	totalEmissiveRadiance *= 1.0 - uPulse * pulseWave;`,
+			);
+	};
+}
+
 const METAL_SHEEN = 0.9;
 const GLOSS_SHEEN = 0.6;
 const PIXELS_PER_METER = "28.0";
@@ -76,6 +122,7 @@ const PIXEL_SHADE = "0.04";
 
 function pixelate(material: THREE.MeshStandardMaterial): void {
 	material.customProgramCacheKey = () => "moldius-pixel-1";
+
 	material.onBeforeCompile = (shader) => {
 		shader.vertexShader = shader.vertexShader
 			.replace(
@@ -86,6 +133,7 @@ function pixelate(material: THREE.MeshStandardMaterial): void {
 				"#include <begin_vertex>",
 				"#include <begin_vertex>\nvPixelLocal = position;\nvPixelNormal = normal;",
 			);
+
 		shader.fragmentShader = shader.fragmentShader
 			.replace(
 				"#include <common>",
@@ -175,6 +223,7 @@ const RELIEF_CHUNKS: [string, string, string][] = [
 
 function shiftedChunk(include: string, varying: string): string {
 	const name = include.slice("#include <".length, -1);
+
 	return THREE.ShaderChunk[name as keyof typeof THREE.ShaderChunk].replaceAll(
 		varying,
 		`( ${varying} + reliefShift )`,
@@ -188,21 +237,27 @@ function addRelief(
 ): void {
 	const previous = material.onBeforeCompile.bind(material);
 	const previousKey = material.customProgramCacheKey.bind(material);
+
 	material.customProgramCacheKey = () => `${previousKey()}-relief-1`;
+
 	material.onBeforeCompile = (shader, renderer) => {
 		previous(shader, renderer);
+
 		shader.uniforms.reliefDepth = { value: depth };
 		shader.uniforms.reliefSteps = { value: steps };
+
 		let fragment = shader.fragmentShader.replace(
 			"#include <normalmap_pars_fragment>",
 			`#include <normalmap_pars_fragment>${RELIEF_PARS}`,
 		);
+
 		for (const [include, varying, prefix] of RELIEF_CHUNKS) {
 			fragment = fragment.replace(
 				include,
 				`${prefix}${shiftedChunk(include, varying)}`,
 			);
 		}
+
 		shader.fragmentShader = fragment;
 	};
 }
@@ -215,9 +270,12 @@ const SHEEN_ONLY = THREE.ShaderChunk.lights_fragment_maps.replace(
 function addSheen(material: THREE.MeshStandardMaterial): void {
 	const previous = material.onBeforeCompile.bind(material);
 	const previousKey = material.customProgramCacheKey.bind(material);
+
 	material.customProgramCacheKey = () => `${previousKey()}-sheen-1`;
+
 	material.onBeforeCompile = (shader, renderer) => {
 		previous(shader, renderer);
+
 		shader.fragmentShader = shader.fragmentShader.replace(
 			"#include <lights_fragment_maps>",
 			SHEEN_ONLY,
@@ -248,18 +306,24 @@ export class MaterialLibrary {
 			options.fog ?? true,
 			options.wave ?? "",
 			options.relief ?? 1,
+			options.pulse ?? 0,
 		]);
 	}
 
 	get(options: MaterialOptions): THREE.Material {
 		const key = this.key(options);
 		const existing = this.materials.get(key);
+
 		if (existing) {
 			return existing;
 		}
+
 		const material = this.create(options);
+
 		material.name = key;
+
 		this.materials.set(key, material);
+
 		return material;
 	}
 
@@ -271,7 +335,9 @@ export class MaterialLibrary {
 		const surface: SurfaceMaps | null = options.texture
 			? this.textures.surface(options.texture, options.fixedRepeat)
 			: null;
+
 		const map = surface?.map ?? null;
+
 		const shared = {
 			map,
 			color: new THREE.Color(options.color ?? 0xffffff),
@@ -283,13 +349,17 @@ export class MaterialLibrary {
 			fog: options.fog ?? true,
 			forceSinglePass: true,
 		};
+
 		if (options.unlit) {
 			const basic = new THREE.MeshBasicMaterial(shared);
+
 			if (options.wave) {
 				applyWave(basic, options.wave);
 			}
+
 			return basic;
 		}
+
 		const material = new THREE.MeshStandardMaterial({
 			...shared,
 			roughness: options.roughness ?? 0.92,
@@ -298,35 +368,51 @@ export class MaterialLibrary {
 			emissiveIntensity: options.emissiveIntensity ?? 1,
 			emissiveMap: options.emissive && map ? map : null,
 		});
+
 		const relief = options.relief ?? 1;
+
 		if (surface?.normalMap && relief > 0) {
 			material.normalMap = surface.normalMap;
+
 			material.normalScale.set(relief, relief);
 		}
+
 		if (surface?.fine) {
 			material.roughness = 1;
 			material.roughnessMap = surface.ormMap;
 			material.aoMap = surface.ormMap;
+
 			if (surface.metallic) {
 				material.metalnessMap = surface.ormMap;
 				material.metalness = options.metalness ?? 1;
 			}
+
 			const steps = this.textures.quality.parallax;
+
 			if (surface.parallax && steps > 0 && relief > 0 && !options.transparent) {
 				addRelief(material, surface.depth * relief, steps);
 			}
+
 			const reflections = this.textures.reflections();
+
 			if (reflections) {
 				material.envMap = reflections;
 				material.envMapIntensity = surface.metallic ? METAL_SHEEN : GLOSS_SHEEN;
+
 				addSheen(material);
 			}
 		} else {
 			pixelate(material);
 		}
+
 		if (options.wave) {
 			applyWave(material, options.wave);
 		}
+
+		if (options.pulse && options.emissive) {
+			applyPulse(material, options.pulse);
+		}
+
 		return material;
 	}
 
@@ -338,6 +424,7 @@ export class MaterialLibrary {
 		for (const material of this.materials.values()) {
 			material.dispose();
 		}
+
 		this.materials.clear();
 	}
 }

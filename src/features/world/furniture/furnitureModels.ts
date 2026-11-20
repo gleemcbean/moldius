@@ -48,10 +48,13 @@ function conditionHolds(condition: RoomCondition, room: Room): boolean {
 
 export function furnitureModelId(kind: string, variant: number): string {
 	const exact = `furniture/${variant === 0 ? kind : `${kind}_v${variant}`}`;
+
 	if (modelLibrary.exists(exact)) {
 		return exact;
 	}
+
 	const base = `furniture/${kind}`;
+
 	return modelLibrary.exists(base) ? base : `furniture/${FALLBACK_FURNITURE}`;
 }
 
@@ -71,49 +74,65 @@ function bake(
 ): THREE.BufferGeometry {
 	const source = mesh.geometry;
 	const geometry = new THREE.BufferGeometry();
+
 	const position = (
 		source.getAttribute("position") as THREE.BufferAttribute
 	).clone();
+
 	const normal = (
 		source.getAttribute("normal") as THREE.BufferAttribute
 	).clone();
+
 	geometry.setAttribute("position", position);
 	geometry.setAttribute("normal", normal);
+
 	const uv = source.getAttribute("uv");
+
 	if (uv) {
 		geometry.setAttribute("uv", (uv as THREE.BufferAttribute).clone());
 	}
+
 	if (source.index) {
 		geometry.setIndex(source.index.clone());
 	}
+
 	const dictionary = mesh.morphTargetDictionary ?? {};
 	let morphed = false;
+
 	for (const [name, index] of Object.entries(dictionary)) {
 		const offset = offsets[name as FurnitureAxis] ?? 0;
+
 		if (offset === 0) {
 			continue;
 		}
+
 		morphed = true;
+
 		const positions = source.morphAttributes.position?.[index];
 		const normals = source.morphAttributes.normal?.[index];
+
 		if (positions) {
 			for (let value = 0; value < position.array.length; value += 1) {
 				position.array[value] += positions.array[value] * offset;
 			}
 		}
+
 		if (normals) {
 			for (let value = 0; value < normal.array.length; value += 1) {
 				normal.array[value] += normals.array[value] * offset;
 			}
 		}
 	}
+
 	if (morphed) {
 		const vector = new THREE.Vector3();
+
 		for (let vertex = 0; vertex < normal.count; vertex += 1) {
 			vector.fromBufferAttribute(normal, vertex).normalize();
 			normal.setXYZ(vertex, vector.x, vector.y, vector.z);
 		}
 	}
+
 	return geometry;
 }
 
@@ -124,7 +143,9 @@ export function furnitureParts(
 	const template = modelLibrary.template(
 		furnitureModelId(item.kind, item.variant),
 	);
+
 	const data = template.userData as FurnitureRootData;
+
 	const values: Record<FurnitureAxis, number> = {
 		width: item.width,
 		height: item.height,
@@ -132,33 +153,46 @@ export function furnitureParts(
 		top: room.ceilingY - item.y,
 		bottom: room.floorY - item.y,
 	};
+
 	const offsets: Partial<Record<FurnitureAxis, number>> = {};
+
 	for (const axis of data.morphs) {
 		offsets[axis] = values[axis] - data.reference[axis];
 	}
+
 	const morphs = new Set(data.morphs);
+
 	const ratio = (axis: FurnitureAxis) =>
 		morphs.has(axis) ? 1 : values[axis] / Math.max(0.01, data.reference[axis]);
+
 	const scale = new THREE.Vector3(
 		ratio("width"),
 		ratio("height"),
 		ratio("depth"),
 	);
+
 	const choice = pick(item.seed, 8);
+
 	const sample = template.getObjectByName(
 		`sample_${pick(item.seed, data.samples)}`,
 	);
+
 	const result: FurnitureParts = { pieces: [], animated: [], scale };
+
 	if (!sample) {
 		return result;
 	}
+
 	const materialOf = (mesh: THREE.Mesh) => {
 		const meshData = mesh.userData as FurnitureMeshData;
+
 		const index = meshData.choices
 			? meshData.choices[choice % meshData.choices.length]
 			: (meshData.material ?? 0);
+
 		return resolveEntry(data.palette[index], room);
 	};
+
 	const collect = (parent: THREE.Object3D, target: FurniturePiece[]) => {
 		for (const child of parent.children) {
 			if (child instanceof THREE.Mesh) {
@@ -166,14 +200,19 @@ export function furnitureParts(
 					material: materialOf(child),
 					geometry: bake(child, offsets),
 				});
+
 				continue;
 			}
+
 			const group = child.userData as FurnitureGroupData;
+
 			if (group.when && !conditionHolds(group.when, room)) {
 				continue;
 			}
+
 			if (group.anim) {
 				const pivot = new THREE.Vector3(...group.anim.pivot);
+
 				for (const [axis, delta] of Object.entries(
 					group.anim.pivotMorph ?? {},
 				)) {
@@ -182,8 +221,11 @@ export function furnitureParts(
 						offsets[axis as FurnitureAxis] ?? 0,
 					);
 				}
+
 				const pieces: FurniturePiece[] = [];
+
 				collect(child, pieces);
+
 				result.animated.push({
 					animation: {
 						kind: group.anim.kind,
@@ -195,11 +237,15 @@ export function furnitureParts(
 					},
 					pieces,
 				});
+
 				continue;
 			}
+
 			collect(child, target);
 		}
 	};
+
 	collect(sample, result.pieces);
+
 	return result;
 }

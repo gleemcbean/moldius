@@ -33,6 +33,7 @@ async function request<T>(
 	body?: object,
 ): Promise<ApiResult<T>> {
 	let response: Response;
+
 	try {
 		response = await fetch(`/api/account${path}`, {
 			method,
@@ -47,12 +48,15 @@ async function request<T>(
 	} catch {
 		return { ok: false, status: 0, error: currentMessages().account.network };
 	}
+
 	if (response.status === 204) {
 		return { ok: true, value: null as T };
 	}
+
 	const payload = (await response.json().catch(() => null)) as
 		| (T & Partial<AccountErrorBody>)
 		| null;
+
 	if (!response.ok || !payload) {
 		return {
 			ok: false,
@@ -61,6 +65,7 @@ async function request<T>(
 			...(payload?.field ? { field: payload.field } : {}),
 		};
 	}
+
 	return { ok: true, value: payload };
 }
 

@@ -8,13 +8,17 @@ export function scaleUv(
 	scaleV: number,
 ): THREE.BufferGeometry {
 	const uv = geometry.getAttribute("uv") as THREE.BufferAttribute | undefined;
+
 	if (!uv) {
 		return geometry;
 	}
+
 	for (let index = 0; index < uv.count; index += 1) {
 		uv.setXY(index, uv.getX(index) * scaleU, uv.getY(index) * scaleV);
 	}
+
 	uv.needsUpdate = true;
+
 	return geometry;
 }
 
@@ -25,6 +29,7 @@ export function meterBox(
 ): THREE.BufferGeometry {
 	const geometry = new THREE.BoxGeometry(width, height, depth);
 	const uv = geometry.getAttribute("uv") as THREE.BufferAttribute;
+
 	const faceSizes: [number, number][] = [
 		[depth, height],
 		[depth, height],
@@ -33,14 +38,19 @@ export function meterBox(
 		[width, height],
 		[width, height],
 	];
+
 	for (let face = 0; face < 6; face += 1) {
 		const [su, sv] = faceSizes[face];
+
 		for (let vertex = 0; vertex < 4; vertex += 1) {
 			const index = face * 4 + vertex;
+
 			uv.setXY(index, uv.getX(index) * su, uv.getY(index) * sv);
 		}
 	}
+
 	uv.needsUpdate = true;
+
 	return geometry;
 }
 
@@ -49,6 +59,7 @@ export function meterCircle(
 	segments = 20,
 ): THREE.BufferGeometry {
 	const size = radius * 2;
+
 	return scaleUv(new THREE.CircleGeometry(radius, segments), size, size);
 }
 
@@ -67,6 +78,7 @@ export function meterCylinder(
 		1,
 		open,
 	);
+
 	return scaleUv(
 		geometry,
 		Math.PI * 2 * Math.max(radiusTop, radiusBottom),
@@ -93,10 +105,13 @@ export function meterLathe(
 	const points = orientLatheProfile(input);
 	const geometry = new THREE.LatheGeometry(points, segments);
 	let length = 0;
+
 	for (let index = 1; index < points.length; index += 1) {
 		length += points[index].distanceTo(points[index - 1]);
 	}
+
 	const radius = Math.max(...points.map((point) => point.x));
+
 	return scaleUv(geometry, Math.PI * 2 * radius, length);
 }
 
@@ -112,9 +127,11 @@ export function meterTorus(
 		arc * radius,
 		Math.PI * 2 * tube,
 	);
+
 	if (arc >= Math.PI * 2 - 1e-3) {
 		return ring;
 	}
+
 	const caps = [0, arc].map((angle) =>
 		meterSphere(
 			tube,
@@ -122,6 +139,7 @@ export function meterTorus(
 			Math.max(4, Math.round(radial * 0.75)),
 		).translate(Math.cos(angle) * radius, Math.sin(angle) * radius, 0),
 	);
+
 	return mergeGeometries([ring, ...caps], false) as THREE.BufferGeometry;
 }
 
@@ -141,6 +159,8 @@ export function placed(
 		),
 		new THREE.Vector3(1, 1, 1),
 	);
+
 	geometry.applyMatrix4(matrix);
+
 	return geometry;
 }

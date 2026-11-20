@@ -10,6 +10,7 @@ export interface SpeciesText {
 const SPECIES_FR = Object.fromEntries(
 	SPECIES_IDS.map((id) => {
 		const { name, description, danger } = SPECIES[id];
+
 		return [id, { name, description, danger }];
 	}),
 ) as Record<SpeciesId, SpeciesText>;
@@ -143,6 +144,20 @@ export const grimoireEn: typeof grimoireFr = {
 				"A teeming ball of big black rats whose tails are tied into a single knot, glowing faintly at its heart. It rolls through the dark, hears everything and looks in every direction at once.",
 			danger:
 				"Bites on contact (20 damage). Lantern light scatters it into a swarm of rats that bite anyone walking through, then it knots back together a few seconds after darkness returns.",
+		},
+		cordyceps: {
+			name: "The Cordyceps",
+			description:
+				"A giant ant, long dead, that the fungus still walks around. A long orange stalk pierces its neck and ends in a club that ripens in silence. Blind, it feels the air with its antennae and rushes at the faintest noise.",
+			danger:
+				"Almost blind (3.5 m) but hears everything. Bites with its mandibles (30 damage). When its club glows, its bite infects anyone whose lantern is closed: for 40 s the fungus makes you scream, rush towards anomalies or leap into the void. Light burns the spores, a shove from an ally frees you and capturing it cures its victims.",
+		},
+		cinematographe: {
+			name: "The Cinematograph",
+			description:
+				"An old projection machine perched on three long copper legs. Its reels turn by themselves, its lens searches for a spectator, and no one ever sees it coming: it moves elsewhere as soon as nobody is watching.",
+			danger:
+				"If its beam holds you for 2 seconds, it pulls you into its film, out of reach of every other anomaly: guide the little mushroom to the end of the reel (jump, duck). Win: the machine stalls and lets itself be captured. Lose: instant death. While it rolls, no formula can hold it.",
 		},
 	},
 	points: (points: number) => `${points} points`,

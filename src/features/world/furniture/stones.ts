@@ -4,6 +4,7 @@ export const STONE: MaterialOptions = {
 	texture: "stoneSmooth",
 	roughness: 0.95,
 };
+
 export const MARBLE: MaterialOptions = { texture: "marble", roughness: 0.5 };
 
 export const CARVED_STONES: readonly MaterialOptions[] = [

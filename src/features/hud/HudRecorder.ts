@@ -154,11 +154,13 @@ function sameNumbers(a: number[], b: number[]): boolean {
 	if (a.length !== b.length) {
 		return false;
 	}
+
 	for (let index = 0; index < a.length; index += 1) {
 		if (a[index] !== b[index]) {
 			return false;
 		}
 	}
+
 	return true;
 }
 
@@ -256,6 +258,7 @@ export class HudRecorder {
 			e: 0,
 			f: 0,
 		};
+
 		this.state = { ...this.defaults };
 		this.current = emptySegment(this.defaults);
 	}
@@ -275,6 +278,7 @@ export class HudRecorder {
 		this.stack.length = 0;
 		this.state = { ...this.defaults };
 		this.segmentCount = 0;
+
 		this.openSegment();
 	}
 
@@ -285,44 +289,62 @@ export class HudRecorder {
 
 	commit(): boolean {
 		this.closeSegment();
+
 		const canvas = (
 			this.target as { canvas?: { width: number; height: number } }
 		).canvas;
+
 		const width = canvas?.width ?? 0;
 		const height = canvas?.height ?? 0;
 		const sized = width > 0 && height > 0;
+
 		this.regions.length = 0;
+
 		let everything = this.dirty || this.segmentCount !== this.previousCount;
+
 		if (!everything) {
 			let changed = false;
+
 			for (let index = 0; index < this.segmentCount; index += 1) {
 				const segment = this.segments[index];
 				const previous = this.previousSegments[index];
+
 				if (!this.sameSegment(segment, previous)) {
 					changed = true;
+
 					if (sized) {
 						this.addRegion(segment, width, height);
 						this.addRegion(previous, width, height);
 					}
 				}
 			}
+
 			if (!changed || (sized && this.regions.length === 0)) {
 				this.swap();
+
 				return false;
 			}
+
 			let area = 0;
+
 			for (const region of this.regions) {
 				area += (region.right - region.left) * (region.bottom - region.top);
 			}
+
 			everything = !sized || area > width * height * FULL_REPAINT_SHARE;
 		}
+
 		if (everything) {
 			this.regions.length = 0;
 		}
+
 		this.everything = everything;
+
 		this.replay(width, height);
 		this.swap();
+
 		this.dirty = false;
+
 		return true;
 	}
 
@@ -332,6 +354,7 @@ export class HudRecorder {
 
 	forgetMeasures(): void {
 		this.widths.clear();
+
 		this.measured = 0;
 	}
 
@@ -356,6 +379,7 @@ export class HudRecorder {
 
 	set fillStyle(value: Style) {
 		this.state.fillStyle = value;
+
 		if (typeof value === "string") {
 			this.numbers.push(OP.fillStyle);
 			this.refs.push(value);
@@ -370,6 +394,7 @@ export class HudRecorder {
 
 	set strokeStyle(value: string) {
 		this.state.strokeStyle = value;
+
 		this.numbers.push(OP.strokeStyle);
 		this.refs.push(value);
 	}
@@ -380,6 +405,7 @@ export class HudRecorder {
 
 	set lineWidth(value: number) {
 		this.state.lineWidth = value;
+
 		this.numbers.push(OP.lineWidth, value);
 	}
 
@@ -389,6 +415,7 @@ export class HudRecorder {
 
 	set font(value: string) {
 		this.state.font = value;
+
 		this.numbers.push(OP.font);
 		this.refs.push(value);
 	}
@@ -399,6 +426,7 @@ export class HudRecorder {
 
 	set textAlign(value: CanvasTextAlign) {
 		this.state.textAlign = value;
+
 		this.numbers.push(OP.textAlign);
 		this.refs.push(value);
 	}
@@ -409,6 +437,7 @@ export class HudRecorder {
 
 	set textBaseline(value: CanvasTextBaseline) {
 		this.state.textBaseline = value;
+
 		this.numbers.push(OP.textBaseline);
 		this.refs.push(value);
 	}
@@ -419,6 +448,7 @@ export class HudRecorder {
 
 	set globalAlpha(value: number) {
 		this.state.globalAlpha = value;
+
 		this.numbers.push(OP.globalAlpha, value);
 	}
 
@@ -428,6 +458,7 @@ export class HudRecorder {
 
 	set lineJoin(value: CanvasLineJoin) {
 		this.state.lineJoin = value;
+
 		this.numbers.push(OP.lineJoin);
 		this.refs.push(value);
 	}
@@ -438,6 +469,7 @@ export class HudRecorder {
 
 	set lineCap(value: CanvasLineCap) {
 		this.state.lineCap = value;
+
 		this.numbers.push(OP.lineCap);
 		this.refs.push(value);
 	}
@@ -448,6 +480,7 @@ export class HudRecorder {
 
 	set filter(value: string) {
 		this.state.filter = value;
+
 		this.numbers.push(OP.filter);
 		this.refs.push(value);
 	}
@@ -458,6 +491,7 @@ export class HudRecorder {
 
 	set shadowColor(value: string) {
 		this.state.shadowColor = value;
+
 		this.numbers.push(OP.shadowColor);
 		this.refs.push(value);
 	}
@@ -468,11 +502,13 @@ export class HudRecorder {
 
 	set shadowBlur(value: number) {
 		this.state.shadowBlur = value;
+
 		this.numbers.push(OP.shadowBlur, value);
 	}
 
 	setLineDash(segments: number[]): void {
 		this.state.lineDash = [...segments];
+
 		this.numbers.push(OP.lineDash, segments.length, ...segments);
 	}
 
@@ -489,8 +525,11 @@ export class HudRecorder {
 		r1: number,
 	): RecordedGradient {
 		const id = this.gradientCount;
+
 		this.gradientCount += 1;
+
 		this.numbers.push(OP.gradient, id, x0, y0, r0, x1, y1, r1);
+
 		return new RecordedGradient(this, id);
 	}
 
@@ -526,6 +565,7 @@ export class HudRecorder {
 
 	beginPath(): void {
 		this.numbers.push(OP.beginPath);
+
 		this.pathLeft = Infinity;
 		this.pathTop = Infinity;
 		this.pathRight = -Infinity;
@@ -563,7 +603,9 @@ export class HudRecorder {
 			end,
 			counterclockwise ? 1 : 0,
 		);
+
 		const reach = Math.abs(radius);
+
 		this.trace(x - reach, y - reach, x + reach, y + reach);
 	}
 
@@ -571,7 +613,9 @@ export class HudRecorder {
 		if (path) {
 			this.numbers.push(OP.fillPath);
 			this.refs.push(path, rule ?? "nonzero");
+
 			const bounds = this.paths.get(path);
+
 			if (bounds) {
 				this.project(bounds.left, bounds.top, bounds.right, bounds.bottom);
 				this.grow(1);
@@ -590,11 +634,15 @@ export class HudRecorder {
 			this.numbers.push(OP.stroke);
 			this.loadPath();
 			this.grow(this.strokeSpread());
+
 			return;
 		}
+
 		this.numbers.push(OP.strokePath);
 		this.refs.push(path);
+
 		const bounds = this.paths.get(path);
+
 		if (bounds) {
 			this.project(bounds.left, bounds.top, bounds.right, bounds.bottom);
 			this.grow(this.strokeSpread());
@@ -610,25 +658,31 @@ export class HudRecorder {
 
 	restore(): void {
 		const previous = this.stack.pop();
+
 		if (previous) {
 			this.state = previous;
 		}
+
 		this.numbers.push(OP.restore);
 	}
 
 	translate(x: number, y: number): void {
 		const state = this.state;
+
 		state.e += state.a * x + state.c * y;
 		state.f += state.b * x + state.d * y;
+
 		this.numbers.push(OP.translate, x, y);
 	}
 
 	scale(x: number, y: number): void {
 		const state = this.state;
+
 		state.a *= x;
 		state.b *= x;
 		state.c *= y;
 		state.d *= y;
+
 		this.numbers.push(OP.scale, x, y);
 	}
 
@@ -637,10 +691,12 @@ export class HudRecorder {
 		const cos = Math.cos(angle);
 		const sin = Math.sin(angle);
 		const { a, b, c, d } = state;
+
 		state.a = a * cos + c * sin;
 		state.b = b * cos + d * sin;
 		state.c = c * cos - a * sin;
 		state.d = d * cos - b * sin;
+
 		this.numbers.push(OP.rotate, angle);
 	}
 
@@ -653,16 +709,19 @@ export class HudRecorder {
 		f: number,
 	): void {
 		const state = this.state;
+
 		state.a = a;
 		state.b = b;
 		state.c = c;
 		state.d = d;
 		state.e = e;
 		state.f = f;
+
 		this.numbers.push(OP.setTransform, a, b, c, d, e, f);
 	}
 
 	drawImage(image: CanvasImageSource, x: number, y: number): void;
+
 	drawImage(
 		image: CanvasImageSource,
 		x: number,
@@ -670,6 +729,7 @@ export class HudRecorder {
 		width: number,
 		height: number,
 	): void;
+
 	drawImage(
 		image: CanvasImageSource,
 		x: number,
@@ -678,9 +738,12 @@ export class HudRecorder {
 		height?: number,
 	): void {
 		this.refs.push(image);
+
 		if (width === undefined || height === undefined) {
 			this.numbers.push(OP.drawImage, x, y);
+
 			const size = image as { width?: unknown; height?: unknown };
+
 			if (typeof size.width === "number" && typeof size.height === "number") {
 				this.project(x, y, x + size.width, y + size.height);
 				this.grow(1);
@@ -696,12 +759,14 @@ export class HudRecorder {
 
 	private openSegment(): void {
 		let segment = this.segments[this.segmentCount];
+
 		if (!segment) {
 			segment = emptySegment(this.state);
 			this.segments[this.segmentCount] = segment;
 		} else {
 			Object.assign(segment.start, this.state);
 		}
+
 		segment.numbers = this.numbers.length;
 		segment.refs = this.refs.length;
 		segment.depth = this.stack.length;
@@ -715,6 +780,7 @@ export class HudRecorder {
 
 	private closeSegment(): void {
 		const segment = this.current;
+
 		segment.numbersEnd = this.numbers.length;
 		segment.refsEnd = this.refs.length;
 		segment.depthEnd = this.stack.length;
@@ -724,6 +790,7 @@ export class HudRecorder {
 		const numbers = this.previousNumbers;
 		const refs = this.previousRefs;
 		const segments = this.previousSegments;
+
 		this.previousNumbers = this.numbers;
 		this.previousRefs = this.refs;
 		this.previousSegments = this.segments;
@@ -744,24 +811,30 @@ export class HudRecorder {
 		) {
 			return false;
 		}
+
 		const numbers = this.numbers;
 		const before = this.previousNumbers;
 		const shift = previous.numbers - segment.numbers;
+
 		for (let index = segment.numbers; index < segment.numbersEnd; index += 1) {
 			const left = numbers[index];
 			const right = before[index + shift];
+
 			if (left !== right && !(Number.isNaN(left) && Number.isNaN(right))) {
 				return false;
 			}
 		}
+
 		const refs = this.refs;
 		const earlier = this.previousRefs;
 		const offset = previous.refs - segment.refs;
+
 		for (let index = segment.refs; index < segment.refsEnd; index += 1) {
 			if (refs[index] !== earlier[index + offset]) {
 				return false;
 			}
 		}
+
 		return true;
 	}
 
@@ -769,14 +842,18 @@ export class HudRecorder {
 		if (segment.left > segment.right || segment.top > segment.bottom) {
 			return;
 		}
+
 		const left = Math.max(0, Math.floor(segment.left) - REGION_MARGIN);
 		const top = Math.max(0, Math.floor(segment.top) - REGION_MARGIN);
 		const right = Math.min(width, Math.ceil(segment.right) + REGION_MARGIN);
 		const bottom = Math.min(height, Math.ceil(segment.bottom) + REGION_MARGIN);
+
 		if (right <= left || bottom <= top) {
 			return;
 		}
+
 		this.insertRegion(left, top, right, bottom);
+
 		while (this.regions.length > MAX_REGIONS) {
 			this.mergeClosestRegions();
 		}
@@ -790,8 +867,10 @@ export class HudRecorder {
 	): void {
 		const regions = this.regions;
 		let index = 0;
+
 		while (index < regions.length) {
 			const region = regions[index];
+
 			if (
 				region.left - MERGE_GAP <= right &&
 				left <= region.right + MERGE_GAP &&
@@ -803,12 +882,15 @@ export class HudRecorder {
 				right = Math.max(right, region.right);
 				bottom = Math.max(bottom, region.bottom);
 				regions[index] = regions[regions.length - 1];
+
 				regions.pop();
+
 				index = 0;
 			} else {
 				index += 1;
 			}
 		}
+
 		regions.push({ left, top, right, bottom });
 	}
 
@@ -817,15 +899,18 @@ export class HudRecorder {
 		let best = Infinity;
 		let first = 0;
 		let second = 1;
+
 		for (let i = 0; i < regions.length; i += 1) {
 			for (let j = i + 1; j < regions.length; j += 1) {
 				const a = regions[i];
 				const b = regions[j];
+
 				const waste =
 					(Math.max(a.right, b.right) - Math.min(a.left, b.left)) *
 						(Math.max(a.bottom, b.bottom) - Math.min(a.top, b.top)) -
 					(a.right - a.left) * (a.bottom - a.top) -
 					(b.right - b.left) * (b.bottom - b.top);
+
 				if (waste < best) {
 					best = waste;
 					first = i;
@@ -833,10 +918,13 @@ export class HudRecorder {
 				}
 			}
 		}
+
 		const a = regions[first];
 		const b = regions[second];
+
 		regions.splice(second, 1);
 		regions.splice(first, 1);
+
 		this.insertRegion(
 			Math.min(a.left, b.left),
 			Math.min(a.top, b.top),
@@ -856,43 +944,59 @@ export class HudRecorder {
 				return true;
 			}
 		}
+
 		return false;
 	}
 
 	private measure(font: string, text: string): number {
 		let widths = this.widths.get(font);
 		let width = widths?.get(text);
+
 		if (width !== undefined) {
 			return width;
 		}
+
 		const previous = this.target.font;
+
 		this.target.font = font;
 		width = this.target.measureText(text).width;
 		this.target.font = previous;
+
 		if (this.measured >= MEASURE_CACHE_LIMIT) {
 			this.widths.clear();
+
 			this.measured = 0;
 			widths = undefined;
 		}
+
 		if (!widths) {
 			widths = new Map();
+
 			this.widths.set(font, widths);
 		}
+
 		widths.set(text, width);
+
 		this.measured += 1;
+
 		return width;
 	}
 
 	private fontSize(font: string): number {
 		let size = this.sizes.get(font);
+
 		if (size === undefined) {
 			const match = /(\d*\.?\d+)px/.exec(font);
+
 			size = match ? Number(match[1]) : FALLBACK_FONT_SIZE;
+
 			if (this.sizes.size >= FONT_CACHE_LIMIT) {
 				this.sizes.clear();
 			}
+
 			this.sizes.set(font, size);
 		}
+
 		return size;
 	}
 
@@ -906,6 +1010,7 @@ export class HudRecorder {
 		const bx1 = b * x1;
 		const dy0 = d * y0;
 		const dy1 = d * y1;
+
 		this.boxLeft = Math.min(ax0, ax1) + Math.min(cy0, cy1) + e;
 		this.boxRight = Math.max(ax0, ax1) + Math.max(cy0, cy1) + e;
 		this.boxTop = Math.min(bx0, bx1) + Math.min(dy0, dy1) + f;
@@ -914,6 +1019,7 @@ export class HudRecorder {
 
 	private trace(x0: number, y0: number, x1: number, y1: number): void {
 		this.project(x0, y0, x1, y1);
+
 		this.pathLeft = Math.min(this.pathLeft, this.boxLeft);
 		this.pathTop = Math.min(this.pathTop, this.boxTop);
 		this.pathRight = Math.max(this.pathRight, this.boxRight);
@@ -932,46 +1038,56 @@ export class HudRecorder {
 		const size = this.fontSize(state.font);
 		const width = this.measure(state.font, text);
 		const align = state.textAlign;
+
 		const start =
 			align === "center"
 				? x - width / 2
 				: align === "right" || align === "end"
 					? x - width
 					: x;
+
 		const baseline = state.textBaseline;
+
 		const above =
 			baseline === "middle"
 				? size
 				: baseline === "alphabetic"
 					? size * 1.2
 					: size * 1.5;
+
 		const below =
 			baseline === "middle"
 				? size
 				: baseline === "alphabetic"
 					? size * 0.6
 					: size * 1.5;
+
 		const outline = stroke ? Math.abs(state.lineWidth) : 0;
 		const slack = size * 0.5 + outline;
+
 		this.project(
 			start - slack,
 			y - above - outline,
 			start + width + slack,
 			y + below + outline,
 		);
+
 		this.grow(1);
 	}
 
 	private strokeSpread(): number {
 		const state = this.state;
+
 		const half =
 			(Math.abs(state.lineWidth) / 2) *
 			Math.max(Math.hypot(state.a, state.b), Math.hypot(state.c, state.d));
+
 		return half * (state.lineJoin === "miter" ? 10 : 1.5) + 1;
 	}
 
 	private unbound(): void {
 		const segment = this.current;
+
 		segment.left = -Infinity;
 		segment.top = -Infinity;
 		segment.right = Infinity;
@@ -984,6 +1100,7 @@ export class HudRecorder {
 		const top = this.boxTop;
 		const right = this.boxRight;
 		const bottom = this.boxBottom;
+
 		if (
 			state.filter !== "none" ||
 			Number.isNaN(left) ||
@@ -992,17 +1109,22 @@ export class HudRecorder {
 			Number.isNaN(bottom)
 		) {
 			this.unbound();
+
 			return;
 		}
+
 		if (left > right || top > bottom) {
 			return;
 		}
+
 		const spread =
 			pad +
 			(state.shadowBlur > 0 && state.shadowColor !== TRANSPARENT
 				? state.shadowBlur * 2
 				: 0);
+
 		const segment = this.current;
+
 		segment.left = Math.min(segment.left, left - spread);
 		segment.top = Math.min(segment.top, top - spread);
 		segment.right = Math.max(segment.right, right + spread);
@@ -1011,11 +1133,14 @@ export class HudRecorder {
 
 	private apply(state: DrawState): void {
 		const context = this.target;
+
 		context.setTransform(state.a, state.b, state.c, state.d, state.e, state.f);
+
 		context.fillStyle =
 			typeof state.fillStyle === "string"
 				? state.fillStyle
 				: (this.gradients[state.fillStyle.id] ?? this.defaults.fillStyle);
+
 		context.strokeStyle = state.strokeStyle;
 		context.lineWidth = state.lineWidth;
 		context.font = state.font;
@@ -1027,6 +1152,7 @@ export class HudRecorder {
 		context.filter = state.filter;
 		context.shadowColor = state.shadowColor;
 		context.shadowBlur = state.shadowBlur;
+
 		context.setLineDash(state.lineDash);
 	}
 
@@ -1036,15 +1162,19 @@ export class HudRecorder {
 		const refs = this.refs;
 		const gradients = this.gradients;
 		const everything = this.everything;
+
 		gradients.length = 0;
+
 		context.save();
 		this.apply(this.defaults);
+
 		if (everything) {
 			if (width > 0 && height > 0) {
 				context.clearRect(0, 0, width, height);
 			}
 		} else {
 			context.beginPath();
+
 			for (const region of this.regions) {
 				context.rect(
 					region.left,
@@ -1053,7 +1183,9 @@ export class HudRecorder {
 					region.bottom - region.top,
 				);
 			}
+
 			context.clip();
+
 			for (const region of this.regions) {
 				context.clearRect(
 					region.left,
@@ -1062,19 +1194,24 @@ export class HudRecorder {
 					region.bottom - region.top,
 				);
 			}
+
 			context.beginPath();
 		}
+
 		let at = 0;
 		let ref = 0;
 		let depth = 0;
 		let stale = false;
+
 		for (let index = 0; index < this.segmentCount; index += 1) {
 			const segment = this.segments[index];
 			const end = segment.numbersEnd;
 			const active = everything || this.touches(segment);
+
 			if (!active && segment.depth === 0 && segment.depthEnd === 0) {
 				while (at < end) {
 					const op = numbers[at];
+
 					if (op === OP.gradient) {
 						gradients[numbers[at + 1]] = context.createRadialGradient(
 							numbers[at + 2],
@@ -1090,6 +1227,7 @@ export class HudRecorder {
 							refs[ref] as string,
 						);
 					}
+
 					if (op === OP.lineDash) {
 						at += 2 + numbers[at + 1];
 					} else {
@@ -1097,62 +1235,84 @@ export class HudRecorder {
 						ref += REF_ARITY[op];
 					}
 				}
+
 				stale = true;
 				continue;
 			}
+
 			if (stale) {
 				this.apply(segment.start);
+
 				stale = false;
 			}
+
 			while (at < end) {
 				const op = numbers[at];
+
 				at += 1;
+
 				switch (op) {
 					case OP.fillStyle:
 						context.fillStyle = refs[ref] as string;
 						break;
+
 					case OP.fillGradient:
 						context.fillStyle = gradients[numbers[at]];
 						break;
+
 					case OP.strokeStyle:
 						context.strokeStyle = refs[ref] as string;
 						break;
+
 					case OP.lineWidth:
 						context.lineWidth = numbers[at];
 						break;
+
 					case OP.font:
 						context.font = refs[ref] as string;
 						break;
+
 					case OP.textAlign:
 						context.textAlign = refs[ref] as CanvasTextAlign;
 						break;
+
 					case OP.textBaseline:
 						context.textBaseline = refs[ref] as CanvasTextBaseline;
 						break;
+
 					case OP.globalAlpha:
 						context.globalAlpha = numbers[at];
 						break;
+
 					case OP.lineJoin:
 						context.lineJoin = refs[ref] as CanvasLineJoin;
 						break;
+
 					case OP.lineCap:
 						context.lineCap = refs[ref] as CanvasLineCap;
 						break;
+
 					case OP.filter:
 						context.filter = refs[ref] as string;
 						break;
+
 					case OP.shadowColor:
 						context.shadowColor = refs[ref] as string;
 						break;
+
 					case OP.shadowBlur:
 						context.shadowBlur = numbers[at];
 						break;
+
 					case OP.lineDash: {
 						const count = numbers[at];
+
 						context.setLineDash(numbers.slice(at + 1, at + 1 + count));
+
 						at += 1 + count;
 						continue;
 					}
+
 					case OP.fillRect:
 						if (active) {
 							context.fillRect(
@@ -1162,7 +1322,9 @@ export class HudRecorder {
 								numbers[at + 3],
 							);
 						}
+
 						break;
+
 					case OP.strokeRect:
 						if (active) {
 							context.strokeRect(
@@ -1172,7 +1334,9 @@ export class HudRecorder {
 								numbers[at + 3],
 							);
 						}
+
 						break;
+
 					case OP.clearRect:
 						if (active) {
 							context.clearRect(
@@ -1182,7 +1346,9 @@ export class HudRecorder {
 								numbers[at + 3],
 							);
 						}
+
 						break;
+
 					case OP.fillText:
 						if (active) {
 							context.fillText(
@@ -1191,7 +1357,9 @@ export class HudRecorder {
 								numbers[at + 1],
 							);
 						}
+
 						break;
+
 					case OP.strokeText:
 						if (active) {
 							context.strokeText(
@@ -1200,19 +1368,25 @@ export class HudRecorder {
 								numbers[at + 1],
 							);
 						}
+
 						break;
+
 					case OP.beginPath:
 						context.beginPath();
 						break;
+
 					case OP.closePath:
 						context.closePath();
 						break;
+
 					case OP.moveTo:
 						context.moveTo(numbers[at], numbers[at + 1]);
 						break;
+
 					case OP.lineTo:
 						context.lineTo(numbers[at], numbers[at + 1]);
 						break;
+
 					case OP.arc:
 						context.arc(
 							numbers[at],
@@ -1222,12 +1396,16 @@ export class HudRecorder {
 							numbers[at + 4],
 							numbers[at + 5] === 1,
 						);
+
 						break;
+
 					case OP.fill:
 						if (active) {
 							context.fill();
 						}
+
 						break;
+
 					case OP.fillPath:
 						if (active) {
 							context.fill(
@@ -1235,36 +1413,50 @@ export class HudRecorder {
 								refs[ref + 1] as CanvasFillRule,
 							);
 						}
+
 						break;
+
 					case OP.stroke:
 						if (active) {
 							context.stroke();
 						}
+
 						break;
+
 					case OP.strokePath:
 						if (active) {
 							context.stroke(refs[ref] as Path2D);
 						}
+
 						break;
+
 					case OP.save:
 						context.save();
+
 						depth += 1;
 						break;
+
 					case OP.restore:
 						if (depth > 0) {
 							context.restore();
+
 							depth -= 1;
 						}
+
 						break;
+
 					case OP.translate:
 						context.translate(numbers[at], numbers[at + 1]);
 						break;
+
 					case OP.scale:
 						context.scale(numbers[at], numbers[at + 1]);
 						break;
+
 					case OP.rotate:
 						context.rotate(numbers[at]);
 						break;
+
 					case OP.setTransform:
 						context.setTransform(
 							numbers[at],
@@ -1274,7 +1466,9 @@ export class HudRecorder {
 							numbers[at + 4],
 							numbers[at + 5],
 						);
+
 						break;
+
 					case OP.drawImage:
 						if (active) {
 							context.drawImage(
@@ -1283,7 +1477,9 @@ export class HudRecorder {
 								numbers[at + 1],
 							);
 						}
+
 						break;
+
 					case OP.drawImageSized:
 						if (active) {
 							context.drawImage(
@@ -1294,7 +1490,9 @@ export class HudRecorder {
 								numbers[at + 3],
 							);
 						}
+
 						break;
+
 					case OP.gradient:
 						gradients[numbers[at]] = context.createRadialGradient(
 							numbers[at + 1],
@@ -1304,25 +1502,33 @@ export class HudRecorder {
 							numbers[at + 5],
 							numbers[at + 6],
 						);
+
 						break;
+
 					case OP.gradientStop:
 						gradients[numbers[at]]?.addColorStop(
 							numbers[at + 1],
 							refs[ref] as string,
 						);
+
 						break;
+
 					default:
 						at = numbers.length;
 						continue;
 				}
+
 				at += NUMBER_ARITY[op];
 				ref += REF_ARITY[op];
 			}
 		}
+
 		while (depth > 0) {
 			context.restore();
+
 			depth -= 1;
 		}
+
 		context.restore();
 	}
 }

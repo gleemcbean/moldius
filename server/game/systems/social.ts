@@ -56,6 +56,7 @@ export function allied(
 
 function audience(match: Match, sender: MatchPlayer): MatchPlayer[] {
 	const ghost = isGhost(match, sender);
+
 	return [...match.players.values()].filter(
 		(other) =>
 			allied(match, sender, other) &&
@@ -65,12 +66,14 @@ function audience(match: Match, sender: MatchPlayer): MatchPlayer[] {
 
 function pingAllowed(match: Match, player: MatchPlayer): boolean {
 	const now = match.now;
+
 	while (
 		player.pingTimes.length > 0 &&
 		now - player.pingTimes[0] >= PING_BURST_WINDOW_MS
 	) {
 		player.pingTimes.shift();
 	}
+
 	return player.pingReadyAt <= now && player.pingTimes.length < PING_BURST;
 }
 
@@ -80,6 +83,7 @@ export function sendPing(
 	request: PingRequest,
 ): boolean {
 	const ghost = isGhost(match, player);
+
 	if (
 		(!player.alive && !ghost) ||
 		player.carried ||
@@ -87,19 +91,27 @@ export function sendPing(
 	) {
 		return false;
 	}
+
 	const eye = player.eyePosition();
+
 	if (
 		Math.hypot(request.x - eye.x, request.y - eye.y, request.z - eye.z) >
 		PING_MAX_DISTANCE
 	) {
 		return false;
 	}
+
 	const anomaly =
 		request.anomalyId === null ? null : match.anomalies[request.anomalyId];
+
 	const anomalyId = anomaly?.active ? anomaly.id : null;
+
 	player.pingReadyAt = match.now + PING_COOLDOWN_MS;
+
 	player.pingTimes.push(match.now);
+
 	pingCounter += 1;
+
 	match.emitTo(audience(match, player), {
 		type: "ping",
 		id: pingCounter,
@@ -114,6 +126,7 @@ export function sendPing(
 		anomalyId,
 		expiresAt: match.now + PING_LIFETIME_MS,
 	});
+
 	return true;
 }
 
@@ -128,6 +141,7 @@ function broadcastEmote(
 		emote,
 		until: player.emoteUntil,
 	};
+
 	if (isGhost(match, player)) {
 		match.emitTo(
 			[...match.players.values()].filter((other) => isGhost(match, other)),
@@ -142,8 +156,11 @@ export function stopEmote(match: Match, player: MatchPlayer): boolean {
 	if (player.emoteUntil <= match.now) {
 		return false;
 	}
+
 	player.emoteUntil = match.now;
+
 	broadcastEmote(match, player, null);
+
 	return true;
 }
 
@@ -155,7 +172,9 @@ export function playEmote(
 	if (emote === null) {
 		return stopEmote(match, player);
 	}
+
 	const ghost = isGhost(match, player);
+
 	if (
 		(!player.alive && !ghost) ||
 		player.hidden ||
@@ -164,9 +183,12 @@ export function playEmote(
 	) {
 		return false;
 	}
+
 	player.emoteReadyAt = match.now + EMOTE_COOLDOWN_MS;
 	player.emoteUntil = match.now + EMOTE_DURATION_MS[emote];
+
 	broadcastEmote(match, player, emote);
+
 	return true;
 }
 
@@ -177,6 +199,7 @@ export function giveFragment(
 	material: MaterialId,
 ): boolean {
 	const target = match.players.get(targetId);
+
 	if (
 		!target ||
 		target === giver ||
@@ -187,11 +210,13 @@ export function giveFragment(
 	) {
 		return false;
 	}
+
 	const distance = Math.hypot(
 		target.position.x - giver.position.x,
 		target.position.y - giver.position.y,
 		target.position.z - giver.position.z,
 	);
+
 	if (
 		distance > GIFT_RANGE + 0.4 ||
 		!lineOfSight(match.world, giver.eyePosition(), target.eyePosition(), {
@@ -201,11 +226,14 @@ export function giveFragment(
 	) {
 		return false;
 	}
+
 	giver.giftReadyAt = match.now + GIFT_COOLDOWN_MS;
 	giver.materials[material] -= 1;
 	target.materials[material] += 1;
+
 	match.sendInventory(giver);
 	match.sendInventory(target);
 	match.emit({ type: "gift", fromId: giver.id, toId: target.id, material });
+
 	return true;
 }

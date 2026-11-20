@@ -9,6 +9,7 @@ initInstall();
 startMenuNavigator();
 
 const container = document.getElementById("root");
+
 if (container) {
 	createRoot(container).render(
 		<StrictMode>

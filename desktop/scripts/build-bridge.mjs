@@ -8,6 +8,7 @@ const root = join(
 	"..",
 	"discord-bridge",
 );
+
 const build = join(root, "build");
 
 if (
@@ -16,15 +17,18 @@ if (
 	console.error(
 		"Discord Social SDK absent : décompressez le SDK C++ dans discord-bridge/sdk/ (voir le README).",
 	);
+
 	process.exit(1);
 }
 
 function run(args) {
 	const result = spawnSync("cmake", args, { stdio: "inherit" });
+
 	if (result.error) {
 		console.error("CMake introuvable : installez-le puis relancez.");
 		process.exit(1);
 	}
+
 	if (result.status !== 0) {
 		process.exit(result.status ?? 1);
 	}
@@ -39,7 +43,9 @@ run([
 		? ["-A", "x64"]
 		: ["-DCMAKE_BUILD_TYPE=Release"]),
 ]);
+
 run(["--build", build, "--config", "Release"]);
+
 run([
 	"--install",
 	build,
@@ -48,4 +54,5 @@ run([
 	"--prefix",
 	join(root, "dist"),
 ]);
+
 console.log("Pont Discord prêt dans discord-bridge/dist");

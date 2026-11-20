@@ -37,11 +37,13 @@ export function playerVisibleFrom(
 		y: player.position.y + player.bodyHeight() - 0.15,
 		z: player.position.z,
 	};
+
 	const chest = {
 		x: player.position.x,
 		y: player.position.y + player.bodyHeight() * 0.55,
 		z: player.position.z,
 	};
+
 	return (
 		lineOfSight(match.world, eye, head) || lineOfSight(match.world, eye, chest)
 	);
@@ -55,9 +57,12 @@ export function perceive(
 	const now = match.now;
 	const definition = entity.definition;
 	const eye = entity.eye();
+
 	for (const player of match.players.values()) {
 		const memory = entity.memoryFor(player.id);
+
 		memory.visibleNow = false;
+
 		if (
 			!player.alive ||
 			!player.connected ||
@@ -70,8 +75,10 @@ export function perceive(
 				0,
 				memory.awareness - PERCEPTION_AWARENESS_DECAY_PER_SECOND * 2 * dt,
 			);
+
 			continue;
 		}
+
 		const sense = match.senseFactor(player);
 		const dx = player.position.x - entity.position.x;
 		const dz = player.position.z - entity.position.z;
@@ -79,28 +86,39 @@ export function perceive(
 		const distance = Math.hypot(dx, dz, dy);
 		const lit = match.illuminationOf(player);
 		const lanternFactor = player.lanternOpen ? 1.6 : 1;
+
 		const range =
 			definition.viewRange *
 			lanternFactor *
 			(0.55 + 0.45 * clamp(lit, 0, 1)) *
 			match.visionFactor() *
 			sense;
+
 		const angle = Math.abs(angleDifference(entity.yaw, Math.atan2(-dx, -dz)));
+
 		const inCone =
 			distance < PERCEPTION_CLOSE_SENSE_DISTANCE ||
 			angle <= definition.fieldOfView / 2;
+
 		const visible =
 			distance <= range && inCone && playerVisibleFrom(match, eye, player);
+
 		if (visible) {
 			memory.visibleNow = true;
+
 			const proximity = 1 - distance / range;
+
 			const lightFactor = player.lanternOpen
 				? 2.1
 				: 0.3 + 0.7 * clamp(lit, 0, 1);
+
 			const postureFactor = player.crouching ? 0.55 : 1;
+
 			const sprinting =
 				player.sprintIntent && player.moveInput && !player.sprintLocked;
+
 			const motionFactor = sprinting ? 1.45 : player.moveInput ? 1 : 0.7;
+
 			const rate =
 				distance < PERCEPTION_CLOSE_SENSE_DISTANCE
 					? 8
@@ -109,7 +127,9 @@ export function perceive(
 						lightFactor *
 						postureFactor *
 						motionFactor;
+
 			memory.awareness = Math.min(1.5, memory.awareness + rate * sense * dt);
+
 			if (memory.awareness >= 1) {
 				memory.lastSeenAt = now;
 				memory.lastSeenPosition = { ...player.position };
@@ -123,6 +143,7 @@ export function perceive(
 	}
 
 	const hearing = listen(match, entity);
+
 	return { target: chooseTarget(match, entity), ...hearing };
 }
 
@@ -133,22 +154,27 @@ export function soundMargin(
 	source: MatchPlayer,
 ): number {
 	const ear = entity.eye();
+
 	const distance = Math.hypot(
 		sound.position.x - ear.x,
 		sound.position.y + 1.2 - ear.y,
 		sound.position.z - ear.z,
 	);
+
 	const reach =
 		sound.loudness * entity.definition.hearing * match.senseFactor(source);
+
 	if (distance > reach * 1.05) {
 		return -Infinity;
 	}
+
 	const walls = countWallsBetween(
 		match.world,
 		ear,
 		{ ...sound.position, y: sound.position.y + 1.2 },
 		3,
 	);
+
 	return reach / (1 + walls * 0.9) - distance;
 }
 
@@ -160,8 +186,10 @@ function listen(
 	let loudestMargin = 0;
 	let hiddenNoise: SoundEvent | null = null;
 	let hiddenMargin = 0;
+
 	for (const sound of match.sounds) {
 		const source = sound.playerId ? match.players.get(sound.playerId) : null;
+
 		if (
 			!source ||
 			source.protectedUntil > match.now ||
@@ -169,25 +197,33 @@ function listen(
 		) {
 			continue;
 		}
+
 		const margin = soundMargin(match, entity, sound, source);
+
 		if (margin <= 0) {
 			continue;
 		}
+
 		if (sound.playerId) {
 			const memory = entity.memoryFor(sound.playerId);
+
 			memory.lastHeardAt = match.now;
 			memory.lastHeardPosition = { ...sound.position };
+
 			const boost =
 				sound.kind === "shout" ? 0.6 : sound.kind === "voice" ? 0.25 : 0.18;
+
 			memory.awareness = Math.min(
 				memory.awareness >= 1 ? 1.5 : 0.95,
 				memory.awareness + boost,
 			);
 		}
+
 		if (margin > loudestMargin) {
 			loudestMargin = margin;
 			loudest = sound;
 		}
+
 		if (
 			sound.playerId &&
 			match.players.get(sound.playerId)?.hidden &&
@@ -197,14 +233,17 @@ function listen(
 			hiddenNoise = sound;
 		}
 	}
+
 	return { heard: loudest, hiddenNoise };
 }
 
 function chooseTarget(match: Match, entity: AnomalyEntity): MatchPlayer | null {
 	const now = match.now;
+
 	if (entity.targetId) {
 		const current = match.players.get(entity.targetId);
 		const memory = entity.memory.get(entity.targetId);
+
 		if (
 			current?.alive &&
 			!current.carried &&
@@ -216,10 +255,13 @@ function chooseTarget(match: Match, entity: AnomalyEntity): MatchPlayer | null {
 			return current;
 		}
 	}
+
 	let best: MatchPlayer | null = null;
 	let bestScore = 0;
+
 	for (const player of match.players.values()) {
 		const memory = entity.memory.get(player.id);
+
 		if (
 			!memory?.visibleNow ||
 			memory.awareness < 1 ||
@@ -228,16 +270,20 @@ function chooseTarget(match: Match, entity: AnomalyEntity): MatchPlayer | null {
 		) {
 			continue;
 		}
+
 		const distance = Math.hypot(
 			player.position.x - entity.position.x,
 			player.position.z - entity.position.z,
 		);
+
 		const score = 2 + 30 / (distance + 1);
+
 		if (score > bestScore) {
 			bestScore = score;
 			best = player;
 		}
 	}
+
 	return best;
 }
 

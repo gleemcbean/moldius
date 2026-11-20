@@ -1,16 +1,20 @@
 const GRADIENT_COUNT = 16;
 const GRADIENT_X = new Float32Array(GRADIENT_COUNT);
 const GRADIENT_Y = new Float32Array(GRADIENT_COUNT);
+
 for (let index = 0; index < GRADIENT_COUNT; index += 1) {
 	const angle = (index / GRADIENT_COUNT) * Math.PI * 2 + 0.19;
+
 	GRADIENT_X[index] = Math.cos(angle);
 	GRADIENT_Y[index] = Math.sin(angle);
 }
 
 export function hashInt(x: number, y: number, seed: number): number {
 	let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ seed;
+
 	h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
 	h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+
 	return (h ^ (h >>> 16)) >>> 0;
 }
 
@@ -20,6 +24,7 @@ export function hash01(x: number, y: number, seed: number): number {
 
 export function wrap(value: number, period: number): number {
 	const result = value % period;
+
 	return result < 0 ? result + period : result;
 }
 
@@ -37,6 +42,7 @@ export function smoothstep(
 	value: number,
 ): number {
 	const t = clamp01((value - edge0) / (edge1 - edge0));
+
 	return t * t * (3 - 2 * t);
 }
 
@@ -52,6 +58,7 @@ function gradientDot(
 	dy: number,
 ): number {
 	const slot = hashInt(x, y, seed) & (GRADIENT_COUNT - 1);
+
 	return GRADIENT_X[slot] * dx + GRADIENT_Y[slot] * dy;
 }
 
@@ -72,16 +79,19 @@ export function perlin(
 	const y1 = wrap(yi + 1, periodY);
 	const u = fade(fx);
 	const v = fade(fy);
+
 	const bottom = lerp(
 		gradientDot(x0, y0, seed, fx, fy),
 		gradientDot(x1, y0, seed, fx - 1, fy),
 		u,
 	);
+
 	const top = lerp(
 		gradientDot(x0, y1, seed, fx, fy - 1),
 		gradientDot(x1, y1, seed, fx - 1, fy - 1),
 		u,
 	);
+
 	return lerp(bottom, top, v) * 1.42;
 }
 
@@ -99,6 +109,7 @@ export function fbm(
 	let total = 0;
 	let fx = frequencyX;
 	let fy = frequencyY;
+
 	for (let octave = 0; octave < octaves; octave += 1) {
 		sum += perlin(u * fx, v * fy, fx, fy, seed + octave * 101) * amplitude;
 		total += amplitude;
@@ -106,6 +117,7 @@ export function fbm(
 		fx *= 2;
 		fy *= 2;
 	}
+
 	return sum / total;
 }
 
@@ -122,15 +134,18 @@ export function ridged(
 	let total = 0;
 	let fx = frequencyX;
 	let fy = frequencyY;
+
 	for (let octave = 0; octave < octaves; octave += 1) {
 		const value =
 			1 - Math.abs(perlin(u * fx, v * fy, fx, fy, seed + octave * 77));
+
 		sum += value * value * amplitude;
 		total += amplitude;
 		amplitude *= 0.5;
 		fx *= 2;
 		fy *= 2;
 	}
+
 	return sum / total;
 }
 
@@ -175,6 +190,7 @@ export function voronoi(
 	let bestI = 0;
 	let bestJ = 0;
 	let bestId = 0;
+
 	for (let j = -1; j <= 1; j += 1) {
 		for (let i = -1; i <= 1; i += 1) {
 			const cx = wrap(ix + i, cellsX);
@@ -185,6 +201,7 @@ export function voronoi(
 			const rx = i + ox - fx;
 			const ry = j + oy - fy;
 			const distance = rx * rx + ry * ry;
+
 			if (distance < best) {
 				best = distance;
 				bestX = rx;
@@ -195,7 +212,9 @@ export function voronoi(
 			}
 		}
 	}
+
 	let edge = 8;
+
 	for (let j = -2; j <= 2; j += 1) {
 		for (let i = -2; i <= 2; i += 1) {
 			const gi = bestI + i;
@@ -210,16 +229,20 @@ export function voronoi(
 			const dx = rx - bestX;
 			const dy = ry - bestY;
 			const length = dx * dx + dy * dy;
+
 			if (length > 1e-6) {
 				const inverse = 1 / Math.sqrt(length);
+
 				const distance =
 					0.5 * (bestX + rx) * dx * inverse + 0.5 * (bestY + ry) * dy * inverse;
+
 				if (distance < edge) {
 					edge = distance;
 				}
 			}
 		}
 	}
+
 	out.distance = Math.sqrt(best);
 	out.edge = edge;
 	out.id = bestId;
@@ -227,5 +250,6 @@ export function voronoi(
 	out.cellY = wrap(iy + bestJ, cellsY);
 	out.offsetX = bestX;
 	out.offsetY = bestY;
+
 	return out;
 }

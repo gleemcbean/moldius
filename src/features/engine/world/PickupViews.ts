@@ -21,9 +21,13 @@ export class PickupViews {
 			if (pickup.spot === "container") {
 				continue;
 			}
+
 			const model = this.template(pickup.material).clone();
+
 			model.position.set(pickup.x, pickup.y - 0.03, pickup.z);
+
 			model.rotation.y = pickup.id * 1.7;
+
 			model.scale.setScalar(pickup.spot === "floor" ? 1.25 : 1.05);
 			this.models.set(pickup.id, model);
 			this.rooms.set(pickup.id, pickup.roomId);
@@ -33,19 +37,25 @@ export class PickupViews {
 
 	private template(material: MaterialId): THREE.Group {
 		let template = this.templates.get(material);
+
 		if (!template) {
 			template = createMaterialModel(this.kit, material);
+
 			this.templates.set(material, template);
 		}
+
 		return template;
 	}
 
 	setMaterial(id: number, material: MaterialId): void {
 		const previous = this.models.get(id);
+
 		if (!previous) {
 			return;
 		}
+
 		const model = this.template(material).clone();
+
 		model.position.copy(previous.position);
 		model.rotation.copy(previous.rotation);
 		model.scale.copy(previous.scale);
@@ -71,7 +81,9 @@ export class PickupViews {
 			const near =
 				!this.taken.has(id) &&
 				model.position.distanceToSquared(eye) < VISIBLE_RANGE * VISIBLE_RANGE;
+
 			model.visible = near;
+
 			if (near) {
 				model.rotation.y += dt * 0.5;
 			}
@@ -82,6 +94,7 @@ export class PickupViews {
 		if (rooms === null) {
 			return;
 		}
+
 		for (const [id, model] of this.models) {
 			if (model.visible && rooms[this.rooms.get(id) ?? -1] !== 1) {
 				model.visible = false;

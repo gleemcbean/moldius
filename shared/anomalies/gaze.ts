@@ -14,13 +14,17 @@ export function isGazingAt(
 	const dy = target.y - eye.y;
 	const dz = target.z - eye.z;
 	const distance = Math.hypot(dx, dy, dz);
+
 	if (distance > GORGON_GAZE_RANGE || distance < 0.01) {
 		return false;
 	}
+
 	const look = lookDirection(yaw, pitch);
 	const cosine = (look.x * dx + look.y * dy + look.z * dz) / distance;
+
 	if (cosine < Math.cos(GORGON_GAZE_CONE_RAD)) {
 		return false;
 	}
+
 	return lineOfSight(world, eye, target);
 }

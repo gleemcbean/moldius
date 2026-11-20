@@ -30,26 +30,34 @@ export interface ServerConfig {
 
 function findProjectRoot(start: string): string {
 	let current = start;
+
 	for (let depth = 0; depth < 6; depth += 1) {
 		if (existsSync(resolve(current, "package.json"))) {
 			return current;
 		}
+
 		current = dirname(current);
 	}
+
 	return process.cwd();
 }
 
 function loadDotEnv(root: string): void {
 	const file = resolve(root, ".env");
+
 	if (!existsSync(file)) {
 		return;
 	}
+
 	for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
 		const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
+
 		if (!match || line.trimStart().startsWith("#")) {
 			continue;
 		}
+
 		const [, key, rawValue] = match;
+
 		if (key && process.env[key] === undefined) {
 			process.env[key] = (rawValue ?? "").replace(/^['"]|['"]$/g, "");
 		}
@@ -68,8 +76,10 @@ function parseIceServers(): IceServerConfig[] {
 		process.env.STUN_URLS ??
 			"stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302",
 	);
+
 	const servers: IceServerConfig[] = stun.length > 0 ? [{ urls: stun }] : [];
 	const turn = parseList(process.env.TURN_URLS);
+
 	if (turn.length > 0) {
 		servers.push({
 			urls: turn,
@@ -81,6 +91,7 @@ function parseIceServers(): IceServerConfig[] {
 				: {}),
 		});
 	}
+
 	return servers;
 }
 
@@ -88,29 +99,37 @@ function parseSsl(value: string | undefined): boolean | "no-verify" {
 	if (value === "no-verify") {
 		return "no-verify";
 	}
+
 	return value === "true";
 }
 
 function parsePublicUrl(value: string | undefined): string | null {
 	const raw = value?.trim();
+
 	if (!raw) {
 		return null;
 	}
+
 	const url = new URL(raw);
+
 	if (url.protocol !== "https:" && url.protocol !== "http:") {
 		throw new Error(
 			"PUBLIC_URL doit commencer par https:// (ou http:// en local).",
 		);
 	}
+
 	return url.origin;
 }
 
 function parseSmtp(): SmtpOptions | null {
 	const host = process.env.SMTP_HOST?.trim();
+
 	if (!host) {
 		return null;
 	}
+
 	const port = Number(process.env.SMTP_PORT ?? 465);
+
 	return {
 		host,
 		port,
@@ -125,8 +144,11 @@ function parseSmtp(): SmtpOptions | null {
 export function loadServerConfig(): ServerConfig {
 	const here = dirname(fileURLToPath(import.meta.url));
 	const projectRoot = findProjectRoot(here);
+
 	loadDotEnv(projectRoot);
+
 	const production = process.env.NODE_ENV === "production";
+
 	return {
 		adminEmails: parseList(process.env.ADMIN_EMAILS).map(emailKey),
 		port: Number(process.env.PORT ?? 3001),

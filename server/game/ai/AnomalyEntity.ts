@@ -29,6 +29,14 @@ export interface WitnessedHide {
 	at: number;
 }
 
+export interface Seance {
+	playerId: string;
+	seed: number;
+	level: number;
+	startsAt: number;
+	endsAt: number;
+}
+
 export class AnomalyEntity {
 	readonly definition: SpeciesDefinition;
 	gen = 0;
@@ -86,6 +94,8 @@ export class AnomalyEntity {
 	luredUntil = 0;
 	litAt = -Infinity;
 	nextBiteAt = 0;
+	ripenSince = 0;
+	seance: Seance | null = null;
 	readonly gaze = new Map<string, number>();
 	readonly doorCooldowns = new Map<number, number>();
 	readonly history = new PoseHistory();
@@ -104,6 +114,7 @@ export class AnomalyEntity {
 
 	memoryFor(playerId: string): PlayerMemory {
 		let memory = this.memory.get(playerId);
+
 		if (!memory) {
 			memory = {
 				awareness: 0,
@@ -113,8 +124,10 @@ export class AnomalyEntity {
 				lastHeardAt: -Infinity,
 				lastHeardPosition: null,
 			};
+
 			this.memory.set(playerId, memory);
 		}
+
 		return memory;
 	}
 
@@ -130,8 +143,10 @@ export class AnomalyEntity {
 		this.stateSince = now;
 		this.targetId = null;
 		this.interestPlayerId = null;
+
 		this.ignoredUntil.clear();
 		this.memory.clear();
+
 		this.path = [];
 		this.pathIndex = 0;
 		this.pathGoal = null;
@@ -145,6 +160,8 @@ export class AnomalyEntity {
 		this.luredUntil = 0;
 		this.litAt = -Infinity;
 		this.nextBiteAt = 0;
+		this.ripenSince = now;
+		this.seance = null;
 		this.screamUntil = 0;
 		this.hostId = -1;
 		this.carryingPlayerId = null;
@@ -154,9 +171,12 @@ export class AnomalyEntity {
 		this.pursuitUntil = 0;
 		this.nextSpreadCheckAt = now + 2000;
 		this.hurrying = false;
+
 		this.gaze.clear();
+
 		this.progressCheckAt = now + 1500;
 		this.progressAnchor = { ...position };
+
 		this.history.clear();
 		this.history.push({ t: now, ...position, yaw });
 	}

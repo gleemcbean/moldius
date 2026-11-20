@@ -6,6 +6,7 @@ const SOUND_URLS = import.meta.glob<string>("../../assets/sounds/*.ogg", {
 	query: "?url&no-inline",
 	import: "default",
 });
+
 const SOUND_NAME = /([^/]+?)(?:\.(\d+))?\.ogg$/;
 const LOOP_ENDS: Record<string, number> = loops;
 const LOAD_CONCURRENCY = 6;
@@ -20,12 +21,14 @@ interface SoundFile {
 const SOUND_FILES: SoundFile[] = Object.entries(SOUND_URLS)
 	.flatMap(([path, url]) => {
 		const match = SOUND_NAME.exec(path);
+
 		return match ? [{ id: match[1], variant: Number(match[2] ?? 0), url }] : [];
 	})
 	.sort((a, b) => priorityOf(a.id) - priorityOf(b.id));
 
 function priorityOf(id: string): number {
 	const index = LOAD_PRIORITY.findIndex((prefix) => id.startsWith(prefix));
+
 	return index === -1 ? LOAD_PRIORITY.length : index;
 }
 
@@ -79,30 +82,40 @@ class SoundBank {
 			onProgress(this.progress);
 			this.listeners.add(onProgress);
 		}
+
 		this.loading ??= this.fetchMissing().finally(() => {
 			this.loading = null;
+
 			this.listeners.clear();
 		});
+
 		return this.loading;
 	}
 
 	private async fetchMissing(): Promise<void> {
 		const queue = SOUND_FILES.filter((file) => !this.loadedFiles.has(file));
+
 		const worker = async () => {
 			for (let file = queue.shift(); file; file = queue.shift()) {
 				const buffer = await decode(file.url);
+
 				if (!buffer) {
 					continue;
 				}
+
 				const variants = this.buffers.get(file.id) ?? [];
+
 				variants[file.variant] = buffer;
+
 				this.buffers.set(file.id, variants);
 				this.loadedFiles.add(file);
+
 				for (const listener of this.listeners) {
 					listener(this.progress);
 				}
 			}
 		};
+
 		await Promise.all(Array.from({ length: LOAD_CONCURRENCY }, worker));
 	}
 
@@ -112,9 +125,11 @@ class SoundBank {
 
 	buffer(id: string, variant?: number): AudioBuffer | null {
 		const variants = this.buffers.get(id);
+
 		if (!variants || variants.length === 0) {
 			return null;
 		}
+
 		return (
 			variants[variant ?? Math.floor(Math.random() * variants.length)] ?? null
 		);
@@ -124,6 +139,7 @@ class SoundBank {
 		if (!audioEngine.ready) {
 			return null;
 		}
+
 		if (
 			!options.loop &&
 			options.bus !== "ui" &&
@@ -131,47 +147,64 @@ class SoundBank {
 		) {
 			return null;
 		}
+
 		const buffer = this.buffer(id, options.variant);
+
 		if (!buffer) {
 			return null;
 		}
+
 		const context = audioEngine.ctx;
 		const source = context.createBufferSource();
+
 		source.buffer = buffer;
 		source.loop = options.loop ?? false;
+
 		if (source.loop) {
 			source.loopStart = 0;
 			source.loopEnd = LOOP_ENDS[id] ?? buffer.duration;
 		}
+
 		source.playbackRate.value = options.rate ?? 1;
+
 		const gain = context.createGain();
+
 		gain.gain.value = options.volume ?? 1;
+
 		const filter = context.createBiquadFilter();
+
 		filter.type = "lowpass";
 		filter.frequency.value = 20000;
+
 		source.connect(filter).connect(gain);
+
 		let panner: PannerNode | null = null;
+
 		if (options.position) {
 			panner = audioEngine.createPanner(
 				options.refDistance ?? 1.5,
 				options.maxDistance ?? 40,
 				options.rolloff ?? 1.3,
 			);
+
 			setPannerPosition(
 				panner,
 				options.position.x,
 				options.position.y,
 				options.position.z,
 			);
+
 			if (panner.positionX) {
 				panner.positionX.value = options.position.x;
 				panner.positionY.value = options.position.y;
 				panner.positionZ.value = options.position.z;
 			}
+
 			gain.connect(panner).connect(audioEngine.bus(options.bus ?? "effects"));
 		} else {
 			gain.connect(audioEngine.bus(options.bus ?? "effects"));
 		}
+
 		const handle: SoundHandle = {
 			source,
 			gain,
@@ -197,7 +230,9 @@ class SoundBank {
 				if (handle.ended) {
 					return;
 				}
+
 				gain.gain.setTargetAtTime(0, context.currentTime, fadeSeconds / 3);
+
 				try {
 					source.stop(context.currentTime + fadeSeconds + 0.05);
 				} catch {
@@ -205,18 +240,23 @@ class SoundBank {
 				}
 			},
 		};
+
 		if (options.occlusion) {
 			handle.setOcclusion(options.occlusion);
 		}
+
 		source.onended = () => {
 			handle.ended = true;
+
 			this.active.delete(handle);
 			source.disconnect();
 			gain.disconnect();
 			panner?.disconnect();
 		};
+
 		this.active.add(handle);
 		source.start();
+
 		return handle;
 	}
 
@@ -227,10 +267,13 @@ class SoundBank {
 		key = id,
 	): SoundHandle | null {
 		const now = performance.now();
+
 		if (now - (this.lastPlayed.get(key) ?? -Infinity) < minIntervalMs) {
 			return null;
 		}
+
 		this.lastPlayed.set(key, now);
+
 		return this.play(id, options);
 	}
 
@@ -244,6 +287,7 @@ class SoundBank {
 async function decode(url: string): Promise<AudioBuffer | null> {
 	try {
 		const response = await fetch(url);
+
 		return response.ok
 			? await audioEngine.ctx.decodeAudioData(await response.arrayBuffer())
 			: null;

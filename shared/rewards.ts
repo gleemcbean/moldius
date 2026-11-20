@@ -203,19 +203,26 @@ export function rewardProgress(
 			target: reward.level,
 		};
 	}
+
 	const progress = stats?.challenges ?? {};
 	const classic = CLASSIC_CHALLENGES.find(({ id }) => id === reward.challenge);
+
 	if (classic) {
 		const { value, target } = classicStatus(classic, progress);
+
 		return { value, target };
 	}
+
 	const incremental = INCREMENTAL_CHALLENGES.find(
 		({ id }) => id === reward.challenge,
 	);
+
 	if (!incremental || reward.tier === null) {
 		return { value: 0, target: 1 };
 	}
+
 	const target = (incremental.tiers as readonly number[])[reward.tier - 1];
+
 	return {
 		value: Math.min(progress[incremental.metric]?.total ?? 0, target),
 		target,
@@ -229,7 +236,9 @@ export function rewardUnlocked(
 	if (stats === null) {
 		return false;
 	}
+
 	const { value, target } = rewardProgress(reward, stats);
+
 	return value >= target;
 }
 
@@ -247,6 +256,7 @@ function cosmeticUnlocked(
 	const reward = REWARDS.find(
 		(entry) => entry.kind === kind && entry.value === value,
 	);
+
 	return reward === undefined || rewardUnlocked(reward, stats);
 }
 

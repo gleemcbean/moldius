@@ -1,3 +1,4 @@
+import type { SynthKit } from "../synthKit.js";
 import type { SoundRecipe } from "./types.js";
 
 const MUSIC_BOX_NOTES = [
@@ -20,7 +21,162 @@ const MUSIC_BOX_NOTES = [
 	[8.0, 440],
 ] as const;
 
+const FAE_SCALE = [72, 74, 76, 79, 81, 84, 86, 88, 91] as const;
+
+function bell(
+	kit: SynthKit,
+	start: number,
+	pitch: number,
+	peak: number,
+	length: number,
+): void {
+	for (const [ratio, level] of [
+		[1, 1],
+		[2.76, 0.35],
+		[5.4, 0.12],
+	] as const) {
+		kit.osc(
+			"sine",
+			pitch * ratio,
+			start,
+			length,
+			kit.hit(start, 0.004, length / ratio, peak * level, kit.out),
+		);
+	}
+}
+
+function droplet(kit: SynthKit, start: number, peak: number): void {
+	const pitch = kit.range(1100, 2300);
+
+	const drop = kit.osc(
+		"sine",
+		pitch,
+		start,
+		0.25,
+		kit.hit(start, 0.002, 0.12, peak, kit.out),
+	);
+
+	kit.expEnvelope(drop.frequency, [
+		{ time: start, value: pitch * 0.7 },
+		{ time: start + 0.08, value: pitch * 1.4 },
+	]);
+
+	const echo = kit.delay(0.23, kit.gain(0.35, kit.out));
+
+	kit.osc(
+		"sine",
+		pitch * 1.4,
+		start,
+		0.12,
+		kit.hit(start, 0.002, 0.08, peak * 0.5, echo),
+	);
+}
+
 export const AMBIENCE_SOUNDS: SoundRecipe[] = [
+	{
+		id: "fungal-loop",
+		duration: 12,
+		variants: 1,
+		loop: true,
+		render: (kit) => {
+			for (const [pitch, level] of [
+				[55, 0.12],
+				[82.4, 0.07],
+				[110.6, 0.03],
+			] as const) {
+				const tone = kit.osc("sine", pitch, 0, 12, kit.gain(level, kit.out));
+
+				kit.lfo(0.08 + pitch * 0.0005, pitch * 0.006, tone.frequency, 0, 12);
+			}
+
+			const breath = kit.filter("lowpass", 520, 0.8, kit.gain(0.1, kit.out));
+
+			kit.lfo(1 / 6, 260, breath.frequency, 0, 12);
+			kit.noise("pink", 0, 12, breath);
+
+			for (let index = 0; index < 9; index += 1) {
+				droplet(kit, kit.range(0.2, 11.6), kit.range(0.05, 0.12));
+			}
+
+			for (let index = 0; index < 4; index += 1) {
+				const start = kit.range(0, 10.5);
+
+				const fizz = kit.filter(
+					"bandpass",
+					kit.range(2600, 4200),
+					1.2,
+					kit.hit(start, 0.6, 1.2, 0.035, kit.out),
+				);
+
+				kit.noise("pink", start, 1.6, fizz);
+			}
+
+			for (let index = 0; index < 3; index += 1) {
+				const start = kit.range(0.5, 10.5);
+				const pitch = kit.range(60, 95);
+
+				const body = kit.filter(
+					"bandpass",
+					pitch * 4,
+					6,
+					kit.hit(start, 0.08, 0.7, 0.05, kit.out),
+				);
+
+				const grain = kit.osc("sawtooth", pitch, start, 0.8, body);
+
+				kit.lfo(kit.range(20, 34), pitch * 0.4, grain.frequency, start, 0.8);
+			}
+		},
+	},
+	{
+		id: "fae-loop",
+		duration: 12,
+		variants: 1,
+		loop: true,
+		render: (kit) => {
+			const pad = kit.filter("lowpass", 1400, 0.7, kit.gain(0.05, kit.out));
+
+			for (const pitch of [220, 330, 440.5]) {
+				const voice = kit.osc("triangle", pitch, 0, 12, pad);
+
+				kit.lfo(0.2, pitch * 0.004, voice.frequency, 0, 12);
+			}
+
+			const air = kit.filter("bandpass", 5200, 0.6, kit.gain(0.025, kit.out));
+
+			kit.lfo(0.15, 1800, air.frequency, 0, 12);
+			kit.noise("pink", 0, 12, air);
+
+			for (let index = 0; index < 14; index += 1) {
+				const note = FAE_SCALE[Math.floor(kit.range(0, FAE_SCALE.length))];
+				const start = kit.range(0, 11);
+
+				bell(
+					kit,
+					start,
+					440 * 2 ** ((note - 69) / 12),
+					kit.range(0.025, 0.06),
+					2.2,
+				);
+			}
+
+			for (let index = 0; index < 20; index += 1) {
+				const time = kit.range(0, 11.9);
+
+				kit.noise(
+					"white",
+					time,
+					0.01,
+					kit.filter(
+						"bandpass",
+						kit.range(6000, 9500),
+						6,
+						kit.hit(time, 0.001, 0.008, kit.range(0.02, 0.05), kit.out),
+					),
+				);
+			}
+		},
+	},
 	{
 		id: "rain-glass-loop",
 		duration: 6,
@@ -33,14 +189,17 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 				6,
 				kit.filter("highpass", 1800, 0.6, kit.gain(0.16, kit.out)),
 			);
+
 			kit.noise(
 				"brown",
 				0,
 				6,
 				kit.filter("lowpass", 400, 0.7, kit.gain(0.12, kit.out)),
 			);
+
 			for (let index = 0; index < 90; index += 1) {
 				const time = kit.range(0, 5.9);
+
 				kit.noise(
 					"white",
 					time,
@@ -62,10 +221,14 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 		loop: true,
 		render: (kit) => {
 			const low = kit.filter("lowpass", 120, 1.4, kit.gain(0.5, kit.out));
+
 			kit.noise("brown", 0, 8, low);
 			kit.lfo(0.25, 50, low.frequency, 0, 8);
+
 			const hum = kit.osc("sine", 36, 0, 8, kit.gain(0.18, kit.out));
+
 			kit.lfo(0.125, 1.5, hum.frequency, 0, 8);
+
 			for (const time of [1.3, 4.6, 6.9]) {
 				const drop = kit.osc(
 					"sine",
@@ -74,6 +237,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 					0.2,
 					kit.hit(time, 0.002, 0.18, 0.12, kit.out),
 				);
+
 				kit.expEnvelope(drop.frequency, [
 					{ time, value: 900 },
 					{ time: time + 0.08, value: 1800 },
@@ -93,14 +257,17 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 				6,
 				kit.filter("lowpass", 320, 0.7, kit.gain(0.1, kit.out)),
 			);
+
 			kit.noise(
 				"pink",
 				0,
 				6,
 				kit.filter("bandpass", 1400, 0.8, kit.gain(0.025, kit.out)),
 			);
+
 			for (let index = 0; index < 14; index += 1) {
 				const time = kit.range(0, 5.8);
+
 				const bubble = kit.osc(
 					"sine",
 					500,
@@ -108,6 +275,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 					0.08,
 					kit.hit(time, 0.002, 0.06, kit.range(0.03, 0.07), kit.out),
 				);
+
 				kit.expEnvelope(bubble.frequency, [
 					{ time, value: kit.range(380, 620) },
 					{ time: time + 0.06, value: kit.range(1100, 1700) },
@@ -122,6 +290,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 		loop: true,
 		render: (kit) => {
 			const output = kit.filter("lowpass", 1400, 0.7, kit.gain(0.2, kit.out));
+
 			for (const [frequency, level] of [
 				[73.4, 0.5],
 				[146.8, 0.35],
@@ -137,9 +306,11 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 						8,
 						kit.gain(level, output),
 					);
+
 					kit.lfo(5.2, frequency * 0.003, pipe.frequency, 0, 8);
 				}
 			}
+
 			kit.noise(
 				"pink",
 				0,
@@ -161,15 +332,18 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 				6,
 				kit.filter("lowpass", 200, 1, kit.gain(0.12, kit.out)),
 			);
+
 			for (let index = 0; index < 7; index += 1) {
 				const time = kit.range(0.2, 5.2);
 				const length = kit.range(0.3, 0.7);
+
 				const band = kit.filter(
 					"bandpass",
 					kit.range(250, 600),
 					6,
 					kit.hit(time, 0.05, length, kit.range(0.15, 0.3), kit.out),
 				);
+
 				kit.lfo(kit.range(12, 22), 160, band.frequency, time, length);
 				kit.noise("pink", time, length + 0.1, band);
 			}
@@ -182,9 +356,12 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 		loop: true,
 		render: (kit) => {
 			const whistle = kit.filter("bandpass", 1100, 18, kit.gain(0.5, kit.out));
+
 			kit.noise("white", 0, 8, whistle);
 			kit.lfo(0.125, 420, whistle.frequency, 0, 8);
+
 			const gust = kit.filter("bandpass", 380, 1.4, kit.gain(0.3, kit.out));
+
 			kit.noise("pink", 0, 8, gust);
 			kit.lfo(0.25, 160, gust.frequency, 0, 8);
 		},
@@ -233,6 +410,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 						kit.hit(time, 0.0008, 0.035, 0.6, kit.out),
 					),
 				);
+
 				kit.osc(
 					"sine",
 					tock ? 980 : 1260,
@@ -251,10 +429,13 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 		render: (kit) => {
 			const output = kit.gain(0.32);
 			const filter = kit.filter("lowpass", 220, 1.2, output);
+
 			for (const frequency of [41.2, 41.7, 43.7, 58.3, 61.7, 82.6]) {
 				const oscillator = kit.osc("sawtooth", frequency, 0, 8, filter);
+
 				kit.lfo(0.125, 0.4, oscillator.frequency, 0, 8);
 			}
+
 			kit.lfo(0.125, 60, filter.frequency, 0, 8);
 		},
 	},
@@ -265,27 +446,34 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 		loop: false,
 		render: (kit) => {
 			const start = kit.range(150, 190);
+
 			const output = kit.filter(
 				"bandpass",
 				kit.range(380, 520),
 				1.4,
 				kit.gain(0.5, kit.out),
 			);
+
 			const envelope = kit.gain(0, output);
+
 			kit.envelope(envelope.gain, [
 				{ time: 0, value: 0 },
 				{ time: 0.9, value: 0.5 },
 				{ time: 2.2, value: 0.35 },
 				{ time: 3, value: 0 },
 			]);
+
 			for (const detune of [0, 1.8]) {
 				const voice = kit.osc("triangle", start + detune, 0, 3, envelope);
+
 				kit.envelope(voice.frequency, [
 					{ time: 0, value: start + detune },
 					{ time: 3, value: start * 0.68 + detune },
 				]);
+
 				kit.lfo(5.5, 3, voice.frequency, 0, 3);
 			}
+
 			kit.noise(
 				"pink",
 				0,
@@ -303,8 +491,10 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 			for (let index = 0; index < 9; index += 1) {
 				const time = index * kit.range(0.09, 0.16);
 				const ring = kit.hit(time, 0.002, 0.25, kit.range(0.05, 0.12), kit.out);
+
 				kit.osc("sine", kit.range(1900, 2600), time, 0.4, ring);
 				kit.osc("sine", kit.range(3300, 4200), time, 0.3, ring);
+
 				kit.noise(
 					"white",
 					time,
@@ -326,9 +516,12 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 		loop: true,
 		render: (kit) => {
 			const band = kit.filter("bandpass", 500, 2.2, kit.gain(0.32, kit.out));
+
 			kit.noise("pink", 0, 8, band);
 			kit.lfo(0.25, 260, band.frequency, 0, 8);
+
 			const high = kit.filter("bandpass", 1400, 6, kit.gain(0.06, kit.out));
+
 			kit.noise("white", 0, 8, high);
 			kit.lfo(0.375, 500, high.frequency, 0, 8);
 		},
@@ -341,7 +534,9 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 			const output = kit.hit(0, 0.1, 1.2, 0.3, kit.out);
 			const band = kit.filter("bandpass", 600 + variant * 210, 10, output);
 			const saw = kit.osc("sawtooth", 30 + variant * 7, 0, 1.3, band);
+
 			kit.lfo(9 + variant * 2, 14, saw.frequency, 0, 1.3, "square");
+
 			kit.envelope(saw.frequency, [
 				{ time: 0, value: 28 + variant * 6 },
 				{ time: 1.2, value: 44 + variant * 8 },
@@ -359,6 +554,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 				0.6,
 				kit.filter("lowpass", 260, 0.7, kit.hit(0, 0.004, 0.5, 1, kit.out)),
 			);
+
 			kit.osc("sine", 45, 0, 0.5, kit.hit(0, 0.004, 0.4, 0.8, kit.out));
 		},
 	},
@@ -369,12 +565,14 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 		render: (kit) => {
 			for (let index = 0; index < 14; index += 1) {
 				const start = index * 0.15 + kit.range(0, 0.05);
+
 				const formant = kit.filter(
 					"bandpass",
 					kit.range(1500, 4500),
 					kit.range(5, 10),
 					kit.hit(start, 0.03, 0.12, kit.range(0.08, 0.2), kit.out),
 				);
+
 				kit.noise("white", start, 0.14, formant);
 			}
 		},
@@ -391,6 +589,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 				0.15,
 				kit.hit(0, 0.002, 0.12, 0.3, kit.out),
 			);
+
 			kit.expEnvelope(drop.frequency, [
 				{ time: 0, value: 700 + variant * 200 },
 				{ time: 0.08, value: 1600 + variant * 250 },
@@ -403,6 +602,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 		variants: 2,
 		render: (kit, variant) => {
 			const tock = variant === 1;
+
 			kit.noise(
 				"white",
 				0,
@@ -414,6 +614,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 					kit.hit(0, 0.0008, 0.035, 0.6, kit.out),
 				),
 			);
+
 			kit.osc(
 				"sine",
 				tock ? 980 : 1260,
@@ -421,6 +622,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 				0.16,
 				kit.hit(0, 0.001, 0.1, 0.22, kit.out),
 			);
+
 			kit.osc(
 				"triangle",
 				tock ? 2350 : 2900,
@@ -428,6 +630,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 				0.06,
 				kit.hit(0, 0.0005, 0.03, 0.08, kit.out),
 			);
+
 			kit.osc(
 				"sine",
 				tock ? 150 : 185,
@@ -463,6 +666,7 @@ export const AMBIENCE_SOUNDS: SoundRecipe[] = [
 				0.06,
 				kit.filter("lowpass", 2400, 1, kit.hit(0, 0.002, 0.06, 0.12, kit.out)),
 			);
+
 			kit.osc(
 				"square",
 				990,

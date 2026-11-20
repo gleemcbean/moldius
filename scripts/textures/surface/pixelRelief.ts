@@ -71,6 +71,7 @@ export function pixelReliefStrength(key: string): number {
 	if (key.startsWith("cap-")) {
 		return CAP_RELIEF;
 	}
+
 	return PIXEL_RELIEF[key] ?? 0;
 }
 
@@ -81,23 +82,30 @@ export function pixelNormals(
 	strength: number,
 ): Uint8Array {
 	const relief = new Float32Array(width * height);
+
 	for (let y = 0; y < height; y += 1) {
 		const source = (height - 1 - y) * width;
+
 		for (let x = 0; x < width; x += 1) {
 			const index = (source + x) * 4;
+
 			const luma =
 				(pixels[index] * 0.299 +
 					pixels[index + 1] * 0.587 +
 					pixels[index + 2] * 0.114) /
 				255;
+
 			relief[y * width + x] = luma * (pixels[index + 3] / 255);
 		}
 	}
+
 	const normal = new Uint8Array(width * height * 4);
+
 	for (let y = 0; y < height; y += 1) {
 		const up = ((y + 1) % height) * width;
 		const down = ((y - 1 + height) % height) * width;
 		const row = y * width;
+
 		for (let x = 0; x < width; x += 1) {
 			const right = (x + 1) % width;
 			const left = (x - 1 + width) % width;
@@ -105,11 +113,13 @@ export function pixelNormals(
 			const dy = (relief[up + x] - relief[down + x]) * strength;
 			const inverse = 1 / Math.sqrt(dx * dx + dy * dy + 1);
 			const out = (row + x) * 4;
+
 			normal[out] = Math.round((-dx * inverse * 0.5 + 0.5) * 255);
 			normal[out + 1] = Math.round((-dy * inverse * 0.5 + 0.5) * 255);
 			normal[out + 2] = Math.round((inverse * 0.5 + 0.5) * 255);
 			normal[out + 3] = Math.round(relief[row + x] * 255);
 		}
 	}
+
 	return normal;
 }

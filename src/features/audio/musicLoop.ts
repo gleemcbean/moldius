@@ -17,6 +17,7 @@ export function musicTrackFor(
 			return id;
 		}
 	}
+
 	return [...available.keys()].sort()[0] ?? null;
 }
 
@@ -28,6 +29,8 @@ export function musicLoopBounds(
 		config?.loopEnd !== undefined && config.loopEnd > 0
 			? Math.min(config.loopEnd, duration)
 			: duration;
+
 	const start = Math.min(Math.max(0, config?.loopStart ?? 0), end);
+
 	return start < end ? { start, end } : { start: 0, end: duration };
 }

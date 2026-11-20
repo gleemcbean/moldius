@@ -64,9 +64,11 @@ function person(row: AccountRow): FriendPerson {
 
 function randomCode(): string {
 	let code = "";
+
 	for (let index = 0; index < FRIEND_CODE_LENGTH; index += 1) {
 		code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
 	}
+
 	return code;
 }
 
@@ -93,10 +95,13 @@ export class FriendStore {
 			"SELECT friend_code, appear_offline, display_name, discord_id, discord_synced_at FROM accounts WHERE id = $1",
 			[accountId],
 		);
+
 		const row = rows[0];
+
 		if (!row) {
 			return null;
 		}
+
 		return {
 			friendCode: row.friend_code ?? (await this.assignCode(accountId)),
 			appearOffline: row.appear_offline,
@@ -109,6 +114,7 @@ export class FriendStore {
 	private async assignCode(accountId: string): Promise<string> {
 		for (let attempt = 0; attempt < CODE_ATTEMPTS; attempt += 1) {
 			const code = randomCode();
+
 			try {
 				await this.database.query(
 					"UPDATE accounts SET friend_code = $2 WHERE id = $1 AND friend_code IS NULL",
@@ -118,15 +124,19 @@ export class FriendStore {
 				if (isUniqueViolation(error)) {
 					continue;
 				}
+
 				throw error;
 			}
+
 			const { rows } = await this.database.query<{
 				friend_code: string | null;
 			}>("SELECT friend_code FROM accounts WHERE id = $1", [accountId]);
+
 			if (rows[0]?.friend_code) {
 				return rows[0].friend_code;
 			}
 		}
+
 		throw new Error("Impossible d'attribuer un code ami");
 	}
 
@@ -140,14 +150,18 @@ export class FriendStore {
          WHERE f.${mine} = $1`,
 				[accountId],
 			);
+
 		const [low, high, discord] = await Promise.all([
 			select("account_low", "account_high"),
 			select("account_high", "account_low"),
 			this.discordFriends(accountId),
 		]);
+
 		const links = new Map<string, FriendLink>();
+
 		for (const row of [...low.rows, ...high.rows]) {
 			const accepted = row.status === "accepted";
+
 			links.set(row.id, {
 				...person(row),
 				appearOffline: row.appear_offline,
@@ -158,8 +172,10 @@ export class FriendStore {
 				discordId: null,
 			});
 		}
+
 		for (const row of discord) {
 			const existing = links.get(row.id);
+
 			links.set(row.id, {
 				...(existing ?? {
 					...person(row),
@@ -172,6 +188,7 @@ export class FriendStore {
 				discordId: row.discord_id,
 			});
 		}
+
 		return [...links.values()].sort((a, b) => a.name.localeCompare(b.name));
 	}
 
@@ -186,6 +203,7 @@ export class FriendStore {
        WHERE me.id = $1 AND a.id <> me.id`,
 			[accountId],
 		);
+
 		return rows;
 	}
 
@@ -195,36 +213,47 @@ export class FriendStore {
 		friendIds: readonly string[],
 	): Promise<DiscordSyncOutcome> {
 		const identity = await this.identity(accountId);
+
 		if (!identity?.discordId) {
 			return { ok: false, reason: "not-linked" };
 		}
+
 		if (identity.discordId !== discordId) {
 			return { ok: false, reason: "mismatch" };
 		}
+
 		const before = await this.discordFriends(accountId);
+
 		const ids = [...new Set(friendIds)]
 			.filter((id) => id !== discordId)
 			.slice(0, DISCORD_FRIEND_LIMIT);
+
 		await this.database.transaction(async (client) => {
 			await client.query("DELETE FROM discord_friends WHERE account_id = $1", [
 				accountId,
 			]);
+
 			for (let start = 0; start < ids.length; start += INSERT_CHUNK) {
 				const chunk = ids.slice(start, start + INSERT_CHUNK);
+
 				const values = chunk
 					.map((_, index) => `($1, $${index + 2})`)
 					.join(", ");
+
 				await client.query(
 					`INSERT INTO discord_friends (account_id, discord_id) VALUES ${values}`,
 					[accountId, ...chunk],
 				);
 			}
+
 			await client.query(
 				"UPDATE accounts SET discord_synced_at = $2 WHERE id = $1",
 				[accountId, new Date(this.now())],
 			);
 		});
+
 		const after = await this.discordFriends(accountId);
+
 		return {
 			ok: true,
 			touched: [...new Set([...before, ...after].map((row) => row.id))],
@@ -233,6 +262,7 @@ export class FriendStore {
 
 	async friendIds(accountId: string): Promise<string[]> {
 		const links = await this.links(accountId);
+
 		return links.filter((link) => link.accepted).map((link) => link.accountId);
 	}
 
@@ -241,29 +271,39 @@ export class FriendStore {
 			"SELECT id FROM accounts WHERE friend_code = $1",
 			[code],
 		);
+
 		const target = rows[0]?.id;
+
 		if (!target) {
 			return { ok: false, reason: "unknown" };
 		}
+
 		if (target === accountId) {
 			return { ok: false, reason: "self" };
 		}
+
 		const links = await this.links(accountId);
 		const existing = links.find((link) => link.accountId === target);
+
 		if (existing) {
 			if (existing.accepted || existing.requestedByMe) {
 				return { ok: false, reason: "exists" };
 			}
+
 			await this.accept(accountId, target);
+
 			return { ok: true, accountId: target };
 		}
+
 		if (
 			links.filter((link) => !link.discord || link.codeFriend).length >=
 			FRIEND_LIMIT
 		) {
 			return { ok: false, reason: "limit" };
 		}
+
 		const [low, high] = pair(accountId, target);
+
 		try {
 			await this.database.query(
 				`INSERT INTO friendships (account_low, account_high, requester_id, status, created_at)
@@ -274,13 +314,16 @@ export class FriendStore {
 			if (isUniqueViolation(error)) {
 				return { ok: false, reason: "exists" };
 			}
+
 			throw error;
 		}
+
 		return { ok: true, accountId: target };
 	}
 
 	async accept(accountId: string, other: string): Promise<boolean> {
 		const [low, high] = pair(accountId, other);
+
 		const { rows } = await this.database.query(
 			`UPDATE friendships SET status = 'accepted', accepted_at = $5
        WHERE account_low = $1 AND account_high = $2 AND requester_id = $3
@@ -288,16 +331,19 @@ export class FriendStore {
        RETURNING requester_id`,
 			[low, high, other, accountId, new Date(this.now())],
 		);
+
 		return rows.length > 0;
 	}
 
 	async remove(accountId: string, other: string): Promise<boolean> {
 		const [low, high] = pair(accountId, other);
+
 		const { rows } = await this.database.query(
 			`DELETE FROM friendships WHERE account_low = $1 AND account_high = $2
        RETURNING requester_id`,
 			[low, high],
 		);
+
 		return rows.length > 0;
 	}
 

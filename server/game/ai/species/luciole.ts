@@ -20,35 +20,48 @@ export function updateLuciole(
 			y: entity.position.y - hoverHeight(entity),
 		};
 	}
+
 	const threat = nearestThreat(match, entity);
+
 	if (threat) {
 		flee(match, entity, threat, dt);
+
 		return;
 	}
+
 	if (entity.state === "flee") {
 		entity.setState("idle", match.now);
+
 		entity.idleUntil = match.now + 900;
 	}
+
 	if (entity.state === "idle") {
 		entity.velocity = { x: 0, y: 0, z: 0 };
+
 		if (match.now >= entity.idleUntil) {
 			const goal = randomPointNear(match, entity.homePoint, WISP_HOME_RADIUS);
+
 			if (goal) {
 				entity.pathGoal = goal;
+
 				entity.setState("patrol", match.now);
 			} else {
 				entity.idleUntil = match.now + 1200;
 			}
 		}
+
 		return;
 	}
+
 	const goal = entity.pathGoal;
+
 	if (
 		!goal ||
 		!moveDirect(match, entity, goal, SPECIES.luciole.calmSpeed, dt) ||
 		reached(entity, goal)
 	) {
 		entity.setState("idle", match.now);
+
 		entity.idleUntil = match.now + match.rng.range(1500, 3500);
 	}
 }
@@ -67,12 +80,15 @@ function nearestThreat(match: Match, entity: AnomalyEntity) {
 		if (!player.active) {
 			continue;
 		}
+
 		const distance = Math.hypot(
 			player.position.x - entity.position.x,
 			player.position.z - entity.position.z,
 		);
+
 		const sprinting =
 			player.sprintIntent && player.moveInput && !player.sprintLocked;
+
 		if (
 			Math.abs(player.position.y - entity.position.y + 1.3) < 2.5 &&
 			((distance < WISP_FLEE_DISTANCE && !player.crouching) ||
@@ -81,6 +97,7 @@ function nearestThreat(match: Match, entity: AnomalyEntity) {
 			return player;
 		}
 	}
+
 	return null;
 }
 
@@ -91,25 +108,32 @@ function flee(
 	dt: number,
 ): void {
 	entity.setState("flee", match.now);
+
 	const away = {
 		x: entity.position.x - threat.position.x,
 		z: entity.position.z - threat.position.z,
 	};
+
 	const length = Math.hypot(away.x, away.z) || 1;
+
 	const goal = {
 		x: entity.position.x + (away.x / length) * 1.5,
 		y: entity.position.y,
 		z: entity.position.z + (away.z / length) * 1.5,
 	};
+
 	const home = entity.homePoint as Vec3;
+
 	if (
 		Math.hypot(goal.x - home.x, goal.z - home.z) > WISP_HOME_RADIUS + 1.5 ||
 		!moveDirect(match, entity, goal, SPECIES.luciole.hostileSpeed, dt)
 	) {
 		const alternative = randomPointNear(match, home, WISP_HOME_RADIUS);
+
 		if (alternative) {
 			moveDirect(match, entity, alternative, SPECIES.luciole.hostileSpeed, dt);
 		}
 	}
+
 	faceTowards(entity, goal, 4, dt);
 }

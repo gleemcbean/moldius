@@ -32,6 +32,7 @@ export const CHALLENGE_METRICS = [
 export const CLEAN_GAME_MIN_CAPTURES = 2;
 export const CLEAN_WIN_MIN_CAPTURES = 3;
 export const LATE_CAPTURE_WINDOW_MS = 60_000;
+
 export const SUMMARY_METRICS = [
 	"games",
 	"wins",
@@ -125,6 +126,7 @@ export const CHALLENGE_STEP_COUNT =
 
 export function sanitizeChallengeProgress(raw: unknown): ChallengeProgress {
 	let value = raw;
+
 	if (typeof value === "string") {
 		try {
 			value = JSON.parse(value);
@@ -132,22 +134,28 @@ export function sanitizeChallengeProgress(raw: unknown): ChallengeProgress {
 			return {};
 		}
 	}
+
 	if (typeof value !== "object" || value === null) {
 		return {};
 	}
+
 	const clean = (input: unknown) =>
 		typeof input === "number" && Number.isFinite(input) && input > 0
 			? input
 			: 0;
+
 	const progress: ChallengeProgress = {};
+
 	for (const metric of CHALLENGE_METRICS) {
 		const entry = (value as Record<string, unknown>)[metric] as
 			| { total?: unknown; best?: unknown }
 			| undefined;
+
 		if (entry && typeof entry === "object") {
 			progress[metric] = { total: clean(entry.total), best: clean(entry.best) };
 		}
 	}
+
 	return progress;
 }
 
@@ -156,16 +164,20 @@ export function withMatchMetrics(
 	metrics: MatchMetrics,
 ): ChallengeProgress {
 	const merged: ChallengeProgress = { ...progress };
+
 	for (const metric of CHALLENGE_METRICS) {
 		const value = metrics[metric] ?? 0;
+
 		if (value > 0) {
 			const entry = progress[metric] ?? { total: 0, best: 0 };
+
 			merged[metric] = {
 				total: entry.total + value,
 				best: Math.max(entry.best, value),
 			};
 		}
 	}
+
 	return merged;
 }
 
@@ -174,6 +186,7 @@ export function classicStatus(
 	progress: ChallengeProgress,
 ): { value: number; target: number; done: boolean } {
 	const best = progress[challenge.metric]?.best ?? 0;
+
 	return {
 		value: Math.min(best, challenge.target),
 		target: challenge.target,
@@ -190,6 +203,7 @@ export function incrementalStatus(
 	const tier = tiers.filter((amount) => total >= amount).length;
 	const done = tier === tiers.length;
 	const target = tiers[done ? tiers.length - 1 : tier];
+
 	return { value: Math.min(total, target), target, tier, done };
 }
 
@@ -215,6 +229,7 @@ export function newlyCompleted(
 	after: ChallengeProgress,
 ): CompletedChallenge[] {
 	const completed: CompletedChallenge[] = [];
+
 	for (const challenge of CLASSIC_CHALLENGES) {
 		if (
 			classicStatus(challenge, after).done &&
@@ -223,13 +238,16 @@ export function newlyCompleted(
 			completed.push({ id: challenge.id, tier: null });
 		}
 	}
+
 	for (const challenge of INCREMENTAL_CHALLENGES) {
 		const from = incrementalStatus(challenge, before).tier;
 		const to = incrementalStatus(challenge, after).tier;
+
 		for (let tier = from + 1; tier <= to; tier += 1) {
 			completed.push({ id: challenge.id, tier });
 		}
 	}
+
 	return completed;
 }
 
@@ -239,12 +257,14 @@ export function entryWon(
 	entry: Pick<MatchResultEntry, "playerId" | "team">,
 ): boolean {
 	const possessed = results.possessed;
+
 	if (possessed) {
 		return (
 			(possessed.winner === "possessed") ===
 			(possessed.possessedId === entry.playerId)
 		);
 	}
+
 	return results.teams.length > 0
 		? results.winnerTeam !== null && results.winnerTeam === entry.team
 		: results.winnerId === entry.playerId;

@@ -14,6 +14,7 @@ import styles from "./LobbyScreen.module.scss";
 
 export function MicPanel() {
 	const t = useT();
+
 	const mic = useStore(
 		micStore,
 		(state) => ({
@@ -23,10 +24,13 @@ export function MicPanel() {
 		}),
 		shallowEqual,
 	);
+
 	const ok = mic.status === "ready";
+
 	useEffect(() => {
 		prepareSpeechRecognition();
 	}, []);
+
 	return (
 		<section className={styles.micPanel}>
 			<div className={styles.micHead}>

@@ -7,6 +7,6 @@ export * from "./items.js";
 export * from "./match.js";
 export * from "./network.js";
 export * from "./occult.js";
+export * from "./party.js";
 export * from "./player.js";
 export * from "./world.js";
-export * from "./party.js";

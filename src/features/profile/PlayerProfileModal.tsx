@@ -22,6 +22,7 @@ function ProfileBody({ profile }: { profile: PublicProfile }) {
 	const t = useT();
 	const labels = t.progression.profile;
 	const { stats } = profile;
+
 	return (
 		<div className={styles.body}>
 			<div className={styles.identity}>
@@ -73,6 +74,7 @@ function PublicDetails({
 	const t = useT();
 	const labels = t.progression.profile;
 	const winrate = stats.gamesPlayed > 0 ? stats.wins / stats.gamesPlayed : 0;
+
 	return (
 		<>
 			{profile.private ? (
@@ -138,12 +140,16 @@ export function PlayerProfileModal() {
 	const t = useT();
 	const profileId = useStore(profileViewStore, (state) => state.profileId);
 	const [loaded, setLoaded] = useState<Loaded>({ status: "loading" });
+
 	useEffect(() => {
 		if (!profileId) {
 			return;
 		}
+
 		let cancelled = false;
+
 		setLoaded({ status: "loading" });
+
 		void accountApi.publicProfile(profileId).then((result) => {
 			if (!cancelled) {
 				setLoaded(
@@ -153,13 +159,16 @@ export function PlayerProfileModal() {
 				);
 			}
 		});
+
 		return () => {
 			cancelled = true;
 		};
 	}, [profileId]);
+
 	if (!profileId) {
 		return null;
 	}
+
 	return (
 		<Modal title={t.progression.profile.title} onClose={closeProfile}>
 			{loaded.status === "loading" ? (

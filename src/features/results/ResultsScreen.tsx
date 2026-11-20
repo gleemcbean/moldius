@@ -37,11 +37,13 @@ function reveal(order: number): CSSProperties {
 function placeOf(results: MatchResults, entry: MatchResultEntry): number {
 	if (results.teams.length > 0) {
 		const team = results.teams.find((standing) => standing.team === entry.team);
+
 		return (
 			1 +
 			results.teams.filter((other) => other.score > (team?.score ?? 0)).length
 		);
 	}
+
 	return (
 		1 + results.entries.filter((other) => other.score > entry.score).length
 	);
@@ -55,6 +57,7 @@ function PlayerName({
 	lookup: LobbyLookup;
 }) {
 	const lobby = lookup(entry.playerId);
+
 	return (
 		<span className={styles.name}>
 			<ProfileLink
@@ -79,13 +82,16 @@ function Podium({
 }) {
 	const t = useT();
 	const top = results.entries.slice(0, 3);
+
 	const order = [top[1], top[0], top[2]].filter(
 		(entry): entry is MatchResultEntry => entry !== undefined,
 	);
+
 	return (
 		<ol className={styles.podium} style={reveal(1)}>
 			{order.map((entry) => {
 				const place = placeOf(results, entry);
+
 				return (
 					<li
 						key={entry.playerId}
@@ -119,6 +125,7 @@ function Podium({
 function TeamBanner({ results }: { results: MatchResults }) {
 	const t = useT();
 	const labels = t.game.results;
+
 	return (
 		<ol className={styles.teams} style={reveal(1)}>
 			{results.teams.map((standing, index) => (
@@ -164,6 +171,7 @@ function Standings({
 }) {
 	const t = useT();
 	const labels = t.game.results;
+
 	const row = (entry: MatchResultEntry, place: number | null) => (
 		<li
 			key={entry.playerId}
@@ -187,6 +195,7 @@ function Standings({
 			<span className={styles.score}>{t.common.points(entry.score)}</span>
 		</li>
 	);
+
 	const teamHeader = (standing: TeamStanding) => (
 		<li
 			key={`team-${standing.team}`}
@@ -198,6 +207,7 @@ function Standings({
 			{t.common.teams[standing.team]}
 		</li>
 	);
+
 	return (
 		<section className={styles.standings} style={reveal(2)}>
 			<h2 className={styles.heading}>{labels.standings}</h2>
@@ -219,14 +229,18 @@ function PossessedReveal({ results }: { results: MatchResults }) {
 	const t = useT();
 	const labels = t.party.possessed.results;
 	const outcome = results.possessed;
+
 	if (!outcome) {
 		return null;
 	}
+
 	const nameOf = (id: string) =>
 		results.entries.find((entry) => entry.playerId === id)?.name ?? "?";
+
 	const possessed = results.entries.find(
 		(entry) => entry.playerId === outcome.possessedId,
 	);
+
 	return (
 		<section
 			className={[
@@ -260,6 +274,7 @@ function PossessedReveal({ results }: { results: MatchResults }) {
 					<ul className={styles.revealVotes}>
 						{results.entries.map((entry) => {
 							const target = outcome.votes[entry.playerId];
+
 							return (
 								<li key={entry.playerId}>
 									<span>{entry.name}</span>
@@ -291,9 +306,11 @@ function AwardList({
 }) {
 	const t = useT();
 	const labels = t.game.awards;
+
 	if (results.awards.length === 0) {
 		return null;
 	}
+
 	return (
 		<section className={styles.card} style={reveal(5)}>
 			<h2 className={styles.heading}>{labels.title}</h2>
@@ -302,6 +319,7 @@ function AwardList({
 					const entry = results.entries.find(
 						(candidate) => candidate.playerId === award.playerId,
 					);
+
 					return (
 						<li
 							key={award.playerId}
@@ -337,38 +355,51 @@ export function ResultsScreen() {
 	const lobbyPlayers = useStore(lobbyStore, (state) => state.lobby?.players);
 	const selfEntry = results?.entries.find((entry) => entry.playerId === selfId);
 	const selfWon = results && selfEntry ? entryWon(results, selfEntry) : false;
+
 	const gained =
 		account && selfEntry
 			? matchXp({ score: selfEntry.score, won: selfWon })
 			: 0;
+
 	const xpBefore = progressBefore.current?.xp ?? 0;
 	const afterXp = Math.max(progress?.xp ?? 0, xpBefore + gained);
+
 	const unlocked = newlyUnlocked(
 		progressBefore.current,
 		progress ? { ...progress, xp: afterXp } : null,
 	);
+
 	const challengesBefore = useRef(
 		useStore(accountStore, (state) => state.account?.challenges ?? null) ?? {},
 	);
+
 	useEffect(() => {
 		if (!email) {
 			return;
 		}
+
 		const timer = window.setTimeout(() => void refreshAccount(), 1500);
+
 		return () => window.clearTimeout(timer);
 	}, [email]);
+
 	if (!results) {
 		return null;
 	}
+
 	const lookup: LobbyLookup = (playerId) =>
 		lobbyPlayers?.find((player) => player.id === playerId);
+
 	const winner = results.entries.find(
 		(entry) => entry.playerId === results.winnerId,
 	);
+
 	const winningTeam = results.teams.find(
 		(standing) => standing.team === results.winnerTeam,
 	);
+
 	const challengesCount = results.challenges !== false;
+
 	const completed = challengesCount
 		? newlyCompleted(
 				challengesBefore.current,
@@ -378,11 +409,13 @@ export function ResultsScreen() {
 				),
 			)
 		: [];
+
 	const teamMode = results.teams.length > 0;
 	const possessedOutcome = results.possessed ?? null;
 	const placeCount = teamMode ? results.teams.length : results.entries.length;
 	const minutes = Math.max(1, Math.round(results.durationMs / 60_000));
 	const hasNews = completed.length > 0 || unlocked.length > 0;
+
 	return (
 		<main className={styles.results}>
 			<SelectorGroup className={styles.layout}>

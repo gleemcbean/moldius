@@ -38,6 +38,7 @@ export async function ensurePageFonts(): Promise<void> {
 	if (!document.fonts) {
 		return;
 	}
+
 	await Promise.all([
 		document.fonts.load(`400 32px ${HAND_FONT}`),
 		document.fonts.load(`italic 400 32px ${HAND_FONT}`),
@@ -51,42 +52,58 @@ function parchment(
 	mirrored: boolean,
 ): void {
 	const rng = new SeededRandom(seed);
+
 	const gradient = context.createLinearGradient(
 		mirrored ? PAGE_WIDTH : 0,
 		0,
 		mirrored ? 0 : PAGE_WIDTH,
 		0,
 	);
+
 	gradient.addColorStop(0, "#b89a66");
 	gradient.addColorStop(0.08, "#e3d0a2");
 	gradient.addColorStop(0.6, "#ead9ae");
 	gradient.addColorStop(1, "#dcc48e");
+
 	context.fillStyle = gradient;
+
 	context.fillRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT);
+
 	const block = 8;
+
 	for (let y = 0; y < PAGE_HEIGHT; y += block) {
 		for (let x = 0; x < PAGE_WIDTH; x += block) {
 			const value = rng.next();
+
 			if (value < 0.35) {
 				context.fillStyle = `rgba(110, 80, 40, ${0.02 + rng.next() * 0.05})`;
+
 				context.fillRect(x, y, block, block);
 			}
 		}
 	}
+
 	for (let index = 0; index < 6; index += 1) {
 		const x = rng.range(0, PAGE_WIDTH);
 		const y = rng.range(0, PAGE_HEIGHT);
 		const radius = rng.range(20, 70);
 		const stain = context.createRadialGradient(x, y, 0, x, y, radius);
+
 		stain.addColorStop(0, "rgba(120, 80, 30, 0.12)");
 		stain.addColorStop(1, "rgba(120, 80, 30, 0)");
+
 		context.fillStyle = stain;
+
 		context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 	}
+
 	context.strokeStyle = "rgba(90, 60, 25, 0.55)";
 	context.lineWidth = 4;
+
 	context.strokeRect(34, 34, PAGE_WIDTH - 68, PAGE_HEIGHT - 68);
+
 	context.lineWidth = 1.5;
+
 	context.strokeRect(44, 44, PAGE_WIDTH - 88, PAGE_HEIGHT - 88);
 }
 
@@ -98,18 +115,23 @@ function wrapLines(
 	const words = text.split(/\s+/);
 	const lines: string[] = [];
 	let current = "";
+
 	for (const word of words) {
 		const candidate = current ? `${current} ${word}` : word;
+
 		if (context.measureText(candidate).width > maxWidth && current) {
 			lines.push(current);
+
 			current = word;
 		} else {
 			current = candidate;
 		}
 	}
+
 	if (current) {
 		lines.push(current);
 	}
+
 	return lines;
 }
 
@@ -123,18 +145,23 @@ function drawParagraph(
 	bold = false,
 ): number {
 	let cursor = y;
+
 	if (bold) {
 		context.strokeStyle = context.fillStyle;
 		context.lineWidth = 1.4;
 		context.lineJoin = "round";
 	}
+
 	for (const line of wrapLines(context, text, maxWidth)) {
 		if (bold) {
 			context.strokeText(line, x, cursor);
 		}
+
 		context.fillText(line, x, cursor);
+
 		cursor += lineHeight;
 	}
+
 	return cursor;
 }
 
@@ -148,9 +175,11 @@ function heading(
 	context.fillStyle = RED_INK;
 	context.strokeStyle = RED_INK;
 	context.lineWidth = 1.2;
+
 	context.strokeText(text, x, y);
 	context.fillText(text, x, y);
 	context.fillRect(x, y + 10, context.measureText(text).width, 3);
+
 	return y + 54;
 }
 
@@ -159,22 +188,31 @@ export function renderLeftPage(
 	content: PageContent,
 ): void {
 	const context = canvas.getContext("2d") as CanvasRenderingContext2D;
+
 	parchment(context, hashString(`${content.species.id}-left`), false);
+
 	const { species } = content;
 	const labels = currentMessages().grimoire;
 	const text = labels.species[species.id];
+
 	context.textBaseline = "alphabetic";
 	context.textAlign = "center";
 	context.fillStyle = INK;
+
 	let size = 80;
+
 	context.font = `400 ${size}px ${TITLE_FONT}`;
+
 	while (size > 36 && context.measureText(text.name).width > NAME_MAX_WIDTH) {
 		size -= 2;
 		context.font = `400 ${size}px ${TITLE_FONT}`;
 	}
+
 	context.fillText(text.name, PAGE_WIDTH / 2, 150);
+
 	const pictureTop = 190;
 	const pictureSize = 580;
+
 	if (content.illustration) {
 		context.drawImage(
 			content.illustration,
@@ -184,13 +222,16 @@ export function renderLeftPage(
 			pictureSize,
 		);
 	}
+
 	context.font = `italic 400 32px ${HAND_FONT}`;
 	context.fillStyle = INK_SOFT;
+
 	context.fillText(
 		labels.inPool,
 		PAGE_WIDTH / 2,
 		pictureTop + pictureSize + 70,
 	);
+
 	context.textAlign = "left";
 }
 
@@ -199,18 +240,26 @@ export function renderRightPage(
 	content: PageContent,
 ): void {
 	const context = canvas.getContext("2d") as CanvasRenderingContext2D;
+
 	parchment(context, hashString(`${content.species.id}-right`), true);
+
 	const labels = currentMessages().grimoire;
 	const margin = 76;
 	const width = PAGE_WIDTH - margin * 2;
+
 	context.textAlign = "left";
 	context.textBaseline = "alphabetic";
+
 	let y = 110;
+
 	y = heading(context, labels.occultHeading, margin, y);
+
 	if (content.occult) {
 		y = drawRecipe(context, content, content.occult, margin, y, width) + 10;
 	}
+
 	y = heading(context, labels.incantation, margin, y);
+
 	drawFormulas(context, content, margin, y, width);
 }
 
@@ -224,11 +273,14 @@ function drawRecipe(
 ): number {
 	const labels = currentMessages().grimoire;
 	const hero = content.art.get(occult);
+
 	if (hero) {
 		context.drawImage(hero, x, y - 14, HERO_ART_SIZE, HERO_ART_SIZE);
 	}
+
 	context.font = `400 46px ${TITLE_FONT}`;
 	context.fillStyle = INK;
+
 	drawParagraph(
 		context,
 		labels.objects[occult],
@@ -237,24 +289,32 @@ function drawRecipe(
 		width - HERO_ART_SIZE - 14,
 		50,
 	);
+
 	const recipe = Object.entries(OCCULT_RECIPES[occult]) as [
 		MaterialId,
 		number,
 	][];
+
 	const slot = width / recipe.length;
 	const top = y + HERO_ART_SIZE - 18;
 	let bottom = top;
+
 	recipe.forEach(([id, count], index) => {
 		const left = x + slot * index;
 		const art = content.art.get(id);
+
 		if (art) {
 			context.drawImage(art, left, top, MATERIAL_ART_SIZE, MATERIAL_ART_SIZE);
 		}
+
 		context.font = `400 44px ${TITLE_FONT}`;
 		context.fillStyle = RED_INK;
+
 		context.fillText(`${count} ×`, left + 2, top + MATERIAL_ART_SIZE + 38);
+
 		context.font = `400 27px ${HAND_FONT}`;
 		context.fillStyle = INK;
+
 		bottom = Math.max(
 			bottom,
 			drawParagraph(
@@ -267,6 +327,7 @@ function drawRecipe(
 			),
 		);
 	});
+
 	return bottom;
 }
 
@@ -279,25 +340,37 @@ function drawFormulas(
 ): void {
 	const labels = currentMessages().grimoire;
 	const shown = content.formulas.slice(0, 1);
+
 	if (shown.length === 0) {
 		context.font = `italic 400 30px ${HAND_FONT}`;
 		context.fillStyle = INK_SOFT;
+
 		drawParagraph(context, labels.aimToReveal, x, y, width, 36);
+
 		return;
 	}
+
 	let cursor = y + 14;
+
 	for (const formula of shown) {
 		const size = 58;
+
 		context.font = `400 ${size}px ${TITLE_FONT}`;
 		context.fillStyle = INK;
+
 		const words = formula.words.map(
 			(word) => word.charAt(0).toUpperCase() + word.slice(1),
 		);
+
 		const line1 = words.slice(0, 2).join("  ·  ");
 		const line2 = words.slice(2).join("  ·  ");
+
 		context.fillText(line1, x, cursor);
+
 		cursor += size + 10;
+
 		context.fillText(line2, x, cursor);
+
 		cursor += size + 18;
 	}
 }

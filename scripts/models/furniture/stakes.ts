@@ -15,18 +15,21 @@ import {
 
 const DARK_STONE: MaterialOptions = { ...STONE, color: 0x5a5660 };
 const OLD_WOOD: MaterialOptions = { texture: "woodDark", roughness: 0.8 };
+
 const SANCTUARY_GLOW: MaterialOptions = {
 	color: 0x8fe3a4,
 	emissive: 0x4fd07a,
 	emissiveIntensity: 1.6,
 	roughness: 0.4,
 };
+
 const RELIC_GLOW: MaterialOptions = {
 	color: 0xffd98a,
 	emissive: 0xffb030,
 	emissiveIntensity: 1.5,
 	roughness: 0.3,
 };
+
 const BLOOD: MaterialOptions = {
 	color: 0x7a0f1c,
 	emissive: 0xff2438,
@@ -44,6 +47,7 @@ function plinth(width: number, depth: number, material: MaterialOptions) {
 export const stakeSanctuary: FurnitureBuilder = ({ item }) => {
 	const steps = 0.2;
 	const bowl = item.height - 0.14;
+
 	return [
 		...plinth(item.width, item.depth, MARBLE),
 		lathe(
@@ -76,6 +80,7 @@ export const stakeReliquary: FurnitureBuilder = ({ item }) => {
 	const width = item.width * 0.62;
 	const depth = item.depth * 0.5;
 	const height = 0.34;
+
 	return [
 		...plinth(item.width, item.depth, DARK_STONE),
 		boxAt(OLD_WOOD, width, height, depth, 0, top + height / 2, 0),
@@ -102,6 +107,7 @@ export const stakePact: FurnitureBuilder = ({ item }) => {
 	const top = item.height - 0.08;
 	const width = item.width * 0.74;
 	const depth = item.depth * 0.66;
+
 	return [
 		...plinth(item.width, item.depth, DARK_STONE),
 		boxAt(

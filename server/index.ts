@@ -44,12 +44,16 @@ export async function startServer(
 	overrides: ServerOverrides = {},
 ): Promise<RunningServer> {
 	const loadedConfig = loadServerConfig();
+
 	const config = overrides.adminEmails
 		? { ...loadedConfig, adminEmails: overrides.adminEmails }
 		: loadedConfig;
+
 	const dev = overrides.dev ?? config.dev;
+
 	const publicUrl =
 		overrides.publicUrl !== undefined ? overrides.publicUrl : config.publicUrl;
+
 	const database =
 		overrides.database !== undefined
 			? overrides.database
@@ -60,6 +64,7 @@ export async function startServer(
 						maxConnections: 10,
 					})
 				: null;
+
 	const mailer =
 		overrides.mailer !== undefined
 			? overrides.mailer
@@ -68,6 +73,7 @@ export async function startServer(
 				: dev
 					? createFileMailer(config.devMailDir, config.mailFrom)
 					: null;
+
 	const accounts = new AccountModule(
 		database,
 		overrides.cookieSecure ?? config.cookieSecure,
@@ -87,21 +93,28 @@ export async function startServer(
 						: null,
 		},
 	);
+
 	await accounts.start();
+
 	let lobbies: LobbyManager | null = null;
 	let sessionRegistry: SessionRegistry | null = null;
+
 	const liveStats = () =>
 		lobbies && sessionRegistry
 			? computeLiveStats(sessionRegistry, lobbies)
 			: null;
+
 	accounts.liveStats = liveStats;
+
 	const { app, dispose: disposeApp } = createApp(
 		config,
 		() => lobbies,
 		accounts,
 		liveStats,
 	);
+
 	const httpServer = createServer(app);
+
 	const io = new Server<ClientToServerEvents, ServerToClientEvents>(
 		httpServer,
 		{
@@ -116,14 +129,18 @@ export async function startServer(
 			serveClient: false,
 		},
 	);
+
 	const sessions = new SessionRegistry();
+
 	sessionRegistry = sessions;
 	accounts.onRevoke = (revocation) => sessions.revoke(revocation);
+
 	lobbies = new LobbyManager(io, sessions, serverNow, {
 		minPlayers: dev ? 1 : 2,
 		dev,
 		onMatchRecords: (records) => accounts.record(records),
 	});
+
 	const speech =
 		process.env.SPEECH_SERVER === "false"
 			? null
@@ -133,6 +150,7 @@ export async function startServer(
 						resolve(config.projectRoot, "public/vosk"),
 					]),
 				);
+
 	registerSocketHandlers({
 		io,
 		speech,
@@ -144,16 +162,19 @@ export async function startServer(
 		identify: (cookieHeader) => accounts.identify(cookieHeader),
 		friends: () => accounts.friends,
 	});
+
 	if (dev) {
 		console.log(
 			"Moldius : mode DEV actif, les parties peuvent se lancer en solo",
 		);
 	}
+
 	if (speech && !speech.available) {
 		console.log(
 			"Moldius : modèles Vosk absents (npm run vosk:setup), pas de reconnaissance vocale serveur",
 		);
 	}
+
 	if (!accounts.enabled) {
 		console.log(
 			"Moldius : DATABASE_URL absent, les comptes joueurs sont désactivés",
@@ -169,21 +190,27 @@ export async function startServer(
 	}
 
 	const port = overrides.port ?? config.port;
+
 	await new Promise<void>((resolve) =>
 		httpServer.listen(port, config.host, resolve),
 	);
+
 	const address = httpServer.address();
+
 	const actualPort =
 		typeof address === "object" && address ? address.port : port;
+
 	return {
 		port: actualPort,
 		close: async () => {
 			lobbies?.dispose();
 			speech?.dispose();
 			disposeApp();
+
 			await new Promise<void>((resolve) => {
 				void io.close(() => resolve());
 			});
+
 			await accounts.close();
 		},
 	};

@@ -21,23 +21,29 @@ export function LoadingScreen() {
 	const error = useStore(matchStore, (state) => state.error);
 	const init = useStore(matchStore, (state) => state.init);
 	const playerId = useStore(sessionStore, (state) => state.playerId);
+
 	const [tip, setTip] = useState(() =>
 		Math.floor(Math.random() * labels.tips.length),
 	);
+
 	const total =
 		steps.length === 0
 			? 0
 			: steps.reduce((sum, step) => sum + step.progress, 0) / steps.length;
+
 	const current = steps.find((step) => step.progress < 1);
+
 	const players = useMemo(() => {
 		const list = (init?.players ?? []).filter(
 			(player) => player.id !== TUTORIAL_DUMMY_ID,
 		);
+
 		return [
 			...list.filter((player) => player.id === playerId),
 			...list.filter((player) => player.id !== playerId),
 		];
 	}, [init, playerId]);
+
 	const walkers = useMemo<ApproachWalker[]>(
 		() =>
 			players.map(({ id, color, pattern, lantern }) => ({
@@ -54,6 +60,7 @@ export function LoadingScreen() {
 			() => setTip((index) => (index + 1) % labels.tips.length),
 			TIP_INTERVAL_MS,
 		);
+
 		return () => window.clearInterval(timer);
 	}, [labels.tips.length]);
 

@@ -13,31 +13,42 @@ export class AmbientMotes {
 
 	constructor(density = 1) {
 		const count = Math.max(12, Math.round(150 * density));
+
 		this.anchors = new Float32Array(count * 3);
 		this.drift = new Float32Array(count * 3);
 		this.positions = new Float32Array(count * 3);
+
 		const colors = new Float32Array(count * 3);
 		const phases = new Float32Array(count);
 		const color = new THREE.Color();
+
 		for (let index = 0; index < count; index += 1) {
 			for (let axis = 0; axis < 3; axis += 1) {
 				this.anchors[index * 3 + axis] = Math.random() * EXTENT;
 				this.drift[index * 3 + axis] = (Math.random() - 0.5) * 0.12;
 			}
+
 			this.drift[index * 3 + 1] += 0.03;
+
 			color
 				.setHex(PALETTE[index % PALETTE.length])
 				.multiplyScalar(0.25 + Math.random() * 0.35);
+
 			color.toArray(colors, index * 3);
+
 			phases[index] = Math.random();
 		}
+
 		const geometry = new THREE.BufferGeometry();
+
 		geometry.setAttribute(
 			"position",
 			new THREE.BufferAttribute(this.positions, 3),
 		);
+
 		geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 		geometry.setAttribute("phase", new THREE.BufferAttribute(phases, 1));
+
 		this.material = new THREE.ShaderMaterial({
 			transparent: true,
 			depthWrite: false,
@@ -63,6 +74,7 @@ export class AmbientMotes {
           gl_FragColor = vec4(vColor, 1.0);
         }`,
 		});
+
 		this.points = new THREE.Points(geometry, this.material);
 		this.points.frustumCulled = false;
 	}
@@ -70,19 +82,26 @@ export class AmbientMotes {
 	update(dt: number, center: THREE.Vector3): void {
 		this.time += dt;
 		this.material.uniforms.time.value = this.time;
+
 		const count = this.positions.length / 3;
+
 		for (let index = 0; index < count; index += 1) {
 			for (let axis = 0; axis < 3; axis += 1) {
 				const slot = index * 3 + axis;
+
 				const sway =
 					Math.sin(this.time * 0.6 + index * 1.7 + axis * 2.1) * 0.05;
+
 				this.anchors[slot] += (this.drift[slot] + sway) * dt;
+
 				const origin = center.getComponent(axis);
 				const offset = this.anchors[slot] - origin;
+
 				this.positions[slot] =
 					origin + offset - EXTENT * Math.round(offset / EXTENT);
 			}
 		}
+
 		(
 			this.points.geometry.getAttribute("position") as THREE.BufferAttribute
 		).needsUpdate = true;

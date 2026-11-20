@@ -34,6 +34,7 @@ import { configDraftStore, updateLobbyConfig } from "./lobbyClient";
 
 function useRulesConfig(lobby: LobbyState, editable: boolean): MatchConfig {
 	const draft = useStore(configDraftStore, (state) => state.config);
+
 	return editable && draft ? draft : lobby.config;
 }
 
@@ -49,6 +50,7 @@ export function RulesSummary({
 	const t = useT();
 	const labels = t.lobby.rules;
 	const config = useRulesConfig(lobby, editable);
+
 	const rows = [
 		{ label: labels.anomalies, value: String(config.simultaneousAnomalies) },
 		{ label: labels.itemsPerPlayer, value: String(config.itemsPerPlayer) },
@@ -90,6 +92,7 @@ export function RulesSummary({
 					: config.mutators.map((id) => t.party.mutators.names[id]).join(", "),
 		},
 	];
+
 	return (
 		<section className={[styles.card, styles.rules].join(" ")}>
 			<h2 className={styles.cardTitle}>{labels.title}</h2>
@@ -122,26 +125,33 @@ export function RulesModal({
 }) {
 	const t = useT();
 	const labels = t.lobby.rules;
+
 	const sizeOptions = MANOR_SIZES.map((size) => ({
 		value: size,
 		label: t.world.manorSizes[size],
 	}));
+
 	const config = useRulesConfig(lobby, editable);
+
 	const update = (patch: Partial<MatchConfig>) => {
 		if (editable) {
 			updateLobbyConfig({ ...config, ...patch });
 		}
 	};
+
 	const toggleRoom = (type: RoomType) => {
 		const enabled = config.roomTypes.includes(type);
+
 		update({
 			roomTypes: enabled
 				? config.roomTypes.filter((entry) => entry !== type)
 				: [...config.roomTypes, type],
 		});
 	};
+
 	const toggleMutator = (id: MutatorId) => {
 		const enabled = config.mutators.includes(id);
+
 		update({
 			mutators: enabled
 				? config.mutators.filter((entry) => entry !== id)
@@ -150,12 +160,16 @@ export function RulesModal({
 					),
 		});
 	};
+
 	const possessed = config.mode === "possessed";
+
 	const toggleSpecies = (id: SpeciesId) => {
 		const enabled = config.species.includes(id);
+
 		if (enabled && config.species.length === 1) {
 			return;
 		}
+
 		update({
 			species: enabled
 				? config.species.filter((entry) => entry !== id)
@@ -164,6 +178,7 @@ export function RulesModal({
 					),
 		});
 	};
+
 	return (
 		<Modal title={labels.title} onClose={onClose} wide>
 			<p className={styles.rulesNote}>
@@ -386,12 +401,15 @@ function ChipSection({
 		x: number;
 		y: number;
 	} | null>(null);
+
 	const showTip = (element: HTMLElement, text: string | undefined) => {
 		if (text) {
 			const box = element.getBoundingClientRect();
+
 			setTip({ text, x: box.left + box.width / 2, y: box.top });
 		}
 	};
+
 	return (
 		<div className={styles.chipSection}>
 			<p className={styles.roomTitle}>
@@ -404,6 +422,7 @@ function ChipSection({
 				{chips.map((chip) => (
 					<span
 						key={chip.key}
+						role="group"
 						className={styles.roomChipAnchor}
 						onPointerEnter={(event) => showTip(event.currentTarget, chip.hint)}
 						onPointerLeave={() => setTip(null)}

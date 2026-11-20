@@ -42,15 +42,18 @@ export function distance2(a: Vec2, b: Vec2): number {
 
 export function normalize2(a: Vec2): Vec2 {
 	const length = length2(a);
+
 	if (length < EPSILON) {
 		return { x: 0, z: 0 };
 	}
+
 	return { x: a.x / length, z: a.z / length };
 }
 
 export function rotate2(a: Vec2, angle: number): Vec2 {
 	const cos = Math.cos(angle);
 	const sin = Math.sin(angle);
+
 	return { x: a.x * cos - a.z * sin, z: a.x * sin + a.z * cos };
 }
 
@@ -66,6 +69,7 @@ export function inverseLerp(a: number, b: number, value: number): number {
 	if (Math.abs(b - a) < EPSILON) {
 		return 0;
 	}
+
 	return clamp((value - a) / (b - a), 0, 1);
 }
 
@@ -75,16 +79,19 @@ export function smoothstep(
 	value: number,
 ): number {
 	const t = inverseLerp(edge0, edge1, value);
+
 	return t * t * (3 - 2 * t);
 }
 
 export function wrapAngle(angle: number): number {
 	let wrapped = angle % TAU;
+
 	if (wrapped > Math.PI) {
 		wrapped -= TAU;
 	} else if (wrapped < -Math.PI) {
 		wrapped += TAU;
 	}
+
 	return wrapped;
 }
 
@@ -102,9 +109,11 @@ export function approachAngle(
 	maxStep: number,
 ): number {
 	const delta = angleDifference(from, to);
+
 	if (Math.abs(delta) <= maxStep) {
 		return to;
 	}
+
 	return wrapAngle(from + Math.sign(delta) * maxStep);
 }
 
@@ -118,6 +127,7 @@ export function directionToYaw(direction: Vec2): number {
 
 export function lookDirection(yaw: number, pitch: number): Vec3 {
 	const cosPitch = Math.cos(pitch);
+
 	return {
 		x: -Math.sin(yaw) * cosPitch,
 		y: Math.sin(pitch),
@@ -129,13 +139,16 @@ export function closestPointOnSegment(point: Vec2, a: Vec2, b: Vec2): Vec2 {
 	const abx = b.x - a.x;
 	const abz = b.z - a.z;
 	const lengthSq = abx * abx + abz * abz;
+
 	if (lengthSq < EPSILON) {
 		return { x: a.x, z: a.z };
 	}
+
 	const t = clamp(
 		((point.x - a.x) * abx + (point.z - a.z) * abz) / lengthSq,
 		0,
 		1,
 	);
+
 	return { x: a.x + abx * t, z: a.z + abz * t };
 }

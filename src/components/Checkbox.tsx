@@ -21,6 +21,7 @@ export function Checkbox({
 	className?: string;
 }) {
 	const [touched, setTouched] = useState(false);
+
 	return (
 		<label
 			className={[

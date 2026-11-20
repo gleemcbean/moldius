@@ -33,6 +33,7 @@ export function paintTone(texel: Texel, color: Tone, factor = 1): void {
 
 export function blendTone(texel: Texel, color: Tone, amount: number): void {
 	const t = clamp01(amount);
+
 	texel.r = lerp(texel.r, color[0], t);
 	texel.g = lerp(texel.g, color[1], t);
 	texel.b = lerp(texel.b, color[2], t);
@@ -59,6 +60,7 @@ export class SurfaceField {
 		readonly seed: number,
 	) {
 		const count = width * height;
+
 		this.relief = new Float32Array(count);
 		this.albedo = new Float32Array(count * 3);
 		this.rough = new Float32Array(count);
@@ -76,11 +78,15 @@ export class SurfaceField {
 			metal: 0,
 			ao: 1,
 		};
+
 		const { width, height } = this;
+
 		for (let y = 0; y < height; y += 1) {
 			const v = (y + 0.5) / height;
+
 			for (let x = 0; x < width; x += 1) {
 				const index = y * width + x;
+
 				texel.relief = 0.5;
 				texel.r = 0.5;
 				texel.g = 0.5;
@@ -88,7 +94,9 @@ export class SurfaceField {
 				texel.rough = 0.8;
 				texel.metal = 0;
 				texel.ao = 1;
+
 				shader((x + 0.5) / width, v, texel);
+
 				this.relief[index] = clamp01(texel.relief);
 				this.albedo[index * 3] = texel.r;
 				this.albedo[index * 3 + 1] = texel.g;
@@ -109,17 +117,21 @@ export class SurfaceField {
 
 	smoothRelief(radius: number): void {
 		const steps = Math.max(1, Math.round(radius * this.width));
+
 		this.relief.set(blurWrapped(this.relief, this.width, this.height, steps));
 	}
 
 	normalizeRelief(): void {
 		let low = Number.POSITIVE_INFINITY;
 		let high = Number.NEGATIVE_INFINITY;
+
 		for (const value of this.relief) {
 			low = Math.min(low, value);
 			high = Math.max(high, value);
 		}
+
 		const span = high - low || 1;
+
 		for (let index = 0; index < this.relief.length; index += 1) {
 			this.relief[index] = (this.relief[index] - low) / span;
 		}

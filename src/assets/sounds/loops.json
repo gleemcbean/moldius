@@ -15,6 +15,7 @@
 	"hurleur-wings": 1.75,
 	"suinteur-idle": 2.75,
 	"boursoufle-idle": 3.15,
+	"cordyceps-idle": 3.75,
 	"rain-glass-loop": 5.75,
 	"crypt-rumble-loop": 7.75,
 	"pond-water-loop": 5.75,
@@ -24,5 +25,9 @@
 	"music-box-loop": 9.35,
 	"clock-loop": 1.75,
 	"drone-loop": 7.75,
-	"wind-loop": 7.75
+	"wind-loop": 7.75,
+	"cinema-idle": 2.75,
+	"film-piano": 14.295458333333332,
+	"fungal-loop": 11.75,
+	"fae-loop": 11.75
 }

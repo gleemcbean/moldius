@@ -7,6 +7,7 @@ export function levelForHeight(
 	margin = 1.4,
 ): Level {
 	const level = Math.floor((y + margin) / LEVEL_HEIGHT);
+
 	return Math.max(0, Math.min(maxLevel, MAX_UPPER_FLOORS, level)) as Level;
 }
 
@@ -18,6 +19,7 @@ export function floorsSeenFromEye(
 	highest: number;
 } {
 	const feet = eyeY - eyeHeight;
+
 	return {
 		lowest: Math.floor((feet + 0.3) / LEVEL_HEIGHT),
 		highest: Math.ceil((feet - 0.3) / LEVEL_HEIGHT) + 0,

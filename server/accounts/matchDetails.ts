@@ -35,7 +35,9 @@ function parsePlayer(raw: unknown): MatchDetailPlayer | null {
 	if (!isRecord(raw) || typeof raw.name !== "string") {
 		return null;
 	}
+
 	const awards = Array.isArray(raw.awards) ? raw.awards : [];
+
 	return {
 		profileId:
 			typeof raw.profileId === "string" && /^[\w-]{1,64}$/.test(raw.profileId)
@@ -60,9 +62,11 @@ function parsePlayer(raw: unknown): MatchDetailPlayer | null {
 
 function parseTeam(raw: unknown): MatchDetailTeam | null {
 	const team = isRecord(raw) ? teamOf(raw.team) : null;
+
 	if (!isRecord(raw) || team === null) {
 		return null;
 	}
+
 	return {
 		team,
 		score: count(raw.score),
@@ -78,6 +82,7 @@ function parseRules(raw: unknown): MatchDetailRules | null {
 	) {
 		return null;
 	}
+
 	return {
 		manorSize: raw.manorSize as ManorSize,
 		floors: count(raw.floors),
@@ -90,19 +95,23 @@ function parseRules(raw: unknown): MatchDetailRules | null {
 
 function parseMetrics(raw: unknown): MatchMetrics {
 	const metrics: MatchMetrics = {};
+
 	if (isRecord(raw)) {
 		for (const metric of CHALLENGE_METRICS) {
 			const value = count(raw[metric]);
+
 			if (value > 0) {
 				metrics[metric] = value;
 			}
 		}
 	}
+
 	return metrics;
 }
 
 export function parseMatchDetails(raw: unknown): MatchDetailData | null {
 	let value = raw;
+
 	if (typeof value === "string") {
 		try {
 			value = JSON.parse(value);
@@ -110,20 +119,26 @@ export function parseMatchDetails(raw: unknown): MatchDetailData | null {
 			return null;
 		}
 	}
+
 	if (!isRecord(value) || !Array.isArray(value.players)) {
 		return null;
 	}
+
 	const players = value.players.flatMap((entry) => {
 		const player = parsePlayer(entry);
+
 		return player ? [player] : [];
 	});
+
 	if (players.length === 0) {
 		return null;
 	}
+
 	return {
 		players,
 		teams: (Array.isArray(value.teams) ? value.teams : []).flatMap((entry) => {
 			const team = parseTeam(entry);
+
 			return team ? [team] : [];
 		}),
 		winnerTeam: teamOf(value.winnerTeam),

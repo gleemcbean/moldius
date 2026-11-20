@@ -11,6 +11,7 @@ import {
 import styles from "./AdminPage.module.scss";
 
 const REFRESH_MS = 30_000;
+
 const WEEKDAYS = [
 	"Lundi",
 	"Mardi",
@@ -20,6 +21,7 @@ const WEEKDAYS = [
 	"Samedi",
 	"Dimanche",
 ];
+
 const HEAT_STEPS = [
 	"#104281",
 	"#184f95",
@@ -43,10 +45,13 @@ function formatDuration(ms: number | null): string {
 	if (ms === null) {
 		return ":";
 	}
+
 	const minutes = Math.round(ms / 60_000);
+
 	if (minutes < 60) {
 		return `${minutes} min`;
 	}
+
 	return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")}`;
 }
 
@@ -54,17 +59,21 @@ function formatAgo(value: string | null, now: number): string {
 	if (!value) {
 		return ":";
 	}
+
 	const seconds = (new Date(value).getTime() - now) / 1000;
+
 	const units: [Intl.RelativeTimeFormatUnit, number][] = [
 		["day", 86_400],
 		["hour", 3600],
 		["minute", 60],
 	];
+
 	for (const [unit, size] of units) {
 		if (Math.abs(seconds) >= size) {
 			return relative.format(Math.round(seconds / size), unit);
 		}
 	}
+
 	return "à l'instant";
 }
 
@@ -76,11 +85,13 @@ interface TooltipState {
 
 function useTooltip() {
 	const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+
 	const bind = (text: ReactNode) => ({
 		onMouseMove: (event: ReactMouseEvent) =>
 			setTooltip({ x: event.clientX, y: event.clientY, text }),
 		onMouseLeave: () => setTooltip(null),
 	});
+
 	const node = tooltip ? (
 		<div
 			className={styles.tooltip}
@@ -92,6 +103,7 @@ function useTooltip() {
 			{tooltip.text}
 		</div>
 	) : null;
+
 	return { bind, node };
 }
 
@@ -117,8 +129,10 @@ function niceMax(value: number): number {
 	if (value <= 4) {
 		return 4;
 	}
+
 	const magnitude = 10 ** Math.floor(Math.log10(value));
 	const step = [1, 2, 2.5, 5, 10].find((m) => m * magnitude >= value) ?? 10;
+
 	return step * magnitude;
 }
 
@@ -142,9 +156,11 @@ function ColumnChart({
 }) {
 	const highest = Math.max(0, ...data.map((datum) => datum.value));
 	const top = niceMax(highest);
+
 	const highestIndex = data.findIndex(
 		(datum) => datum.value === highest && highest > 0,
 	);
+
 	return (
 		<div className={styles.columns} role="img" aria-label={description}>
 			<div className={styles.columnAxis}>
@@ -191,12 +207,15 @@ function Heatmap({
 	bind: ReturnType<typeof useTooltip>["bind"];
 }) {
 	const highest = Math.max(0, ...heatmap.flat().map((value) => value ?? 0));
+
 	const colorOf = (value: number) => {
 		const ratio = highest > 0 ? value / highest : 0;
+
 		return HEAT_STEPS[
 			Math.min(HEAT_STEPS.length - 1, Math.floor(ratio * HEAT_STEPS.length))
 		];
 	};
+
 	return (
 		<div>
 			<div
@@ -217,6 +236,7 @@ function Heatmap({
 						</span>
 						{HOURS.map((hour) => {
 							const value = row[hour];
+
 							return (
 								<div
 									key={hour}
@@ -280,8 +300,8 @@ function DataTable({
 					<tbody>
 						{rows.map((row) => (
 							<tr key={String(row[0])}>
-								{row.map((cell, index) => (
-									<td key={index}>{cell}</td>
+								{row.map((cell, column) => (
+									<td key={head[column] ?? String(cell)}>{cell}</td>
 								))}
 							</tr>
 						))}
@@ -316,10 +336,12 @@ function PlayersTable({
 	timeZone: string;
 }) {
 	const [query, setQuery] = useState("");
+
 	const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({
 		key: "lastSeenAt",
 		descending: true,
 	});
+
 	const fullDate = useMemo(
 		() =>
 			new Intl.DateTimeFormat("fr-FR", {
@@ -329,24 +351,32 @@ function PlayersTable({
 			}),
 		[timeZone],
 	);
+
 	const visible = useMemo(() => {
 		const search = query.trim().toLowerCase();
+
 		const filtered = search
 			? players.filter((player) => player.name.toLowerCase().includes(search))
 			: players;
+
 		const direction = sort.descending ? -1 : 1;
+
 		return [...filtered].sort((a, b) => {
 			const left = a[sort.key];
 			const right = b[sort.key];
+
 			if (left === right) {
 				return 0;
 			}
+
 			if (left === null) {
 				return 1;
 			}
+
 			if (right === null) {
 				return -1;
 			}
+
 			return (
 				(typeof left === "number" && typeof right === "number"
 					? left - right
@@ -354,6 +384,7 @@ function PlayersTable({
 			);
 		});
 	}, [players, query, sort]);
+
 	const header = (key: SortKey, label: string, numeric = false) => (
 		<th
 			className={numeric ? styles.numeric : undefined}
@@ -380,11 +411,13 @@ function PlayersTable({
 			</button>
 		</th>
 	);
+
 	const dated = (value: string | null) => (
 		<td title={value ? fullDate.format(new Date(value)) : undefined}>
 			{formatAgo(value, now)}
 		</td>
 	);
+
 	return (
 		<>
 			<input
@@ -463,13 +496,16 @@ function Dashboard({
 	const { bind, node } = useTooltip();
 	const { live, totals, presence, daily, timeZone } = data;
 	const now = new Date(data.generatedAt).getTime();
+
 	const dateTime = new Intl.DateTimeFormat("fr-FR", {
 		dateStyle: "long",
 		timeStyle: "short",
 		timeZone,
 	});
+
 	const dayLabel = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}`;
 	const hasSamples = presence.samples > 0;
+
 	return (
 		<main className={styles.page}>
 			<div className={styles.content}>
@@ -695,6 +731,7 @@ export function AdminPage() {
 			const response = await fetch("/api/admin/overview", {
 				credentials: "same-origin",
 			});
+
 			if (response.status === 404) {
 				window.location.replace("/");
 			} else if (response.ok) {
@@ -716,14 +753,18 @@ export function AdminPage() {
 
 	useEffect(() => {
 		document.title = "Moldius";
+
 		void load();
+
 		const timer = window.setInterval(() => void load(), REFRESH_MS);
+
 		return () => window.clearInterval(timer);
 	}, [load]);
 
 	if (state.kind === "ready") {
 		return <Dashboard data={state.data} onRefresh={() => void load()} />;
 	}
+
 	return (
 		<main className={styles.page}>
 			<div className={styles.centered}>

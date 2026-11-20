@@ -8,7 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { latestInstaller } from "../server/app.js";
+import { InstallerType, latestInstaller } from "../server/app.js";
 
 const PUBLIC = new URL("../public/", import.meta.url);
 
@@ -18,27 +18,35 @@ describe("application de bureau à la place de l'application web", () => {
 			new URL("../index.html", import.meta.url),
 			"utf8",
 		);
+
 		expect(html).not.toContain('rel="manifest"');
 	});
 
 	it("garde un service worker qui se retire de lui-même", () => {
 		const worker = readFileSync(new URL("sw.js", PUBLIC), "utf8");
+
 		expect(worker).toContain("registration.unregister()");
 		expect(worker).not.toContain('addEventListener("fetch"');
 	});
 
 	it("sert le plus récent des installateurs Windows", () => {
 		const directory = mkdtempSync(join(tmpdir(), "moldius-release-"));
-		expect(latestInstaller(join(directory, "absent"))).toBeNull();
+
+		expect(
+			latestInstaller(join(directory, "absent"), InstallerType.WIN),
+		).toBeNull();
+
 		mkdirSync(directory, { recursive: true });
-		expect(latestInstaller(directory)).toBeNull();
+		expect(latestInstaller(directory, InstallerType.WIN)).toBeNull();
+
 		const older = join(directory, "Moldius-Setup-1.0.0.exe");
 		const newer = join(directory, "Moldius-Setup-1.1.0.exe");
+
 		writeFileSync(older, "a");
 		writeFileSync(newer, "b");
 		writeFileSync(join(directory, "Moldius-Setup-1.1.0.exe.blockmap"), "c");
 		utimesSync(older, new Date(2026, 0, 2), new Date(2026, 0, 2));
 		utimesSync(newer, new Date(2026, 0, 1), new Date(2026, 0, 1));
-		expect(latestInstaller(directory)).toBe(older);
+		expect(latestInstaller(directory, InstallerType.WIN)).toBe(older);
 	});
 });

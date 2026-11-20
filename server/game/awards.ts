@@ -131,10 +131,13 @@ export function pickAwards(
 ): MatchAward[] {
 	const awards: MatchAward[] = [];
 	const served = new Set<string>();
+
 	for (const rule of AWARD_RULES) {
 		let best: { playerId: string; value: number } | null = null;
+
 		for (const [playerId, entry] of stats) {
 			const value = rule.metric(entry);
+
 			if (
 				!served.has(playerId) &&
 				value >= rule.minimum &&
@@ -143,16 +146,19 @@ export function pickAwards(
 				best = { playerId, value };
 			}
 		}
+
 		if (best) {
 			served.add(best.playerId);
 			awards.push({ playerId: best.playerId, id: rule.id, value: best.value });
 		}
 	}
+
 	for (const playerId of stats.keys()) {
 		if (!served.has(playerId)) {
 			awards.push({ playerId, id: AWARD_FALLBACK, value: 0 });
 		}
 	}
+
 	return awards;
 }
 
@@ -162,10 +168,13 @@ export class AwardTracker {
 
 	private of(playerId: string): PlayerStats {
 		let entry = this.stats.get(playerId);
+
 		if (!entry) {
 			entry = emptyStats();
+
 			this.stats.set(playerId, entry);
 		}
+
 		return entry;
 	}
 
@@ -179,12 +188,17 @@ export class AwardTracker {
 
 	tick(player: MatchPlayer, now: number, chased: boolean): void {
 		const stats = this.of(player.id);
+
 		stats.jumps = Math.max(stats.jumps, player.jumpsSeen);
+
 		if (!player.alive) {
 			stats.hideRunMs = 0;
+
 			return;
 		}
+
 		const dt = SERVER_TICK_MS;
+
 		if (player.hidden) {
 			stats.hideRunMs += dt;
 			stats.hideMs += dt;
@@ -192,19 +206,25 @@ export class AwardTracker {
 		} else {
 			stats.hideRunMs = 0;
 		}
+
 		const level = player.voiceLevelNow(now);
+
 		if (level >= SCREAM_LEVEL) {
 			stats.screamMs += dt;
 		}
+
 		if (player.radioOn && level >= VOICE_AUDIBLE_LEVEL) {
 			stats.radioMs += dt;
 		}
+
 		if (player.lanternOpen) {
 			stats.lanternMs += dt;
 		}
+
 		if (chased) {
 			stats.chasedMs += dt;
 		}
+
 		if (player.sprintIntent && player.moveInput && !player.sprintLocked) {
 			stats.sprintMeters +=
 				(Math.hypot(player.velocity.x, player.velocity.z) * dt) / 1000;
@@ -216,61 +236,84 @@ export class AwardTracker {
 			case "push":
 				this.of(event.fromId).pushes += 1;
 				break;
+
 			case "door":
 				if (event.by && players.has(event.by)) {
 					this.of(event.by).doors += 1;
 				}
+
 				break;
+
 			case "pickup":
 				if (event.playerId) {
 					this.of(event.playerId).fragments += 1;
 				}
+
 				break;
+
 			case "capture": {
 				const stats = this.of(event.playerId);
+
 				stats.captures += 1;
 				stats.captureRun += 1;
 				stats.captureStreak = Math.max(stats.captureStreak, stats.captureRun);
+
 				stats.species.add(event.species);
+
 				if (SPECIES[event.species]?.tier === 3) {
 					stats.tierThreeCaptures += 1;
 				}
+
 				if (this.remainingMs <= LATE_CAPTURE_WINDOW_MS) {
 					stats.lateCaptures += 1;
 				}
+
 				break;
 			}
+
 			case "gift":
 				if (event.fromId !== event.toId && players.has(event.toId)) {
 					this.of(event.fromId).gifts += 1;
 				}
+
 				break;
+
 			case "bountyReward":
 				this.of(event.playerId).bounties += 1;
 				break;
+
 			case "damage":
 				if (event.source === "fall") {
 					this.of(event.playerId).fallDamage += event.amount;
 				}
+
 				break;
+
 			case "stake":
 				if (event.playerId) {
 					this.of(event.playerId).stakes += 1;
+
 					if (event.stake === "pact") {
 						this.of(event.playerId).pacts += 1;
 					}
 				}
+
 				break;
+
 			case "craft":
 				this.of(event.playerId).crafts += 1;
 				break;
+
 			case "death": {
 				this.of(event.playerId).deaths += 1;
 				this.of(event.playerId).captureRun = 0;
+
 				if (event.cause === "fall" || event.cause === "pact") {
 					break;
 				}
+
 				const victim = players.get(event.playerId);
+
 				for (const other of players.values()) {
 					if (
 						victim &&
@@ -285,8 +328,10 @@ export class AwardTracker {
 						this.of(other.id).abandons += 1;
 					}
 				}
+
 				break;
 			}
+
 			default:
 				break;
 		}

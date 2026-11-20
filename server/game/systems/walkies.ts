@@ -25,6 +25,7 @@ export class WalkieSystem {
 	take(match: Match, player: MatchPlayer, id: number): boolean {
 		const state = this.states.get(id);
 		const spot = match.layout.walkies[id];
+
 		if (
 			!state ||
 			!spot ||
@@ -35,59 +36,77 @@ export class WalkieSystem {
 		) {
 			return false;
 		}
+
 		const eye = player.eyePosition();
+
 		if (
 			Math.hypot(spot.x - eye.x, spot.y - eye.y, spot.z - eye.z) >
 			PICKUP_INTERACT_RANGE + 0.4
 		) {
 			return false;
 		}
+
 		state.holder = player.id;
 		player.walkie = id;
+
 		match.emit({ type: "walkie", id, holder: player.id, available: false });
+
 		return true;
 	}
 
 	release(match: Match, player: MatchPlayer): void {
 		const state = this.states.get(player.walkie);
+
 		if (!state) {
 			return;
 		}
+
 		const id = player.walkie;
+
 		player.walkie = -1;
 		player.radioOn = false;
 		state.holder = null;
 		state.returnsAt = match.now + WALKIE_RETURN_MS;
+
 		match.emit({ type: "walkie", id, holder: null, available: false });
 	}
 
 	setTransmitting(player: MatchPlayer, on: boolean): void {
-		player.radioOn = on && player.walkie >= 0 && player.alive && !player.carried;
+		player.radioOn =
+			on && player.walkie >= 0 && player.alive && !player.carried;
 	}
 
 	update(match: Match): void {
 		for (const [id, state] of this.states) {
 			if (state.returnsAt !== null && match.now >= state.returnsAt) {
 				state.returnsAt = null;
+
 				match.emit({ type: "walkie", id, holder: null, available: true });
 			}
 		}
+
 		const holders = [...match.players.values()].filter(
 			(player) => player.walkie >= 0 && player.alive,
 		);
+
 		for (const speaker of holders) {
 			if (!speaker.radioOn) {
 				continue;
 			}
+
 			const voice = speaker.audibleVoice(match.now);
+
 			if (voice === null) {
 				continue;
 			}
+
 			for (const receiver of holders) {
 				if (receiver === speaker) {
 					continue;
 				}
+
 				receiver.radioNoiseAt = match.now;
+
 				match.sounds.push({
 					position: { ...receiver.position },
 					loudness: WALKIE_RECEIVER_LOUDNESS + voice * WALKIE_VOICE_LOUDNESS,

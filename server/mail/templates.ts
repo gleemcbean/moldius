@@ -39,6 +39,7 @@ interface Layout {
 
 function compose(layout: Layout, language: Language): MailMessage {
 	const chrome = CHROME[language];
+
 	const text = [
 		layout.title,
 		"",
@@ -51,16 +52,20 @@ function compose(layout: Layout, language: Language): MailMessage {
 		`, Moldius`,
 		chrome.automatic,
 	].join("\n");
+
 	const paragraphs = layout.paragraphs
 		.map(
 			(paragraph) =>
 				`<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#ecefe2;">${escapeHtml(paragraph)}</p>`,
 		)
 		.join("");
+
 	const action = layout.action
 		? `<p style="margin:24px 0;"><a href="${escapeHtml(layout.action.url)}" style="display:inline-block;padding:14px 24px;background:#dce54d;color:#111512;font-weight:bold;font-size:16px;text-decoration:none;letter-spacing:0.04em;text-transform:uppercase;">${escapeHtml(layout.action.label)}</a></p><p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#9fa894;">${escapeHtml(chrome.fallback)}<br><span style="color:#dce54d;word-break:break-all;">${escapeHtml(layout.action.url)}</span></p>`
 		: "";
+
 	const html = `<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(layout.subject)}</title></head><body style="margin:0;padding:0;background:#0b0d0b;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0d0b;padding:24px 12px;"><tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#191e1a;border:2px solid #dce54d;"><tr><td style="padding:28px 28px 8px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 4px;font-size:28px;font-weight:900;letter-spacing:0.06em;color:#dce54d;">Moldius</p><h1 style="margin:0 0 18px;font-size:22px;color:#ecefe2;">${escapeHtml(layout.title)}</h1>${paragraphs}${action}<p style="margin:0 0 24px;font-size:13px;line-height:1.5;color:#9fa894;">${escapeHtml(layout.footnote)}</p></td></tr><tr><td style="padding:16px 28px;border-top:1px solid #2f3a31;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6c7566;">${escapeHtml(chrome.automatic)}</td></tr></table></td></tr></table></body></html>`;
+
 	return { to: layout.to, subject: layout.subject, text, html };
 }
 
@@ -94,6 +99,7 @@ export function verificationEmail(
 				"If you did not sign up, just ignore this message: no account will be created.",
 		},
 	};
+
 	return compose({ to, ...content[language] }, language);
 }
 
@@ -126,6 +132,7 @@ export function alreadyRegisteredEmail(
 				"If you did not make this request, you can ignore this message.",
 		},
 	};
+
 	return compose({ to, ...content[language] }, language);
 }
 
@@ -156,6 +163,7 @@ export function passwordResetEmail(
 				"If you did not request anything, ignore this message: your current password stays unchanged.",
 		},
 	};
+
 	return compose({ to, ...content[language] }, language);
 }
 
@@ -186,5 +194,6 @@ export function passwordChangedEmail(
 				"If you did not make this change, use “Forgot password” immediately to regain control of your account.",
 		},
 	};
+
 	return compose({ to, ...content[language] }, language);
 }

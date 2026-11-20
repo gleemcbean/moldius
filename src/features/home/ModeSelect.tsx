@@ -53,6 +53,7 @@ export function ModeSelect({
 
 	const start = (mode: GameMode) => {
 		onClose();
+
 		if (mode === "classic") {
 			quickJoin(name);
 		} else if (mode === "daily") {
@@ -149,9 +150,11 @@ export function ModeSelect({
 				className={styles.private}
 				onSubmit={(event) => {
 					event.preventDefault();
+
 					if (!ready) {
 						return;
 					}
+
 					if (code.length === 0) {
 						onClose();
 						createPrivateLobby(name);
@@ -180,6 +183,7 @@ export function ModeSelect({
 							event.clipboardData.getData("text"),
 							window.location.origin,
 						);
+
 						if (pasted) {
 							event.preventDefault();
 							setCode(pasted);

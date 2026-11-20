@@ -11,16 +11,19 @@ import {
 
 const DARK_WOOD: MaterialOptions = { texture: "woodDark", roughness: 0.75 };
 const RED_WOOD: MaterialOptions = { texture: "woodRed", roughness: 0.7 };
+
 const VIOLET: MaterialOptions = {
 	texture: "velvetPurple",
 	color: 0xd8a0ff,
 	roughness: 0.9,
 };
+
 const GOLD_CLOTH: MaterialOptions = {
 	texture: "linen",
 	color: 0xe8b82c,
 	roughness: 0.75,
 };
+
 const CIRCLE: MaterialOptions = {
 	texture: "occultCircle",
 	transparent: true,
@@ -30,6 +33,7 @@ const CIRCLE: MaterialOptions = {
 	emissiveIntensity: 0.9,
 	depthWrite: false,
 };
+
 export const OCCULT_CIRCLE_SIZE = 2.2;
 const SLOPE = 0.42;
 
@@ -41,15 +45,18 @@ export const occultAltar: FurnitureBuilder = ({ item }) => {
 	const deskY = top - slopeDrop - 0.03;
 	const sin = Math.sin(SLOPE);
 	const cos = Math.cos(SLOPE);
+
 	const onDesk = (along: number, lift: number) => ({
 		y: deskY - along * sin + lift * cos,
 		z: along * cos + lift * sin,
 	});
+
 	const edge = onDesk(depth * 0.48, 0.03);
 	const cloth = onDesk(0, 0.03);
 	const clothTip = onDesk(depth * 0.5, 0.0);
 	const foot = Math.min(item.width, item.depth) * 0.36;
 	const neck = deskY - 0.07;
+
 	return [
 		texturedPlane(
 			CIRCLE,

@@ -15,8 +15,10 @@ let pending: Promise<BestiaryArt> | null = null;
 export function loadBestiaryArt(): Promise<BestiaryArt> {
 	pending ??= drawAll().catch((error: unknown) => {
 		pending = null;
+
 		throw error;
 	});
+
 	return pending;
 }
 
@@ -26,12 +28,16 @@ async function drawAll(): Promise<BestiaryArt> {
 		alpha: true,
 		powerPreference: "low-power",
 	});
+
 	renderer.outputColorSpace = THREE.SRGBColorSpace;
 	renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
 	const textures = new TextureLibrary(1, surfaceQuality("medium"));
 	const materials = new MaterialLibrary(textures);
+
 	try {
 		await Promise.all([textures.prepare(), modelLibrary.load()]);
+
 		const canvases = await renderIllustrations(
 			renderer,
 			new ModelKit(materials),
@@ -39,6 +45,7 @@ async function drawAll(): Promise<BestiaryArt> {
 			() => {},
 			"color",
 		);
+
 		return new Map(
 			[...canvases].map(([id, canvas]) => [id, canvas.toDataURL("image/png")]),
 		);

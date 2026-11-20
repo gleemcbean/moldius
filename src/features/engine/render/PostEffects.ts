@@ -279,6 +279,7 @@ export class PostEffects {
 			depthTexture: new THREE.DepthTexture(1, 1),
 			samples,
 		});
+
 		this.material = new THREE.ShaderMaterial({
 			vertexShader: VERTEX,
 			fragmentShader: FRAGMENT,
@@ -331,15 +332,20 @@ export class PostEffects {
 			depthTest: false,
 			depthWrite: false,
 		});
+
 		this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.material);
 		this.quad.frustumCulled = false;
+
 		this.scene.add(this.quad);
 	}
 
 	setHud(texture: THREE.Texture, width: number, height: number): void {
 		const uniforms = this.material.uniforms;
+
 		uniforms.hud.value = texture;
+
 		uniforms.hudSize.value.set(width, height);
+
 		uniforms.hudOn.value = 1;
 	}
 
@@ -351,18 +357,22 @@ export class PostEffects {
 	setVeils(veils: readonly ScreenVeil[]): void {
 		const uniforms = this.material.uniforms;
 		const count = Math.min(MAX_VEILS, veils.length);
+
 		for (let index = 0; index < count; index += 1) {
 			const veil = veils[index];
+
 			uniforms.veilShape.value[index].set(
 				veil.x,
 				veil.y,
 				veil.radiusX,
 				veil.radiusY,
 			);
+
 			uniforms.veilInner.value[index].set(...veil.inner);
 			uniforms.veilOuter.value[index].set(...veil.outer);
 			uniforms.veilRange.value[index].set(veil.from, veil.to, veil.alpha);
 		}
+
 		uniforms.veilCount.value = count;
 	}
 
@@ -372,13 +382,18 @@ export class PostEffects {
 		size: THREE.Vector2,
 	): void {
 		const uniforms = this.material.uniforms;
+
 		if (!texture) {
 			uniforms.minimapOn.value = 0;
+
 			return;
 		}
+
 		uniforms.minimap.value = texture;
+
 		uniforms.minimapRect.value.copy(rect);
 		uniforms.minimapSize.value.copy(size);
+
 		uniforms.minimapOn.value = 1;
 	}
 
@@ -402,35 +417,49 @@ export class PostEffects {
 
 	render(frame: PostEffectsFrame, draw: () => void): void {
 		this.time += frame.dt;
+
 		this.tension +=
 			(Math.min(1, Math.max(0, frame.tension)) - this.tension) *
 			Math.min(1, frame.dt * 3);
+
 		this.renderer.getDrawingBufferSize(this.size);
+
 		const zoom = curvatureZoom(
 			POST_EFFECTS.curvature,
 			this.size.x / Math.max(1, this.size.y),
 		);
+
 		const limit = this.renderer.capabilities.maxTextureSize;
+
 		const scale = Math.min(
 			zoom,
 			limit / Math.max(1, this.size.x),
 			limit / Math.max(1, this.size.y),
 		);
+
 		const width = Math.max(1, Math.round(this.size.x * scale));
 		const height = Math.max(1, Math.round(this.size.y * scale));
+
 		if (this.target.width !== width || this.target.height !== height) {
 			this.target.setSize(width, height);
 		}
+
 		this.supersample = width / Math.max(1, this.size.x);
+
 		const uniforms = this.material.uniforms;
+
 		uniforms.zoom.value = zoom;
+
 		const cssHeight = this.size.y / this.renderer.getPixelRatio();
+
 		uniforms.resolution.value.set(this.size.x, this.size.y);
+
 		uniforms.lines.value = Math.min(cssHeight / 3, this.size.y / 2.5);
 		uniforms.time.value = this.time;
 		uniforms.grainTime.value = Math.floor(this.time * 24) / 24;
 		uniforms.tension.value = this.tension * POST_EFFECTS.danger;
 		uniforms.animated.value = frame.animated ? 1 : 0;
+
 		this.applyDepth(
 			frame.camera
 				? {
@@ -439,14 +468,18 @@ export class PostEffects {
 					}
 				: null,
 		);
+
 		this.nausea +=
 			(Math.min(1, Math.max(0, frame.nausea ?? 0)) - this.nausea) *
 			Math.min(1, frame.dt * 1.5);
+
 		uniforms.nausea.value = this.nausea;
+
 		uniforms.desaturate.value =
 			(frame.desaturate ?? 0) * 0.75 * POST_EFFECTS.danger;
 
 		const previous = this.renderer.getRenderTarget();
+
 		this.renderer.setRenderTarget(this.target);
 		draw();
 		this.renderer.setRenderTarget(previous);
@@ -455,8 +488,10 @@ export class PostEffects {
 
 	private applyDepth(depth: SceneDepth | null): void {
 		const uniforms = this.material.uniforms;
+
 		uniforms.sceneDepth.value = depth?.texture ?? null;
 		uniforms.depthOn.value = depth ? 1 : 0;
+
 		if (depth) {
 			uniforms.depthRange.value.set(depth.camera.near, depth.camera.far);
 		}
@@ -468,6 +503,7 @@ export class PostEffects {
 		depth: SceneDepth | null = null,
 	): void {
 		const uniforms = this.material.uniforms;
+
 		const saved = {
 			scene: uniforms.scene.value,
 			hudOn: uniforms.hudOn.value,
@@ -480,24 +516,32 @@ export class PostEffects {
 			depthOn: uniforms.depthOn.value,
 			depthRange: uniforms.depthRange.value.clone(),
 		};
+
 		uniforms.scene.value = source;
 		uniforms.hudOn.value = 0;
 		uniforms.desaturate.value = 0;
 		uniforms.tension.value = 0;
+
 		uniforms.resolution.value.set(side, side);
+
 		uniforms.lines.value = side / 3;
 		uniforms.zoom.value = this.squareScale;
+
 		this.applyDepth(depth);
 		this.renderer.render(this.scene, this.camera);
+
 		uniforms.sceneDepth.value = saved.sceneDepth;
 		uniforms.depthOn.value = saved.depthOn;
+
 		uniforms.depthRange.value.copy(saved.depthRange);
+
 		uniforms.scene.value = saved.scene;
 		uniforms.hudOn.value = saved.hudOn;
 		uniforms.desaturate.value = saved.desaturate;
 		uniforms.tension.value = saved.tension;
 		uniforms.lines.value = saved.lines;
 		uniforms.zoom.value = saved.zoom;
+
 		uniforms.resolution.value.copy(saved.resolution);
 	}
 

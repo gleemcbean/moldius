@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { DiscordUser } from "../../app/desktopApp";
 import { showToast } from "../../app/appStore";
+import type { DiscordUser } from "../../app/desktopApp";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { useStore } from "../../hooks/useStore";
@@ -14,9 +14,11 @@ const SHOWN_FRIENDS = 30;
 export function DiscordPanel({ synced }: { synced: number }) {
 	const t = useT();
 	const discord = useStore(discordStore, (state) => state);
+
 	if (!discord.available) {
 		return null;
 	}
+
 	const line =
 		discord.status === "ready" && discord.user
 			? t.discord.connectedAs(discord.user.displayName)
@@ -27,6 +29,7 @@ export function DiscordPanel({ synced }: { synced: number }) {
 					: discord.status === "error"
 						? t.discord.error
 						: t.discord.connectFromAccount;
+
 	const sync =
 		discord.status !== "ready"
 			? null
@@ -35,6 +38,7 @@ export function DiscordPanel({ synced }: { synced: number }) {
 				: discord.syncError === "discord-mismatch"
 					? t.discord.syncMismatch
 					: t.discord.syncPending(synced);
+
 	return (
 		<div className={styles.discord}>
 			<Icon name="discord" />
@@ -59,20 +63,26 @@ function DiscordFriend({
 }) {
 	const t = useT();
 	const [invited, setInvited] = useState(false);
+
 	useEffect(() => {
 		if (!invited) {
 			return;
 		}
+
 		const timer = window.setTimeout(() => setInvited(false), INVITED_MS);
+
 		return () => window.clearTimeout(timer);
 	}, [invited]);
+
 	const invite = async () => {
 		setInvited(true);
+
 		if (!(await inviteOnDiscord(friend.id))) {
 			setInvited(false);
 			showToast(t.discord.inviteFailed, "error");
 		}
 	};
+
 	return (
 		<li className={styles.person} data-selector-row="">
 			{friend.avatarUrl ? (
@@ -115,9 +125,11 @@ export function DiscordFriendsSection({
 	const t = useT();
 	const status = useStore(discordStore, (state) => state.status);
 	const friends = useStore(discordStore, (state) => state.friends);
+
 	if (status !== "ready") {
 		return null;
 	}
+
 	const shown = friends
 		.filter((friend) => friend.status !== "offline" && !known.has(friend.id))
 		.sort(
@@ -126,9 +138,11 @@ export function DiscordFriendsSection({
 				a.displayName.localeCompare(b.displayName),
 		)
 		.slice(0, SHOWN_FRIENDS);
+
 	if (shown.length === 0) {
 		return null;
 	}
+
 	return (
 		<section>
 			<h3 className={styles.heading} title={t.discord.sectionHint}>

@@ -82,19 +82,23 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 		if (!open) {
 			return;
 		}
+
 		const onPointer = (event: PointerEvent) => {
 			if (!root.current?.contains(event.target as Node)) {
 				setOpen(null);
 			}
 		};
+
 		const onKey = (event: KeyboardEvent) => {
 			if (event.code === "Escape") {
 				event.stopPropagation();
 				setOpen(null);
 			}
 		};
+
 		document.addEventListener("pointerdown", onPointer);
 		window.addEventListener("keydown", onKey, true);
+
 		return () => {
 			document.removeEventListener("pointerdown", onPointer);
 			window.removeEventListener("keydown", onKey, true);
@@ -103,10 +107,12 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 
 	const toggle = (category: Category) =>
 		setOpen((current) => (current === category ? null : category));
+
 	const choose = (patch: Parameters<typeof updateSettings>[0]) => {
 		updateSettings(patch);
 		setOpen(null);
 	};
+
 	const optionTitle = (
 		name: string,
 		unlocked: boolean,
@@ -119,6 +125,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 						? rewardRequirement(t, reward)
 						: t.challenges.guestRequirement(rewardRequirement(t, reward))
 				}`;
+
 	const lanternIcon = (tint: typeof lantern) => (
 		<span
 			className={[styles.swatch, styles.lanternIcon].join(" ")}
@@ -127,6 +134,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 			<Icon name="lantern" />
 		</span>
 	);
+
 	const colorName = t.appearance.colors[colorHex(color)];
 
 	return (
@@ -188,6 +196,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 				>
 					{PLAYER_COLOR_CHOICES.map((choice, index) => {
 						const name = t.appearance.colors[colorHex(choice)];
+
 						return (
 							<button
 								key={choice}
@@ -222,6 +231,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 					{HAT_PATTERNS.map((choice, index) => {
 						const unlocked = hatUnlocked(choice, stats);
 						const name = t.appearance.patterns[choice];
+
 						return (
 							<button
 								key={choice}
@@ -257,6 +267,7 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 					{LANTERN_TINTS.map((choice, index) => {
 						const unlocked = lanternUnlocked(choice, stats);
 						const name = t.appearance.lanterns[choice];
+
 						return (
 							<button
 								key={choice}
@@ -293,9 +304,11 @@ export function AppearancePicker({ stats }: { stats: ProgressStats | null }) {
 				>
 					{[null, ...TAGLINES].map((choice: Tagline | null, index) => {
 						const unlocked = taglineUnlocked(choice, stats);
+
 						const name = choice
 							? t.appearance.taglines[choice]
 							: t.home.noTagline;
+
 						return (
 							<button
 								key={choice ?? "none"}

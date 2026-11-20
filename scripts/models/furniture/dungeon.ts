@@ -36,21 +36,28 @@ export const cellBars: FurnitureBuilder = ({ item, rng }) => {
 	const barHeight = height - 0.06;
 	const parts: Part[] = [];
 	const frontCount = Math.max(4, Math.round(width / BAR_SPACING));
+
 	for (let index = 0; index <= frontCount; index += 1) {
 		const x = -width / 2 + (index * width) / frontCount;
+
 		parts.push(cylinder(IRON, 0.012, 0.012, barHeight, x, 0.03, front, 6));
 	}
+
 	const sideCount = Math.max(3, Math.round(depth / BAR_SPACING));
+
 	for (const side of [-1, 1]) {
 		for (let index = 0; index < sideCount; index += 1) {
 			const z = back + (index * (front - back)) / sideCount;
+
 			parts.push(
 				cylinder(IRON, 0.012, 0.012, barHeight, (side * width) / 2, 0.03, z, 6),
 			);
 		}
 	}
+
 	for (const y of [0.04, height * 0.48, height - 0.05]) {
 		parts.push(boxAt(IRON, width + 0.03, 0.04, 0.025, 0, y, front));
+
 		for (const side of [-1, 1]) {
 			parts.push(
 				boxAt(
@@ -65,11 +72,14 @@ export const cellBars: FurnitureBuilder = ({ item, rng }) => {
 			);
 		}
 	}
+
 	const doorWidth = Math.min(0.75, width * 0.4);
+
 	const doorX = rng.range(
 		-width / 2 + doorWidth / 2 + 0.15,
 		width / 2 - doorWidth / 2 - 0.15,
 	);
+
 	for (const edge of [-1, 1]) {
 		parts.push(
 			boxAt(
@@ -83,6 +93,7 @@ export const cellBars: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	parts.push(
 		boxAt(IRON, doorWidth, 0.035, 0.035, doorX, height * 0.88, front + 0.02),
 		box(
@@ -105,18 +116,22 @@ export const cellBars: FurnitureBuilder = ({ item, rng }) => {
 			-Math.PI / 2,
 		),
 	);
+
 	const shackleX = rng.range(-width / 4, width / 4);
+
 	for (let index = 0; index < 5; index += 1) {
 		parts.push(
 			link(shackleX, 1.45 - index * 0.05, back + 0.04, index % 2 === 1),
 		);
 	}
+
 	parts.push(
 		part(
 			placed(meterTorus(0.06, 0.012, 6, 12), shackleX, 1.15, back + 0.05),
 			IRON,
 		),
 	);
+
 	if (rng.chance(0.6)) {
 		parts.push(
 			sphere(
@@ -132,6 +147,7 @@ export const cellBars: FurnitureBuilder = ({ item, rng }) => {
 			),
 		);
 	}
+
 	return parts;
 };
 
@@ -139,13 +155,17 @@ export const hangingChains: FurnitureBuilder = ({ item, rng }) => {
 	const { width, depth, height } = item;
 	const parts: Part[] = [];
 	const count = rng.int(2, 4);
+
 	for (let chain = 0; chain < count; chain += 1) {
 		const x = rng.range(-width / 2 + 0.1, width / 2 - 0.1);
 		const z = rng.range(-depth / 2 + 0.1, depth / 2 - 0.1);
 		const length = rng.range(height * 0.45, height - 0.05);
+
 		parts.push(cylinder(IRON, 0.045, 0.045, 0.02, x, height - 0.02, z, 8));
+
 		const links = Math.floor(length / 0.048);
 		const turn = rng.range(0, Math.PI);
+
 		for (let index = 0; index < links; index += 1) {
 			parts.push(
 				part(
@@ -160,7 +180,9 @@ export const hangingChains: FurnitureBuilder = ({ item, rng }) => {
 				),
 			);
 		}
+
 		const end = height - 0.05 - links * 0.048;
+
 		if (rng.chance(0.5)) {
 			parts.push(
 				part(
@@ -190,11 +212,13 @@ export const hangingChains: FurnitureBuilder = ({ item, rng }) => {
 			);
 		}
 	}
+
 	return parts;
 };
 
 export const wallLantern: FurnitureBuilder = () => {
 	const center = 0.18;
+
 	const parts: Part[] = [
 		box(IRON, 0.08, 0.16, 0.02, 0, 0.22, 0.01),
 		cylinderBetween(
@@ -221,6 +245,7 @@ export const wallLantern: FurnitureBuilder = () => {
 		),
 		...candle(0, 0.135, center, 0.08, 0.018),
 	];
+
 	for (const sx of [-1, 1]) {
 		for (const sz of [-1, 1]) {
 			parts.push(
@@ -237,6 +262,7 @@ export const wallLantern: FurnitureBuilder = () => {
 			);
 		}
 	}
+
 	return parts;
 };
 

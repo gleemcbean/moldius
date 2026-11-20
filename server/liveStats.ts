@@ -10,16 +10,19 @@ export function computeLiveStats(
 	const accounts = new Set<string>();
 	let inLobby = 0;
 	let inMatch = 0;
+
 	for (const session of connected) {
 		if (session.account) {
 			accounts.add(session.account.accountId);
 		}
+
 		if (lobbies.matchOf(session)) {
 			inMatch += 1;
 		} else if (lobbies.lobbyOf(session)) {
 			inLobby += 1;
 		}
 	}
+
 	return {
 		connected: connected.length,
 		signedIn: accounts.size,

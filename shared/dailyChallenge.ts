@@ -79,6 +79,7 @@ export function msUntilNextDaily(now: number): number {
 
 export function formatDailyCountdown(ms: number): string {
 	const seconds = Math.max(0, Math.ceil(ms / 1000));
+
 	return [seconds / 3600, (seconds % 3600) / 60, seconds % 60]
 		.map((part) => String(Math.floor(part)).padStart(2, "0"))
 		.join(":");
@@ -103,14 +104,17 @@ export function dailyChallenge(date: string): DailyChallenge {
 	const day = Math.floor(Date.parse(`${date}T00:00:00Z`) / DAY_MS);
 	const theme = DAILY_THEMES[(day * 3) % DAILY_THEMES.length];
 	const { species, ...rules } = THEME_RULES[theme];
+
 	const config: MatchConfig = {
 		...defaultPrivateConfig(),
 		teamCount: 0,
 		...rules,
 	};
+
 	if (species) {
 		config.species = ENABLED_SPECIES_IDS.filter((id) => species.includes(id));
 	}
+
 	return {
 		date,
 		theme,

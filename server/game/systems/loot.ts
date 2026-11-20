@@ -16,6 +16,7 @@ import type { MatchPlayer } from "../MatchPlayer.js";
 
 function within(player: MatchPlayer, point: Vec3, range: number): boolean {
 	const eye = player.eyePosition();
+
 	return Math.hypot(point.x - eye.x, point.y - eye.y, point.z - eye.z) <= range;
 }
 
@@ -40,6 +41,7 @@ export class LootSystem {
 
 	take(match: Match, player: MatchPlayer, pickupId: number): boolean {
 		const pickup = match.layout.pickups[pickupId];
+
 		if (
 			!pickup ||
 			player.hidden ||
@@ -52,33 +54,45 @@ export class LootSystem {
 		) {
 			return false;
 		}
+
 		const material = this.materialOf(match, pickupId);
+
 		player.materials[material] += 1;
+
 		this.returnsAt.set(pickupId, match.now + PICKUP_RESPAWN_MS);
+
 		match.emit({
 			type: "pickup",
 			id: pickupId,
 			playerId: player.id,
 			material,
 		});
+
 		match.sendInventory(player);
+
 		return true;
 	}
 
 	loseFragments(match: Match, player: MatchPlayer): number {
 		this.rng ??= match.rng.fork("loot");
+
 		let lost = 0;
+
 		while (lost < FALL_FRAGMENT_LOSS) {
 			const owned = MATERIAL_IDS.filter((id) => player.materials[id] > 0);
+
 			if (owned.length === 0) {
 				break;
 			}
+
 			player.materials[this.rng.pick(owned)] -= 1;
 			lost += 1;
 		}
+
 		if (lost > 0) {
 			match.sendInventory(player);
 		}
+
 		return lost;
 	}
 
@@ -89,6 +103,7 @@ export class LootSystem {
 		object: OccultId,
 	): boolean {
 		const altar = match.layout.altars[altarId];
+
 		if (
 			!altar ||
 			player.hidden ||
@@ -103,12 +118,16 @@ export class LootSystem {
 		) {
 			return false;
 		}
+
 		for (const [material, count] of Object.entries(OCCULT_RECIPES[object])) {
 			player.materials[material as MaterialId] -= count as number;
 		}
+
 		player.objects[object] += 1;
+
 		match.emit({ type: "craft", playerId: player.id, object, altarId });
 		match.sendInventory(player);
+
 		return true;
 	}
 
@@ -116,8 +135,11 @@ export class LootSystem {
 		for (const [pickupId, at] of this.returnsAt) {
 			if (match.now >= at) {
 				this.returnsAt.delete(pickupId);
+
 				this.rng ??= match.rng.fork("loot");
+
 				const material = this.rng.pick(this.respawnPool);
+
 				this.respawned.set(pickupId, material);
 				match.emit({ type: "pickupBack", id: pickupId, material });
 			}

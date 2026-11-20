@@ -16,6 +16,7 @@ function floorOf(feetY: number): number {
 
 export function sameFloor(entity: AnomalyEntity, target: MatchPlayer): boolean {
 	const hover = entity.definition.flying ? hoverHeight(entity) : 0;
+
 	return floorOf(entity.position.y - hover) === floorOf(target.position.y);
 }
 
@@ -25,6 +26,7 @@ export function targetIsStrikeable(match: Match, target: MatchPlayer): boolean {
 		target.connected &&
 		!target.hidden &&
 		!target.carried &&
+		!target.entranced &&
 		target.protectedUntil <= match.now &&
 		match.now - target.lastStateAt <= MAX_STATE_AGE_MS
 	);
@@ -40,7 +42,9 @@ export function inMeleeReach(
 		target.position.x - entity.position.x,
 		target.position.z - entity.position.z,
 	);
+
 	const vertical = Math.abs(target.position.y - entity.position.y);
+
 	if (
 		horizontal > entity.definition.attackRange + slack ||
 		vertical > 1.6 ||
@@ -48,12 +52,15 @@ export function inMeleeReach(
 	) {
 		return false;
 	}
+
 	const from = entity.center();
+
 	const to = {
 		x: target.position.x,
 		y: target.position.y + target.bodyHeight() * 0.55,
 		z: target.position.z,
 	};
+
 	return lineOfSight(match.world, from, to, {
 		ignoreFurniture: true,
 		blockGlass: true,
@@ -91,6 +98,7 @@ export function meleeStrike(
 	) {
 		return false;
 	}
+
 	return match.applyDamage(
 		target,
 		entity.definition.damage,

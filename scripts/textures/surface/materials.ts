@@ -42,15 +42,20 @@ function furnitureWood(
 				figure,
 				varnish,
 			};
+
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				periodicWood(texel, u, v, 0.5, 0.5, seed, look);
+
 				const rub = grime(u, v, 2, seed + 30, 0.2);
+
 				texel.rough = lerp(
 					texel.rough,
 					Math.min(0.85, texel.rough + 0.25),
 					rub * 0.6,
 				);
+
 				scaleTone(texel, 1 - rub * 0.06);
 			});
 		},
@@ -65,6 +70,7 @@ function paintedWood(paint: number, wood: number): FineRecipe {
 		parallax: false,
 		paint: (field) => {
 			const coat = tone(paint);
+
 			const look: WoodLook = {
 				base: tone(wood),
 				late: tone(0x3a2414),
@@ -72,17 +78,22 @@ function paintedWood(paint: number, wood: number): FineRecipe {
 				figure: 0.8,
 				varnish: 0.8,
 			};
+
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				periodicWood(texel, u, v, 0.5, 0.5, seed, look);
+
 				const grain = texel.relief;
 				const chips = smoothstep(0.38, 0.46, fbm(u, v, 4, 4, 5, seed + 3));
 				const brush = perlin(u * 3, v * 140, 3, 140, seed + 4) * 0.05;
+
 				if (chips < 1) {
 					const keep = 1 - chips;
 					const r = coat[0] * (1 + brush);
 					const g = coat[1] * (1 + brush);
 					const b = coat[2] * (1 + brush);
+
 					texel.r = lerp(texel.r, r, keep);
 					texel.g = lerp(texel.g, g, keep);
 					texel.b = lerp(texel.b, b, keep);
@@ -91,6 +102,7 @@ function paintedWood(paint: number, wood: number): FineRecipe {
 				} else {
 					texel.relief = grain * 0.6;
 				}
+
 				blendTone(texel, tone(0x22201c), grime(u, v, 3, seed + 5, 0.25) * 0.3);
 			});
 		},
@@ -111,28 +123,38 @@ function blackIron(base: number, rust: number): FineRecipe {
 			const oxideDark = tone(0x3a2014);
 			const sample = createVoronoiSample();
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				voronoi(u * 7, v * 7, 7, 7, seed + 1, 0.9, sample);
+
 				const dent = sample.distance * sample.distance;
 				const scale = fbm(u, v, 6, 6, 4, seed + 2);
 				const rubbed = smoothstep(0.15, 0.5, scale);
+
 				paintTone(texel, metal, 0.9 + scale * 0.2);
 				blendTone(texel, bright, rubbed * 0.5);
+
 				texel.metal = 0.55 + rubbed * 0.45;
+
 				texel.rough =
 					0.62 -
 					rubbed * 0.24 +
 					perlin(u * 90, v * 90, 45, 45, seed + 3) * 0.05;
+
 				texel.relief = 0.55 + dent * 0.3 + scale * 0.1;
+
 				const corrosion = smoothstep(
 					0.5 - rust * 0.06,
 					0.75 - rust * 0.05,
 					fbm(u, v, 5, 5, 5, seed + 4) +
 						(1 - smoothstep(0, 0.4, sample.edge)) * 0.15,
 				);
+
 				if (corrosion > 0) {
 					const flake = perlin(u * 160, v * 160, 80, 80, seed + 5);
+
 					blendTone(texel, flake > 0 ? oxide : oxideDark, corrosion);
+
 					texel.metal = lerp(texel.metal, 0.05, corrosion);
 					texel.rough = lerp(texel.rough, 0.95, corrosion);
 					texel.relief = lerp(texel.relief, 0.6 + flake * 0.25, corrosion);
@@ -161,8 +183,10 @@ function polishedAlloy(options: {
 			const patina = tone(options.patina);
 			const sample = createVoronoiSample();
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				const brushed = perlin(u * 4, v * 360, 4, 360, seed + 1);
+
 				const hammer = voronoi(
 					u * 9,
 					v * 9,
@@ -172,21 +196,30 @@ function polishedAlloy(options: {
 					0.85,
 					sample,
 				).distance;
+
 				const age = fbm(u, v, 6, 6, 4, seed + 3);
 				const dull = smoothstep(0.0, 0.7, age);
+
 				paintTone(texel, metal, 0.94 + brushed * 0.05 + age * 0.04);
 				blendTone(texel, tarnish, dull * 0.28);
+
 				texel.metal = 1;
+
 				texel.rough =
 					options.roughness + dull * 0.07 + Math.abs(brushed) * 0.05;
+
 				texel.relief = 0.6 - hammer * hammer * 0.12 + brushed * 0.03;
+
 				const green =
 					smoothstep(0.42, 0.62, fbm(u, v, 6, 6, 4, seed + 4)) *
 					options.patinaAmount;
+
 				if (green > 0) {
 					const crust =
 						0.8 + perlin(u * 200, v * 200, 100, 100, seed + 5) * 0.3;
+
 					blendTone(texel, patina, green * crust);
+
 					texel.metal = lerp(1, 0.1, green);
 					texel.rough = lerp(texel.rough, 0.9, green);
 					texel.relief += green * 0.15;
@@ -207,25 +240,35 @@ function pipeSteel(): FineRecipe {
 			const paint = tone(0x4f5452);
 			const oxide = tone(0x6e3c1c);
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				const coat = fbm(u, v, 3, 3, 4, seed);
+
 				paintTone(texel, paint, 0.92 + coat * 0.16);
+
 				texel.metal = 0.35;
 				texel.rough = 0.58 + coat * 0.1;
 				texel.relief = 0.7 + coat * 0.08;
+
 				const streak =
 					smoothstep(
 						0.55,
 						0.9,
 						1 - Math.abs(perlin(u * 24, v * 1, 24, 1, seed + 1)),
 					) * smoothstep(0.1, 0.6, fbm(u, v, 3, 3, 3, seed + 2));
+
 				blendTone(texel, oxide, streak * 0.55);
+
 				texel.rough = lerp(texel.rough, 0.9, streak);
+
 				const blister = smoothstep(0.45, 0.65, fbm(u, v, 7, 7, 4, seed + 3));
+
 				if (blister > 0) {
 					blendTone(texel, oxide, blister);
+
 					texel.metal = lerp(texel.metal, 0.05, blister);
 					texel.rough = lerp(texel.rough, 0.97, blister);
+
 					texel.relief +=
 						blister * 0.2 * (0.5 + perlin(u * 120, v * 120, 60, 60, seed + 4));
 				}
@@ -244,18 +287,26 @@ function pebbledLeather(): FineRecipe {
 			const hide = tone(0x4a2a1a);
 			const sample = createVoronoiSample();
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				voronoi(u * 64, v * 64, 64, 64, seed, 0.9, sample);
+
 				const bump = smoothstep(0, 0.32, sample.edge);
 				const crease = ridged(u, v, 3, 3, 4, seed + 1);
 				const fold = smoothstep(0.82, 0.97, crease);
 				const tone2 = fbm(u, v, 3, 3, 5, seed + 2);
+
 				paintTone(texel, hide, 0.88 + tone2 * 0.24 + bump * 0.06);
+
 				texel.relief = 0.45 + bump * 0.35 - fold * 0.3;
 				texel.rough = 0.62 - bump * 0.1 + fold * 0.2;
+
 				scaleTone(texel, 1 - fold * 0.25);
+
 				const scuff = grime(u, v, 3, seed + 3, 0.35);
+
 				blendTone(texel, tone(0x7a5a40), scuff * 0.3);
+
 				texel.rough = lerp(texel.rough, 0.85, scuff * 0.5);
 			});
 		},
@@ -284,6 +335,7 @@ function honedStone(options: {
 			const seed = field.seed;
 			const broad = cells(options.tile, 4);
 			const pitCells = cells(options.tile, 90);
+
 			field.paint((u, v, texel) => {
 				const grain = stoneGrain(
 					texel,
@@ -296,15 +348,19 @@ function honedStone(options: {
 					dark,
 					light,
 				);
+
 				const pit =
 					Math.max(
 						0,
 						-perlin(u * pitCells, v * pitCells, pitCells, pitCells, seed + 3) -
 							0.55,
 					) * options.pits;
+
 				texel.relief = 0.7 + grain * 0.1 - pit * 0.6;
 				texel.rough = options.roughness + pit * 0.3;
+
 				scaleTone(texel, 1 - pit * 0.5);
+
 				if (options.sparkle) {
 					const mica = speckle(
 						u,
@@ -314,6 +370,7 @@ function honedStone(options: {
 						seed + 4,
 						options.sparkle,
 					);
+
 					texel.metal = mica * 0.6;
 					texel.rough = lerp(texel.rough, 0.25, mica);
 				}
@@ -338,19 +395,26 @@ function polishedMarble(options: {
 			const base = tone(options.base);
 			const vein = tone(options.vein);
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				const cloud = fbm(u, v, 3, 3, 5, seed);
+
 				paintTone(texel, base, 1 + cloud * options.cloud);
+
 				const main = veins(u, v, 2, seed + 1, options.sharpness);
 				const thin = veins(u, v, 5, seed + 2, options.sharpness * 3);
+
 				blendTone(
 					texel,
 					vein,
 					main * options.strength + thin * options.strength * 0.5,
 				);
+
 				texel.rough = 0.14 + Math.abs(cloud) * 0.06 + thin * 0.05;
 				texel.relief = 0.7 - main * 0.08;
+
 				const etch = grime(u, v, 3, seed + 3, 0.35);
+
 				texel.rough = lerp(texel.rough, 0.45, etch * 0.6);
 			});
 		},
@@ -367,21 +431,28 @@ function beddedRock(base: number, band: number, roughness: number): FineRecipe {
 			const color = tone(base);
 			const layer = tone(band);
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				const strata = fbm(u, v, 2, 16, 4, seed);
 				const thin = fbm(u, v, 3, 48, 2, seed + 5);
 				const fine = perlin(u * 12, v * 140, 12, 140, seed + 1);
+
 				paintTone(texel, color, 0.92 + strata * 0.2 + fine * 0.05);
+
 				blendTone(
 					texel,
 					layer,
 					smoothstep(0.05, 0.35, strata) * 0.55 +
 						smoothstep(0.3, 0.5, thin) * 0.25,
 				);
+
 				const flake = smoothstep(0.4, 0.7, fbm(u, v, 6, 6, 4, seed + 2));
+
 				texel.relief =
 					0.6 + strata * 0.18 + thin * 0.05 + fine * 0.05 + flake * 0.15;
+
 				texel.rough = roughness + flake * 0.08;
+
 				scaleTone(texel, 1 + flake * 0.05);
 			});
 		},
@@ -397,19 +468,26 @@ function terracottaClay(): FineRecipe {
 		paint: (field) => {
 			const clay = tone(0xa8603c);
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				const throwing =
 					Math.sin(
 						v * Math.PI * 2 * 6 + perlin(u * 3, v * 2, 3, 2, seed) * 0.6,
 					) * 0.5;
+
 				const body = fbm(u, v, 3, 2, 4, seed + 1);
+
 				paintTone(texel, clay, 0.92 + body * 0.14 + throwing * 0.04);
+
 				const pore = speckle(u, v, 180, 120, seed + 2, 0.05);
 				const grog = speckle(u, v, 120, 80, seed + 3, 0.03);
+
 				blendTone(texel, tone(0x6a3820), pore * 0.6);
 				blendTone(texel, tone(0xd89a70), grog * 0.5);
+
 				texel.relief = 0.65 + throwing * 0.1 + body * 0.05 - pore * 0.3;
 				texel.rough = 0.88;
+
 				blendTone(texel, tone(0xd8d0bc), grime(u, v, 2, seed + 4, 0.35) * 0.35);
 			});
 		},
@@ -426,14 +504,20 @@ function glazedCeramic(): FineRecipe {
 			const glaze = tone(0xe6e1d3);
 			const sample = createVoronoiSample();
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				const pool = fbm(u, v, 3, 3, 4, seed);
+
 				paintTone(texel, glaze, 0.97 + pool * 0.05);
 				voronoi(u * 14, v * 14, 14, 14, seed + 1, 1, sample);
+
 				const craze = 1 - smoothstep(0, 0.03, sample.edge);
+
 				blendTone(texel, tone(0x9a9282), craze * 0.5);
+
 				texel.relief = 0.8 + pool * 0.04 - craze * 0.2;
 				texel.rough = 0.1 + craze * 0.2;
+
 				blendTone(texel, tone(0xb9b3a3), grime(u, v, 2, seed + 2, 0.4) * 0.4);
 			});
 		},
@@ -449,16 +533,21 @@ function candleWax(): FineRecipe {
 		paint: (field) => {
 			const wax = tone(0xe9dcb8);
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				const drip = smoothstep(
 					0.55,
 					0.9,
 					1 - Math.abs(perlin(u * 6, v * 1, 6, 1, seed)),
 				);
+
 				const lump = fbm(u, v, 3, 3, 4, seed + 1);
+
 				paintTone(texel, wax, 0.94 + lump * 0.08 + drip * 0.05);
+
 				texel.relief = 0.5 + drip * 0.35 + lump * 0.1;
 				texel.rough = 0.42 - drip * 0.12;
+
 				blendTone(texel, tone(0x8a7a58), grime(u, v, 2, seed + 2, 0.45) * 0.25);
 			});
 		},
@@ -477,20 +566,27 @@ function furrowedBark(): FineRecipe {
 			const lichen = tone(0x8a9a6a);
 			const sample = createVoronoiSample();
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				const warp = fbm(u, v, 3, 1, 3, seed);
 				const furrow = Math.abs(perlin(u * 9 + warp * 3, v, 9, 1, seed + 1));
+
 				voronoi(u * 5 + warp, v * 3, 5, 3, seed + 2, 1, sample);
+
 				const breaks = smoothstep(0, 0.12, sample.edge);
 				const ridge = smoothstep(0.04, 0.45, furrow) * (0.55 + breaks * 0.45);
 				const fibers = perlin(u * 40, v * 6, 40, 6, seed + 3) * 0.5 + 0.5;
+
 				paintTone(texel, bark, 0.72 + ridge * 0.36 + fibers * 0.08);
 				blendTone(texel, deep, (1 - ridge) * 0.8);
+
 				texel.relief = ridge * (0.85 + fibers * 0.15);
 				texel.rough = 0.95;
 				texel.ao = 0.45 + ridge * 0.55;
+
 				const patch =
 					smoothstep(0.45, 0.7, fbm(u, v, 5, 5, 4, seed + 4)) * ridge;
+
 				blendTone(texel, lichen, patch * 0.6);
 			});
 		},
@@ -508,23 +604,32 @@ function looseSoil(): FineRecipe {
 			const pebble = tone(0x48423c);
 			const sample = createVoronoiSample();
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				voronoi(u * 30, v * 30, 30, 30, seed, 1, sample);
+
 				const clump =
 					smoothstep(0, 0.3, sample.edge) *
 					(0.6 + hash01(sample.id, 1, seed) * 0.4);
+
 				const crumbs = fbm(u, v, 18, 18, 3, seed + 1);
+
 				paintTone(texel, earth, 0.8 + clump * 0.3 + crumbs * 0.15);
+
 				texel.relief = 0.25 + clump * 0.45 + crumbs * 0.1;
 				texel.rough = 1;
+
 				const stone = voronoi(u * 11, v * 11, 11, 11, seed + 2, 0.9, sample);
+
 				if (hash01(stone.id, 2, seed) < 0.12 && stone.distance < 0.3) {
 					const dome = 1 - stone.distance / 0.3;
+
 					paintTone(
 						texel,
 						pebble,
 						0.8 + dome * 0.3 + hash01(stone.id, 3, seed) * 0.2,
 					);
+
 					texel.relief = Math.max(texel.relief, 0.55 + Math.sqrt(dome) * 0.45);
 					texel.rough = 0.7;
 				}
@@ -542,22 +647,31 @@ function pageEdges(): FineRecipe {
 		paint: (field, rng) => {
 			const paper = tone(0xd9caa6);
 			const aged = tone(0x8a6c42);
+
 			const sheets = Array.from({ length: 48 }, () => ({
 				lift: rng.next(),
 				shade: 0.86 + rng.next() * 0.16,
 			}));
+
 			const seed = field.seed;
+
 			field.paint((u, v, texel) => {
 				const wave = perlin(u * 6, v * 2, 6, 2, seed) * 0.6;
 				const row = v * sheets.length + wave;
+
 				const index =
 					((Math.floor(row) % sheets.length) + sheets.length) % sheets.length;
+
 				const sheet = sheets[index];
 				const within = row - Math.floor(row);
 				const gap = 1 - smoothstep(0, 0.22, Math.min(within, 1 - within));
+
 				paintTone(texel, paper, sheet.shade * (1 - gap * 0.35));
+
 				const foxing = smoothstep(0.35, 0.75, fbm(u, v, 5, 2, 4, seed + 1));
+
 				blendTone(texel, aged, foxing * 0.45 + Math.abs(v - 0.5) * 0.3);
+
 				texel.relief = 0.55 + sheet.lift * 0.35 - gap * 0.45;
 				texel.rough = 0.95;
 			});

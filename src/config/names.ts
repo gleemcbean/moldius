@@ -23,6 +23,7 @@ export function randomDefaultName(exclude: string[] = []): string {
 	const options = DEFAULT_PLAYER_NAMES.filter(
 		(name) => !exclude.includes(name),
 	);
+
 	return (
 		options[Math.floor(Math.random() * options.length)] ??
 		DEFAULT_PLAYER_NAMES[0]

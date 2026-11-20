@@ -15,9 +15,11 @@ export function ProfileLink({
 	children: ReactNode;
 }) {
 	const t = useT();
+
 	if (!profileId) {
 		return <span className={className}>{children}</span>;
 	}
+
 	return (
 		<button
 			type="button"

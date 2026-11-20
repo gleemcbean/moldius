@@ -135,16 +135,19 @@ function plannedRooms(
 ): number {
 	let rooms = MANOR_GROUND_ROOM_COUNT[config.manorSize];
 	const floors = Math.max(0, Math.min(MAX_UPPER_FLOORS, config.floors));
+
 	for (let level = 0; level < floors; level += 1) {
 		rooms +=
 			MANOR_UPPER_ROOM_COUNT[config.upperFloorSize] *
 			MANOR_UPPER_LEVEL_SHARE[level];
 	}
+
 	return rooms;
 }
 
 export function pickupTotal(config: MatchConfig, players: number): number {
 	const scale = plannedRooms(config) / plannedRooms(PUBLIC_MATCH_CONFIG);
+
 	return Math.max(
 		1,
 		Math.round(config.itemsPerPlayer * Math.max(1, players) * scale),
@@ -158,11 +161,13 @@ export function sanitizeMatchConfig(
 	if (!isRecord(input)) {
 		return fallback;
 	}
+
 	const simultaneous =
 		typeof input.simultaneousAnomalies === "number" &&
 		Number.isFinite(input.simultaneousAnomalies)
 			? Math.round(input.simultaneousAnomalies)
 			: fallback.simultaneousAnomalies;
+
 	const roomTypes = Array.isArray(input.roomTypes)
 		? input.roomTypes.filter(
 				(type): type is RoomType =>
@@ -170,16 +175,20 @@ export function sanitizeMatchConfig(
 					(OPTIONAL_ROOM_TYPES as string[]).includes(type),
 			)
 		: fallback.roomTypes;
+
 	const species = Array.isArray(input.species)
 		? ENABLED_SPECIES_IDS.filter((id) =>
 				(input.species as unknown[]).includes(id),
 			)
 		: [];
+
 	const mutators = Array.isArray(input.mutators)
 		? MUTATOR_IDS.filter((id) => (input.mutators as unknown[]).includes(id))
 		: [...(fallback.mutators ?? [])];
+
 	const mode = isGameMode(fallback.mode) ? fallback.mode : "classic";
 	const possessed = mode === "possessed";
+
 	return {
 		simultaneousAnomalies: Math.min(
 			MAX_SIMULTANEOUS_ANOMALIES,
@@ -248,8 +257,10 @@ function sanitizeFloors(
 	if (typeof input.floors === "number" && Number.isFinite(input.floors)) {
 		return Math.min(MAX_UPPER_FLOORS, Math.max(0, Math.round(input.floors)));
 	}
+
 	if (typeof input.upperFloor === "boolean") {
 		return input.upperFloor ? 1 : 0;
 	}
+
 	return fallback;
 }

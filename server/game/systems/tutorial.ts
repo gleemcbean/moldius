@@ -49,7 +49,9 @@ const MONSTER_STAGES: ReadonlySet<TutorialStage> = new Set([
 	"shout",
 	"capture",
 ]);
+
 const DUMMY_STAGES: ReadonlySet<TutorialStage> = new Set(["push", "shout"]);
+
 const STEALTH_EXCLUDED: ReadonlySet<Room["type"]> = new Set([
 	"corridor",
 	"stairwell",
@@ -59,6 +61,7 @@ const STEALTH_EXCLUDED: ReadonlySet<Room["type"]> = new Set([
 	"reliquary",
 	"pact",
 ]);
+
 const STEALTH_SPAN = { min: 6.5, ideal: 8, max: 9.5 };
 const STEALTH_SAMPLE_STRIDE = 3;
 const LEASH = 3.8;
@@ -104,6 +107,7 @@ export class TutorialDirector {
 			{ ...PARKED, yaw: 0 },
 			match.now,
 		);
+
 		this.dummy.loaded = true;
 	}
 
@@ -136,41 +140,53 @@ export class TutorialDirector {
 		if (stage === this.stage || !player.alive) {
 			return;
 		}
+
 		this.reopenDoors();
+
 		this.stage = stage;
+
 		if (!MONSTER_STAGES.has(stage)) {
 			this.dismissMonster();
 		}
+
 		if (!DUMMY_STAGES.has(stage)) {
 			this.removeDummy();
 		}
+
 		switch (stage) {
 			case "stealth":
 				this.setupStealth(player);
 				break;
+
 			case "wound":
 				this.woundTo(player, TUTORIAL_WOUNDED_HEALTH);
 				break;
+
 			case "push":
 				this.placeDummy(player);
 				break;
+
 			case "shout":
 				if (!this.match.players.has(this.dummy.id)) {
 					this.placeDummy(player);
 				}
+
 				this.startDummyCast();
 				this.summon(player, true);
 				break;
+
 			case "capture":
 				this.summon(player, false);
 				this.wake(player);
 				this.giveObject(player);
 				break;
+
 			case "pact":
 			case "sanctuary":
 			case "reliquary":
 				this.visitStake(player, stage);
 				break;
+
 			case "walkie":
 				this.visitGadget(
 					player,
@@ -178,7 +194,9 @@ export class TutorialDirector {
 						.availableIds()
 						.map((id) => this.match.layout.walkies[id]),
 				);
+
 				break;
+
 			case "camera":
 				this.visitGadget(
 					player,
@@ -186,7 +204,9 @@ export class TutorialDirector {
 						.availableIds()
 						.map((id) => this.match.layout.cameras[id]),
 				);
+
 				break;
+
 			default:
 				break;
 		}
@@ -198,6 +218,7 @@ export class TutorialDirector {
 		cause: "push" | "shout" | "voice",
 	): void {
 		const player = byId ? this.match.players.get(byId) : null;
+
 		if (
 			target === this.dummy &&
 			cause !== "push" &&
@@ -211,10 +232,13 @@ export class TutorialDirector {
 
 	update(): void {
 		const player = this.subject();
+
 		if (!player) {
 			return;
 		}
+
 		const dt = SERVER_TICK_MS / 1000;
+
 		this.listen(player, dt);
 		this.runDummy(player);
 		this.leash(player, dt);
@@ -222,10 +246,13 @@ export class TutorialDirector {
 
 	removeDummy(): void {
 		const dummy = this.dummy;
+
 		if (!this.match.players.has(dummy.id)) {
 			return;
 		}
+
 		this.match.players.delete(dummy.id);
+
 		dummy.casting = null;
 		dummy.grimoireOpen = false;
 		dummy.position = { ...PARKED };
@@ -237,24 +264,31 @@ export class TutorialDirector {
 				return player;
 			}
 		}
+
 		return null;
 	}
 
 	private listen(player: MatchPlayer, dt: number): void {
 		const entity = this.monster;
+
 		if (this.stage !== "stealth" || !this.frozen || !entity?.active) {
 			return;
 		}
+
 		const match = this.match;
+
 		const heard = match.sounds.some(
 			(sound) =>
 				sound.playerId === player.id &&
 				soundMargin(match, entity, sound, player) > 0,
 		);
+
 		if (heard && match.now - this.heardAt >= TUTORIAL_HEARD_INTERVAL_MS) {
 			this.heardAt = match.now;
+
 			match.emit({ type: "heard", anomalyId: entity.id, playerId: player.id });
 		}
+
 		if (match.now - this.heardAt < HEARD_TURN_MS) {
 			faceTowards(entity, player.position, 2.5, dt);
 		}
@@ -262,11 +296,15 @@ export class TutorialDirector {
 
 	private runDummy(player: MatchPlayer): void {
 		const dummy = this.dummy;
+
 		if (!this.match.players.has(dummy.id)) {
 			return;
 		}
+
 		const now = this.match.now;
+
 		dummy.yaw = yawTowards(dummy.position, player.position);
+
 		if (this.stage === "shout") {
 			if (
 				dummy.casting &&
@@ -275,6 +313,7 @@ export class TutorialDirector {
 				dummy.casting = null;
 				this.dummyRestUntil = now + TUTORIAL_DUMMY_REST_MS;
 			}
+
 			if (
 				!dummy.casting &&
 				now >= this.dummyRestUntil &&
@@ -285,11 +324,13 @@ export class TutorialDirector {
 		} else {
 			dummy.casting = null;
 		}
+
 		dummy.grimoireOpen = dummy.casting !== null;
 	}
 
 	private leash(player: MatchPlayer, dt: number): void {
 		const entity = this.monster;
+
 		if (
 			!this.lured ||
 			this.frozen ||
@@ -299,36 +340,49 @@ export class TutorialDirector {
 		) {
 			return;
 		}
+
 		const match = this.match;
+
 		const distance = Math.hypot(
 			entity.position.x - player.position.x,
 			entity.position.y - player.position.y,
 			entity.position.z - player.position.z,
 		);
+
 		if (distance > LEASH) {
 			if (match.now >= this.followAt) {
 				this.followAt = match.now + FOLLOW_INTERVAL_MS;
+
 				lureAnomalies(match, player.position, player.id);
 			}
+
 			return;
 		}
+
 		if (entity.state === "search") {
 			return;
 		}
+
 		clearPath(entity);
+
 		entity.velocity = { x: 0, y: 0, z: 0 };
+
 		faceTowards(entity, player.position, 4, dt);
+
 		if (entity.state !== "idle") {
 			entity.setState("idle", match.now);
 		}
+
 		entity.idleUntil = match.now + 1000;
 	}
 
 	private wake(player: MatchPlayer): void {
 		const entity = this.monster;
+
 		this.frozen = false;
 		this.lured = true;
 		this.followAt = this.match.now + FOLLOW_INTERVAL_MS;
+
 		if (entity?.active) {
 			lureAnomalies(this.match, player.position, player.id);
 		}
@@ -336,10 +390,13 @@ export class TutorialDirector {
 
 	private spawnMonster(placement: Placement): void {
 		const entity = this.monster;
+
 		if (!entity) {
 			return;
 		}
+
 		const match = this.match;
+
 		entity.resetForSpawn(
 			{
 				...placement.position,
@@ -348,7 +405,9 @@ export class TutorialDirector {
 			placement.yaw,
 			match.now,
 		);
+
 		entity.spawnDueAt = Infinity;
+
 		match.emit({
 			type: "anomalySpawn",
 			anomalyId: entity.id,
@@ -359,16 +418,22 @@ export class TutorialDirector {
 
 	private summon(player: MatchPlayer, frozen: boolean): void {
 		const entity = this.monster;
+
 		if (!entity) {
 			return;
 		}
+
 		if (entity.active) {
 			this.frozen = this.frozen && frozen;
+
 			return;
 		}
+
 		this.frozen = frozen;
 		this.lured = false;
+
 		const position = this.hiddenSpot(player);
+
 		this.spawnMonster({
 			position,
 			yaw: yawTowards(position, player.position),
@@ -377,18 +442,23 @@ export class TutorialDirector {
 
 	private dismissMonster(): void {
 		const entity = this.monster;
+
 		this.frozen = false;
 		this.lured = false;
+
 		if (entity?.active) {
 			this.match.removeAnomaly(entity, "dismissed");
+
 			entity.spawnDueAt = Infinity;
 		}
 	}
 
 	private giveObject(player: MatchPlayer): void {
 		const object = this.monster?.occult;
+
 		if (object && player.objects[object] < 1) {
 			player.objects[object] = 1;
+
 			this.match.sendInventory(player);
 		}
 	}
@@ -405,16 +475,22 @@ export class TutorialDirector {
 
 	private setupStealth(player: MatchPlayer): void {
 		this.stealth ??= this.planStealth();
+
 		const plan = this.stealth;
+
 		if (!plan) {
 			this.summon(player, true);
+
 			return;
 		}
+
 		this.teleport(player, plan.player);
 		this.spawnMonster(plan.monster);
+
 		this.frozen = true;
 		this.lured = false;
 		this.heardAt = -Infinity;
+
 		this.closeRoom(plan.roomId);
 	}
 
@@ -422,15 +498,20 @@ export class TutorialDirector {
 		const stake = this.match.layout.stakes.find(
 			(entry) => entry.kind === stage,
 		);
+
 		if (!stake) {
 			return;
 		}
+
 		const target = { x: stake.x, y: stake.y + 0.9, z: stake.z };
 		const placement = this.standNear(target, stake.roomId, 1.4, 2.4);
+
 		if (placement) {
 			this.teleport(player, placement);
 		}
+
 		this.closeRoom(stake.roomId);
+
 		if (stage === "sanctuary") {
 			this.woundTo(player, TUTORIAL_WOUNDED_HEALTH);
 		}
@@ -442,9 +523,11 @@ export class TutorialDirector {
 	): void {
 		for (const spot of spots) {
 			const placement = this.standNear(spot, spot.roomId, 0.8, 1.6);
+
 			if (placement) {
 				this.teleport(player, placement);
 				this.closeRoom(spot.roomId);
+
 				return;
 			}
 		}
@@ -452,9 +535,12 @@ export class TutorialDirector {
 
 	private teleport(player: MatchPlayer, placement: Placement): void {
 		const match = this.match;
+
 		player.hiddenSpot = -1;
 		player.casting = null;
+
 		match.forcedMove(player, "spawn", placement.position, placement.yaw, 0);
+
 		player.roomId = match.roomIdAt(placement.position);
 	}
 
@@ -462,6 +548,7 @@ export class TutorialDirector {
 		const match = this.match;
 		const dummy = this.dummy;
 		const position = this.roomMiddle(player) ?? this.frontOf(player);
+
 		dummy.position = { ...position };
 		dummy.velocity = { x: 0, y: 0, z: 0 };
 		dummy.yaw = yawTowards(position, player.position);
@@ -479,6 +566,7 @@ export class TutorialDirector {
 		dummy.sabotageProtectedUntil = 0;
 		dummy.lastStateAt = match.now;
 		dummy.roomId = match.roomIdAt(position);
+
 		dummy.history.push({ t: match.now, ...position, yaw: dummy.yaw });
 		match.players.set(dummy.id, dummy);
 	}
@@ -492,26 +580,32 @@ export class TutorialDirector {
 		const match = this.match;
 		const forward = yawToDirection(player.yaw);
 		const eye = player.eyePosition();
+
 		for (const turn of [0, 0.35, -0.35, 0.7, -0.7, 1.2, -1.2]) {
 			for (const distance of DUMMY_DISTANCES) {
 				const direction = {
 					x: forward.x * Math.cos(turn) - forward.z * Math.sin(turn),
 					z: forward.x * Math.sin(turn) + forward.z * Math.cos(turn),
 				};
+
 				const point = {
 					x: player.position.x + direction.x * distance,
 					y: player.position.y,
 					z: player.position.z + direction.z * distance,
 				};
+
 				const node = match.grid.nearestNode(point, 0);
+
 				if (node === null) {
 					continue;
 				}
+
 				const position = {
 					x: point.x,
 					y: match.grid.nodePosition(node).y,
 					z: point.z,
 				};
+
 				if (
 					Math.abs(position.y - player.position.y) < 0.6 &&
 					match.world.distanceToWalls(
@@ -526,7 +620,9 @@ export class TutorialDirector {
 				}
 			}
 		}
+
 		const node = match.grid.nearestNode(player.position, 3);
+
 		return node === null
 			? { ...player.position }
 			: match.grid.nodePosition(node);
@@ -539,26 +635,34 @@ export class TutorialDirector {
 		const eye = player.eyePosition();
 		let best: Vec3 = { ...player.position };
 		let bestScore = -Infinity;
+
 		for (let node = 0; node < grid.cellsPerLevel; node += 1) {
 			const cell = level * grid.cellsPerLevel + node;
+
 			if (!grid.walkable[cell] || !grid.isInMainComponent(cell)) {
 				continue;
 			}
+
 			const point = grid.nodePosition(cell);
+
 			const distance = Math.hypot(
 				point.x - player.position.x,
 				point.z - player.position.z,
 			);
+
 			if (distance < HIDDEN_SPAWN.min || distance > HIDDEN_SPAWN.max) {
 				continue;
 			}
+
 			const hidden = !lineOfSight(match.world, eye, eyeOf(point));
 			const score = (hidden ? 10 : 0) - Math.abs(distance - HIDDEN_SPAWN.ideal);
+
 			if (score > bestScore) {
 				bestScore = score;
 				best = point;
 			}
 		}
+
 		return best;
 	}
 
@@ -566,33 +670,41 @@ export class TutorialDirector {
 		const match = this.match;
 		const roomId = match.roomIdAt(player.position);
 		const room = roomId === null ? null : match.layout.rooms[roomId];
+
 		if (roomId === null || !room) {
 			return null;
 		}
+
 		const nodes = this.roomNodes(roomId).filter(
 			(point) => Math.abs(point.y - player.position.y) < 0.6,
 		);
+
 		const eye = player.eyePosition();
 		let best: Vec3 | null = null;
 		let bestScore = -Infinity;
+
 		for (const point of nodes) {
 			if (flatDistance(point, player.position) < DUMMY_MIN_GAP) {
 				continue;
 			}
+
 			const open = nodes.filter(
 				(other) => flatDistance(other, point) <= DUMMY_OPEN_RADIUS,
 			).length;
+
 			const score =
 				open * 0.2 -
 				flatDistance(point, room.labelPoint) * 0.35 +
 				(lineOfSight(match.world, eye, eyeOf(point), { blockGlass: true })
 					? 3
 					: 0);
+
 			if (score > bestScore) {
 				bestScore = score;
 				best = point;
 			}
 		}
+
 		return best;
 	}
 
@@ -600,15 +712,19 @@ export class TutorialDirector {
 		const match = this.match;
 		const grid = match.grid;
 		const points: Vec3[] = [];
+
 		for (let cell = 0; cell < grid.cellsPerLevel * grid.levelCount; cell += 1) {
 			if (!grid.walkable[cell] || !grid.isInMainComponent(cell)) {
 				continue;
 			}
+
 			const point = grid.nodePosition(cell);
+
 			if (match.roomIdAt(point) === roomId) {
 				points.push(point);
 			}
 		}
+
 		return points;
 	}
 
@@ -622,8 +738,10 @@ export class TutorialDirector {
 		const ideal = (min + max) / 2;
 		let best: Placement | null = null;
 		let bestScore = Infinity;
+
 		for (const point of this.roomNodes(roomId)) {
 			const distance = Math.hypot(point.x - target.x, point.z - target.z);
+
 			if (
 				distance < min ||
 				distance > max ||
@@ -634,18 +752,22 @@ export class TutorialDirector {
 			) {
 				continue;
 			}
+
 			const clearance = match.world.distanceToWalls(
 				point,
 				point.y + 0.3,
 				point.y + 1.6,
 				1,
 			);
+
 			const score = Math.abs(distance - ideal) - Math.min(clearance, 1) * 0.6;
+
 			if (score < bestScore) {
 				bestScore = score;
 				best = { position: point, yaw: yawTowards(point, target) };
 			}
 		}
+
 		return best;
 	}
 
@@ -653,19 +775,23 @@ export class TutorialDirector {
 		const match = this.match;
 		let best: StealthPlan | null = null;
 		let bestScore = Infinity;
+
 		for (const room of match.layout.rooms) {
 			if (STEALTH_EXCLUDED.has(room.type) || room.level !== 0) {
 				continue;
 			}
+
 			const nodes = this.roomNodes(room.id).filter(
 				(_, index) => index % STEALTH_SAMPLE_STRIDE === 0,
 			);
+
 			for (let first = 0; first < nodes.length; first += 1) {
 				for (let second = first + 1; second < nodes.length; second += 1) {
 					const a = nodes[first];
 					const b = nodes[second];
 					const span = Math.hypot(a.x - b.x, a.z - b.z);
 					const score = Math.abs(span - STEALTH_SPAN.ideal) - room.area / 400;
+
 					if (
 						span < STEALTH_SPAN.min ||
 						span > STEALTH_SPAN.max ||
@@ -675,7 +801,9 @@ export class TutorialDirector {
 					) {
 						continue;
 					}
+
 					bestScore = score;
+
 					best = {
 						roomId: room.id,
 						player: { position: a, yaw: yawTowards(a, b) },
@@ -684,13 +812,16 @@ export class TutorialDirector {
 				}
 			}
 		}
+
 		return best;
 	}
 
 	private closeRoom(roomId: number): void {
 		const match = this.match;
+
 		for (const openingId of match.layout.rooms[roomId]?.openingIds ?? []) {
 			const door = match.layout.openings[openingId]?.door;
+
 			if (door && match.doors.get(door.id)?.open) {
 				if (match.setDoor(door.id, false, null)) {
 					this.closedDoors.add(door.id);
@@ -705,6 +836,7 @@ export class TutorialDirector {
 				this.match.setDoor(doorId, true, null);
 			}
 		}
+
 		this.closedDoors.clear();
 	}
 }

@@ -23,6 +23,7 @@ export const PAD_BUTTON = {
 export const PAD_BUTTON_COUNT = 17;
 export const PAD_HOLD_MS = 320;
 export const PAD_STICK_CODE = "PadLeftStick";
+
 export const PAD_RESERVED_BUTTONS: ReadonlySet<number> = new Set([
 	PAD_BUTTON.start,
 	PAD_BUTTON.left,
@@ -79,10 +80,13 @@ export function parsePadCode(
 	code: string,
 ): { button: number; hold: boolean } | null {
 	const match = PAD_CODE.exec(code);
+
 	if (!match) {
 		return null;
 	}
+
 	const button = Number(match[1]);
+
 	return button < PAD_BUTTON_COUNT
 		? { button, hold: match[2] === "Hold" }
 		: null;
@@ -90,6 +94,7 @@ export function parsePadCode(
 
 export function isBindablePadCode(code: string): boolean {
 	const parsed = parsePadCode(code);
+
 	return parsed !== null && !PAD_RESERVED_BUTTONS.has(parsed.button);
 }
 
@@ -108,11 +113,15 @@ export function activePad(): Gamepad | null {
 			? [...navigator.getGamepads()]
 			: []
 	).filter((pad): pad is Gamepad => pad?.connected === true);
+
 	if (pads.length === 0) {
 		activeIndex = null;
+
 		return null;
 	}
+
 	const current = pads.find((pad) => pad.index === activeIndex) ?? null;
+
 	if (!current || !engaged(current)) {
 		const challenger = pads.find(
 			(pad) =>
@@ -120,29 +129,39 @@ export function activePad(): Gamepad | null {
 				engaged(pad) &&
 				(pad.mapping === "standard" || current?.mapping !== "standard"),
 		);
+
 		if (challenger) {
 			activeIndex = challenger.index;
+
 			return challenger;
 		}
 	}
+
 	if (current) {
 		return current;
 	}
+
 	const fallback =
 		pads.find((pad) => pad.mapping === "standard") ?? pads[0] ?? null;
+
 	activeIndex = fallback?.index ?? null;
+
 	return fallback;
 }
 
 export function readPad(): PadSnapshot | null {
 	const best = activePad();
+
 	if (!best) {
 		return null;
 	}
+
 	const buttons: boolean[] = [];
+
 	for (let index = 0; index < PAD_BUTTON_COUNT; index += 1) {
 		const button = best.buttons[index];
 		const trigger = index === PAD_BUTTON.lt || index === PAD_BUTTON.rt;
+
 		buttons.push(
 			button
 				? trigger
@@ -151,6 +170,7 @@ export function readPad(): PadSnapshot | null {
 				: false,
 		);
 	}
+
 	return { buttons, axes: [...best.axes] };
 }
 
@@ -160,10 +180,13 @@ export function stick(
 	deadzone: number,
 ): { x: number; y: number; magnitude: number } {
 	const length = Math.hypot(x, y);
+
 	if (!Number.isFinite(length) || length <= deadzone) {
 		return { x: 0, y: 0, magnitude: 0 };
 	}
+
 	const magnitude = Math.min(1, (length - deadzone) / (1 - deadzone));
+
 	return {
 		x: (x / length) * magnitude,
 		y: (y / length) * magnitude,
@@ -193,17 +216,22 @@ export class PadButtons {
 			this.since = buttons.map(() => now);
 			this.holdFired = buttons.map(() => false);
 			this.swallowed = [...buttons];
+
 			return [];
 		}
+
 		const edges: PadEdge[] = [];
+
 		buttons.forEach((down, button) => {
 			const was = this.previous[button] ?? false;
 			const tap = padCode(button, false);
 			const hold = padCode(button, true);
+
 			if (down && !was) {
 				this.since[button] = now;
 				this.holdFired[button] = false;
 				this.swallowed[button] = false;
+
 				if (!hasHold(button)) {
 					edges.push({ code: tap, down: true });
 				}
@@ -215,6 +243,7 @@ export class PadButtons {
 					now - (this.since[button] ?? now) >= PAD_HOLD_MS
 				) {
 					this.holdFired[button] = true;
+
 					edges.push({ code: hold, down: true });
 				}
 			} else if (!down && was) {
@@ -227,10 +256,13 @@ export class PadButtons {
 				} else {
 					edges.push({ code: tap, down: false });
 				}
+
 				this.holdFired[button] = false;
 			}
 		});
+
 		this.previous = [...buttons];
+
 		return edges;
 	}
 }

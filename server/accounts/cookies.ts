@@ -14,16 +14,21 @@ export function readCookie(
 	if (!header) {
 		return null;
 	}
+
 	for (const part of header.split(";")) {
 		const separator = part.indexOf("=");
+
 		if (separator < 0) {
 			continue;
 		}
+
 		if (part.slice(0, separator).trim() === name) {
 			const value = part.slice(separator + 1).trim();
+
 			return value.length > 0 && value.length <= 256 ? value : null;
 		}
 	}
+
 	return null;
 }
 

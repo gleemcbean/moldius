@@ -45,6 +45,14 @@ export type RoomType =
 	| "larder"
 	| "cartography"
 	| "horology"
+	| "mushroomCellar"
+	| "fungalGreenhouse"
+	| "mycologyLab"
+	| "fairyRing"
+	| "collapsedWing"
+	| "ruinedChapel"
+	| "crystalGrotto"
+	| "enchantedLibrary"
 	| "stairwell";
 
 export interface LineEdge {
@@ -81,7 +89,9 @@ export type FloorStyle =
 	| "checkerTiles"
 	| "mosaic"
 	| "greenhouseTiles"
-	| "redCarpet";
+	| "redCarpet"
+	| "soil"
+	| "basalt";
 
 export type WallStyle =
 	| "wallpaperGreen"
@@ -102,7 +112,8 @@ export type WallStyle =
 	| "wallpaperStripes"
 	| "wallpaperFleur"
 	| "rubbleStone"
-	| "mossyBrick";
+	| "mossyBrick"
+	| "basalt";
 
 export type CeilingStyle =
 	| "plaster"
@@ -269,7 +280,14 @@ export interface LightSource {
 	color: number;
 	intensity: number;
 	radius: number;
-	kind: "candle" | "chandelier" | "fire" | "lamp" | "cauldron" | "moon";
+	kind:
+		| "candle"
+		| "chandelier"
+		| "fire"
+		| "lamp"
+		| "cauldron"
+		| "glow"
+		| "moon";
 }
 
 export interface ValveStation {

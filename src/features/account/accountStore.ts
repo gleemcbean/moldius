@@ -59,6 +59,7 @@ let syncTimer = 0;
 
 function signedIn(account: AccountProfile): void {
 	accountStore.set({ status: "signed-in", account });
+
 	updateSettings({
 		playerName: account.displayName,
 		playerColor: account.color,
@@ -76,15 +77,21 @@ function signedOut(): void {
 
 export async function refreshAccount(): Promise<void> {
 	const result = await accountApi.status();
+
 	if (!result.ok) {
 		accountStore.set({ status: "unavailable", account: null });
+
 		return;
 	}
+
 	accountStore.set({ discordEnabled: result.value.discord });
+
 	if (!result.value.enabled) {
 		accountStore.set({ status: "disabled", account: null });
+
 		return;
 	}
+
 	if (result.value.account) {
 		signedIn(result.value.account);
 	} else {
@@ -104,6 +111,7 @@ export function termsAccepted(
 export async function acceptTerms(): Promise<boolean> {
 	if (accountStore.get().status === "signed-in") {
 		const result = await accountApi.acceptTerms();
+
 		if (result.ok) {
 			accountStore.set({ account: result.value.account });
 		} else if (result.status === 401) {
@@ -112,19 +120,24 @@ export async function acceptTerms(): Promise<boolean> {
 			return false;
 		}
 	}
+
 	updateSettings({ termsAccepted: true });
+
 	return true;
 }
 
 function scheduleProfileSync(): void {
 	window.clearTimeout(syncTimer);
+
 	syncTimer = window.setTimeout(() => {
 		const { account, status } = accountStore.get();
 		const settings = settingsStore.get();
 		const displayName = settings.playerName.trim();
+
 		if (status !== "signed-in" || !account || displayName.length < 2) {
 			return;
 		}
+
 		if (
 			displayName === account.displayName &&
 			settings.playerColor === account.color &&
@@ -135,6 +148,7 @@ function scheduleProfileSync(): void {
 		) {
 			return;
 		}
+
 		void accountApi
 			.updateProfile({
 				displayName,
@@ -156,31 +170,41 @@ function scheduleProfileSync(): void {
 
 function readDiscordResult(): boolean {
 	const match = DISCORD_PATTERN.exec(window.location.hash);
+
 	if (!match) {
 		return false;
 	}
+
 	window.history.replaceState(
 		null,
 		"",
 		window.location.pathname + window.location.search,
 	);
+
 	const outcome = DISCORD_OUTCOMES.find((candidate) => candidate === match[1]);
+
 	if (outcome) {
 		applyDiscordOutcome(outcome);
 	}
+
 	return true;
 }
 
 function applyDiscordOutcome(outcome: DiscordOutcome): void {
 	const local = settingsStore.get();
+
 	openOverlay("account");
+
 	const success = DISCORD_SUCCESS.includes(outcome);
+
 	accountStore.set({
 		notice: { tone: success ? "success" : "error", key: outcome },
 	});
+
 	if (success) {
 		void refreshAccount().then(() => {
 			reconnectSocket();
+
 			if (outcome === "cree" && local.playerName.trim().length >= 2) {
 				void saveProfile(
 					local.playerName.trim(),
@@ -198,10 +222,13 @@ async function appDiscord(): Promise<
 	NonNullable<typeof desktopApp>["discord"] | null
 > {
 	const bridge = desktopApp?.discord;
+
 	if (!bridge || typeof bridge.account !== "function") {
 		return null;
 	}
+
 	const state = await bridge.getState().catch(() => null);
+
 	return state?.available ? bridge : null;
 }
 
@@ -209,25 +236,34 @@ function readEmailLink(): void {
 	if (readDiscordResult()) {
 		return;
 	}
+
 	const match = LINK_PATTERN.exec(window.location.hash);
+
 	if (!match) {
 		return;
 	}
+
 	window.history.replaceState(
 		null,
 		"",
 		window.location.pathname + window.location.search,
 	);
+
 	const [, kind, token] = match;
+
 	openOverlay("account");
+
 	if (kind === "reinitialiser") {
 		accountStore.set({ resetToken: token, notice: null });
+
 		return;
 	}
+
 	void accountApi.verifyEmail({ token }).then((result) => {
 		if (result.ok) {
 			signedIn(result.value.account);
 			reconnectSocket();
+
 			accountStore.set({
 				notice: { tone: "success", key: "emailConfirmed" },
 			});
@@ -245,10 +281,13 @@ export function initAccount(): void {
 	if (initialized) {
 		return;
 	}
+
 	initialized = true;
+
 	void refreshAccount();
 	readEmailLink();
 	window.addEventListener("hashchange", readEmailLink);
+
 	settingsStore.subscribe((state, previous) => {
 		if (
 			state.playerName !== previous.playerName ||
@@ -269,8 +308,10 @@ function afterAuthentication(
 	if (!result.ok) {
 		return result;
 	}
+
 	signedIn(result.value.account);
 	reconnectSocket();
+
 	return { ok: true, value: null };
 }
 
@@ -290,14 +331,19 @@ export async function register(
 	const settings = settingsStore.get();
 	const bridge = await appDiscord();
 	let discordProof: string | undefined;
+
 	if (bridge) {
 		accountStore.set({ discordBusy: true });
+
 		const proof = await bridge
 			.account("proof", settings.language)
 			.catch(() => null);
+
 		accountStore.set({ discordBusy: false });
+
 		discordProof = proof?.ok && proof.proof ? proof.proof : undefined;
 	}
+
 	const result = await accountApi.register({
 		email,
 		password,
@@ -307,6 +353,7 @@ export async function register(
 		language: settings.language,
 		...(discordProof ? { discordProof } : {}),
 	});
+
 	return result.ok
 		? {
 				ok: true,
@@ -323,6 +370,7 @@ export async function requestPasswordReset(
 	email: string,
 ): Promise<ApiResult<null>> {
 	const result = await accountApi.requestPasswordReset({ email });
+
 	return result.ok ? { ok: true, value: null } : result;
 }
 
@@ -333,9 +381,11 @@ export async function confirmPasswordReset(
 	const result = afterAuthentication(
 		await accountApi.confirmPasswordReset({ token, newPassword }),
 	);
+
 	if (result.ok) {
 		accountStore.set({ resetToken: null });
 	}
+
 	return result;
 }
 
@@ -357,13 +407,17 @@ export async function saveProfile(
 		lantern,
 		tagline,
 	});
+
 	if (!result.ok) {
 		if (result.status === 401) {
 			signedOut();
 		}
+
 		return result;
 	}
+
 	signedIn(result.value.account);
+
 	return { ok: true, value: null };
 }
 
@@ -371,13 +425,17 @@ export async function setPrivateProfile(
 	privateProfile: boolean,
 ): Promise<ApiResult<null>> {
 	const result = await accountApi.updateProfile({ privateProfile });
+
 	if (!result.ok) {
 		if (result.status === 401) {
 			signedOut();
 		}
+
 		return result;
 	}
+
 	signedIn(result.value.account);
+
 	return { ok: true, value: null };
 }
 
@@ -395,36 +453,50 @@ export async function changePassword(
 		currentPassword,
 		newPassword,
 	});
+
 	if (!result.ok) {
 		return result;
 	}
+
 	accountStore.set({ account: result.value.account });
 	reconnectSocket();
+
 	return { ok: true, value: null };
 }
 
 export async function startDiscord(mode: "login" | "link"): Promise<void> {
 	const language = settingsStore.get().language;
 	const bridge = await appDiscord();
+
 	if (!bridge) {
 		const query = new URLSearchParams({ mode, lang: language });
+
 		window.location.assign(`/api/account/discord/start?${query.toString()}`);
+
 		return;
 	}
+
 	if (accountStore.get().discordBusy) {
 		return;
 	}
+
 	accountStore.set({ discordBusy: true, notice: null });
+
 	const reply = await bridge.account(mode, language).catch(() => null);
+
 	accountStore.set({ discordBusy: false });
+
 	const outcome = DISCORD_OUTCOMES.find(
 		(candidate) => candidate === reply?.outcome,
 	);
+
 	if (!outcome && reply?.error === "server") {
 		openOverlay("account");
 		accountStore.set({ notice: { tone: "error", key: "appServerError" } });
+
 		return;
 	}
+
 	applyDiscordOutcome(
 		outcome ?? (reply?.error === "cancelled" ? "annule" : "erreur-discord"),
 	);
@@ -432,11 +504,14 @@ export async function startDiscord(mode: "login" | "link"): Promise<void> {
 
 export async function unlinkDiscord(): Promise<ApiResult<null>> {
 	const result = await accountApi.unlinkDiscord();
+
 	if (!result.ok) {
 		return result;
 	}
+
 	desktopApp?.discord?.disconnect();
 	accountStore.set({ account: result.value.account });
+
 	return { ok: true, value: null };
 }
 
@@ -445,21 +520,26 @@ export async function deleteAccount(
 	confirmation: string,
 ): Promise<ApiResult<null>> {
 	const result = await accountApi.remove({ password, confirmation });
+
 	if (result.ok) {
 		signedOut();
 		reconnectSocket();
 	}
+
 	return result;
 }
 
 export async function loadHistory(): Promise<ApiResult<MatchHistoryEntry[]>> {
 	const result = await accountApi.history();
+
 	if (!result.ok) {
 		if (result.status === 401) {
 			signedOut();
 		}
+
 		return result;
 	}
+
 	return { ok: true, value: result.value.entries };
 }
 
@@ -467,11 +547,14 @@ export async function loadHistoryDetail(
 	matchId: string,
 ): Promise<ApiResult<MatchDetail>> {
 	const result = await accountApi.historyDetail(matchId);
+
 	if (!result.ok) {
 		if (result.status === 401) {
 			signedOut();
 		}
+
 		return result;
 	}
+
 	return { ok: true, value: result.value.match };
 }

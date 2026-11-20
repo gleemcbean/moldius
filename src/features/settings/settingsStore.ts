@@ -37,12 +37,14 @@ const KEYS_REVISION = 3;
 const CAMERA_CLICKS_REVISION = 2;
 const MIDDLE_PING_REVISION = 3;
 const PREVIOUS_PING_KEY = "KeyQ";
+
 const STATS_CORNERS: readonly StatsCorner[] = [
 	"topLeft",
 	"topRight",
 	"bottomLeft",
 	"bottomRight",
 ];
+
 const FREE_KEY_CODES = [
 	"MouseMiddle",
 	"KeyQ",
@@ -91,10 +93,13 @@ export function matchingStatsPreset(
 	stats: StatsOverlaySettings,
 ): StatsPreset | null {
 	const enabled = STATS_METRICS.filter((metric) => stats.metrics[metric]);
+
 	if (enabled.length === 0) {
 		return "off";
 	}
+
 	const presets = Object.keys(STATS_PRESETS) as Exclude<StatsPreset, "off">[];
+
 	return (
 		presets.find(
 			(preset) =>
@@ -165,6 +170,7 @@ export function migrateAimKey(
 	if (!saved || typeof saved.aim === "string") {
 		return;
 	}
+
 	const usedBy = (code: string, except: ActionId) =>
 		(Object.keys(keys) as ActionId[]).some(
 			(action) =>
@@ -172,6 +178,7 @@ export function migrateAimKey(
 				typeof saved[action] === "string" &&
 				keys[action] === code,
 		);
+
 	if (usedBy(keys.aim, "aim")) {
 		const free = [
 			"MouseLeft",
@@ -180,6 +187,7 @@ export function migrateAimKey(
 			"KeyB",
 			"KeyZ",
 		].find((code) => !usedBy(code, "aim"));
+
 		keys.aim = free ?? keys.aim;
 	}
 }
@@ -191,6 +199,7 @@ export function migrateCameraClicks(
 	if (typeof revision === "number" && revision >= CAMERA_CLICKS_REVISION) {
 		return;
 	}
+
 	if (keys.aim === "MouseLeft" && keys.photo === "MouseRight") {
 		keys.aim = "MouseRight";
 		keys.photo = "MouseLeft";
@@ -207,9 +216,11 @@ export function migratePingKey(
 	) {
 		return;
 	}
+
 	const middleTaken = ACTION_IDS.some(
 		(action) => action !== "ping" && keys[action] === "MouseMiddle",
 	);
+
 	if (!middleTaken) {
 		keys.ping = "MouseMiddle";
 	}
@@ -222,18 +233,22 @@ export function assignFreshKeys(
 	if (!saved) {
 		return;
 	}
+
 	ACTION_IDS.forEach((action, index) => {
 		if (typeof saved[action] === "string") {
 			return;
 		}
+
 		const used = (code: string) =>
 			ACTION_IDS.some((other) => other !== action && keys[other] === code);
+
 		const settled = ACTION_IDS.some(
 			(other, otherIndex) =>
 				other !== action &&
 				keys[other] === keys[action] &&
 				(typeof saved[other] === "string" || otherIndex < index),
 		);
+
 		if (settled) {
 			keys[action] = FREE_KEY_CODES.find((code) => !used(code)) ?? keys[action];
 		}
@@ -247,12 +262,15 @@ type StoredSettings = Partial<PlayerSettings> & {
 function sanitizeStats(raw: StoredSettings): StatsOverlaySettings {
 	const base = defaultStats();
 	const saved = raw.stats;
+
 	if (!saved || typeof saved !== "object") {
 		return raw.showFps === true
 			? { ...base, metrics: statsMetrics(["fps"]) }
 			: base;
 	}
+
 	const metrics = saved.metrics as Partial<Record<StatsMetric, unknown>>;
+
 	return {
 		metrics: Object.fromEntries(
 			STATS_METRICS.map((metric) => [
@@ -272,12 +290,16 @@ export function sanitizePadKeys(
 	saved: Partial<Record<ActionId, unknown>> | undefined,
 ): Record<ActionId, string> {
 	const padKeys = { ...DEFAULT_PAD_KEYS };
+
 	if (!saved || typeof saved !== "object") {
 		return padKeys;
 	}
+
 	const taken = new Set<string>();
+
 	for (const action of ACTION_IDS) {
 		const code = saved[action];
+
 		if (PAD_MOVEMENT_ACTIONS.has(action)) {
 			padKeys[action] = "";
 		} else if (
@@ -286,10 +308,12 @@ export function sanitizePadKeys(
 		) {
 			padKeys[action] = code !== "" && taken.has(code) ? "" : code;
 		}
+
 		if (padKeys[action] !== "") {
 			taken.add(padKeys[action]);
 		}
 	}
+
 	return padKeys;
 }
 
@@ -297,20 +321,26 @@ function sanitize(raw: StoredSettings | null): PlayerSettings {
 	const base = defaultSettings(
 		isLanguage(raw?.language) ? raw.language : undefined,
 	);
-	if (!raw || raw.version !== 1) {
+
+	if (raw?.version !== 1) {
 		return base;
 	}
+
 	const keys = { ...base.keys };
+
 	for (const action of ACTION_IDS) {
 		const code = raw.keys?.[action];
+
 		if (typeof code === "string" && code.length > 0 && code.length < 32) {
 			keys[action] = code;
 		}
 	}
+
 	migrateAimKey(keys, raw.keys);
 	migrateCameraClicks(keys, raw.keysRevision);
 	migratePingKey(keys, raw.keysRevision);
 	assignFreshKeys(keys, raw.keys);
+
 	return {
 		version: 1,
 		keysRevision: KEYS_REVISION,
@@ -396,6 +426,7 @@ export function updateSettings(patch: Partial<PlayerSettings>): void {
 
 export function setLanguage(language: Language, renameDefault: boolean): void {
 	const { playerName } = settingsStore.get();
+
 	settingsStore.set(
 		renameDefault && isDefaultName(playerName)
 			? { language, playerName: randomDefaultName(language) }
@@ -409,6 +440,7 @@ export function updateStats(patch: Partial<StatsOverlaySettings>): void {
 
 export function setStatsMetric(metric: StatsMetric, enabled: boolean): void {
 	const stats = settingsStore.get().stats;
+
 	updateStats({ metrics: { ...stats.metrics, [metric]: enabled } });
 }
 
@@ -427,6 +459,7 @@ export function resetControls(): void {
 
 export function resetAllSettings(): void {
 	const current = settingsStore.get();
+
 	settingsStore.replace({
 		...defaultSettings(current.language),
 		playerName: current.playerName,
@@ -442,29 +475,39 @@ export interface BindingChange {
 export function bindKey(action: ActionId, code: string): BindingChange {
 	const keys = { ...settingsStore.get().keys };
 	const previous = keys[action];
+
 	const conflict =
 		(Object.keys(keys) as ActionId[]).find(
 			(other) => other !== action && keys[other] === code,
 		) ?? null;
+
 	keys[action] = code;
+
 	if (conflict) {
 		keys[conflict] = previous;
 	}
+
 	settingsStore.set({ keys });
+
 	return { swappedWith: conflict };
 }
 
 export function bindPad(action: ActionId, code: string): BindingChange {
 	const padKeys = { ...settingsStore.get().padKeys };
 	const previous = padKeys[action];
+
 	const conflict =
 		ACTION_IDS.find(
 			(other) => other !== action && code !== "" && padKeys[other] === code,
 		) ?? null;
+
 	padKeys[action] = code;
+
 	if (conflict) {
 		padKeys[conflict] = previous;
 	}
+
 	settingsStore.set({ padKeys });
+
 	return { swappedWith: conflict };
 }

@@ -24,6 +24,7 @@ const WALL_MARGIN = 0.3;
 
 function canHoldLoot(item: FurnitureItem): boolean {
 	const definition = furnitureDefinition(item.kind);
+
 	return (
 		definition.surface &&
 		item.hideSpotId === null &&
@@ -37,11 +38,13 @@ function floorPoint(
 	rng: SeededRandom,
 ): { x: number; z: number } | null {
 	const { bounds } = room;
+
 	for (let attempt = 0; attempt < 16; attempt += 1) {
 		const point = {
 			x: rng.range(bounds.minX + WALL_MARGIN, bounds.maxX - WALL_MARGIN),
 			z: rng.range(bounds.minZ + WALL_MARGIN, bounds.maxZ - WALL_MARGIN),
 		};
+
 		if (
 			pointInPolygon(point, room.polygon) &&
 			!(room.mezzanine && pointInPolygon(point, room.mezzanine.stairPolygon)) &&
@@ -53,6 +56,7 @@ function floorPoint(
 			return point;
 		}
 	}
+
 	return null;
 }
 
@@ -66,6 +70,7 @@ function placeInRoom(
 ): PickupPlace | null {
 	const items = furniture.filter((item) => item.roomId === room.id);
 	const free = items.filter((item) => !used.has(item.id));
+
 	const place = (
 		spot: PickupSpot,
 		at: { x: number; y: number; z: number },
@@ -77,12 +82,15 @@ function placeInRoom(
 		level: room.level,
 		...at,
 	});
+
 	const containers = rng.shuffle(
 		free.filter((item) => PICKUP_CONTAINER_KINDS.includes(item.kind)),
 	);
+
 	const surfaces = rng.shuffle(free.filter(canHoldLoot));
 	const roll = rng.next();
 	const container = roll < 0.7 ? containers[0] : undefined;
+
 	if (container) {
 		return place(
 			"container",
@@ -90,7 +98,9 @@ function placeInRoom(
 			container.id,
 		);
 	}
+
 	const surface = roll < 0.8 ? surfaces[0] : undefined;
+
 	if (surface) {
 		const offset = rotate2(
 			{
@@ -99,6 +109,7 @@ function placeInRoom(
 			},
 			surface.rotation,
 		);
+
 		return place(
 			"surface",
 			{
@@ -109,7 +120,9 @@ function placeInRoom(
 			surface.id,
 		);
 	}
+
 	const point = floorPoint(room, items, rng);
+
 	return point
 		? place("floor", { x: point.x, y: room.floorY + 0.05, z: point.z }, null)
 		: null;
@@ -125,37 +138,47 @@ export function placePickups(
 	const usable = rooms.filter((room) => room.type !== "stairwell");
 	const levels = [...new Set(usable.map((room) => room.level))];
 	const used = new Set<number>();
+
 	for (const level of levels) {
 		const onLevel = rng.shuffle(usable.filter((room) => room.level === level));
+
 		const target = Math.max(
 			PICKUP_MIN_PER_LEVEL,
 			Math.round((total * onLevel.length) / usable.length),
 		);
+
 		let placed = 0;
+
 		for (
 			let attempt = 0;
 			placed < target && attempt < target + onLevel.length * 4;
 			attempt += 1
 		) {
 			const room = onLevel[attempt % onLevel.length];
+
 			const place = placeInRoom(
 				room,
 				furniture,
 				rng.fork(`room-${room.id}-${attempt}`),
 				used,
 			);
+
 			if (place) {
 				if (place.furnitureId !== null) {
 					used.add(place.furnitureId);
 				}
+
 				places.push(place);
+
 				placed += 1;
 			}
 		}
 	}
+
 	const deck = rng.shuffle(
 		places.map((_, index) => MATERIAL_IDS[index % MATERIAL_IDS.length]),
 	);
+
 	return places.map((place, id) => ({ id, material: deck[id], ...place }));
 }
 
@@ -169,9 +192,11 @@ export function placeWalkies(
 ): WalkieSpot[] {
 	const spots: WalkieSpot[] = [];
 	const taken = (room: Room) => avoid.some((spot) => spot.roomId === room.id);
+
 	const usable = rng.shuffle(
 		rooms.filter((room) => room.type !== "stairwell" && room.type !== "closet"),
 	);
+
 	for (const spacing of [WALKIE_MIN_SPACING, 0]) {
 		for (const room of usable) {
 			if (
@@ -187,8 +212,10 @@ export function placeWalkies(
 			) {
 				continue;
 			}
+
 			const items = furniture.filter((item) => item.roomId === room.id);
 			const surface = rng.shuffle(items.filter(canHoldLoot))[0];
+
 			const point = surface
 				? {
 						x: surface.x,
@@ -196,6 +223,7 @@ export function placeWalkies(
 						z: surface.z,
 					}
 				: floorSpot(room, items, rng);
+
 			if (point) {
 				spots.push({
 					id: spots.length,
@@ -206,6 +234,7 @@ export function placeWalkies(
 			}
 		}
 	}
+
 	return spots;
 }
 
@@ -215,6 +244,7 @@ function floorSpot(
 	rng: SeededRandom,
 ): { x: number; y: number; z: number } | null {
 	const point = floorPoint(room, items, rng);
+
 	return point ? { x: point.x, y: room.floorY + 0.05, z: point.z } : null;
 }
 
@@ -230,9 +260,12 @@ export function assignRecipeMaterials(
 ): void {
 	const deck = recipeDeck(recipe);
 	const seen = new Map<number, number>();
+
 	for (const pickup of pickups) {
 		const index = seen.get(pickup.level) ?? 0;
+
 		seen.set(pickup.level, index + 1);
+
 		pickup.material = deck[index % deck.length];
 	}
 }

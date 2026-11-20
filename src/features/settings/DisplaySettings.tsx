@@ -18,10 +18,12 @@ export function DisplaySettings() {
 	const t = useT();
 	const labels = t.settings.display;
 	const language = useLanguage();
+
 	const signedIn = useStore(
 		accountStore,
 		(state) => state.status === "signed-in",
 	);
+
 	const settings = useStore(
 		settingsStore,
 		(state) => ({
@@ -37,6 +39,7 @@ export function DisplaySettings() {
 		}),
 		shallowEqual,
 	);
+
 	return (
 		<div>
 			<h3 className={styles.section}>{t.settings.language.label}</h3>

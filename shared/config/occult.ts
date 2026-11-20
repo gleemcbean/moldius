@@ -38,11 +38,13 @@ export const DEFAULT_ITEMS_PER_PLAYER = 20;
 export const MIN_ITEMS_PER_PLAYER = 2;
 export const MAX_ITEMS_PER_PLAYER = 38;
 export const PICKUP_MIN_PER_LEVEL = 3;
+
 export const PICKUP_CONTAINER_KINDS: readonly string[] = [
 	"chest",
 	"crate",
 	"smallBox",
 ];
+
 export const PICKUP_MAX_SURFACE_HEIGHT = 1;
 export const ALTAR_INTERACT_RANGE = 2.7;
 export const ALTAR_MAX_PER_LEVEL = 3;

@@ -20,12 +20,14 @@ const BRASS: MaterialOptions = {
 	roughness: 0.38,
 	metalness: 0.8,
 };
+
 const IRON: MaterialOptions = {
 	texture: "iron",
 	roughness: 0.55,
 	metalness: 0.55,
 	side: THREE.DoubleSide,
 };
+
 const WAX: MaterialOptions = { texture: "wax", roughness: 0.6 };
 const GRIP: MaterialOptions = { texture: "woodDark", roughness: 0.6 };
 const SOOT: MaterialOptions = { color: 0x0d0b09, roughness: 1 };
@@ -44,6 +46,7 @@ const CANDLE_TOP = 0.0845;
 
 function glassRadiusAt(y: number): number {
 	const t = (y - GLASS_BOTTOM) / (GLASS_TOP - GLASS_BOTTOM);
+
 	return GLASS_RADIUS + (GLASS_BULGE - GLASS_RADIUS) * Math.sin(Math.PI * t);
 }
 
@@ -75,19 +78,24 @@ function at(
 			new THREE.Vector3(1, 1, 1),
 		),
 	);
+
 	return geometry;
 }
 
 function guardWire(angle: number): THREE.BufferGeometry {
 	const points: THREE.Vector3[] = [];
+
 	for (let step = 0; step <= 8; step += 1) {
 		const y =
 			GLASS_BOTTOM + 0.004 + ((GLASS_TOP - GLASS_BOTTOM - 0.008) * step) / 8;
+
 		const radius = glassRadiusAt(y) + GUARD_GAP;
+
 		points.push(
 			new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius),
 		);
 	}
+
 	return new THREE.TubeGeometry(
 		new THREE.CatmullRomCurve3(points),
 		20,
@@ -99,7 +107,9 @@ function guardWire(angle: number): THREE.BufferGeometry {
 
 export function buildLantern(kit: BuildKit): THREE.Group {
 	const root = new THREE.Group();
+
 	root.name = "lantern";
+
 	const parts = new PartList();
 
 	parts.add(
@@ -119,12 +129,15 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			[0.001, GLASS_BOTTOM],
 		]),
 	);
+
 	parts.add(
 		BRASS,
 		at(meterTorus(0.0752, 0.0016, 6, SEGMENTS), 0, 0.0132, 0, Math.PI / 2),
 	);
+
 	for (let index = 0; index < 18; index += 1) {
 		const angle = (index / 18) * Math.PI * 2;
+
 		parts.add(
 			SOOT,
 			at(
@@ -152,6 +165,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			24,
 		),
 	);
+
 	parts.add(
 		WAX,
 		lathe(
@@ -168,6 +182,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			24,
 		),
 	);
+
 	for (const [angle, length, drop] of [
 		[0.4, 0.016, 0.075],
 		[2.3, 0.011, 0.078],
@@ -185,6 +200,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			),
 		);
 	}
+
 	parts.add(
 		SOOT,
 		at(meterCylinder(0.0011, 0.0013, 0.011, 6), 0.0008, 0.0868, 0, 0, 0, 0.18),
@@ -193,11 +209,15 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 	const glass = lathe(
 		Array.from({ length: 9 }, (_, step) => {
 			const y = GLASS_BOTTOM + ((GLASS_TOP - GLASS_BOTTOM) * step) / 8;
+
 			return [glassRadiusAt(y), y] as [number, number];
 		}),
 	);
+
 	const glassMesh = kit.named("glass", kit.mesh(glass, GLASS));
+
 	glassMesh.renderOrder = 1;
+
 	root.add(glassMesh);
 
 	for (let index = 0; index < GUARD_WIRES; index += 1) {
@@ -206,6 +226,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			guardWire((index / GUARD_WIRES) * Math.PI * 2 + Math.PI / GUARD_WIRES),
 		);
 	}
+
 	for (const y of [0.07, 0.15]) {
 		parts.add(
 			BRASS,
@@ -218,6 +239,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			),
 		);
 	}
+
 	for (const y of [GLASS_BOTTOM + 0.003, GLASS_TOP - 0.002]) {
 		parts.add(
 			BRASS,
@@ -232,6 +254,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 	}
 
 	const roofY = GLASS_TOP;
+
 	parts.add(
 		BRASS,
 		lathe([
@@ -251,8 +274,10 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			[0.001, roofY + 0.058],
 		]),
 	);
+
 	for (let index = 0; index < 14; index += 1) {
 		const angle = (index / 14) * Math.PI * 2;
+
 		parts.add(
 			SOOT,
 			at(
@@ -266,16 +291,20 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			),
 		);
 	}
+
 	parts.add(
 		BRASS,
 		at(meterCylinder(0.0165, 0.0185, 0.024, 20), 0, roofY + 0.07, 0),
 	);
+
 	parts.add(
 		BRASS,
 		at(meterTorus(0.0178, 0.0018, 6, 20), 0, roofY + 0.0815, 0, Math.PI / 2),
 	);
+
 	for (let index = 0; index < 3; index += 1) {
 		const angle = (index / 3) * Math.PI * 2;
+
 		parts.add(
 			BRASS,
 			at(
@@ -286,6 +315,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			),
 		);
 	}
+
 	parts.add(
 		BRASS,
 		lathe(
@@ -301,6 +331,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			24,
 		),
 	);
+
 	parts.add(
 		SOOT,
 		at(meterCylinder(0.0128, 0.0128, 0.001, 20), 0, roofY + 0.0822, 0),
@@ -310,6 +341,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 		BRASS,
 		at(meterTorus(BAIL_RADIUS, 0.0028, 8, 40, Math.PI), 0, BAIL_Y, 0),
 	);
+
 	for (const side of [-1, 1]) {
 		parts.add(
 			BRASS,
@@ -323,10 +355,12 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 				Math.PI / 2,
 			),
 		);
+
 		parts.add(
 			BRASS,
 			at(meterSphere(0.0032, 10, 8), side * (BAIL_RADIUS + 0.0012), BAIL_Y, 0),
 		);
+
 		parts.add(
 			BRASS,
 			at(
@@ -339,6 +373,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 				Math.PI / 2,
 			),
 		);
+
 		parts.add(
 			BRASS,
 			at(
@@ -352,6 +387,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			),
 		);
 	}
+
 	parts.add(
 		GRIP,
 		at(
@@ -376,15 +412,18 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			Math.PI / 2,
 		),
 	);
+
 	parts.add(
 		BRASS,
 		at(meterTorus(0.014, 0.0033, 8, 20), 0, BAIL_Y + BAIL_RADIUS + 0.0115, 0),
 	);
+
 	parts.build(kit, root);
 
 	const shutterHeight = GLASS_TOP - GLASS_BOTTOM;
 	const shutter = kit.pivot("shutter", 0, GLASS_TOP, 0);
 	const sleeve = new PartList();
+
 	sleeve.add(
 		IRON,
 		at(
@@ -401,6 +440,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			0,
 		),
 	);
+
 	sleeve.add(
 		BRASS,
 		at(
@@ -411,6 +451,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			Math.PI / 2,
 		),
 	);
+
 	sleeve.add(
 		BRASS,
 		at(
@@ -421,9 +462,11 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			Math.PI / 2,
 		),
 	);
+
 	for (let row = 0; row < 4; row += 1) {
 		for (let column = 0; column < 12; column += 1) {
 			const angle = (column / 12) * Math.PI * 2 + (row % 2) * (Math.PI / 12);
+
 			sleeve.add(
 				SOOT,
 				at(
@@ -437,6 +480,7 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			);
 		}
 	}
+
 	sleeve.build(kit, shutter);
 	root.add(shutter);
 
@@ -445,17 +489,23 @@ export function buildLantern(kit: BuildKit): THREE.Group {
 			`flame_${index}`,
 			kit.mesh(new THREE.PlaneGeometry(0.04, 0.075), FLAME),
 		);
+
 		flame.position.y = FLAME_HEIGHT;
 		flame.rotation.y = rotation;
+
 		root.add(flame);
 	});
+
 	const core = kit.named(
 		"core",
 		kit.sphere(0.015, { color: 0xffe8a0, unlit: true }, [1, 1.6, 1], 8),
 	);
+
 	core.position.y = CORE_HEIGHT;
+
 	root.add(core);
 	root.add(kit.anchor("handle", 0, HANDLE_Y, 0));
 	root.add(kit.anchor("light", 0, FLAME_HEIGHT, 0));
+
 	return root;
 }

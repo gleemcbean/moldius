@@ -10,8 +10,10 @@ import type { ManorSize } from "../matchConfig.js";
 import type { LanternTint, Tagline } from "../rewards.js";
 
 export const EMAIL_MAX_LENGTH = 254;
+
 export const EMAIL_PATTERN =
 	/^[^\s@<>()[\]\\,;:"]+@[^\s@<>()[\]\\,;:"]+\.[^\s@<>()[\]\\,;:"]{2,}$/;
+
 export const PASSWORD_MIN_LENGTH = 10;
 export const PASSWORD_MAX_LENGTH = 128;
 export const MATCH_HISTORY_LIMIT = 25;
@@ -265,12 +267,15 @@ export function emailKey(value: string): string {
 
 export function validateEmail(value: string): AccountProblem | null {
 	const email = normalizeEmail(value);
+
 	if (email.length === 0) {
 		return { key: "emailMissing" };
 	}
+
 	if (email.length > EMAIL_MAX_LENGTH || !EMAIL_PATTERN.test(email)) {
 		return { key: "emailInvalid" };
 	}
+
 	return null;
 }
 
@@ -279,20 +284,26 @@ export function validatePassword(
 	email: string,
 ): AccountProblem | null {
 	const length = [...password].length;
+
 	if (length < PASSWORD_MIN_LENGTH) {
 		return { key: "passwordTooShort", params: { min: PASSWORD_MIN_LENGTH } };
 	}
+
 	if (length > PASSWORD_MAX_LENGTH) {
 		return { key: "passwordTooLong", params: { max: PASSWORD_MAX_LENGTH } };
 	}
+
 	const lowered = password.toLowerCase();
 	const localPart = emailKey(email).split("@")[0] ?? "";
+
 	if (localPart.length >= 3 && lowered.includes(localPart)) {
 		return { key: "passwordContainsEmail" };
 	}
+
 	if (new Set(password).size < 4 || COMMON_PASSWORDS.has(lowered)) {
 		return { key: "passwordTooWeak" };
 	}
+
 	return null;
 }
 

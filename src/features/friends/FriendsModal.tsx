@@ -47,6 +47,7 @@ function Person({
 	children?: React.ReactNode;
 }) {
 	const t = useT();
+
 	return (
 		<li className={styles.person} data-selector-row="">
 			<HatPreview
@@ -93,13 +94,17 @@ function Friend({
 	const t = useT();
 	const [invited, setInvited] = useState(false);
 	const [confirming, setConfirming] = useState(false);
+
 	useEffect(() => {
 		if (!invited) {
 			return;
 		}
+
 		const timer = window.setTimeout(() => setInvited(false), INVITED_MS);
+
 		return () => window.clearTimeout(timer);
 	}, [invited]);
+
 	return (
 		<Person
 			person={friend}
@@ -130,6 +135,7 @@ function Friend({
 						if (confirming) {
 							removeFriend(friend.accountId);
 						}
+
 						setConfirming(!confirming);
 					}}
 					onBlur={() => setConfirming(false)}
@@ -150,7 +156,9 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 
 	useEffect(() => {
 		refreshFriends();
+
 		const timer = window.setInterval(refreshFriends, REFRESH_MS);
+
 		return () => window.clearInterval(timer);
 	}, []);
 
@@ -168,23 +176,30 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 	const canInvite =
 		lobby !== null &&
 		(lobby.phase === "waiting" || lobby.phase === "countdown");
+
 	const canInviteOnDiscord =
 		canInvite &&
 		lobby.players.length < lobby.capacity &&
 		(lobby.visibility === "public" || lobby.openToFriends);
+
 	const canJoin =
 		lobby === null || (lobby.phase !== "loading" && lobby.phase !== "playing");
+
 	const knownOnDiscord = new Set(
 		(overview?.friends ?? []).flatMap((friend) =>
 			friend.discordId ? [friend.discordId] : [],
 		),
 	);
+
 	const submit = (event: FormEvent) => {
 		event.preventDefault();
+
 		const normalized = normalizeFriendCode(code);
+
 		if (!normalized) {
 			return;
 		}
+
 		addFriend(normalized, (ok) => {
 			if (ok) {
 				setCode("");
@@ -192,10 +207,12 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 			}
 		});
 	};
+
 	const copy = async () => {
 		if (!overview) {
 			return;
 		}
+
 		try {
 			await navigator.clipboard.writeText(overview.friendCode);
 			showToast(t.friends.copied, "info");

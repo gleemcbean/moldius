@@ -55,13 +55,17 @@ describe("défis", () => {
 		if (!hatTrick) {
 			throw new Error("défi manquant");
 		}
+
 		const twoGames = withMatchMetrics(
 			withMatchMetrics({}, { captureStreak: 2 }),
 			{ captureStreak: 2 },
 		);
+
 		expect(classicStatus(hatTrick, twoGames).done).toBe(false);
 		expect(twoGames.captureStreak).toEqual({ total: 4, best: 2 });
+
 		const after = withMatchMetrics(twoGames, { captureStreak: 3 });
+
 		expect(classicStatus(hatTrick, after).done).toBe(true);
 	});
 
@@ -69,18 +73,23 @@ describe("défis", () => {
 		if (!hunter) {
 			throw new Error("défi manquant");
 		}
+
 		const start = withMatchMetrics({}, { captures: 20 });
+
 		expect(incrementalStatus(hunter, start)).toMatchObject({
 			value: 20,
 			target: 25,
 			tier: 0,
 			done: false,
 		});
+
 		const after = withMatchMetrics(start, { captures: 140 });
+
 		expect(incrementalStatus(hunter, after)).toMatchObject({
 			target: 500,
 			tier: 2,
 		});
+
 		expect(
 			incrementalStatus(hunter, withMatchMetrics(after, { captures: 500 })),
 		).toMatchObject({ value: 500, tier: 3, done: true });
@@ -91,13 +100,18 @@ describe("défis", () => {
 			captures: { total: 24, best: 2 },
 			captureStreak: { total: 2, best: 2 },
 		};
+
 		const after = withMatchMetrics(before, { captures: 3, captureStreak: 3 });
+
 		expect(newlyCompleted(before, after)).toEqual([
 			{ id: "hatTrick", tier: null },
 			{ id: "hunter", tier: 1 },
 		]);
+
 		expect(newlyCompleted(after, after)).toEqual([]);
+
 		const huge = withMatchMetrics({}, { games: 200 });
+
 		expect(
 			newlyCompleted({}, huge).filter(({ id }) => id === "veteran"),
 		).toHaveLength(3);
@@ -127,7 +141,9 @@ describe("défis", () => {
 				pushes: 6,
 			},
 		);
+
 		const completed = newlyCompleted({}, firstGame).map(({ id }) => id);
+
 		expect(completed).toEqual(["firstCapture", "firstWin"]);
 	});
 
@@ -138,6 +154,7 @@ describe("défis", () => {
 				{ total: 1_000_000, best: 1_000_000 },
 			]),
 		);
+
 		expect(completedStepCount(all)).toBe(CHALLENGE_STEP_COUNT);
 		expect(completedStepCount({})).toBe(0);
 	});
@@ -145,6 +162,7 @@ describe("défis", () => {
 	it("ignore une progression abîmée", () => {
 		expect(sanitizeChallengeProgress("pas du json")).toEqual({});
 		expect(sanitizeChallengeProgress(null)).toEqual({});
+
 		expect(
 			sanitizeChallengeProgress(
 				'{"captures":{"total":5,"best":"x"},"inconnu":{"total":1,"best":1}}',
@@ -154,25 +172,36 @@ describe("défis", () => {
 
 	it("mesure la partie, envoie le suivi au joueur et finit avec le bilan", () => {
 		const sim = new MatchSimulation({ seed: 21, players: 2 });
+
 		silenceAnomalies(sim);
+
 		const p1 = sim.match.players.get("p1") as MatchPlayer;
 		const p2 = sim.match.players.get("p2") as MatchPlayer;
+
 		for (const species of ["colosse", "luciole", "colosse"]) {
 			sim.match.awards.event(
 				{ type: "capture", playerId: "p1", species } as never,
 				sim.match.players,
 			);
 		}
+
 		p1.captures = 3;
+
 		sim.run(3);
+
 		const sent = sim.transport.messages.filter(
 			(entry) => entry.event === "game:challenges" && entry.target === "p1",
 		);
+
 		expect(sent.length).toBeGreaterThan(0);
+
 		p1.score = 300;
 		p2.score = 100;
+
 		sim.run(MATCH_DURATION_MS / 1000 + 1);
+
 		const results = sim.results as MatchResults;
+
 		expect(results.metrics.p1).toMatchObject({
 			games: 1,
 			wins: 1,
@@ -186,6 +215,7 @@ describe("défis", () => {
 			dailies: 0,
 			score: 300,
 		});
+
 		expect(results.metrics.p2).toMatchObject({
 			games: 1,
 			wins: 0,
@@ -201,12 +231,16 @@ describe("récompenses de défis", () => {
 	it("débloque un motif en réussissant un défi classique", () => {
 		expect(hatUnlocked("lightning", { ...base, challenges: {} })).toBe(false);
 		expect(hatUnlocked("lightning", null)).toBe(false);
+
 		const challenges = withMatchMetrics({}, { sprintMeters: 1500 });
+
 		expect(hatUnlocked("lightning", { ...base, challenges })).toBe(true);
+
 		const split = withMatchMetrics(
 			withMatchMetrics({}, { sprintMeters: 900 }),
 			{ sprintMeters: 900 },
 		);
+
 		expect(hatUnlocked("lightning", { ...base, challenges: split })).toBe(
 			false,
 		);
@@ -217,21 +251,27 @@ describe("récompenses de défis", () => {
 			...base,
 			challenges: withMatchMetrics({}, { hideSeconds }),
 		});
+
 		expect(lanternUnlocked("specter", reach(900))).toBe(false);
+
 		const reward = rewardFor("lantern", "specter");
+
 		expect(reward && rewardProgress(reward, reach(900))).toEqual({
 			value: 900,
 			target: 3600,
 		});
+
 		expect(lanternUnlocked("specter", reach(3600))).toBe(true);
 	});
 
 	it("annonce une récompense quand le défi la débloque", () => {
 		const before = { ...base, challenges: {} };
+
 		const after = {
 			...base,
 			challenges: withMatchMetrics({}, { cleanWins: 1 }),
 		};
+
 		expect(newlyUnlocked(before, after).map(({ value }) => value)).toEqual([
 			"laurel",
 		]);
@@ -242,14 +282,17 @@ describe("récompenses de défis", () => {
 			...CLASSIC_CHALLENGES.map(({ id }) => id),
 			...INCREMENTAL_CHALLENGES.map(({ id }) => id),
 		]);
+
 		for (const reward of REWARDS) {
 			if (reward.challenge === null) {
 				expect(
 					(LEVEL_MILESTONES as readonly number[]).includes(reward.level ?? 0),
 					reward.value,
 				).toBe(true);
+
 				continue;
 			}
+
 			expect(ids.has(reward.challenge), reward.value).toBe(true);
 		}
 	});
@@ -257,11 +300,14 @@ describe("récompenses de défis", () => {
 	it("renvoie chaque récompense vers un défi et un palier qui existent", () => {
 		for (const reward of REWARDS) {
 			const { target } = rewardProgress(reward, null);
+
 			expect(target, reward.value).toBeGreaterThan(0);
+
 			if (reward.challenge !== null) {
 				expect(rewardsForChallenge(reward.challenge)).toContain(reward);
 			}
 		}
+
 		expect(rewardsForChallenge("artisan")).toEqual([]);
 	});
 });
@@ -289,14 +335,19 @@ describe("niveaux", () => {
 			dailies: 0,
 			awards: 0,
 		};
+
 		const rewards = levelRewards();
+
 		expect(rewards.map(({ level }) => level)).toEqual([...LEVEL_MILESTONES]);
+
 		const before = { ...stats, xp: xpForLevel(5) - 1 };
 		const after = { ...stats, xp: xpForLevel(10) };
+
 		expect(newlyUnlocked(before, after).map(({ value }) => value)).toEqual([
 			"sprout",
 			"rose",
 		]);
+
 		expect(lanternUnlocked("rose", before)).toBe(false);
 		expect(lanternUnlocked("rose", after)).toBe(true);
 	});
@@ -307,6 +358,7 @@ describe("devises", () => {
 		for (const tagline of TAGLINES) {
 			expect(rewardFor("tagline", tagline), tagline).toBeDefined();
 		}
+
 		const stats = {
 			gamesPlayed: 0,
 			wins: 0,
@@ -315,9 +367,11 @@ describe("devises", () => {
 			awards: 0,
 			challenges: {},
 		};
+
 		expect(allowedTagline("immortal", null)).toBeNull();
 		expect(allowedTagline("immortal", stats)).toBeNull();
 		expect(allowedTagline("n'importe quoi", stats)).toBeNull();
+
 		expect(
 			allowedTagline("immortal", {
 				...stats,
@@ -330,12 +384,15 @@ describe("devises", () => {
 describe("mode de jeu du jour", () => {
 	it("compte jusqu'à minuit UTC", () => {
 		const now = Date.parse("2026-11-07T23:59:30Z");
+
 		expect(msUntilNextDaily(now)).toBe(30_000);
 		expect(formatDailyCountdown(msUntilNextDaily(now))).toBe("00:00:30");
 		expect(dailyDateKey(now + msUntilNextDaily(now))).toBe("2026-11-08");
+
 		expect(formatDailyCountdown(5 * 3_600_000 + 12 * 60_000 + 3_000)).toBe(
 			"05:12:03",
 		);
+
 		expect(msUntilNextDaily(Date.parse("2026-11-08T00:00:00Z"))).toBe(
 			86_400_000,
 		);
@@ -345,24 +402,30 @@ describe("mode de jeu du jour", () => {
 describe("salles à enjeu comme salles normales", () => {
 	it("en fait de vraies salles, avec leur autel", () => {
 		const layout = generateManor(77, defaultPrivateConfig());
+
 		for (const stake of layout.stakes) {
 			expect(layout.rooms[stake.roomId].type).toBe(stake.kind);
 		}
+
 		expect(new Set(layout.stakes.map((stake) => stake.kind)).size).toBe(3);
 	});
 
 	it("se choisissent une par une dans les types de salles", () => {
 		const config = defaultPrivateConfig();
 		const roomTypes = config.roomTypes.filter((type) => type !== "pact");
+
 		const kinds = new Set(
 			generateManor(77, { ...config, roomTypes }).stakes.map(
 				(stake) => stake.kind,
 			),
 		);
+
 		expect([...kinds].sort()).toEqual(["reliquary", "sanctuary"]);
+
 		expect(
 			sanitizeMatchConfig({ ...config, roomTypes }, config).roomTypes,
 		).not.toContain("pact");
+
 		expect(TUTORIAL_MATCH_CONFIG.roomTypes).toEqual(
 			expect.arrayContaining([...STAKE_KINDS]),
 		);

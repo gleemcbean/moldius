@@ -73,6 +73,7 @@ interface FormError {
 
 function useProblem(): (problem: AccountProblem) => string {
 	const language = useLanguage();
+
 	return (problem) => accountMessage(language, problem.key, problem.params);
 }
 
@@ -115,6 +116,7 @@ function DiscordButton({
 }) {
 	const t = useT();
 	const busy = useStore(accountStore, (state) => state.discordBusy);
+
 	return (
 		<button
 			type="button"
@@ -134,25 +136,30 @@ type GuestMode = "login" | "register" | "forgot";
 function GuestPanel() {
 	const t = useT();
 	const describe = useProblem();
+
 	const playerName = useStore(settingsStore, (state) =>
 		state.playerName.trim(),
 	);
+
 	const discordEnabled = useStore(
 		accountStore,
 		(state) => state.discordEnabled,
 	);
+
 	const [mode, setMode] = useState<GuestMode>("login");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [confirmation, setConfirmation] = useState("");
 	const [error, setError] = useState<FormError | null>(null);
 	const [busy, setBusy] = useState(false);
+
 	const [sentTo, setSentTo] = useState<{
 		email: string;
 		kind: "register" | "forgot";
 		discord?: string | null;
 		discordFailed?: boolean;
 	} | null>(null);
+
 	const registering = mode === "register";
 
 	const switchMode = (next: GuestMode) => {
@@ -165,16 +172,22 @@ function GuestPanel() {
 
 	const submit = async (event: FormEvent) => {
 		event.preventDefault();
+
 		if (busy) {
 			return;
 		}
+
 		const emailProblem = validateEmail(email);
+
 		if (emailProblem) {
 			setError({ text: describe(emailProblem), field: "email" });
+
 			return;
 		}
+
 		if (registering) {
 			const passwordProblem = validatePassword(password, email);
+
 			const problem =
 				(playerName.length < 2 && { text: t.account.nameFirst }) ||
 				(passwordProblem && {
@@ -186,38 +199,53 @@ function GuestPanel() {
 					field: "confirmation",
 				}) ||
 				null;
+
 			if (problem) {
 				setError(problem);
+
 				return;
 			}
 		} else if (mode === "login" && password.length === 0) {
 			setError({ text: t.account.passwordRequired, field: "password" });
+
 			return;
 		}
+
 		setBusy(true);
 		setError(null);
+
 		if (mode === "login") {
 			const result = await login(email.trim(), password);
+
 			setBusy(false);
+
 			if (!result.ok) {
 				setError({ text: result.error, field: result.field });
 				setPassword("");
+
 				return;
 			}
+
 			showToast(t.account.signedInToast, "success");
+
 			return;
 		}
+
 		const result =
 			mode === "register"
 				? await register(email.trim(), password)
 				: await requestPasswordReset(email.trim());
+
 		setBusy(false);
 		setPassword("");
 		setConfirmation("");
+
 		if (!result.ok) {
 			setError({ text: result.error, field: result.field });
+
 			return;
 		}
+
 		setSentTo({
 			email: email.trim(),
 			kind: mode === "register" ? "register" : "forgot",
@@ -383,25 +411,36 @@ function ResetPanel({ token }: { token: string }) {
 
 	const submit = async (event: FormEvent) => {
 		event.preventDefault();
+
 		const problem = validatePassword(password, "");
+
 		if (problem) {
 			setError({ text: describe(problem), field: "newPassword" });
+
 			return;
 		}
+
 		if (password !== confirmation) {
 			setError({
 				text: describe({ key: "passwordsDiffer" }),
 				field: "confirmation",
 			});
+
 			return;
 		}
+
 		setBusy(true);
+
 		const result = await confirmPasswordReset(token, password);
+
 		setBusy(false);
+
 		if (!result.ok) {
 			setError({ text: result.error, field: result.field });
+
 			return;
 		}
+
 		showToast(t.account.resetDone, "success");
 	};
 
@@ -448,9 +487,11 @@ function ResetPanel({ token }: { token: string }) {
 function NoticeBanner() {
 	const t = useT();
 	const notice = useStore(accountStore, (state) => state.notice);
+
 	if (!notice) {
 		return null;
 	}
+
 	return (
 		<p
 			className={notice.tone === "success" ? styles.success : styles.error}
@@ -470,14 +511,17 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 	const [lantern, setLantern] = useState(account.lantern);
 	const [tagline, setTagline] = useState(account.tagline);
 	const progress = accountProgress(account);
+
 	const lockedTitle = (
 		name: string,
 		unlocked: boolean,
 		reward: Reward | undefined,
 	) =>
 		unlocked || !reward ? name : `${name} : ${rewardRequirement(t, reward)}`;
+
 	const [error, setError] = useState<FormError | null>(null);
 	const [busy, setBusy] = useState(false);
+
 	const changed =
 		displayName.trim() !== account.displayName ||
 		color !== account.color ||
@@ -487,14 +531,18 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 
 	const submit = async (event: FormEvent) => {
 		event.preventDefault();
+
 		if (displayName.trim().length < 2) {
 			setError({
 				text: describe({ key: "displayNameInvalid" }),
 				field: "displayName",
 			});
+
 			return;
 		}
+
 		setBusy(true);
+
 		const result = await saveProfile(
 			displayName.trim(),
 			color,
@@ -502,11 +550,15 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 			lantern,
 			tagline,
 		);
+
 		setBusy(false);
+
 		if (!result.ok) {
 			setError({ text: result.error, field: result.field });
+
 			return;
 		}
+
 		setError(null);
 		showToast(t.account.profile.saved, "success");
 	};
@@ -557,6 +609,7 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 				>
 					{HAT_PATTERNS.map((choice) => {
 						const unlocked = hatUnlocked(choice, progress);
+
 						return (
 							<button
 								key={choice}
@@ -590,6 +643,7 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 				>
 					{LANTERN_TINTS.map((choice) => {
 						const unlocked = lanternUnlocked(choice, progress);
+
 						return (
 							<button
 								key={choice}
@@ -625,9 +679,11 @@ function ProfilePanel({ account }: { account: AccountProfile }) {
 				>
 					{[null, ...TAGLINES].map((choice: Tagline | null) => {
 						const unlocked = taglineUnlocked(choice, progress);
+
 						const name = choice
 							? t.appearance.taglines[choice]
 							: t.home.noTagline;
+
 						return (
 							<button
 								key={choice ?? "none"}
@@ -669,17 +725,24 @@ function PrivacySection({ account }: { account: AccountProfile }) {
 	const labels = t.account.profile;
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<FormError | null>(null);
+
 	const toggle = async (privateProfile: boolean) => {
 		setBusy(true);
+
 		const result = await setPrivateProfile(privateProfile);
+
 		setBusy(false);
+
 		if (!result.ok) {
 			setError({ text: result.error });
+
 			return;
 		}
+
 		setError(null);
 		showToast(privateProfile ? labels.privateOn : labels.privateOff, "info");
 	};
+
 	return (
 		<div className={styles.form}>
 			<h3 className={styles.section}>{labels.privacyTitle}</h3>
@@ -705,6 +768,7 @@ function PasswordForm() {
 	const [error, setError] = useState<FormError | null>(null);
 	const [busy, setBusy] = useState(false);
 	const email = useStore(accountStore, (state) => state.account?.email ?? "");
+
 	const hasPassword = useStore(
 		accountStore,
 		(state) => state.account?.hasPassword ?? true,
@@ -712,26 +776,37 @@ function PasswordForm() {
 
 	const submit = async (event: FormEvent) => {
 		event.preventDefault();
+
 		const problem = validatePassword(next, email);
+
 		if (problem) {
 			setError({ text: describe(problem), field: "newPassword" });
+
 			return;
 		}
+
 		if (next !== confirmation) {
 			setError({
 				text: describe({ key: "passwordsDiffer" }),
 				field: "confirmation",
 			});
+
 			return;
 		}
+
 		setBusy(true);
+
 		const result = await changePassword(current, next);
+
 		setBusy(false);
 		setCurrent("");
+
 		if (!result.ok) {
 			setError({ text: result.error, field: result.field });
+
 			return;
 		}
+
 		setNext("");
 		setConfirmation("");
 		setError(null);
@@ -811,6 +886,7 @@ function DeleteForm() {
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<FormError | null>(null);
 	const [busy, setBusy] = useState(false);
+
 	const hasPassword = useStore(
 		accountStore,
 		(state) => state.account?.hasPassword ?? true,
@@ -819,15 +895,20 @@ function DeleteForm() {
 	const submit = async (event: FormEvent) => {
 		event.preventDefault();
 		setBusy(true);
+
 		const result = hasPassword
 			? await deleteAccount(password, "")
 			: await deleteAccount("", password.trim().toUpperCase());
+
 		setBusy(false);
 		setPassword("");
+
 		if (!result.ok) {
 			setError({ text: result.error, field: result.field });
+
 			return;
 		}
+
 		showToast(labels.deleted, "info");
 	};
 
@@ -880,34 +961,46 @@ function DeleteForm() {
 function DiscordSection({ account }: { account: AccountProfile }) {
 	const t = useT();
 	const labels = t.account.security;
+
 	const discordEnabled = useStore(
 		accountStore,
 		(state) => state.discordEnabled,
 	);
+
 	const [error, setError] = useState<FormError | null>(null);
 	const [busy, setBusy] = useState(false);
 	const appDiscord = useStore(discordStore, (state) => state);
+
 	if (!account.discord && !discordEnabled) {
 		return null;
 	}
+
 	const appNeedsDiscord =
 		account.discord !== null &&
 		discordEnabled &&
 		appDiscord.available &&
 		appDiscord.status !== "ready" &&
 		appDiscord.status !== "connecting";
+
 	const canUnlink = account.hasPassword && account.email !== null;
+
 	const unlink = async () => {
 		setBusy(true);
+
 		const result = await unlinkDiscord();
+
 		setBusy(false);
+
 		if (!result.ok) {
 			setError({ text: result.error });
+
 			return;
 		}
+
 		setError(null);
 		showToast(labels.unlinked, "info");
 	};
+
 	return (
 		<div className={styles.form}>
 			<h3 className={styles.section}>Discord</h3>
@@ -993,6 +1086,7 @@ function RewardCard({
 	const unlocked = rewardUnlocked(reward, stats);
 	const { value, target } = rewardProgress(reward, stats);
 	const name = rewardName(t, reward);
+
 	return (
 		<li className={unlocked ? styles.rewardOn : styles.rewardOff}>
 			<span className={styles.rewardPreview}>
@@ -1036,18 +1130,22 @@ function RewardCard({
 
 function RewardsPanel({ account }: { account: AccountProfile }) {
 	const t = useT();
+
 	const groups = [
 		{ kind: "hat", title: t.home.hatPattern },
 		{ kind: "lantern", title: t.home.lanternTint },
 		{ kind: "tagline", title: t.home.tagline },
 	] as const;
+
 	return (
 		<div className={styles.rewards}>
 			{groups.map(({ kind, title }) => {
 				const rewards = REWARDS.filter((reward) => reward.kind === kind);
+
 				const done = rewards.filter((reward) =>
 					rewardUnlocked(reward, accountProgress(account)),
 				).length;
+
 				return (
 					<section key={kind}>
 						<h3 className={styles.section}>
@@ -1075,6 +1173,7 @@ function AccountPanel({ account }: { account: AccountProfile }) {
 	const [tab, setTab] = useState<AccountTab>("history");
 	const { stats } = account;
 	const winrate = stats.gamesPlayed > 0 ? stats.wins / stats.gamesPlayed : 0;
+
 	return (
 		<div className={styles.account}>
 			<section className={styles.summary}>
@@ -1157,6 +1256,7 @@ function AccountPanel({ account }: { account: AccountProfile }) {
 
 export function AccountModal({ onClose }: { onClose: () => void }) {
 	const t = useT();
+
 	const { status, account, resetToken } = useStore(
 		accountStore,
 		(state) => ({
@@ -1166,12 +1266,15 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
 		}),
 		shallowEqual,
 	);
+
 	const signedIn = status === "signed-in" && account !== null;
+
 	const close = () => {
 		clearAccountNotice();
 		cancelPasswordReset();
 		onClose();
 	};
+
 	if (resetToken && (status === "guest" || status === "signed-in")) {
 		return (
 			<Modal title={t.account.titleReset} onClose={close}>
@@ -1179,6 +1282,7 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
 			</Modal>
 		);
 	}
+
 	return (
 		<Modal
 			title={signedIn ? t.account.titleSignedIn : t.account.titleGuest}

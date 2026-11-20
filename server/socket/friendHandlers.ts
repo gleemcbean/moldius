@@ -51,12 +51,15 @@ export function friendStatus(
 	const sessions = deps.sessions
 		.withAccount(accountId)
 		.filter((session) => session.socketId !== null);
+
 	if (sessions.length === 0) {
 		return "offline";
 	}
+
 	if (sessions.some((session) => deps.lobbies.matchOf(session))) {
 		return "match";
 	}
+
 	return sessions.some((session) => deps.lobbies.lobbyOf(session))
 		? "lobby"
 		: "online";
@@ -86,13 +89,17 @@ async function overviewOf(
 	accountId: string,
 ): Promise<FriendsOverview | null> {
 	const identity = await store.identity(accountId);
+
 	if (!identity) {
 		return null;
 	}
+
 	const links = await store.links(accountId);
+
 	const accepted = new Set(
 		links.filter((link) => link.accepted).map((link) => link.accountId),
 	);
+
 	const person = ({
 		accountId: id,
 		name,
@@ -106,6 +113,7 @@ async function overviewOf(
 		pattern,
 		tagline,
 	});
+
 	return {
 		friendCode: identity.friendCode,
 		appearOffline: identity.appearOffline,
@@ -139,9 +147,11 @@ export function notifyFriendsOf(
 	accountId: string,
 ): void {
 	const store = deps.friends?.();
+
 	if (!store) {
 		return;
 	}
+
 	void notifyFriends(deps, store, accountId).catch((error: unknown) =>
 		console.error("Amis : notification impossible", error),
 	);
@@ -152,9 +162,11 @@ export function accountPresenceChanged(
 	accountId: string,
 ): void {
 	const store = deps.friends?.();
+
 	if (!store) {
 		return;
 	}
+
 	void store
 		.touchLastSeen(accountId)
 		.then(() => notifyFriends(deps, store, accountId))
@@ -181,17 +193,23 @@ export function registerFriendHandlers(
 		if (typeof ack !== "function") {
 			return;
 		}
+
 		if (!allow(rule)) {
 			ack(failure("rate-limited"));
+
 			return;
 		}
+
 		const current = session();
 		const store = deps.friends?.() ?? null;
 		const accountId = current?.account?.accountId;
+
 		if (!current || !store || !accountId) {
 			ack(failure("sign-in-required"));
+
 			return;
 		}
+
 		try {
 			ack(await handler(store, accountId, current));
 		} catch (error) {
@@ -199,13 +217,16 @@ export function registerFriendHandlers(
 			ack(failure("invalid-request"));
 		}
 	};
+
 	const overview = async (
 		store: FriendStore,
 		accountId: string,
 	): Promise<Result<FriendsOverview>> => {
 		const value = await overviewOf(deps, store, accountId);
+
 		return value ? { ok: true, value } : failure("sign-in-required");
 	};
+
 	const otherAccount = (payload: unknown): string | null =>
 		isRecord(payload) &&
 		typeof payload.accountId === "string" &&
@@ -222,10 +243,13 @@ export function registerFriendHandlers(
 	socket.on("friends:add", (payload, ack) => {
 		void run(ack, "friends:write", async (store, accountId) => {
 			const code = isRecord(payload) ? normalizeFriendCode(payload.code) : null;
+
 			if (!code) {
 				return failure("friend-not-found");
 			}
+
 			const added = await store.add(accountId, code);
+
 			if (!added.ok) {
 				const codes = {
 					unknown: "friend-not-found",
@@ -233,9 +257,12 @@ export function registerFriendHandlers(
 					exists: "friend-exists",
 					limit: "friend-limit",
 				} as const;
+
 				return failure(codes[added.reason]);
 			}
+
 			emitChanged(deps, added.accountId);
+
 			return overview(store, accountId);
 		});
 	});
@@ -243,19 +270,24 @@ export function registerFriendHandlers(
 	socket.on("friends:respond", (payload, ack) => {
 		void run(ack, "friends:write", async (store, accountId) => {
 			const other = otherAccount(payload);
+
 			if (!other || !isRecord(payload)) {
 				return failure("invalid-request");
 			}
+
 			if (payload.accept === true) {
 				await store.accept(accountId, other);
 			} else {
 				const links = await store.links(accountId);
 				const link = links.find((entry) => entry.accountId === other);
+
 				if (link && !link.accepted && !link.requestedByMe) {
 					await store.remove(accountId, other);
 				}
 			}
+
 			emitChanged(deps, other);
+
 			return overview(store, accountId);
 		});
 	});
@@ -263,11 +295,14 @@ export function registerFriendHandlers(
 	socket.on("friends:remove", (payload, ack) => {
 		void run(ack, "friends:write", async (store, accountId) => {
 			const other = otherAccount(payload);
+
 			if (!other) {
 				return failure("invalid-request");
 			}
+
 			await store.remove(accountId, other);
 			emitChanged(deps, other);
+
 			return overview(store, accountId);
 		});
 	});
@@ -277,8 +312,10 @@ export function registerFriendHandlers(
 			if (!isRecord(payload) || typeof payload.offline !== "boolean") {
 				return failure("invalid-request");
 			}
+
 			await store.setAppearOffline(accountId, payload.offline);
 			await notifyFriends(deps, store, accountId);
+
 			return overview(store, accountId);
 		});
 	});
@@ -293,12 +330,15 @@ export function registerFriendHandlers(
 			) {
 				return failure("invalid-request");
 			}
+
 			const friendIds = payload.friendIds.filter(isDiscordId);
+
 			const synced = await store.syncDiscord(
 				accountId,
 				payload.discordId,
 				friendIds,
 			);
+
 			if (!synced.ok) {
 				return failure(
 					synced.reason === "mismatch"
@@ -306,9 +346,11 @@ export function registerFriendHandlers(
 						: "discord-not-linked",
 				);
 			}
+
 			for (const other of synced.touched) {
 				emitChanged(deps, other);
 			}
+
 			return overview(store, accountId);
 		});
 	});
@@ -316,36 +358,48 @@ export function registerFriendHandlers(
 	socket.on("friends:invite", (payload, ack) => {
 		void run(ack, "friends:invite", async (store, accountId, current) => {
 			const other = otherAccount(payload);
+
 			if (!other) {
 				return failure("invalid-request");
 			}
+
 			const lobby = deps.lobbies.lobbyOf(current);
+
 			if (!lobby?.acceptsPlayers) {
 				return failure("lobby-not-invitable");
 			}
+
 			const links = await store.links(accountId);
+
 			const friend = links.find(
 				(link) => link.accountId === other && link.accepted,
 			);
+
 			if (!friend) {
 				return failure("friend-not-found");
 			}
+
 			const status = friend.appearOffline
 				? "offline"
 				: friendStatus(deps, other);
+
 			if (status === "offline") {
 				return failure("friend-offline");
 			}
+
 			const targets = deps.sessions
 				.withAccount(other)
 				.filter((target) => target.socketId !== null);
+
 			if (
 				status === "match" ||
 				targets.some((target) => target.lobbyId === lobby.id)
 			) {
 				return failure("friend-busy");
 			}
+
 			const identity = await store.identity(accountId);
+
 			for (const target of targets) {
 				if (target.socketId) {
 					deps.io.to(target.socketId).emit("friends:invited", {
@@ -356,6 +410,7 @@ export function registerFriendHandlers(
 					});
 				}
 			}
+
 			return { ok: true, value: null };
 		});
 	});

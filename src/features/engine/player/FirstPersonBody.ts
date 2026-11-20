@@ -36,9 +36,11 @@ export class FirstPersonBody {
 
 	constructor(kit: ModelKit) {
 		const rig = kit.rig("player/first_person_body");
+
 		this.root = rig.root;
 		this.torso = rig.node("torso");
 		this.torso.position.z = TORSO_BEHIND;
+
 		for (const [index, side] of ([-1, 1] as const).entries()) {
 			this.feet.push({
 				pivot: rig.node(`foot_${index}`),
@@ -50,35 +52,49 @@ export class FirstPersonBody {
 
 	update(dt: number, input: BodyInput): void {
 		this.root.visible = input.visible;
+
 		if (!input.visible) {
 			return;
 		}
+
 		const moving = input.grounded ? Math.min(1, input.speed / 3) : 0;
+
 		this.phase += dt * (4 + input.speed * 1.8) * (moving > 0.05 ? 1 : 0);
+
 		this.root.position.set(input.x, input.y, input.z);
 		this.root.rotation.set(0, input.yaw, 0);
+
 		const bob = Math.abs(Math.sin(this.phase)) * 0.015 * moving;
+
 		this.torso.position.y = HIP_HEIGHT - CROUCH_HIP_DROP * input.crouch + bob;
 		this.torso.scale.y = 1 - input.crouch * 0.12;
+
 		for (const { pivot, leg, side } of this.feet) {
 			const swing = Math.sin(this.phase + (side > 0 ? 0 : Math.PI));
 			const lift = Math.max(0, Math.cos(this.phase + (side > 0 ? 0 : Math.PI)));
+
 			pivot.position.set(
 				side * STANCE * (1 + input.crouch * 0.3),
 				lift * 0.05 * moving,
 				FORWARD - swing * STRIDE * moving,
 			);
+
 			pivot.rotation.set(swing * 0.35 * moving, 0, 0);
+
 			const ankle = new THREE.Vector3(0, ANKLE_HEIGHT, 0).applyEuler(
 				pivot.rotation,
 			);
+
 			ankle.add(pivot.position);
+
 			const hip = new THREE.Vector3(
 				side * STANCE,
 				this.torso.position.y - 0.03,
 				FORWARD,
 			);
+
 			const span = new THREE.Vector3().subVectors(hip, ankle);
+
 			leg.position.copy(ankle).addScaledVector(span, 0.5);
 			leg.scale.set(1, span.length(), 1);
 			leg.quaternion.setFromUnitVectors(UP, span.normalize());

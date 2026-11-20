@@ -41,4 +41,5 @@ export function anomalyTierCaps(
 		3: Math.ceil((simultaneous * 2) / 3),
 	};
 }
+
 export const FORMULA_WORD_COUNT = 3;

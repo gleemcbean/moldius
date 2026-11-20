@@ -12,6 +12,8 @@ import {
 	HurleurModel,
 	SuinteurModel,
 } from "./creatures";
+import { CordycepsModel } from "./fungi";
+import { CinematographeModel } from "./machines";
 import {
 	BrumeModel,
 	ColosseModel,
@@ -58,5 +60,9 @@ export function createAnomalyModel(
 			return new BrumeModel(kit);
 		case "rat-roi":
 			return new RatRoiModel(kit);
+		case "cordyceps":
+			return new CordycepsModel(kit);
+		case "cinematographe":
+			return new CinematographeModel(kit);
 	}
 }

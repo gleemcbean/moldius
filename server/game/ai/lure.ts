@@ -20,7 +20,9 @@ const LURED_SPECIES: ReadonlySet<SpeciesId> = new Set([
 	"boursoufle",
 	"colosse",
 	"rat-roi",
+	"cordyceps",
 ]);
+
 const INTERRUPTIBLE = new Set([
 	"idle",
 	"patrol",
@@ -31,8 +33,10 @@ const INTERRUPTIBLE = new Set([
 
 function stopShort(entity: AnomalyEntity, position: Vec3): void {
 	let removed: Vec3 | null = null;
+
 	while (entity.path.length > 0) {
 		const last = entity.path[entity.path.length - 1];
+
 		if (
 			Math.hypot(last.x - position.x, last.z - position.z) >=
 				SHOUT_LURE_STOP_DISTANCE ||
@@ -41,8 +45,10 @@ function stopShort(entity: AnomalyEntity, position: Vec3): void {
 			if (removed) {
 				walkOnTowards(entity, last, removed, position);
 			}
+
 			return;
 		}
+
 		removed = entity.path.pop() ?? null;
 	}
 }
@@ -56,6 +62,7 @@ function walkOnTowards(
 	for (let t = 0.9; t > 0.05; t -= 0.1) {
 		const x = from.x + (to.x - from.x) * t;
 		const z = from.z + (to.z - from.z) * t;
+
 		if (
 			Math.hypot(x - position.x, z - position.z) >= SHOUT_LURE_STOP_DISTANCE
 		) {
@@ -67,6 +74,7 @@ function walkOnTowards(
 				portal: false,
 				doorId: null,
 			});
+
 			return;
 		}
 	}
@@ -78,6 +86,7 @@ export function lureAnomalies(
 	playerId: string,
 ): number {
 	let lured = 0;
+
 	for (const entity of match.anomalies) {
 		if (
 			!entity.active ||
@@ -93,13 +102,18 @@ export function lureAnomalies(
 		) {
 			continue;
 		}
+
 		stopShort(entity, position);
 		releaseClaim(match, entity);
+
 		entity.targetId = null;
 		entity.luredUntil = match.now + SHOUT_LURE_MAX_MS;
 		entity.interestPlayerId = playerId;
+
 		entity.setState("investigate", match.now);
+
 		lured += 1;
 	}
+
 	return lured;
 }

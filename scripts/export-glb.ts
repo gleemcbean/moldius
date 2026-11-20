@@ -17,6 +17,8 @@ import {
 	buildHurleur,
 	buildSuinteur,
 } from "./models/anomalies/creatures";
+import { buildCordyceps } from "./models/anomalies/fungi";
+import { buildCinematographe } from "./models/anomalies/machines";
 import {
 	buildBrume,
 	buildColosse,
@@ -54,13 +56,16 @@ interface ManifestEntry {
 
 async function clean(directory: string): Promise<void> {
 	let entries: string[];
+
 	try {
 		entries = await readdir(directory);
 	} catch {
 		return;
 	}
+
 	for (const entry of entries) {
 		const target = path.join(directory, entry);
+
 		if ((await stat(target)).isDirectory()) {
 			await clean(target);
 		} else if (entry.endsWith(".glb") || entry === MANIFEST_FILE) {
@@ -86,6 +91,8 @@ function entityModels(kit: BuildKit): [string, () => THREE.Object3D][] {
 		["anomalies/gorgone", () => buildPleureuse(kit)],
 		["anomalies/brume", () => buildBrume(kit)],
 		["anomalies/rat-roi", () => buildRatRoi(kit)],
+		["anomalies/cordyceps", () => buildCordyceps(kit)],
+		["anomalies/cinematographe", () => buildCinematographe(kit)],
 		["player/mushroom", () => buildMushroom(kit)],
 		["player/first_person_body", () => buildFirstPersonBody(kit)],
 		["player/first_person_arms", () => buildFirstPersonArms(kit)],
@@ -97,7 +104,9 @@ function entityModels(kit: BuildKit): [string, () => THREE.Object3D][] {
 			`occult/${id}`,
 			() => {
 				const model = createOccultModel(kit, id);
+
 				model.name = id;
+
 				return model;
 			},
 		]),
@@ -105,7 +114,9 @@ function entityModels(kit: BuildKit): [string, () => THREE.Object3D][] {
 			`pickups/${id}`,
 			() => {
 				const model = createMaterialModel(kit, id);
+
 				model.name = id;
+
 				return model;
 			},
 		]),
@@ -120,13 +131,18 @@ async function main(): Promise<void> {
 	const outRoot = path.resolve(
 		process.argv[2] ?? path.join(root, "src/assets/models"),
 	);
+
 	const textureRoot = path.join(root, "src/assets/textures");
+
 	const textures = JSON.parse(
 		await readFile(path.join(textureRoot, "textures.json"), "utf8"),
 	) as TextureManifest;
+
 	await clean(outRoot);
+
 	const kit = new BuildKit();
 	const entries: ManifestEntry[] = [];
+
 	const write = async (
 		id: string,
 		object: THREE.Object3D,
@@ -138,6 +154,7 @@ async function main(): Promise<void> {
 			textureRoot,
 			textures,
 		);
+
 		entries.push({
 			path: `${id}.glb`,
 			category: id.split("/")[0],
@@ -147,18 +164,24 @@ async function main(): Promise<void> {
 			...(notes && notes.length > 0 ? { notes } : {}),
 		});
 	};
+
 	for (const [id, create] of entityModels(kit)) {
 		await write(id, create());
 	}
+
 	for (const { stem, root: model, notes } of exportFurniture()) {
 		await write(`furniture/${stem}`, model, notes);
 	}
+
 	entries.sort((a, b) => a.path.localeCompare(b.path));
+
 	await writeFile(
 		path.join(outRoot, MANIFEST_FILE),
 		`${JSON.stringify({ totalModels: entries.length, models: entries }, null, "\t")}\n`,
 	);
+
 	const bytes = entries.reduce((sum, entry) => sum + entry.bytes, 0);
+
 	console.log(
 		`${entries.length} modèles (${(bytes / 1e6).toFixed(1)} Mo) écrits dans ${path.relative(root, outRoot) || "."}`,
 	);
@@ -166,5 +189,6 @@ async function main(): Promise<void> {
 
 main().catch((error: unknown) => {
 	console.error(error);
+
 	process.exitCode = 1;
 });

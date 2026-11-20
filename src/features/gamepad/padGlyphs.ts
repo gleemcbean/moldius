@@ -66,10 +66,13 @@ const letterPaths = new Map<FaceGlyph, Path2D>();
 
 export function faceLetterPath(glyph: FaceGlyph): Path2D {
 	let path = letterPaths.get(glyph);
+
 	if (!path) {
 		path = new Path2D(FACE_LETTERS[glyph]);
+
 		letterPaths.set(glyph, path);
 	}
+
 	return path;
 }
 
@@ -93,13 +96,17 @@ export type GlyphRun = { text: string } | { glyph: PadGlyph };
 
 export function splitGlyphs(text: string): GlyphRun[] {
 	const runs: GlyphRun[] = [];
+
 	for (const part of text.split(GLYPH_SPLIT)) {
 		if (part === "") {
 			continue;
 		}
+
 		const glyph = CHAR_GLYPHS.get(part);
+
 		runs.push(glyph ? { glyph } : { text: part });
 	}
+
 	return runs;
 }
 
@@ -143,6 +150,7 @@ function crossPath(
 ): void {
 	const r = reach;
 	const a = arm / 2;
+
 	context.beginPath();
 	context.moveTo(cx - a, cy - r);
 	context.lineTo(cx + a, cy - r);
@@ -167,11 +175,15 @@ export function drawPadGlyph(
 	size: number,
 ): void {
 	context.save();
+
 	const radius = size / 2;
+
 	if (isFaceGlyph(glyph)) {
 		const color = FACE_COLORS[glyph];
 		const unit = size / GLYPH_BOX;
+
 		context.beginPath();
+
 		context.arc(
 			cx,
 			cy,
@@ -179,42 +191,61 @@ export function drawPadGlyph(
 			0,
 			Math.PI * 2,
 		);
+
 		context.fillStyle = GLYPH_BACKING;
+
 		context.fill();
+
 		context.lineWidth = FACE_RING_WIDTH * unit;
 		context.strokeStyle = color;
+
 		context.beginPath();
 		context.arc(cx, cy, FACE_RING_RADIUS * unit, 0, Math.PI * 2);
 		context.stroke();
 		context.translate(cx - radius, cy - radius);
 		context.scale(unit, unit);
+
 		context.lineWidth = FACE_LETTER_WIDTH;
 		context.lineCap = "round";
 		context.lineJoin = "round";
+
 		context.stroke(faceLetterPath(glyph));
 		context.restore();
+
 		return;
 	}
+
 	const reach = radius;
 	const arm = size * 0.38;
+
 	crossPath(context, cx, cy, reach, arm);
+
 	context.fillStyle = GLYPH_BACKING;
+
 	context.fill();
+
 	context.lineWidth = Math.max(1, size * 0.07);
 	context.strokeStyle = GLYPH_DIM;
+
 	context.stroke();
+
 	const direction = DPAD_ARMS[glyph];
 	const inset = context.lineWidth * 1.1;
 	const width = arm - inset * 2;
 	const length = reach - inset - size * 0.04;
 	const start = size * 0.04;
+
 	context.fillStyle = GLYPH_INK;
+
 	if (direction.x === 0) {
 		const top = direction.y < 0 ? cy - start - length : cy + start;
+
 		context.fillRect(cx - width / 2, top, width, length);
 	} else {
 		const left = direction.x < 0 ? cx - start - length : cx + start;
+
 		context.fillRect(left, cy - width / 2, length, width);
 	}
+
 	context.restore();
 }

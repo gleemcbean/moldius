@@ -60,31 +60,43 @@ function useGlobalSetup(): void {
 		initMatchController();
 		initVoiceController();
 		void loadKeyboardLayout();
+
 		const applySettings = () => {
 			const settings = settingsStore.get();
+
 			document.documentElement.toggleAttribute(
 				"data-reduce-motion",
 				settings.reduceMotion,
 			);
+
 			audioEngine.setVolumes(settings.volumes);
 			audioEngine.setOutputDevice(settings.speakerDeviceId);
 			micManager.setVoiceGate(settings.voiceGate);
 		};
+
 		applySettings();
+
 		const unsubscribe = settingsStore.subscribe(applySettings);
 		const stopLanguage = initLanguage();
+
 		const applyScreen = () =>
 			music.setMode(appStore.get().screen === "game" ? "game" : "menu");
+
 		applyScreen();
+
 		const stopScreen = appStore.subscribe(applyScreen);
+
 		const unlockAudio = () =>
 			void audioEngine.resume().then(() => {
 				music.start();
 				void soundBank.load();
 			});
+
 		window.addEventListener("pointerdown", unlockAudio);
 		window.addEventListener("keydown", unlockAudio);
+
 		const stopHoverSounds = installHoverSounds();
+
 		return () => {
 			unsubscribe();
 			stopHoverSounds();
@@ -98,13 +110,17 @@ function useGlobalSetup(): void {
 
 export function App() {
 	useEffect(() => appMounted(), []);
+
 	const pathname = window.location.pathname.replace(/\/$/, "");
+
 	if (pathname === "/terms" || pathname === "/privacy") {
 		return <LegalPage document={pathname === "/terms" ? "terms" : "privacy"} />;
 	}
+
 	if (pathname === "/admin") {
 		return <AdminGate />;
 	}
+
 	return <PublicApp />;
 }
 
@@ -114,8 +130,10 @@ function PublicApp() {
 
 function AdminGate() {
 	const [allowed, setAllowed] = useState<boolean | null>(null);
+
 	useEffect(() => {
 		let cancelled = false;
+
 		fetch("/api/admin/overview", {
 			credentials: "same-origin",
 			signal: AbortSignal.timeout(ADMIN_CHECK_TIMEOUT_MS),
@@ -126,18 +144,23 @@ function AdminGate() {
 				if (cancelled) {
 					return;
 				}
+
 				if (!ok) {
 					treatPathAsInvite();
 				}
+
 				setAllowed(ok);
 			});
+
 		return () => {
 			cancelled = true;
 		};
 	}, []);
+
 	if (allowed === null) {
 		return null;
 	}
+
 	return allowed ? (
 		<Suspense fallback={null}>
 			<AdminPage />
@@ -150,18 +173,23 @@ function AdminGate() {
 function useShownView(): AppView {
 	const [view, setView] = useState<AppView>(() => {
 		const { screen, overlay } = appStore.get();
+
 		return { screen, overlay };
 	});
+
 	useEffect(() => {
 		const sync = () => {
 			const { screen, overlay } = appStore.get();
+
 			setView((shown) =>
 				shown.screen === screen && shown.overlay === overlay
 					? shown
 					: { screen, overlay },
 			);
 		};
+
 		sync();
+
 		return appStore.subscribe((state, previous) => {
 			if (
 				state.screen === previous.screen &&
@@ -169,15 +197,19 @@ function useShownView(): AppView {
 			) {
 				return;
 			}
+
 			runTransition(transitionKind(previous, state), sync);
 		});
 	}, []);
+
 	return view;
 }
 
 function GameApp() {
 	useGlobalSetup();
+
 	const { screen, overlay } = useShownView();
+
 	return (
 		<>
 			{screen === "home" ? <HomeScreen /> : null}

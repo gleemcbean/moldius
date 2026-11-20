@@ -8,21 +8,27 @@ export interface ZipEntry {
 
 const CRC_TABLE = (() => {
 	const table = new Uint32Array(256);
+
 	for (let index = 0; index < 256; index += 1) {
 		let value = index;
+
 		for (let bit = 0; bit < 8; bit += 1) {
 			value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
 		}
+
 		table[index] = value >>> 0;
 	}
+
 	return table;
 })();
 
 export function crc32(data: Buffer): number {
 	let crc = 0xffffffff;
+
 	for (const byte of data) {
 		crc = CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
 	}
+
 	return (crc ^ 0xffffffff) >>> 0;
 }
 
@@ -43,6 +49,7 @@ export function createZip(entries: ZipEntry[]): Buffer {
 	const localParts: Buffer[] = [];
 	const centralParts: Buffer[] = [];
 	let offset = 0;
+
 	for (const entry of entries) {
 		const name = Buffer.from(entry.path.replace(/\\/g, "/"), "utf8");
 		const compressed = deflateRawSync(entry.data, { level: 9 });
@@ -52,6 +59,7 @@ export function createZip(entries: ZipEntry[]): Buffer {
 		const stamp = dosTime(entry.modified);
 
 		const local = Buffer.alloc(30);
+
 		local.writeUInt32LE(0x04034b50, 0);
 		local.writeUInt16LE(20, 4);
 		local.writeUInt16LE(0x0800, 6);
@@ -66,6 +74,7 @@ export function createZip(entries: ZipEntry[]): Buffer {
 		localParts.push(local, name, payload);
 
 		const central = Buffer.alloc(46);
+
 		central.writeUInt32LE(0x02014b50, 0);
 		central.writeUInt16LE(0x031e, 4);
 		central.writeUInt16LE(20, 6);
@@ -87,8 +96,10 @@ export function createZip(entries: ZipEntry[]): Buffer {
 
 		offset += local.length + name.length + payload.length;
 	}
+
 	const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
 	const end = Buffer.alloc(22);
+
 	end.writeUInt32LE(0x06054b50, 0);
 	end.writeUInt16LE(0, 4);
 	end.writeUInt16LE(0, 6);
@@ -97,5 +108,6 @@ export function createZip(entries: ZipEntry[]): Buffer {
 	end.writeUInt32LE(centralSize, 12);
 	end.writeUInt32LE(offset, 16);
 	end.writeUInt16LE(0, 20);
+
 	return Buffer.concat([...localParts, ...centralParts, end]);
 }

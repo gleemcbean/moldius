@@ -35,10 +35,12 @@ const PREFETCH_DELAY_MS = 1500;
 
 export function HomeScreen() {
 	const t = useT();
+
 	const friendAlerts = useStore(
 		friendsStore,
 		(state) => state.overview?.incoming.length ?? 0,
 	);
+
 	const language = useLanguage();
 	const name = useStore(settingsStore, (state) => state.playerName);
 	const pattern = useStore(settingsStore, (state) => state.playerPattern);
@@ -56,6 +58,7 @@ export function HomeScreen() {
 	const nameValid = trimmed.length >= 2;
 	const ready = connection === "connected" && nameValid && !pending;
 	const invite = useStore(inviteStore, (state) => state.code);
+
 	const stats = useMemo(
 		() => (account ? accountProgress(account) : null),
 		[account],
@@ -65,12 +68,15 @@ export function HomeScreen() {
 		if (accountStatus === "loading") {
 			return;
 		}
+
 		if (!hatUnlocked(pattern, stats)) {
 			updateSettings({ playerPattern: DEFAULT_HAT_PATTERN });
 		}
+
 		if (!lanternUnlocked(lantern, stats)) {
 			updateSettings({ playerLantern: DEFAULT_LANTERN_TINT });
 		}
+
 		if (!taglineUnlocked(tagline, stats)) {
 			updateSettings({ playerTagline: null });
 		}
@@ -86,10 +92,12 @@ export function HomeScreen() {
 		if (!inMenu) {
 			return;
 		}
+
 		const timer = window.setTimeout(
 			ManorApproachScene.prefetch,
 			PREFETCH_DELAY_MS,
 		);
+
 		return () => window.clearTimeout(timer);
 	}, [inMenu]);
 

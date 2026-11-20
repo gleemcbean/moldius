@@ -14,6 +14,8 @@ export const SPECIES_IDS = [
 	"gorgone",
 	"brume",
 	"rat-roi",
+	"cordyceps",
+	"cinematographe",
 ] as const;
 
 export type SpeciesId = (typeof SPECIES_IDS)[number];
@@ -27,6 +29,7 @@ export type AttackKind =
 	| "explode"
 	| "throw"
 	| "laser"
+	| "film"
 	| "none";
 
 export type SpeciesTier = 1 | 2 | 3;
@@ -444,6 +447,58 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 0.8,
 		aimRadius: 0.5,
+	},
+	cordyceps: {
+		id: "cordyceps",
+		page: 16,
+		tier: 3,
+		name: "Le Cordyceps",
+		points: 450,
+		description:
+			"Fourmi géante morte depuis longtemps, que le champignon fait encore marcher. Une longue tige orangée lui transperce la nuque et se termine par une massue qui mûrit en silence. Aveugle, elle tâte l'air de ses antennes et fonce vers le moindre bruit.",
+		danger:
+			"Presque aveugle (3,5 m) mais entend tout. Mord à pleines mandibules (30 dégâts). Quand sa massue brille, sa morsure infecte ceux qui ont la lanterne éteinte : pendant 40 s, le champignon vous fait hurler, foncer vers les anomalies ou sauter dans le vide. La lumière brûle les spores, une poussée d'un allié vous libère et sa capture guérit ses victimes.",
+		hostile: true,
+		calmSpeed: 2.0,
+		hostileSpeed: 4.8,
+		damage: 30,
+		attack: "melee",
+		attackRange: 1.75,
+		windupMs: 650,
+		recoveryMs: 1200,
+		viewRange: 3.5,
+		fieldOfView: (100 * Math.PI) / 180,
+		hearing: 1.9,
+		canOpenDoors: true,
+		flying: false,
+		bodyHeight: 1.45,
+		aimRadius: 0.6,
+	},
+	cinematographe: {
+		id: "cinematographe",
+		page: 17,
+		tier: 3,
+		name: "Le Cinématographe",
+		points: 500,
+		description:
+			"Vieil appareil de projection perché sur trois longues pattes de cuivre. Ses bobines tournent toutes seules, son objectif cherche un spectateur, et personne ne le voit jamais arriver : il change de place dès qu'on cesse de le regarder.",
+		danger:
+			"Si son faisceau vous tient 2 secondes, il vous aspire dans son film, hors d'atteinte des autres anomalies : menez le petit champignon jusqu'au bout de la bobine (sauter, se baisser). Victoire : la machine cale et se laisse capturer. Défaite : mort immédiate. Tant qu'il tourne, aucune formule ne le retient.",
+		hostile: true,
+		calmSpeed: 0.9,
+		hostileSpeed: 1.3,
+		damage: 100,
+		attack: "film",
+		attackRange: 7,
+		windupMs: 2000,
+		recoveryMs: 4000,
+		viewRange: 12,
+		fieldOfView: (80 * Math.PI) / 180,
+		hearing: 0.8,
+		canOpenDoors: false,
+		flying: false,
+		bodyHeight: 2.1,
+		aimRadius: 0.6,
 	},
 };
 

@@ -17,6 +17,7 @@ export const PARTY_SOUNDS: SoundRecipe[] = [
 					0.55,
 					kit.hit(time, 0.004, 0.5, 0.22, kit.out),
 				);
+
 				kit.osc(
 					"triangle",
 					frequency * 2,
@@ -60,8 +61,10 @@ export const PARTY_SOUNDS: SoundRecipe[] = [
 					2.4,
 					kit.hit(time, 0.002, 0.18, 0.9, kit.out),
 				);
+
 				kit.noise("brown", time, 0.2, knock);
 			}
+
 			const wail = kit.osc(
 				"sine",
 				420,
@@ -69,11 +72,13 @@ export const PARTY_SOUNDS: SoundRecipe[] = [
 				1.7,
 				kit.filter("lowpass", 1400, 0.8, kit.hit(0.6, 0.5, 1.4, 0.16, kit.out)),
 			);
+
 			kit.expEnvelope(wail.frequency, [
 				{ time: 0.6, value: 360 + variant * 40 },
 				{ time: 1.4, value: 520 + variant * 60 },
 				{ time: 2.3, value: 300 },
 			]);
+
 			kit.lfo(5.5, 14, wail.frequency, 0.6, 1.7);
 		},
 	},
@@ -89,7 +94,9 @@ export const PARTY_SOUNDS: SoundRecipe[] = [
 				2.7,
 				kit.filter("lowpass", 380, 1.4, kit.hit(0, 0.6, 2.2, 0.32, kit.out)),
 			);
+
 			kit.lfo(0.9, 6, drone.frequency, 0, 2.7);
+
 			kit.noise(
 				"pink",
 				0,
@@ -117,6 +124,7 @@ export const PARTY_SOUNDS: SoundRecipe[] = [
 					kit.hit(0, 0.01, 3.3 / ratio, volume, kit.out),
 				);
 			}
+
 			kit.noise(
 				"pink",
 				0,
@@ -173,11 +181,13 @@ export const PARTY_SOUNDS: SoundRecipe[] = [
 				1.2,
 				kit.hit(0, 0.4, 1.1, 0.4, kit.out),
 			);
+
 			kit.expEnvelope(band.frequency, [
 				{ time: 0, value: 200 },
 				{ time: 0.8, value: 1800 },
 				{ time: 1.5, value: 600 },
 			]);
+
 			kit.noise("pink", 0, 1.5, band);
 		},
 	},

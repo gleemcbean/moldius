@@ -20,12 +20,15 @@ import { meleeProfile } from "./profiles.js";
 function mouth(match: Match, entity: AnomalyEntity) {
 	const forward = { x: -Math.sin(entity.yaw), z: -Math.cos(entity.yaw) };
 	const y = entity.position.y + entity.definition.bodyHeight * 0.72;
+
 	const tip = {
 		x: entity.position.x + forward.x * 0.45,
 		y,
 		z: entity.position.z + forward.z * 0.45,
 	};
+
 	const body = { x: entity.position.x, y, z: entity.position.z };
+
 	return lineOfSight(match.world, body, tip, { blockGlass: true }) ? tip : body;
 }
 
@@ -43,18 +46,22 @@ function hasClearShot(
 	) {
 		return false;
 	}
+
 	const distance = Math.hypot(
 		target.position.x - entity.position.x,
 		target.position.z - entity.position.z,
 	);
+
 	if (distance < minRange || distance > maxRange) {
 		return false;
 	}
+
 	const chest = {
 		x: target.position.x,
 		y: target.position.y + target.bodyHeight() * 0.55,
 		z: target.position.z,
 	};
+
 	return lineOfSight(match.world, mouth(match, entity), chest, {
 		blockGlass: true,
 	});
@@ -74,17 +81,20 @@ const EMBER_PROFILE = meleeProfile(SPECIES["crache-cendre"], {
 		),
 	strike: (match, entity, target) => {
 		const origin = mouth(match, entity);
+
 		const aim = {
 			x: target.position.x,
 			y: target.position.y + target.bodyHeight() * 0.55,
 			z: target.position.z,
 		};
+
 		const velocity = ballisticVelocity(
 			origin,
 			aim,
 			EMBER_SHOT_SPEED,
 			EMBER_SHOT_GRAVITY,
 		);
+
 		match.launchProjectile(
 			"ember",
 			origin,
@@ -92,6 +102,7 @@ const EMBER_PROFILE = meleeProfile(SPECIES["crache-cendre"], {
 			EMBER_SHOT_GRAVITY,
 			entity,
 		);
+
 		match.emit({
 			type: "attack",
 			anomalyId: entity.id,
@@ -118,17 +129,20 @@ const SLIME_PROFILE = meleeProfile(SPECIES.suinteur, {
 		),
 	strike: (match, entity, target) => {
 		const origin = mouth(match, entity);
+
 		const aim = {
 			x: target.position.x,
 			y: target.position.y + 0.05,
 			z: target.position.z,
 		};
+
 		const velocity = ballisticVelocity(
 			origin,
 			aim,
 			SLIME_SHOT_SPEED,
 			SLIME_SHOT_GRAVITY,
 		);
+
 		match.launchProjectile(
 			"slime",
 			origin,
@@ -136,6 +150,7 @@ const SLIME_PROFILE = meleeProfile(SPECIES.suinteur, {
 			SLIME_SHOT_GRAVITY,
 			entity,
 		);
+
 		match.emit({
 			type: "attack",
 			anomalyId: entity.id,

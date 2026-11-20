@@ -28,6 +28,7 @@ const EXPLAINED_FAILURES: ReadonlySet<CastFailureReason> = new Set([
 	"no-voice",
 	"scattered",
 ]);
+
 const RESTART_DELAY_MS = 250;
 const ERROR_RETRY_MS = 3000;
 const CHAIN_WINDOW_MS = 6000;
@@ -57,6 +58,7 @@ export class CastController {
 		private readonly explainAll = false,
 	) {
 		prepareSpeechRecognition();
+
 		hudStore.set({
 			devMode: dev,
 			devLive: { text: "", matches: false },
@@ -66,27 +68,37 @@ export class CastController {
 
 	update(enabled: boolean): void {
 		const now = performance.now();
+
 		if (this.phase === "sent" && now - this.sentAt > 4000) {
 			this.reset();
 		}
+
 		if (!enabled) {
 			if (this.enabled) {
 				this.enabled = false;
+
 				this.cancel();
 			}
+
 			return;
 		}
+
 		this.enabled = true;
+
 		if (this.listener.active || this.phase === "sent" || now < this.resumeAt) {
 			return;
 		}
+
 		if (!speechRecognitionAvailable()) {
 			if (!this.warnedUnavailable) {
 				this.warnedUnavailable = true;
+
 				pushFeedback(currentMessages().game.cast.noSpeech, "warning");
 			}
+
 			return;
 		}
+
 		this.listen();
 	}
 
@@ -96,15 +108,19 @@ export class CastController {
 				onInterim: (text) => {
 					if (text.trim().length > 0 && this.phase === "idle") {
 						this.phase = "listening";
+
 						this.transport.begin();
 					}
+
 					this.updateDevLive(text);
 				},
 				onFinal: (alternatives) => this.submit(alternatives),
 				onError: (message) => {
 					this.resumeAt = performance.now() + ERROR_RETRY_MS;
+
 					if (message !== this.lastError) {
 						this.lastError = message;
+
 						pushFeedback(message, "error");
 					}
 				},
@@ -113,10 +129,13 @@ export class CastController {
 						this.resumeAt,
 						performance.now() + RESTART_DELAY_MS,
 					);
+
 					if (this.phase === "listening") {
 						this.phase = "idle";
+
 						this.transport.cancel();
 					}
+
 					if (this.dev) {
 						hudStore.set({ devLive: { text: "", matches: false } });
 					}
@@ -125,6 +144,7 @@ export class CastController {
 			[],
 			this.book.entries().map((entry) => entry.words),
 		);
+
 		if (!started) {
 			this.resumeAt = performance.now() + ERROR_RETRY_MS;
 		}
@@ -132,15 +152,19 @@ export class CastController {
 
 	cancel(): void {
 		this.listener.stop();
+
 		if (this.phase !== "idle") {
 			this.transport.cancel();
 		}
+
 		this.reset();
 	}
 
 	interrupted(): void {
 		this.listener.stop();
+
 		this.resumeAt = performance.now() + CAST_INTERRUPT_MS;
+
 		this.reset();
 	}
 
@@ -154,16 +178,20 @@ export class CastController {
 
 	private chained(fresh: string[]): string[] {
 		const now = performance.now();
+
 		this.heard = this.heard.filter((entry) => now - entry.at < CHAIN_WINDOW_MS);
+
 		if (this.heard.length === 0) {
 			return fresh;
 		}
+
 		const before = this.heard
 			.map((entry) => entry.text)
 			.join(" ")
 			.split(/\s+/)
 			.slice(-CHAIN_TOKENS)
 			.join(" ");
+
 		return [...fresh, ...fresh.slice(0, 2).map((text) => `${before} ${text}`)];
 	}
 
@@ -171,16 +199,20 @@ export class CastController {
 		const fresh = transcripts
 			.filter((entry) => entry.trim().length > 0)
 			.slice(0, 5);
+
 		const candidates = this.chained(fresh);
 		const matching = candidates.filter((text) => this.recognized(text));
 		const spoken = matching.length > 0;
+
 		const sent = spoken
 			? [
 					...matching,
 					...candidates.filter((text) => !matching.includes(text)),
 				].slice(0, MAX_SENT)
 			: fresh;
+
 		this.recordDev(sent, spoken);
+
 		if (fresh.length > 0) {
 			this.heard = spoken
 				? []
@@ -188,20 +220,28 @@ export class CastController {
 						-CHAIN_LENGTH,
 					);
 		}
+
 		if (!spoken) {
 			if (this.phase === "listening") {
 				this.transport.cancel();
 			}
+
 			this.phase = "idle";
+
 			return;
 		}
+
 		if (this.phase === "idle") {
 			this.transport.begin();
 		}
+
 		this.lastError = "";
+
 		this.transport.cast(sent);
+
 		this.phase = "sent";
 		this.sentAt = performance.now();
+
 		hudStore.set({ castPhase: "sent" });
 	}
 
@@ -209,6 +249,7 @@ export class CastController {
 		if (!this.dev) {
 			return;
 		}
+
 		hudStore.set({
 			devLive: {
 				text,
@@ -221,13 +262,17 @@ export class CastController {
 		if (!this.dev || transcripts.length === 0) {
 			return;
 		}
+
 		const heard = matchingFormulas(transcripts, this.formulas());
+
 		const matched = this.book
 			.entries()
 			.find((entry) =>
 				heard.some((formula) => sameFormula(formula, entry.words)),
 			);
+
 		this.devCounter += 1;
+
 		const entry = {
 			id: this.devCounter,
 			transcripts,
@@ -235,6 +280,7 @@ export class CastController {
 			expected: matched?.words ?? [],
 			result: spoken ? ("pending" as const) : ("ignored" as const),
 		};
+
 		hudStore.set((state) => ({
 			devLive: { text: "", matches: false },
 			devCasts: [entry, ...state.devCasts].slice(0, 4),
@@ -250,25 +296,35 @@ export class CastController {
 				const pending = state.devCasts.findIndex(
 					(entry) => entry.result === "pending",
 				);
+
 				if (pending < 0) {
 					return {};
 				}
+
 				const devCasts = [...state.devCasts];
+
 				devCasts[pending] = {
 					...devCasts[pending],
 					result: result.ok ? "ok" : (result.reason ?? "wrong-words"),
 				};
+
 				return { devCasts };
 			});
 		}
+
 		this.reset();
+
 		const labels = currentMessages().game.cast;
+
 		if (result.ok) {
 			soundBank.play("capture", { volume: 0.9 });
 			pushFeedback(labels.captured(labelFor(result.anomalyId)), "success");
+
 			return;
 		}
+
 		soundBank.play("capture-fail", { volume: 0.6 });
+
 		pushFeedback(
 			result.reason &&
 				(this.explainAll || EXPLAINED_FAILURES.has(result.reason))
@@ -280,6 +336,7 @@ export class CastController {
 
 	private reset(): void {
 		this.phase = "idle";
+
 		hudStore.set({ castPhase: "idle" });
 	}
 

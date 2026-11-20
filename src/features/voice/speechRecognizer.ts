@@ -59,7 +59,9 @@ function recognitionConstructor(): RecognitionConstructor | null {
 	if (desktopApp) {
 		return null;
 	}
+
 	const scope = speechScope();
+
 	return scope.SpeechRecognition ?? scope.webkitSpeechRecognition ?? null;
 }
 
@@ -70,6 +72,7 @@ const ENGINE_OVERRIDE_KEY = "moldius.speechEngine";
 function forcedEngine(): SpeechEngine | null {
 	try {
 		const value = window.localStorage.getItem(ENGINE_OVERRIDE_KEY);
+
 		return value === "native" || value === "vosk" || value === "server"
 			? value
 			: null;
@@ -84,12 +87,15 @@ function serverSupported(): boolean {
 
 export function speechEngine(): SpeechEngine | null {
 	const forced = forcedEngine();
+
 	if ((forced === null || forced === "server") && serverSupported()) {
 		return "server";
 	}
+
 	if (forced !== "vosk" && recognitionConstructor() !== null) {
 		return "native";
 	}
+
 	return voskSupported() ? "vosk" : null;
 }
 
@@ -99,6 +105,7 @@ export function speechRecognitionAvailable(): boolean {
 
 export function prepareSpeechRecognition(): void {
 	const engine = speechEngine();
+
 	if (engine === "vosk") {
 		preloadVosk();
 	} else if (engine === "server") {
@@ -135,27 +142,38 @@ export class IncantationListener {
 		formulas: readonly (readonly string[])[] = [],
 	): boolean {
 		const engine = speechEngine();
+
 		if (engine === "server") {
 			return this.remote.start(callbacks, formulas);
 		}
+
 		const Constructor = engine === "native" ? recognitionConstructor() : null;
+
 		if (!Constructor) {
 			if (engine === "vosk") {
 				return this.fallback.start(callbacks, formulas);
 			}
+
 			callbacks.onError(currentMessages().game.speech.unavailable);
+
 			return false;
 		}
+
 		this.stop();
+
 		const recognition = new Constructor();
+
 		recognition.lang = speechLocale(currentLanguage());
 		recognition.continuous = false;
 		recognition.interimResults = true;
 		recognition.maxAlternatives = 5;
+
 		const hinted = this.applyHints(recognition, hintWords);
 		let retryWithoutHints = false;
+
 		this.delivered = false;
 		this.interim = "";
+
 		recognition.onresult = (event) => {
 			for (
 				let index = event.resultIndex;
@@ -163,8 +181,10 @@ export class IncantationListener {
 				index += 1
 			) {
 				const result = event.results[index];
+
 				if (result.isFinal) {
 					const alternatives: string[] = [];
+
 					for (
 						let alternative = 0;
 						alternative < result.length;
@@ -172,52 +192,71 @@ export class IncantationListener {
 					) {
 						alternatives.push(result[alternative].transcript);
 					}
+
 					this.delivered = true;
+
 					callbacks.onFinal(alternatives);
 				} else {
 					this.interim = result[0]?.transcript ?? "";
+
 					callbacks.onInterim(this.interim);
 				}
 			}
 		};
+
 		recognition.onerror = (event) => {
 			if (hinted && event.error === "phrases-not-supported") {
 				phrasesAccepted = false;
 				retryWithoutHints = true;
+
 				return;
 			}
+
 			if (event.error !== "aborted" && event.error !== "no-speech") {
 				const labels = currentMessages().game.speech;
+
 				callbacks.onError(labels.errors[event.error] ?? labels.generic);
 			}
 		};
+
 		recognition.onend = () => {
 			if (retryWithoutHints) {
 				this.clear();
+
 				if (!this.start(callbacks, hintWords)) {
 					callbacks.onEnd();
 				}
+
 				return;
 			}
+
 			if (!this.delivered && this.interim.trim().length > 0) {
 				this.delivered = true;
+
 				callbacks.onFinal([this.interim]);
 			}
+
 			this.clear();
 			callbacks.onEnd();
 		};
+
 		try {
 			recognition.start();
 		} catch {
 			if (hinted) {
 				phrasesAccepted = false;
+
 				return this.start(callbacks, hintWords);
 			}
+
 			callbacks.onError(currentMessages().game.speech.failedToStart);
+
 			return false;
 		}
+
 		this.recognition = recognition;
 		this.timeout = window.setTimeout(() => this.finish(), CAST_LISTEN_MAX_MS);
+
 		return true;
 	}
 
@@ -237,8 +276,10 @@ export class IncantationListener {
 	private clear(): void {
 		if (this.timeout !== null) {
 			window.clearTimeout(this.timeout);
+
 			this.timeout = null;
 		}
+
 		this.recognition = null;
 	}
 
@@ -247,14 +288,18 @@ export class IncantationListener {
 		hintWords: readonly string[],
 	): boolean {
 		const PhraseConstructor = speechScope().SpeechRecognitionPhrase;
+
 		if (!phrasesAccepted || !PhraseConstructor || !("phrases" in recognition)) {
 			return false;
 		}
+
 		try {
 			const words = hintWords.length > 0 ? hintWords : INCANTATION_VOCABULARY;
+
 			recognition.phrases = words
 				.slice(0, 200)
 				.map((word) => new PhraseConstructor(word, 4));
+
 			return true;
 		} catch {
 			return false;

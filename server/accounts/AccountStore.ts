@@ -244,6 +244,7 @@ export class AccountStore {
 			`SELECT ${ACCOUNT_COLUMNS} FROM accounts WHERE email_key = $1`,
 			[emailKey],
 		);
+
 		return rows[0] ? toAccount(rows[0]) : null;
 	}
 
@@ -252,6 +253,7 @@ export class AccountStore {
 			`SELECT ${ACCOUNT_COLUMNS} FROM accounts WHERE discord_id = $1`,
 			[discordId],
 		);
+
 		return rows[0] ? toAccount(rows[0]) : null;
 	}
 
@@ -282,6 +284,7 @@ export class AccountStore {
 				language,
 			],
 		);
+
 		return toAccount(rows[0]);
 	}
 
@@ -300,6 +303,7 @@ export class AccountStore {
 				discord?.avatar ?? null,
 			],
 		);
+
 		return rows[0] ? toAccount(rows[0]) : null;
 	}
 
@@ -308,6 +312,7 @@ export class AccountStore {
 			`SELECT ${ACCOUNT_COLUMNS} FROM accounts WHERE id = $1`,
 			[id],
 		);
+
 		return rows[0] ? toAccount(rows[0]) : null;
 	}
 
@@ -332,6 +337,7 @@ export class AccountStore {
 				input.language,
 			],
 		);
+
 		return toAccount(rows[0]);
 	}
 
@@ -374,7 +380,9 @@ export class AccountStore {
          discord_id, discord_username, discord_avatar`,
 			[tokenHash, now],
 		);
+
 		const row = rows[0];
+
 		return row
 			? {
 					email: row.email,
@@ -423,6 +431,7 @@ export class AccountStore {
 			"SELECT account_id FROM password_resets WHERE token_hash = $1 AND expires_at > $2",
 			[tokenHash, now],
 		);
+
 		return rows[0]?.account_id ?? null;
 	}
 
@@ -431,6 +440,7 @@ export class AccountStore {
 			"DELETE FROM password_resets WHERE token_hash = $1 AND expires_at > $2 RETURNING account_id",
 			[tokenHash, now],
 		);
+
 		return rows[0]?.account_id ?? null;
 	}
 
@@ -461,6 +471,7 @@ export class AccountStore {
 				fields.privateProfile,
 			],
 		);
+
 		return rows[0] ? toAccount(rows[0]) : null;
 	}
 
@@ -480,9 +491,12 @@ export class AccountStore {
 			tagline: string | null;
 			profile_id: string | null;
 		}
+
 		const columns =
 			"d.account_id, d.player_name, d.color, d.pattern, d.best_score, d.captures, d.deaths, a.tagline, a.id AS profile_id";
+
 		const from = "daily_scores d LEFT JOIN accounts a ON a.id = d.account_id";
+
 		const toEntry = (row: ScoreRow, rank: number): DailyScoreEntry => ({
 			rank,
 			profileId: row.profile_id ?? null,
@@ -495,26 +509,32 @@ export class AccountStore {
 			deaths: Number(row.deaths),
 			self: row.account_id === accountId,
 		});
+
 		const { rows } = await this.database.query<ScoreRow>(
 			`SELECT ${columns} FROM ${from} WHERE d.challenge_date = $1
        ORDER BY d.best_score DESC, d.updated_at ASC LIMIT $2`,
 			[date, limit],
 		);
+
 		const entries = rows.map((row, index) => toEntry(row, index + 1));
 		let me = entries.find((entry) => entry.self) ?? null;
+
 		if (!me && accountId) {
 			const own = await this.database.query<ScoreRow>(
 				`SELECT ${columns} FROM ${from} WHERE d.challenge_date = $1 AND d.account_id = $2`,
 				[date, accountId],
 			);
+
 			if (own.rows[0]) {
 				const ahead = await this.database.query<{ count: string }>(
 					"SELECT count(*) AS count FROM daily_scores WHERE challenge_date = $1 AND best_score > $2",
 					[date, own.rows[0].best_score],
 				);
+
 				me = toEntry(own.rows[0], Number(ahead.rows[0]?.count ?? 0) + 1);
 			}
 		}
+
 		return { date, entries, me };
 	}
 
@@ -526,6 +546,7 @@ export class AccountStore {
        RETURNING ${ACCOUNT_COLUMNS}`,
 			[id],
 		);
+
 		return rows[0] ? toAccount(rows[0]) : null;
 	}
 
@@ -575,7 +596,9 @@ export class AccountStore {
        WHERE token_hash = $1 AND expires_at > $2`,
 			[tokenHash, now],
 		);
+
 		const row = rows[0];
+
 		return row
 			? {
 					accountId: row.account_id,
@@ -616,10 +639,12 @@ export class AccountStore {
 			"DELETE FROM auth_sessions WHERE expires_at <= $1",
 			[now],
 		);
+
 		await this.database.query(
 			"DELETE FROM pending_registrations WHERE expires_at <= $1",
 			[now],
 		);
+
 		await this.database.query(
 			"DELETE FROM password_resets WHERE expires_at <= $1",
 			[now],
@@ -632,9 +657,11 @@ export class AccountStore {
 				"SELECT 1 FROM match_history WHERE account_id = $1 AND match_id = $2",
 				[record.accountId, record.matchId],
 			);
+
 			if (existing.rows.length > 0) {
 				return false;
 			}
+
 			const inserted = await client.query<{ id: string }>(
 				`INSERT INTO match_history (
            id, account_id, match_id, played_at, duration_ms, visibility, player_name, color,
@@ -664,9 +691,11 @@ export class AccountStore {
 					record.xp ?? 0,
 				],
 			);
+
 			if (inserted.rows.length === 0) {
 				return false;
 			}
+
 			await client.query(
 				`UPDATE accounts SET
            games_played = games_played + 1,
@@ -686,11 +715,13 @@ export class AccountStore {
 					record.xp ?? 0,
 				],
 			);
+
 			if (record.metrics) {
 				const saved = await client.query<{ challenge_progress: unknown }>(
 					"SELECT challenge_progress FROM accounts WHERE id = $1 FOR UPDATE",
 					[record.accountId],
 				);
+
 				await client.query(
 					"UPDATE accounts SET challenge_progress = $2 WHERE id = $1",
 					[
@@ -704,12 +735,15 @@ export class AccountStore {
 					],
 				);
 			}
+
 			if (record.dailyDate) {
 				const previous = await client.query<{ best_score: number }>(
 					"SELECT best_score FROM daily_scores WHERE challenge_date = $1 AND account_id = $2",
 					[record.dailyDate, record.accountId],
 				);
+
 				const best = previous.rows[0];
+
 				const score = [
 					record.dailyDate,
 					record.accountId,
@@ -721,6 +755,7 @@ export class AccountStore {
 					record.deaths,
 					record.playedAt,
 				];
+
 				if (!best) {
 					await client.query(
 						`INSERT INTO daily_scores
@@ -728,6 +763,7 @@ export class AccountStore {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 						score,
 					);
+
 					await client.query(
 						"UPDATE accounts SET dailies_played = dailies_played + 1 WHERE id = $1",
 						[record.accountId],
@@ -742,6 +778,7 @@ export class AccountStore {
 					);
 				}
 			}
+
 			await client.query(
 				`DELETE FROM match_history
          WHERE account_id = $1 AND id NOT IN (
@@ -751,6 +788,7 @@ export class AccountStore {
          )`,
 				[record.accountId, keep],
 			);
+
 			return true;
 		});
 	}
@@ -767,6 +805,7 @@ export class AccountStore {
        LIMIT $2`,
 			[accountId, limit],
 		);
+
 		return rows.map(toHistory);
 	}
 
@@ -780,11 +819,14 @@ export class AccountStore {
        WHERE account_id = $1 AND match_id = $2`,
 			[accountId, matchId],
 		);
+
 		const row = rows[0];
 		const details = row ? parseMatchDetails(row.details) : null;
+
 		if (!row || !details) {
 			return null;
 		}
+
 		return { ...toHistory({ ...row, has_details: true }), ...details };
 	}
 
@@ -794,10 +836,13 @@ export class AccountStore {
 		viewerId: string | null,
 	): Promise<PublicProfile | null> {
 		const account = await this.findById(accountId);
+
 		if (!account) {
 			return null;
 		}
+
 		const { profile } = account;
+
 		const identity = {
 			profileId: account.id,
 			displayName: profile.displayName,
@@ -808,12 +853,14 @@ export class AccountStore {
 			level: levelOf(profile.stats.xp ?? 0),
 			private: profile.privateProfile,
 		};
+
 		if (
 			profile.privateProfile &&
 			!(viewerId && (await this.canSeePrivate(account.id, viewerId)))
 		) {
 			return { ...identity, createdAt: null, stats: null, recent: [] };
 		}
+
 		const { rows } = await this.database.query<HistoryRow>(
 			`SELECT ${HISTORY_COLUMNS}
        FROM match_history
@@ -822,12 +869,14 @@ export class AccountStore {
        LIMIT $2`,
 			[accountId, recentLimit],
 		);
+
 		return {
 			...identity,
 			createdAt: profile.createdAt,
 			stats: profile.stats,
 			recent: rows.map((row) => {
 				const entry = toHistory(row);
+
 				return {
 					playedAt: entry.playedAt,
 					rank: entry.rank,
@@ -848,16 +897,20 @@ export class AccountStore {
 		if (accountId === viewerId) {
 			return true;
 		}
+
 		const [low, high] =
 			accountId < viewerId ? [accountId, viewerId] : [viewerId, accountId];
+
 		const { rows } = await this.database.query(
 			`SELECT 1 FROM friendships
        WHERE account_low = $1 AND account_high = $2 AND status = 'accepted'`,
 			[low, high],
 		);
+
 		if (rows.length > 0) {
 			return true;
 		}
+
 		const discord = await this.database.query(
 			`SELECT 1 FROM accounts me
        JOIN discord_friends mine ON mine.account_id = me.id
@@ -866,6 +919,7 @@ export class AccountStore {
        WHERE me.id = $1 AND a.id = $2`,
 			[viewerId, accountId],
 		);
+
 		return discord.rows.length > 0;
 	}
 }

@@ -46,6 +46,7 @@ export class PixelPainter {
 			height,
 			data: new Uint8ClampedArray(width * height * 4),
 		};
+
 		this.rng = new SeededRandom(seed);
 	}
 
@@ -54,14 +55,18 @@ export class PixelPainter {
 		const py = ((Math.floor(y) % this.height) + this.height) % this.height;
 		const index = (py * this.width + px) * 4;
 		const pixels = this.data.data;
+
 		if (alpha >= 255) {
 			pixels[index] = color[0];
 			pixels[index + 1] = color[1];
 			pixels[index + 2] = color[2];
 			pixels[index + 3] = 255;
+
 			return;
 		}
+
 		const t = alpha / 255;
+
 		pixels[index] = Math.round(pixels[index] * (1 - t) + color[0] * t);
 		pixels[index + 1] = Math.round(pixels[index + 1] * (1 - t) + color[1] * t);
 		pixels[index + 2] = Math.round(pixels[index + 2] * (1 - t) + color[2] * t);
@@ -71,6 +76,7 @@ export class PixelPainter {
 	setRaw(x: number, y: number, color: RGB, alpha: number): void {
 		const index = (y * this.width + x) * 4;
 		const pixels = this.data.data;
+
 		pixels[index] = color[0];
 		pixels[index + 1] = color[1];
 		pixels[index + 2] = color[2];
@@ -82,6 +88,7 @@ export class PixelPainter {
 		const py = ((Math.floor(y) % this.height) + this.height) % this.height;
 		const index = (py * this.width + px) * 4;
 		const pixels = this.data.data;
+
 		return [pixels[index], pixels[index + 1], pixels[index + 2]];
 	}
 
@@ -144,6 +151,7 @@ export class PixelPainter {
 		for (let y = 0; y < this.height; y += chunk) {
 			for (let x = 0; x < this.width; x += chunk) {
 				const factor = 1 + (this.rng.next() - 0.5) * amount;
+
 				for (let dy = 0; dy < chunk; dy += 1) {
 					for (let dx = 0; dx < chunk; dx += 1) {
 						this.set(x + dx, y + dy, shade(this.get(x + dx, y + dy), factor));
@@ -157,6 +165,7 @@ export class PixelPainter {
 		for (let index = 0; index < count; index += 1) {
 			const x = this.rng.int(0, this.width - 1);
 			const y = this.rng.int(0, this.height - 1);
+
 			this.rect(x, y, size, size, color, alpha);
 		}
 	}
@@ -166,9 +175,11 @@ export class PixelPainter {
 			const cx = this.rng.int(0, this.width - 1);
 			const cy = this.rng.int(0, this.height - 1);
 			const radius = this.rng.range(2, maxRadius);
+
 			for (let y = -Math.ceil(radius); y <= Math.ceil(radius); y += 1) {
 				for (let x = -Math.ceil(radius); x <= Math.ceil(radius); x += 1) {
 					const distance = Math.hypot(x, y) / radius;
+
 					if (distance <= 1 && this.rng.next() > distance * 0.7) {
 						this.set(
 							cx + x,
@@ -191,8 +202,10 @@ export class PixelPainter {
 		alpha = 255,
 	): void {
 		const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+
 		for (let step = 0; step <= steps; step += 1) {
 			const t = step / steps;
+
 			this.set(
 				Math.round(x0 + (x1 - x0) * t),
 				Math.round(y0 + (y1 - y0) * t),
@@ -213,6 +226,7 @@ export class PixelPainter {
 		for (let y = -Math.ceil(radius); y <= Math.ceil(radius); y += 1) {
 			for (let x = -Math.ceil(radius); x <= Math.ceil(radius); x += 1) {
 				const distance = Math.hypot(x, y);
+
 				if (filled ? distance <= radius : Math.abs(distance - radius) < 0.6) {
 					this.set(Math.round(cx + x), Math.round(cy + y), color, alpha);
 				}

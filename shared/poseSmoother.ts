@@ -26,6 +26,7 @@ export class PoseSmoother implements SmoothedPose {
 			target.y - this.y,
 			target.z - this.z,
 		);
+
 		if (!this.ready || gap > SNAP_DISTANCE) {
 			this.x = target.x;
 			this.y = target.y;
@@ -33,9 +34,12 @@ export class PoseSmoother implements SmoothedPose {
 			this.yaw = target.yaw;
 			this.speed = target.speed;
 			this.ready = true;
+
 			return;
 		}
+
 		const blend = 1 - Math.exp(-dt * POSE_SMOOTHING_RATE);
+
 		this.x += (target.x - this.x) * blend;
 		this.y += (target.y - this.y) * blend;
 		this.z += (target.z - this.z) * blend;

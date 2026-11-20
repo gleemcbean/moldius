@@ -12,6 +12,7 @@ if (!TARGETS.includes(target)) {
 	console.error(
 		`Format invalide : ${target}\nFormats disponibles : ${TARGETS.join(", ")}`,
 	);
+
 	process.exit(1);
 }
 

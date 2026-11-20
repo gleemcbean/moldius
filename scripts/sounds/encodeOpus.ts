@@ -45,6 +45,7 @@ export function encodeOpus(
 			],
 			{ stdio: ["pipe", "inherit", "inherit"] },
 		);
+
 		ffmpeg.on("error", (error) =>
 			reject(
 				new Error(
@@ -52,11 +53,13 @@ export function encodeOpus(
 				),
 			),
 		);
+
 		ffmpeg.on("close", (code) =>
 			code === 0
 				? resolve()
 				: reject(new Error(`ffmpeg a échoué (code ${code}) sur ${file}`)),
 		);
+
 		ffmpeg.stdin.end(
 			Buffer.from(samples.buffer, samples.byteOffset, samples.byteLength),
 		);

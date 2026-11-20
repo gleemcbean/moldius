@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 
 type ActionId = string;
 type Keys = Record<ActionId, string>;
+
 const clientRoot = "../src";
+
 const { DEFAULT_KEYS } = (await import(
 	`${clientRoot}/config/defaultKeys.ts`
 )) as {
 	DEFAULT_KEYS: Keys;
 };
+
 const { assignFreshKeys, migrateAimKey, migrateCameraClicks } = (await import(
 	`${clientRoot}/features/settings/settingsStore.ts`
 )) as {
@@ -18,14 +21,17 @@ const { assignFreshKeys, migrateAimKey, migrateCameraClicks } = (await import(
 
 function savedBeforeAim(overrides: Keys = {}): Keys {
 	const saved: Keys = { ...DEFAULT_KEYS, photo: "MouseLeft", ...overrides };
+
 	for (const later of ["aim", "ping", "emote", "power"]) {
 		delete saved[later];
 	}
+
 	return saved;
 }
 
 function duplicates(keys: Keys): string[] {
 	const codes = Object.values(keys);
+
 	return codes.filter((code, index) => codes.indexOf(code) !== index);
 }
 
@@ -39,6 +45,7 @@ describe("visée avec l'appareil photo", () => {
 	it("garde la photo au clic gauche dans d'anciens réglages", () => {
 		const saved = savedBeforeAim();
 		const keys: Keys = { ...DEFAULT_KEYS, ...saved };
+
 		migrateAimKey(keys, saved);
 		expect(keys.aim).toBe("MouseRight");
 		expect(keys.photo).toBe("MouseLeft");
@@ -48,6 +55,7 @@ describe("visée avec l'appareil photo", () => {
 	it("garde une photo déplacée ailleurs par le joueur", () => {
 		const saved = savedBeforeAim({ photo: "KeyP" });
 		const keys: Keys = { ...DEFAULT_KEYS, ...saved };
+
 		migrateAimKey(keys, saved);
 		expect(keys.photo).toBe("KeyP");
 		expect(keys.aim).toBe("MouseRight");
@@ -56,6 +64,7 @@ describe("visée avec l'appareil photo", () => {
 	it("trouve une touche libre quand les deux clics sont déjà pris", () => {
 		const saved = savedBeforeAim({ interact: "MouseRight" });
 		const keys: Keys = { ...DEFAULT_KEYS, ...saved };
+
 		migrateAimKey(keys, saved);
 		assignFreshKeys(keys, saved);
 		expect(keys.photo).toBe("MouseLeft");
@@ -66,6 +75,7 @@ describe("visée avec l'appareil photo", () => {
 	it("ne touche pas des réglages qui connaissent déjà la visée", () => {
 		const saved: Keys = { ...DEFAULT_KEYS, aim: "KeyQ", photo: "MouseLeft" };
 		const keys: Keys = { ...saved };
+
 		migrateAimKey(keys, saved);
 		expect(keys).toEqual(saved);
 	});
@@ -76,6 +86,7 @@ describe("visée avec l'appareil photo", () => {
 			aim: "MouseLeft",
 			photo: "MouseRight",
 		};
+
 		migrateCameraClicks(keys, undefined);
 		expect(keys.aim).toBe("MouseRight");
 		expect(keys.photo).toBe("MouseLeft");
@@ -87,6 +98,7 @@ describe("visée avec l'appareil photo", () => {
 			aim: "MouseLeft",
 			photo: "MouseRight",
 		};
+
 		migrateCameraClicks(keys, 2);
 		expect(keys.aim).toBe("MouseLeft");
 		expect(keys.photo).toBe("MouseRight");

@@ -18,5 +18,6 @@ export function getSocket(): GameSocket {
 			autoConnect: true,
 		});
 	}
+
 	return socket;
 }

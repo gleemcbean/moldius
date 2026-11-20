@@ -16,18 +16,23 @@ export class GeometryBucket {
 		matrix?: THREE.Matrix4,
 	): void {
 		const prepared = geometry;
+
 		if (!prepared.index) {
 			const count = prepared.getAttribute("position").count;
+
 			prepared.setIndex(Array.from({ length: count }, (_, vertex) => vertex));
 		}
+
 		if (matrix) {
 			prepared.applyMatrix4(matrix);
 		}
+
 		for (const name of Object.keys(prepared.attributes)) {
 			if (name !== "position" && name !== "normal" && name !== "uv") {
 				prepared.deleteAttribute(name);
 			}
 		}
+
 		if (!prepared.getAttribute("uv")) {
 			prepared.setAttribute(
 				"uv",
@@ -37,11 +42,14 @@ export class GeometryBucket {
 				),
 			);
 		}
+
 		if (!prepared.getAttribute("normal")) {
 			prepared.computeVertexNormals();
 		}
+
 		const key = this.materials.key(options);
 		const group = this.groups.get(key);
+
 		if (group) {
 			group.geometries.push(prepared);
 		} else {
@@ -55,30 +63,41 @@ export class GeometryBucket {
 
 	toMeshes(): THREE.Mesh[] {
 		const meshes: THREE.Mesh[] = [];
+
 		for (const { options, geometries } of this.groups.values()) {
 			const merged =
 				geometries.length === 1
 					? geometries[0]
 					: mergeGeometries(geometries, false);
+
 			if (geometries.length > 1) {
 				for (const geometry of geometries) {
 					geometry.dispose();
 				}
 			}
+
 			if (!merged) {
 				continue;
 			}
+
 			merged.computeBoundingSphere();
 			merged.computeBoundingBox();
+
 			const mesh = new THREE.Mesh(merged, this.materials.get(options));
+
 			mesh.matrixAutoUpdate = false;
+
 			mesh.updateMatrix();
+
 			if (options.transparent) {
 				mesh.renderOrder = 2;
 			}
+
 			meshes.push(mesh);
 		}
+
 		this.groups.clear();
+
 		return meshes;
 	}
 }

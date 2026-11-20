@@ -4,6 +4,7 @@ import styles from "./Toasts.module.scss";
 
 export function Toasts() {
 	const toasts = useStore(appStore, (state) => state.toasts);
+
 	return (
 		<div className={styles.stack} aria-live="polite">
 			{toasts.map((toast) => (

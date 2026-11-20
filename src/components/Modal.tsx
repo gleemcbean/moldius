@@ -24,13 +24,18 @@ export function Modal({
 }) {
 	const t = useT();
 	const closeRef = useRef(onClose);
+
 	closeRef.current = onClose;
+
 	useEffect(() => {
 		if (!dismissible) {
 			return;
 		}
+
 		const token = Symbol("modal");
+
 		openModals.push(token);
+
 		const onKey = (event: KeyboardEvent) => {
 			if (
 				event.code === "Escape" &&
@@ -41,7 +46,9 @@ export function Modal({
 				closeRef.current();
 			}
 		};
+
 		window.addEventListener("keydown", onKey, true);
+
 		return () => {
 			window.removeEventListener("keydown", onKey, true);
 			openModals.splice(openModals.indexOf(token), 1);

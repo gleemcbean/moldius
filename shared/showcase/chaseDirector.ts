@@ -73,31 +73,40 @@ function fallbackLoop(layout: ManorLayout, finder: PathFinder): RoomLoop {
 	const rooms = layout.rooms.filter(
 		(room) => room.level === 0 && room.type !== "stairwell",
 	);
+
 	const start = rooms[0];
+
 	const distanceFrom = (room: (typeof rooms)[number]) =>
 		Math.hypot(
 			room.labelPoint.x - start.labelPoint.x,
 			room.labelPoint.z - start.labelPoint.z,
 		);
+
 	const far = rooms.reduce((best, room) =>
 		distanceFrom(room) > distanceFrom(best) ? room : best,
 	);
+
 	const from = {
 		x: start.labelPoint.x,
 		y: start.floorY,
 		z: start.labelPoint.z,
 	};
+
 	const to = { x: far.labelPoint.x, y: far.floorY, z: far.labelPoint.z };
+
 	const path =
 		finder.findPath(from, to, {
 			canOpenDoors: true,
 			isDoorClosed: () => false,
 		}) ?? [];
+
 	const outward: Vec3[] = [
 		from,
 		...path.map((point) => ({ x: point.x, y: point.y, z: point.z })),
 	];
+
 	const points = [...outward, ...outward.slice(1, -1).reverse()];
+
 	return { rooms: [start.id, far.id], openings: [], points, length: 0 };
 }
 
@@ -107,10 +116,12 @@ export function randomChaseCourse(
 ): ChaseCourse {
 	for (let attempt = 0; attempt < attempts; attempt += 1) {
 		const course = buildChaseCourse(Math.floor(random() * 2 ** 31));
+
 		if (course.loop.rooms.length >= 4) {
 			return course;
 		}
 	}
+
 	return buildChaseCourse(SHOWCASE_SEED);
 }
 
@@ -120,9 +131,11 @@ export function buildChaseCourse(seed: number): ChaseCourse {
 		manorSize: "small",
 		floors: 0,
 	});
+
 	const world = new CollisionWorld(layout);
 	const grid = new NavGrid(world);
 	const finder = new PathFinder(grid);
+
 	const loop =
 		findRoomLoop(layout, finder, {
 			level: 0,
@@ -131,20 +144,26 @@ export function buildChaseCourse(seed: number): ChaseCourse {
 			minLength: 28,
 			maxLength: 75,
 		}) ?? fallbackLoop(layout, finder);
+
 	for (const openingId of loop.openings) {
 		const door = layout.openings[openingId].door;
+
 		if (door) {
 			world.setDoorClosed(door.id, false);
 		}
 	}
+
 	const visible = new Set<number>(loop.rooms);
+
 	for (const id of loop.rooms) {
 		for (const openingId of layout.rooms[id].openingIds) {
 			const opening = layout.openings[openingId];
+
 			visible.add(opening.roomA);
 			visible.add(opening.roomB);
 		}
 	}
+
 	return {
 		layout,
 		world,
@@ -162,19 +181,23 @@ export function buildChaseCourse(seed: number): ChaseCourse {
 export function bodyFits(world: CollisionWorld, point: Vec3): boolean {
 	const bottom = point.y + 0.1;
 	const top = point.y + BODY_TOP;
+
 	if (
 		world.distanceToWalls(point, bottom, top, BODY_RADIUS + 0.1) < BODY_RADIUS
 	) {
 		return false;
 	}
+
 	const bounds = {
 		minX: point.x - BODY_RADIUS,
 		maxX: point.x + BODY_RADIUS,
 		minZ: point.z - BODY_RADIUS,
 		maxZ: point.z + BODY_RADIUS,
 	};
+
 	return world.queryBoxes(bounds).every((id) => {
 		const box = world.boxes[id];
+
 		return (
 			!box.enabled ||
 			box.walkable ||
@@ -191,11 +214,13 @@ function clearSegment(world: CollisionWorld, from: Vec3, to: Vec3): boolean {
 		1,
 		Math.ceil(Math.hypot(to.x - from.x, to.z - from.z) / CLEARANCE_STEP),
 	);
+
 	for (let step = 0; step <= steps; step += 1) {
 		if (!bodyFits(world, lerp(from, to, step / steps))) {
 			return false;
 		}
 	}
+
 	return true;
 }
 
@@ -212,6 +237,7 @@ function approachAngle(
 		Math.sin(target - current),
 		Math.cos(target - current),
 	);
+
 	return current + delta * Math.min(1, amount);
 }
 
@@ -239,29 +265,38 @@ export class ChaseDirector {
 
 	update(dt: number): ChaseFrame {
 		this.time += dt;
+
 		const path = this.course.path;
+
 		const gap =
 			BASE_GAP +
 			Math.sin(this.time * 0.85) * 0.9 +
 			Math.sin(this.time * 2.3) * 0.3;
+
 		const runnerDistance = this.time * RUN_SPEED;
 		const runnerSample = path.sample(runnerDistance);
 		const hunterSample = path.sample(runnerDistance - gap);
 		const runnerHeading = this.headingAt(runnerDistance);
 		const hunterReach = this.clearReach(runnerDistance - gap);
+
 		if (!this.placed) {
 			this.runnerYaw = runnerHeading;
 			this.hunterYaw = hunterReach.yaw;
 		}
+
 		this.runnerYaw = approachAngle(this.runnerYaw, runnerHeading, dt * 8);
 		this.hunterYaw = approachAngle(this.hunterYaw, hunterReach.yaw, dt * 6);
+
 		const roomy =
 			hunterReach.lead >= LUNGE_ROOM &&
 			!this.nearDoorway(hunterSample.position);
+
 		this.lungeRoom += ((roomy ? 1 : 0) - this.lungeRoom) * Math.min(1, dt * 6);
+
 		const runner = runnerSample.position;
 		const hunter = hunterSample.position;
 		const camera = this.placeCamera(runnerDistance, runner, hunter, dt);
+
 		return {
 			runner,
 			runnerYaw: this.runnerYaw,
@@ -276,6 +311,7 @@ export class ChaseDirector {
 	private nearDoorway(point: Vec3): boolean {
 		return this.course.loop.openings.some((id) => {
 			const opening = this.course.layout.openings[id];
+
 			return (
 				Math.hypot(
 					(opening.start.x + opening.end.x) / 2 - point.x,
@@ -288,8 +324,10 @@ export class ChaseDirector {
 	private clearReach(distance: number): { yaw: number; lead: number } {
 		const path = this.course.path;
 		const here = path.sample(distance).position;
+
 		for (const lead of HUNTER_LEADS) {
 			const ahead = path.sample(distance + lead).position;
+
 			if (
 				lead === HUNTER_LEADS[HUNTER_LEADS.length - 1] ||
 				clearSegment(this.course.world, here, ahead)
@@ -300,12 +338,14 @@ export class ChaseDirector {
 				};
 			}
 		}
+
 		return { yaw: this.hunterYaw, lead: 0 };
 	}
 
 	private headingAt(distance: number): number {
 		const here = this.course.path.sample(distance).position;
 		const ahead = this.course.path.sample(distance + HEADING_LEAD).position;
+
 		return yawOf({ x: ahead.x - here.x, z: ahead.z - here.z });
 	}
 
@@ -318,12 +358,15 @@ export class ChaseDirector {
 		const toward = { x: base.x - eye.x, z: base.z - eye.z };
 		const length = Math.hypot(toward.x, toward.z) || 1;
 		const side = { x: -toward.z / length, z: toward.x / length };
+
 		const targets: Vec3[] = heights.map((height) => ({
 			x: base.x,
 			y: base.y + height,
 			z: base.z,
 		}));
+
 		const middle = heights[Math.floor(heights.length / 2)];
+
 		for (const sign of [-1, 1]) {
 			targets.push({
 				x: base.x + side.x * radius * sign,
@@ -331,7 +374,9 @@ export class ChaseDirector {
 				z: base.z + side.z * radius * sign,
 			});
 		}
+
 		const world = this.course.world;
+
 		return (
 			targets.filter((target) => lineOfSight(world, eye, target)).length /
 			targets.length
@@ -355,6 +400,7 @@ export class ChaseDirector {
 				return scale;
 			}
 		}
+
 		return 0;
 	}
 
@@ -363,9 +409,11 @@ export class ChaseDirector {
 		const behind = path.sample(distance - TANGENT_SPAN).position;
 		const ahead = path.sample(distance + TANGENT_SPAN).position;
 		const length = Math.hypot(ahead.x - behind.x, ahead.z - behind.z);
+
 		if (length < 1e-3) {
 			return path.sample(distance).direction;
 		}
+
 		return {
 			x: (ahead.x - behind.x) / length,
 			y: 0,
@@ -377,6 +425,7 @@ export class ChaseDirector {
 		const distance = runnerDistance + framing.lead;
 		const position = this.course.path.sample(distance).position;
 		const direction = this.tangentAt(distance);
+
 		return {
 			x: position.x - direction.z * framing.offset,
 			y: position.y + CAMERA_HEIGHT,
@@ -390,6 +439,7 @@ export class ChaseDirector {
 
 	private roomAround(eye: Vec3, clearance: number): boolean {
 		const ground = { x: eye.x, y: eye.y - CAMERA_HEIGHT, z: eye.z };
+
 		return (
 			this.course.grid.nearestNode(ground, 0) !== null &&
 			this.course.world.distanceToWalls(
@@ -407,6 +457,7 @@ export class ChaseDirector {
 		share: number,
 	): boolean {
 		const future = runnerDistance + LOOKAHEAD_METERS;
+
 		return this.usable(
 			this.viewpoint(future, framing),
 			this.course.path.sample(future).position,
@@ -423,9 +474,11 @@ export class ChaseDirector {
 	): number {
 		const eye = this.viewpoint(runnerDistance, framing);
 		const distance = Math.hypot(eye.x - runner.x, eye.z - runner.z);
+
 		const facing =
 			((eye.x - runner.x) * heading.x + (eye.z - runner.z) * heading.z) /
 			Math.max(distance, 0.01);
+
 		return (
 			this.visibleShare(eye, hunter, HUNTER_HEIGHTS, 0.3) * 4 +
 			this.visibleShare(eye, runner, [1.0], 0.9) * 2 +
@@ -444,9 +497,11 @@ export class ChaseDirector {
 	): Framing | null {
 		const heading = this.tangentAt(runnerDistance);
 		let best: (Framing & { score: number }) | null = null;
+
 		for (const lead of CAMERA_LEADS) {
 			for (const offset of CAMERA_OFFSETS) {
 				const framing = { lead, offset };
+
 				if (
 					!this.usable(
 						this.viewpoint(runnerDistance, framing),
@@ -456,25 +511,32 @@ export class ChaseDirector {
 				) {
 					continue;
 				}
+
 				const continuity = this.placed
 					? Math.abs(lead - this.framing.lead) * 0.35 +
 						Math.abs(offset - this.framing.offset) * 0.6
 					: 0;
+
 				const value =
 					this.score(runnerDistance, framing, runner, hunter, heading) -
 					continuity;
+
 				if (!best || value > best.score) {
 					best = { lead, offset, score: value };
 				}
 			}
 		}
+
 		if (!best || !this.placed) {
 			return best;
 		}
+
 		const currentEye = this.viewpoint(runnerDistance, this.framing);
+
 		const keeps =
 			this.usable(currentEye, runner, KEEP_SHARE) &&
 			this.holds(runnerDistance, this.framing, KEEP_SHARE);
+
 		if (keeps) {
 			const current = this.score(
 				runnerDistance,
@@ -483,16 +545,19 @@ export class ChaseDirector {
 				hunter,
 				heading,
 			);
+
 			if (current + SWITCH_MARGIN >= best.score) {
 				return { ...this.framing };
 			}
 		}
+
 		return best;
 	}
 
 	private focus(eye: Vec3, runner: Vec3, hunter: Vec3): Vec3 {
 		const weight =
 			this.visibleShare(eye, hunter, HUNTER_HEIGHTS, 0.3) >= 0.6 ? 0.3 : 0;
+
 		return {
 			x: runner.x * (1 - weight) + hunter.x * weight,
 			y: runner.y + 1.0 + weight * 0.3,
@@ -508,11 +573,14 @@ export class ChaseDirector {
 	): Vec3 {
 		this.framing = { ...framing };
 		this.lastCut = this.time;
+
 		const eye = this.viewpoint(runnerDistance, framing);
+
 		this.target = this.focus(eye, runner, hunter);
 		this.blockedFor = 0;
 		this.placed = true;
 		this.offsetScale = 1;
+
 		return eye;
 	}
 
@@ -523,52 +591,72 @@ export class ChaseDirector {
 		dt: number,
 	): Vec3 {
 		const goal = this.bestFraming(runnerDistance, runner, hunter);
+
 		if (goal && !this.placed) {
 			return this.cut(runnerDistance, goal, runner, hunter);
 		}
+
 		if (goal) {
 			const halfway = this.viewpoint(runnerDistance, {
 				lead: (goal.lead + this.framing.lead) / 2,
 				offset: (goal.offset + this.framing.offset) / 2,
 			});
+
 			const glide = this.usable(halfway, runner, KEEP_SHARE);
+
 			if (!glide && this.time - this.lastCut > CUT_COOLDOWN_SECONDS) {
 				return this.cut(runnerDistance, goal, runner, hunter);
 			}
+
 			if (glide) {
 				const rate = Math.min(1, dt * 2.4);
+
 				this.framing.lead += (goal.lead - this.framing.lead) * rate;
 				this.framing.offset += (goal.offset - this.framing.offset) * rate;
 			}
 		}
+
 		const fit = this.offsetFit(runnerDistance);
+
 		this.offsetScale +=
 			(fit - this.offsetScale) * Math.min(1, dt * OFFSET_EASE);
+
 		let eye = this.scaledViewpoint(runnerDistance, this.offsetScale);
+
 		if (!this.roomAround(eye, 0.15)) {
 			this.offsetScale = fit;
 			eye = this.scaledViewpoint(runnerDistance, fit);
 		}
+
 		this.blockedFor = this.usable(eye, runner, KEEP_SHARE)
 			? 0
 			: this.blockedFor + dt;
+
 		const shotAge = this.time - this.lastCut;
+
 		const forced =
 			this.blockedFor > STUCK_CUT_SECONDS ||
 			(this.blockedFor > BLOCKED_CUT_SECONDS && shotAge > MIN_SHOT_SECONDS);
+
 		if (goal && forced) {
 			return this.cut(runnerDistance, goal, runner, hunter);
 		}
+
 		const focus = this.focus(eye, runner, hunter);
+
 		this.target = lerp(this.target, focus, Math.min(1, dt * 7));
+
 		const look = { x: this.target.x - eye.x, z: this.target.z - eye.z };
 		const toward = { x: runner.x - eye.x, z: runner.z - eye.z };
+
 		const alignment =
 			(look.x * toward.x + look.z * toward.z) /
 			(Math.hypot(look.x, look.z) * Math.hypot(toward.x, toward.z) || 1);
+
 		if (alignment < AIM_LIMIT_COS) {
 			this.target = focus;
 		}
+
 		return eye;
 	}
 }

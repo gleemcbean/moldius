@@ -65,12 +65,16 @@ export function buildFurnitureColliders(
 	roomCeilingY: number,
 ): FurnitureCollider[] {
 	const definition = furnitureDefinition(item.kind);
+
 	if (!definition.collides) {
 		return [];
 	}
+
 	const occludes = definition.occludes || SOLID_KINDS.has(item.kind);
+
 	return localBoxes(item, roomCeilingY).map((box) => {
 		const center = rotate2({ x: box.x, z: box.z }, item.rotation);
+
 		return {
 			cx: item.x + center.x,
 			cz: item.z + center.z,
@@ -92,13 +96,16 @@ function basinBoxes(
 ): LocalBox[] {
 	const { width, depth, height } = item;
 	const shape = basinShape(item) as BasinShape;
+
 	const inner = {
 		width: Math.min(shape.width, width - 0.04),
 		depth: Math.min(shape.depth, depth - 0.04),
 	};
+
 	const sideDepth = (depth - inner.depth) / 2;
 	const sideWidth = (width - inner.width) / 2;
 	const rim = { yMin: 0, yMax: height, walkable: rimWalkable };
+
 	return [
 		{
 			x: 0,
@@ -132,6 +139,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 	const { width, depth, height } = item;
 	const definition = furnitureDefinition(item.kind);
 	const walkable = definition.walkableTop && height <= LOW_WALKABLE_MAX_HEIGHT;
+
 	const full: LocalBox = {
 		x: 0,
 		z: 0,
@@ -161,6 +169,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 					walkable: true,
 				}),
 			);
+
 		case "chair":
 			return [
 				{
@@ -182,6 +191,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 					walkable: false,
 				},
 			];
+
 		case "pond":
 			return [];
 		case "cauldron":
@@ -202,6 +212,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 					walkable: false,
 				},
 			];
+
 		case "pottedPlant":
 			return [
 				{
@@ -214,6 +225,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 					walkable: false,
 				},
 			];
+
 		case "floorLamp":
 		case "candelabra":
 			return [
@@ -227,6 +239,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 					walkable: false,
 				},
 			];
+
 		case "harp":
 		case "cello":
 		case "musicStand":
@@ -251,6 +264,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 					walkable: false,
 				},
 			];
+
 		case "valveStation":
 			return [
 				{
@@ -263,6 +277,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 					walkable: false,
 				},
 			];
+
 		case "toolRack":
 		case "displayCase":
 		case "armor":
@@ -282,6 +297,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 					walkable: false,
 				},
 			];
+
 		case "dryingLine":
 			return [
 				{
@@ -312,6 +328,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 					walkable: false,
 				},
 			];
+
 		default:
 			return [full];
 	}
@@ -320,6 +337,7 @@ function localBoxes(item: FurnitureItem, roomCeilingY: number): LocalBox[] {
 function bedBoxes(item: FurnitureItem): LocalBox[] {
 	const { width, depth, height } = item;
 	const mattressHeight = 0.6;
+
 	const boxes: LocalBox[] = [
 		{
 			x: 0,
@@ -340,9 +358,11 @@ function bedBoxes(item: FurnitureItem): LocalBox[] {
 			walkable: false,
 		},
 	];
+
 	if (item.variant === 2) {
 		const postX = width / 2 - 0.06;
 		const postZ = depth / 2 - 0.06;
+
 		boxes.push(
 			{
 				x: 0,
@@ -391,5 +411,6 @@ function bedBoxes(item: FurnitureItem): LocalBox[] {
 			},
 		);
 	}
+
 	return boxes;
 }

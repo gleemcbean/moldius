@@ -11,6 +11,7 @@ import { countWallsBetween } from "@shared/physics/lineOfSight";
 import * as THREE from "three";
 import { audioEngine, type ReverbPreset } from "../../audio/audioEngine";
 import { type SoundHandle, soundBank } from "../../audio/soundBank";
+import { atmosphereOf } from "../effects/atmospheres";
 
 const STONE_FLOORS = new Set<FloorStyle>([
 	"stoneFlags",
@@ -18,7 +19,10 @@ const STONE_FLOORS = new Set<FloorStyle>([
 	"checkerTiles",
 	"mosaic",
 	"greenhouseTiles",
+	"basalt",
 ]);
+
+const SOFT_FLOORS = new Set<FloorStyle>(["redCarpet", "soil"]);
 
 const HARD_WALLS = new Set<WallStyle>([
 	"stoneBlocks",
@@ -27,6 +31,7 @@ const HARD_WALLS = new Set<WallStyle>([
 	"greenhouseBrick",
 	"rubbleStone",
 	"mossyBrick",
+	"basalt",
 ]);
 
 const ROOM_TONES: Partial<Record<RoomType, { id: string; volume: number }>> = {
@@ -50,8 +55,21 @@ const ROOM_TONES: Partial<Record<RoomType, { id: string; volume: number }>> = {
 	ballroom: { id: "music-box-loop", volume: 0.1 },
 };
 
+function atmosphereTone(
+	type: RoomType,
+): { id: string; volume: number } | undefined {
+	const atmosphere = atmosphereOf(type);
+
+	return atmosphere
+		? {
+				id: atmosphere.style.tone,
+				volume: atmosphere.style.toneVolume * (0.5 + atmosphere.density * 0.5),
+			}
+		: undefined;
+}
+
 export function footstepSound(floor: FloorStyle | undefined): string {
-	return floor === "redCarpet"
+	return floor && SOFT_FLOORS.has(floor)
 		? "step-soft"
 		: floor && STONE_FLOORS.has(floor)
 			? "step-stone"
@@ -61,12 +79,15 @@ export function footstepSound(floor: FloorStyle | undefined): string {
 export function acousticsOf(room: Room): ReverbPreset {
 	const hard =
 		STONE_FLOORS.has(room.style.floor) || HARD_WALLS.has(room.style.wall);
-	const soft = room.style.floor === "redCarpet";
+
+	const soft = SOFT_FLOORS.has(room.style.floor);
 	const size = Math.sqrt(Math.max(1, room.area * room.height));
+
 	const seconds =
 		Math.round(
 			Math.min(3.2, Math.max(0.4, 0.4 + size * (hard ? 0.09 : 0.055))) * 5,
 		) / 5;
+
 	return {
 		seconds,
 		brightness: hard ? 5200 : soft ? 1800 : 3200,
@@ -105,6 +126,7 @@ export class AmbientAudio {
 		private readonly world: CollisionWorld,
 	) {
 		this.fires = layout.lights.filter((light) => light.kind === "fire");
+
 		this.clocks = layout.furniture
 			.filter((item) => item.kind === "grandfatherClock")
 			.map(
@@ -143,20 +165,25 @@ export class AmbientAudio {
 		},
 	): void {
 		this.time += dt;
+
 		this.updateRoom(room);
 		this.updateClock(listener);
 		this.updateFootsteps(dt, room, options);
 		this.updateRandomEvents(listener);
 		this.updateFire(listener);
 		this.updateWater(options.waterAt);
+
 		const exterior = room?.exteriorEdges.some(Boolean) ?? false;
+
 		this.wind?.setVolume(exterior ? 0.015 : 0.005);
 		this.drone?.setVolume(0.02 + options.tension * 0.015);
+
 		if (
 			(options.tension > 0.5 || options.lowHealth) &&
 			this.time - this.heartbeatAt > (options.tension > 0.5 ? 0.75 : 1.1)
 		) {
 			this.heartbeatAt = this.time;
+
 			soundBank.play("heartbeat", {
 				bus: "effects",
 				volume: 0.45 + options.tension * 0.3,
@@ -177,23 +204,30 @@ export class AmbientAudio {
 	): void {
 		if (!options.grounded || options.stepSpeed < 0.5) {
 			this.stepDistance = Math.min(this.stepDistance, 0.4);
+
 			return;
 		}
+
 		this.stepDistance += options.stepSpeed * dt;
+
 		const stride = options.crouching
 			? 0.75
 			: options.stepSpeed > 4
 				? 1.15
 				: 0.92;
+
 		if (this.stepDistance < stride) {
 			return;
 		}
+
 		this.stepDistance = 0;
+
 		const id = options.wading
 			? "step-water"
 			: options.slimed
 				? "step-slime"
 				: footstepSound(room?.style.floor);
+
 		soundBank.play(id, {
 			volume: options.crouching ? 0.02 : options.stepSpeed > 4 ? 0.09 : 0.05,
 			rate: 0.9 + Math.random() * 0.2,
@@ -204,45 +238,61 @@ export class AmbientAudio {
 		if (!room || room.id === this.roomId) {
 			return;
 		}
+
 		this.roomId = room.id;
+
 		audioEngine.setReverb(acousticsOf(room));
-		const tone = ROOM_TONES[room.type];
+
+		const tone = ROOM_TONES[room.type] ?? atmosphereTone(room.type);
+
 		if (tone?.id === this.roomTone?.id) {
 			this.roomTone?.handle?.setVolume(tone?.volume ?? 0);
+
 			return;
 		}
+
 		this.roomTone?.handle?.stop(1.6);
+
 		if (!tone) {
 			this.roomTone = null;
+
 			return;
 		}
+
 		const handle = soundBank.play(tone.id, {
 			bus: "ambience",
 			loop: true,
 			volume: 0.0001,
 		});
+
 		handle?.gain.gain.setTargetAtTime(
 			tone.volume,
 			handle.gain.context.currentTime,
 			0.6,
 		);
+
 		this.roomTone = { id: tone.id, handle };
 	}
 
 	private updateClock(listener: THREE.Vector3): void {
 		let nearest: THREE.Vector3 | null = null;
 		let best = 10;
+
 		for (const clock of this.clocks) {
 			const distance = clock.distanceTo(listener);
+
 			if (distance < best) {
 				best = distance;
 				nearest = clock;
 			}
 		}
+
 		if (nearest === this.clockSource) {
 			return;
 		}
+
 		this.clock?.stop(0.4);
+
 		this.clock = nearest
 			? soundBank.play("clock-loop", {
 					position: nearest,
@@ -253,6 +303,7 @@ export class AmbientAudio {
 					maxDistance: 12,
 				})
 			: null;
+
 		this.clockSource = nearest;
 	}
 
@@ -260,20 +311,27 @@ export class AmbientAudio {
 		if (this.time < this.nextEventAt) {
 			return;
 		}
+
 		this.nextEventAt = this.time + 5 + Math.random() * 11;
+
 		const total = RANDOM_EVENTS.reduce((sum, event) => sum + event.weight, 0);
 		let roll = Math.random() * total;
+
 		const event =
 			RANDOM_EVENTS.find((candidate) => (roll -= candidate.weight) <= 0) ??
 			RANDOM_EVENTS[0];
+
 		const angle = Math.random() * Math.PI * 2;
 		const distance = 4 + Math.random() * 10;
+
 		const position = new THREE.Vector3(
 			listener.x + Math.cos(angle) * distance,
 			listener.y + Math.random() * 1.5,
 			listener.z + Math.sin(angle) * distance,
 		);
+
 		const occlusion = countWallsBetween(this.world, listener, position, 3);
+
 		soundBank.play(event.id, {
 			bus: "ambience",
 			position,
@@ -287,19 +345,23 @@ export class AmbientAudio {
 	private updateFire(listener: THREE.Vector3): void {
 		let nearest: LightSource | null = null;
 		let best = 9;
+
 		for (const fire of this.fires) {
 			const distance = Math.hypot(
 				fire.position.x - listener.x,
 				fire.position.y - listener.y,
 				fire.position.z - listener.z,
 			);
+
 			if (distance < best) {
 				best = distance;
 				nearest = fire;
 			}
 		}
+
 		if (nearest !== this.fireSource) {
 			this.fire?.stop(0.5);
+
 			this.fire = nearest
 				? soundBank.play("fire-loop", {
 						position: nearest.position,
@@ -310,6 +372,7 @@ export class AmbientAudio {
 						maxDistance: 12,
 					})
 				: null;
+
 			this.fireSource = nearest;
 		}
 	}
@@ -326,6 +389,7 @@ export class AmbientAudio {
 			});
 		} else if (!position && this.water) {
 			this.water.stop(0.4);
+
 			this.water = null;
 		} else if (position && this.water) {
 			this.water.setPosition(position.x, position.y, position.z);
@@ -343,6 +407,7 @@ export class AmbientAudio {
 		]) {
 			handle?.stop(0.3);
 		}
+
 		audioEngine.setReverb({ seconds: 0.4, brightness: 3200, wet: 0 });
 	}
 }

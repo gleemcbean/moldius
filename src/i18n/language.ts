@@ -10,15 +10,18 @@ export const LANGUAGE_NAMES: Record<Language, string> = {
 export function browserLanguage(): Language {
 	const preferred =
 		typeof navigator === "undefined" ? [] : (navigator.languages ?? []);
+
 	for (const tag of [
 		...preferred,
 		typeof navigator === "undefined" ? "" : navigator.language,
 	]) {
 		const base = tag?.toLowerCase().split("-")[0];
+
 		if (isLanguage(base)) {
 			return base;
 		}
 	}
+
 	return "en";
 }
 

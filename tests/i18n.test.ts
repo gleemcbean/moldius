@@ -32,6 +32,7 @@ function differences(
 	if (typeof french === "function" || typeof english === "function") {
 		return typeof french === typeof english ? [] : [path];
 	}
+
 	if (Array.isArray(french) || Array.isArray(english)) {
 		return Array.isArray(french) &&
 			Array.isArray(english) &&
@@ -39,11 +40,14 @@ function differences(
 			? []
 			: [path];
 	}
+
 	if (typeof french === "object" && french !== null) {
 		if (typeof english !== "object" || english === null) {
 			return [path];
 		}
+
 		const keys = new Set([...Object.keys(french), ...Object.keys(english)]);
+
 		return [...keys].flatMap((key) =>
 			differences(
 				(french as Tree)[key],
@@ -52,6 +56,7 @@ function differences(
 			),
 		);
 	}
+
 	return typeof french === "string" &&
 		typeof english === "string" &&
 		english.length > 0
@@ -63,6 +68,7 @@ describe("traductions", () => {
 	it("fournit chaque texte français en anglais", async () => {
 		for (const [file, french, english] of SECTIONS) {
 			const module = await section(file);
+
 			expect(differences(module[french], module[english], french)).toEqual([]);
 		}
 	});
@@ -75,18 +81,23 @@ describe("traductions", () => {
 			};
 			HIDEABLE_KINDS: readonly string[];
 		};
+
 		for (const type of Object.keys(ROOM_TYPES) as RoomType[]) {
 			expect(world.worldEn.rooms[type]).toHaveLength(
 				ROOM_TYPES[type].names.length,
 			);
 		}
+
 		const hideable = Object.values(FURNITURE)
 			.filter((entry) => entry.hideable)
 			.map((entry) => entry.kind);
+
 		expect([...world.HIDEABLE_KINDS].sort()).toEqual(hideable.sort());
+
 		const grimoire = (await section("grimoire")) as {
 			grimoireEn: { species: Record<string, { name: string }> };
 		};
+
 		expect(Object.keys(grimoire.grimoireEn.species).sort()).toEqual(
 			[...SPECIES_IDS].sort(),
 		);

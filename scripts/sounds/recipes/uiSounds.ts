@@ -110,18 +110,22 @@ function envelope(
 	destination: AudioNode,
 ): AudioNode {
 	const gain = kit.gain(0, destination);
+
 	kit.expEnvelope(gain.gain, [
 		{ time: start, value: 0.0001 },
 		{ time: start + ATTACK, value: level },
 		{ time: start + length, value: 0.0001 },
 	]);
+
 	return gain;
 }
 
 function renderCue(kit: SynthKit, cue: Cue): void {
 	const filter = kit.filter("lowpass", cue.cutoff, 1, kit.out);
+
 	for (const tone of cue.tones) {
 		const start = tone.at ?? 0;
+
 		const oscillator = kit.osc(
 			tone.type,
 			tone.from,
@@ -129,6 +133,7 @@ function renderCue(kit: SynthKit, cue: Cue): void {
 			tone.length + RELEASE,
 			envelope(kit, start, tone.length, tone.level, filter),
 		);
+
 		if (tone.to !== undefined) {
 			kit.expEnvelope(oscillator.frequency, [
 				{ time: start, value: tone.from },
@@ -136,6 +141,7 @@ function renderCue(kit: SynthKit, cue: Cue): void {
 			]);
 		}
 	}
+
 	if (cue.noise) {
 		kit.noise(
 			"white",
@@ -153,9 +159,11 @@ function renderCue(kit: SynthKit, cue: Cue): void {
 
 function cueDuration(cue: Cue): number {
 	const ends = cue.tones.map((tone) => (tone.at ?? 0) + tone.length);
+
 	if (cue.noise) {
 		ends.push(cue.noise.length);
 	}
+
 	return Math.max(...ends) + RELEASE + 0.01;
 }
 

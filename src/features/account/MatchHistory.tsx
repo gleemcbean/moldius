@@ -32,15 +32,19 @@ const SHOWN_METRICS = CHALLENGE_METRICS.filter(
 
 function modeLabel(t: Messages, entry: MatchHistoryEntry): string {
 	const labels = t.account.history;
+
 	if (entry.daily) {
 		const { theme } = dailyChallenge(entry.daily);
+
 		return labels.daily(t.daily.themes[theme].name);
 	}
+
 	return entry.visibility === "private" ? labels.private : labels.public;
 }
 
 function placeLabel(labels: HistoryLabels, entry: MatchHistoryEntry): string {
 	const rank = labels.rankLabel(entry.rank);
+
 	return entry.teamCount > 0
 		? labels.teamPlace(rank, entry.teamCount)
 		: labels.place(rank, entry.playerCount);
@@ -59,16 +63,19 @@ export function HistoryPanel() {
 
 	useEffect(() => {
 		let active = true;
+
 		void loadHistory().then((result) => {
 			if (!active) {
 				return;
 			}
+
 			if (result.ok) {
 				setEntries(result.value);
 			} else {
 				setError(result.error);
 			}
 		});
+
 		return () => {
 			active = false;
 		};
@@ -77,16 +84,21 @@ export function HistoryPanel() {
 	if (error) {
 		return <p className={styles.error}>{error}</p>;
 	}
+
 	if (!entries) {
 		return <p className={styles.note}>{labels.loading}</p>;
 	}
+
 	if (entries.length === 0) {
 		return <p className={styles.empty}>{labels.empty}</p>;
 	}
+
 	const opened = entries.find((entry) => entry.matchId === openId);
+
 	if (opened) {
 		return <MatchDetailView entry={opened} onBack={() => setOpenId(null)} />;
 	}
+
 	return (
 		<div className={styles.historyWrap}>
 			<table className={[styles.history, detail.list].join(" ")}>
@@ -171,16 +183,19 @@ function MatchDetailView({
 
 	useEffect(() => {
 		let active = true;
+
 		void loadHistoryDetail(entry.matchId).then((result) => {
 			if (!active) {
 				return;
 			}
+
 			if (result.ok) {
 				setMatch(result.value);
 			} else {
 				setError(result.error);
 			}
 		});
+
 		return () => {
 			active = false;
 		};
@@ -241,15 +256,19 @@ function MatchDetailBody({ match }: { match: MatchDetail }) {
 	const t = useT();
 	const labels = t.account.history;
 	const rules = match.rules;
+
 	const awards = match.players.flatMap((player) =>
 		player.awards.map((award) => ({ player, award })),
 	);
+
 	const numbers = SHOWN_METRICS.flatMap((metric) => {
 		const value = match.metrics[metric] ?? 0;
+
 		return value > 0
 			? [labels.metrics[metric](t.common.number(Math.round(value)))]
 			: [];
 	});
+
 	return (
 		<>
 			<section className={detail.section}>
@@ -319,8 +338,10 @@ function MatchDetailBody({ match }: { match: MatchDetail }) {
 function Standings({ match }: { match: MatchDetail }) {
 	const t = useT();
 	const labels = t.account.history;
+
 	const rank = (player: MatchDetailPlayer) =>
 		1 + match.players.filter((other) => other.score > player.score).length;
+
 	const playerRow = (player: MatchDetailPlayer, shownRank: number | null) => (
 		<tr
 			key={`${player.name}-${player.color}`}
@@ -353,6 +374,7 @@ function Standings({ match }: { match: MatchDetail }) {
 			</td>
 		</tr>
 	);
+
 	return (
 		<table className={[styles.history, detail.standings].join(" ")}>
 			<thead>

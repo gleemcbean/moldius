@@ -10,6 +10,7 @@ export const GLASS: MaterialOptions = {
 	depthWrite: false,
 	side: THREE.DoubleSide,
 };
+
 export const FLAME: MaterialOptions = {
 	texture: "flame",
 	unlit: true,
@@ -19,6 +20,7 @@ export const FLAME: MaterialOptions = {
 	depthWrite: false,
 	fixedRepeat: true,
 };
+
 export const HANDLE_Y = 0.2225 + 0.08;
 export const FLAME_HEIGHT = 0.115;
 export const CORE_HEIGHT = 0.102;
@@ -41,30 +43,36 @@ export class LanternModel {
 
 	constructor(kit: ModelKit, scale = 1, tint: number | null = null) {
 		const rig = kit.rig("tools/lantern");
+
 		this.root = rig.root;
 		this.lightAnchor = rig.node("light");
 		this.handle = rig.node("handle");
 		this.shutter = rig.node("shutter");
 		this.flames = rig.meshes("flame");
 		this.core = rig.mesh("core");
+
 		if (tint !== null) {
 			rig.mesh("glass").material = kit.material({
 				...GLASS,
 				color: towardWhite(tint, 0.55),
 			});
+
 			const flame = kit.material({
 				...FLAME,
 				texture: "flameNeutral",
 				color: tint,
 			});
+
 			for (const mesh of this.flames) {
 				mesh.material = flame;
 			}
+
 			this.core.material = kit.material({
 				color: towardWhite(tint, 0.6),
 				unlit: true,
 			});
 		}
+
 		this.root.scale.setScalar(scale);
 	}
 
@@ -74,19 +82,26 @@ export class LanternModel {
 
 	update(dt: number, open: boolean): number {
 		this.time += dt;
+
 		const target = open ? 1 : 0;
+
 		this.openness += (target - this.openness) * Math.min(1, dt * 10);
 		this.shutter.scale.y = Math.max(0.06, 1 - this.openness * 0.94);
 		this.shutter.rotation.y = this.openness * 0.6;
+
 		const flicker =
 			0.85 +
 			Math.sin(this.time * 17) * 0.06 +
 			Math.sin(this.time * 31 + 1.3) * 0.05;
+
 		for (const flame of this.flames) {
 			flame.scale.set(0.9 + Math.sin(this.time * 23) * 0.08, flicker, 1);
+
 			flame.visible = this.openness > 0.05;
 		}
+
 		this.core.visible = true;
+
 		return this.openness * flicker;
 	}
 }

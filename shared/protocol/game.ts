@@ -7,7 +7,7 @@ import type { SpeciesId } from "../config/species.js";
 import type { HatPattern } from "../hatPatterns.js";
 import type { BrewEffect } from "../manor/brews.js";
 import type { MatchConfig } from "../matchConfig.js";
-import type { Vec3 } from "../math.js";
+import type { Vec2, Vec3 } from "../math.js";
 import type { LanternTint, Tagline } from "../rewards.js";
 import type { TeamStanding } from "../teams.js";
 import type { TimeWindow } from "../voiceTimeline.js";
@@ -125,6 +125,9 @@ export const PLAYER_FLAG = {
 	walkieHeld: 65536,
 	cameraHeld: 131072,
 	bounty: 262144,
+	infected: 524288,
+	compelled: 1048576,
+	entranced: 2097152,
 } as const;
 
 export interface PlayerSnapshot {
@@ -158,7 +161,8 @@ export type AnomalyState =
 	| "extract"
 	| "special"
 	| "flee"
-	| "gone";
+	| "gone"
+	| "stalled";
 
 export const ANOMALY_STATES: readonly AnomalyState[] = [
 	"dormant",
@@ -174,6 +178,7 @@ export const ANOMALY_STATES: readonly AnomalyState[] = [
 	"special",
 	"flee",
 	"gone",
+	"stalled",
 ];
 
 export interface AnomalySnapshot {
@@ -256,7 +261,8 @@ export type CastFailureReason =
 	| "dead"
 	| "hidden"
 	| "cooldown"
-	| "scattered";
+	| "scattered"
+	| "rolling";
 
 export interface CastResult {
 	ok: boolean;
@@ -291,6 +297,15 @@ export interface ForcedMove {
 }
 
 export type ProjectileKind = "ember" | "slime";
+
+export type CompulsionKind = "scream" | "lure" | "leap" | "lantern" | "expel";
+
+export type SeancePhase = "start" | "won" | "lost" | "cancel";
+
+export interface FilmReport {
+	anomalyId: number;
+	inputs: number[];
+}
 
 export type DamageCause = "explosion" | "fall" | "pact";
 
@@ -475,7 +490,31 @@ export type GameEvent =
 			endsAt: number;
 			reason: "ritual" | "timeout";
 	  }
-	| { type: "voteCast"; voterId: string };
+	| { type: "voteCast"; voterId: string }
+	| {
+			type: "infection";
+			playerId: string;
+			anomalyId: number | null;
+			until: number;
+	  }
+	| {
+			type: "compulsion";
+			playerId: string;
+			kind: CompulsionKind;
+			until: number;
+			path: Vec3[];
+			leap: Vec2 | null;
+	  }
+	| {
+			type: "seance";
+			phase: SeancePhase;
+			anomalyId: number;
+			playerId: string;
+			seed: number;
+			level: number;
+			startsAt: number;
+			endsAt: number;
+	  };
 
 export interface TimedEvent {
 	t: number;

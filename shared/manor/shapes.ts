@@ -35,14 +35,17 @@ export function outlineFromVertices(
 		}
 
 		const size = treatment.size;
+
 		const before = {
 			x: corner.x - incoming.x * size,
 			z: corner.z - incoming.z * size,
 		};
+
 		const after = {
 			x: corner.x + outgoing.x * size,
 			z: corner.z + outgoing.z * size,
 		};
+
 		ends[index] = before;
 		starts[index] = after;
 
@@ -64,14 +67,18 @@ export function outlineFromVertices(
 	}
 
 	const edges: OutlineEdge[] = [];
+
 	for (let index = 0; index < count; index += 1) {
 		const cornerEdge = cornerEdges[index];
+
 		if (cornerEdge) {
 			edges.push(cornerEdge);
 		}
+
 		const nextIndex = (index + 1) % count;
 		const sideStart = starts[index];
 		const sideEnd = ends[nextIndex];
+
 		if (Math.hypot(sideEnd.x - sideStart.x, sideEnd.z - sideStart.z) > 1e-4) {
 			edges.push({
 				kind: "line",
@@ -80,6 +87,7 @@ export function outlineFromVertices(
 			});
 		}
 	}
+
 	return edges;
 }
 
@@ -94,8 +102,10 @@ function buildQuarterArc(
 		x: before.x + outgoing.x * radius,
 		z: before.z + outgoing.z * radius,
 	};
+
 	const turn = Math.sign(cross2(incoming, outgoing));
 	const startAngle = Math.atan2(before.z - center.z, before.x - center.x);
+
 	return {
 		kind: "arc",
 		a: cleanPoint(before),
@@ -136,31 +146,40 @@ export function corridorPathVertices(path: Vec2[], width: number): Vec2[] {
 	const half = width / 2;
 	const left: Vec2[] = [];
 	const right: Vec2[] = [];
+
 	for (let index = 0; index < path.length; index += 1) {
 		const point = path[index];
 		const previous = path[index - 1];
 		const next = path[index + 1];
 		const directionIn = previous ? normalize2(sub2(point, previous)) : null;
 		const directionOut = next ? normalize2(sub2(next, point)) : null;
+
 		const normalIn = directionIn
 			? { x: -directionIn.z, z: directionIn.x }
 			: null;
+
 		const normalOut = directionOut
 			? { x: -directionOut.z, z: directionOut.x }
 			: null;
+
 		const normal = normalize2({
 			x: (normalIn?.x ?? 0) + (normalOut?.x ?? 0),
 			z: (normalIn?.z ?? 0) + (normalOut?.z ?? 0),
 		});
+
 		const reference = normalIn ?? (normalOut as Vec2);
 		const miter = half / Math.max(0.35, dot2(normal, reference));
+
 		left.push({ x: point.x + normal.x * miter, z: point.z + normal.z * miter });
+
 		right.push({
 			x: point.x - normal.x * miter,
 			z: point.z - normal.z * miter,
 		});
 	}
+
 	const polygon = [...right, ...left.reverse()];
+
 	return signedArea(polygon) < 0 ? polygon.reverse() : polygon;
 }
 
@@ -172,9 +191,11 @@ export function transformEdges(
 	return edges.map((edge) => {
 		const a = cleanPoint(translate(rotate2(edge.a, rotation), offset));
 		const b = cleanPoint(translate(rotate2(edge.b, rotation), offset));
+
 		if (edge.kind === "line") {
 			return { kind: "line", a, b };
 		}
+
 		return {
 			kind: "arc",
 			a,

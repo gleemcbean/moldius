@@ -18,22 +18,31 @@ export class RateLimiter {
 
 	allow(key: string, now: number): boolean {
 		const rule = this.rules[key] ?? this.fallback;
+
 		const bucket = this.buckets.get(key) ?? {
 			tokens: rule.burst,
 			updatedAt: now,
 		};
+
 		const elapsed = Math.max(0, now - bucket.updatedAt) / 1000;
+
 		bucket.tokens = Math.min(
 			rule.burst,
 			bucket.tokens + elapsed * rule.perSecond,
 		);
+
 		bucket.updatedAt = now;
+
 		if (bucket.tokens < 1) {
 			this.buckets.set(key, bucket);
+
 			return false;
 		}
+
 		bucket.tokens -= 1;
+
 		this.buckets.set(key, bucket);
+
 		return true;
 	}
 }
@@ -59,6 +68,7 @@ export const SOCKET_RATE_RULES: Record<string, RateRule> = {
 	"game:ghost": { perSecond: 2, burst: 4 },
 	"game:power": { perSecond: 1, burst: 2 },
 	"game:vote": { perSecond: 2, burst: 4 },
+	"game:film": { perSecond: 1, burst: 3 },
 	"friends:list": { perSecond: 1, burst: 5 },
 	"friends:write": { perSecond: 1, burst: 6 },
 	"friends:invite": { perSecond: 1, burst: 4 },

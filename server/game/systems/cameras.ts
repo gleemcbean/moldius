@@ -23,6 +23,7 @@ export class CameraSystem {
 	take(match: Match, player: MatchPlayer, id: number): boolean {
 		const state = this.states.get(id);
 		const spot = match.layout.cameras[id];
+
 		if (
 			!state ||
 			!spot ||
@@ -33,28 +34,37 @@ export class CameraSystem {
 		) {
 			return false;
 		}
+
 		const eye = player.eyePosition();
+
 		if (
 			Math.hypot(spot.x - eye.x, spot.y - eye.y, spot.z - eye.z) >
 			PICKUP_INTERACT_RANGE + 0.4
 		) {
 			return false;
 		}
+
 		state.holder = player.id;
 		player.camera = id;
+
 		match.emit({ type: "camera", id, holder: player.id, available: false });
+
 		return true;
 	}
 
 	release(match: Match, player: MatchPlayer): void {
 		const state = this.states.get(player.camera);
+
 		if (!state) {
 			return;
 		}
+
 		const id = player.camera;
+
 		player.camera = -1;
 		state.holder = null;
 		state.returnsAt = match.now + CAMERA_RETURN_MS;
+
 		match.emit({ type: "camera", id, holder: null, available: false });
 	}
 
@@ -62,6 +72,7 @@ export class CameraSystem {
 		for (const [id, state] of this.states) {
 			if (state.returnsAt !== null && match.now >= state.returnsAt) {
 				state.returnsAt = null;
+
 				match.emit({ type: "camera", id, holder: null, available: true });
 			}
 		}

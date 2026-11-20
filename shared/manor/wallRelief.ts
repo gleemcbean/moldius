@@ -18,31 +18,39 @@ function topProfile(room: Room, base: number, size: number): ReliefNode[] {
 	const h = room.height;
 	const steps = size < 0.3 ? 2 : 3;
 	const nodes: ReliefNode[] = [{ y: h - size, depth: base }];
+
 	for (let step = 1; step <= steps; step += 1) {
 		const y = h - size + (size * (step - 1)) / steps;
 		const depth = base + (size * step) / steps;
+
 		nodes.push({ y: y + STEP_RISE, depth });
+
 		nodes.push({
 			y: step === steps ? h : h - size + (size * step) / steps,
 			depth,
 		});
 	}
+
 	return nodes;
 }
 
 export function wallProfile(room: Room): ReliefNode[] {
 	const h = room.height;
+
 	const flat: ReliefNode[] = [
 		{ y: 0, depth: 0 },
 		{ y: h, depth: 0 },
 	];
+
 	if (room.type === "stairwell" || room.type === "corridor") {
 		return flat;
 	}
+
 	const nodes: ReliefNode[] = [];
 	const deck = room.mezzanine ? room.mezzanine.floorY - room.floorY : null;
 	const beltY = deck ?? (h >= 4.2 ? 2.75 : null);
 	const size = Math.min(MAX_TOP, (h - CLEAR_HEIGHT) * 0.7);
+
 	if (beltY !== null && beltY + 0.2 < h - Math.max(size, 0)) {
 		nodes.push(
 			{ y: beltY - 0.2, depth: 0 },
@@ -51,28 +59,37 @@ export function wallProfile(room: Room): ReliefNode[] {
 			{ y: beltY + 0.08, depth: 0 },
 		);
 	}
+
 	if (size >= 0.1) {
 		let overhang = 0;
 		const start = deck !== null ? deck + 2.75 : 3.3;
+
 		if (h - size - start > 0.5 && pick(room.seed, 19, 2) === 0) {
 			overhang = 0.2;
+
 			nodes.push(
 				{ y: start, depth: 0 },
 				{ y: start + STEP_RISE, depth: overhang },
 			);
 		}
+
 		nodes.push(...topProfile(room, overhang, size));
 	}
+
 	if (nodes.length === 0) {
 		return flat;
 	}
+
 	if (nodes[0].y > 0) {
 		nodes.unshift({ y: 0, depth: 0 });
 	}
+
 	const last = nodes[nodes.length - 1];
+
 	if (last.y < h) {
 		nodes.push({ y: h, depth: last.depth });
 	}
+
 	return nodes;
 }
 
@@ -85,15 +102,19 @@ export function clipProfile(
 		for (let index = 1; index < nodes.length; index += 1) {
 			const a = nodes[index - 1];
 			const b = nodes[index];
+
 			if (y <= b.y) {
 				const span = b.y - a.y;
+
 				return span > 1e-6
 					? a.depth + ((b.depth - a.depth) * (y - a.y)) / span
 					: b.depth;
 			}
 		}
+
 		return nodes[nodes.length - 1].depth;
 	};
+
 	return [
 		{ y: bottom, depth: at(bottom) },
 		...nodes.filter((node) => node.y > bottom + 1e-4 && node.y < top - 1e-4),
