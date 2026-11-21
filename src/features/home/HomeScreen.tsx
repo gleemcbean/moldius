@@ -18,6 +18,7 @@ import { useLanguage, useT } from "../../i18n";
 import { accountStore } from "../account/accountStore";
 import { friendsStore } from "../friends/friendsStore";
 import { installStore, promptInstall } from "../install/installStore";
+import { SteamDeckInstall } from "../install/SteamDeckInstall";
 import { ManorApproachScene } from "../loading/ManorApproachScene";
 import { consumeInvite, inviteStore } from "../lobby/inviteStore";
 import { joinPrivateLobby } from "../lobby/lobbyClient";
@@ -51,6 +52,8 @@ export function HomeScreen() {
 	const accountStatus = useStore(accountStore, (state) => state.status);
 	const account = useStore(accountStore, (state) => state.account);
 	const installable = useStore(installStore, (state) => state.available);
+	const installPlatform = useStore(installStore, (state) => state.platform);
+	const [deckInstall, setDeckInstall] = useState(false);
 	const [choosingMode, setChoosingMode] = useState(false);
 	const phase = useStore(titleStore, (state) => state.phase);
 	const inMenu = phase === "menu";
@@ -235,7 +238,11 @@ export function HomeScreen() {
 							<button
 								type="button"
 								className={styles.tile}
-								onClick={promptInstall}
+								onClick={() =>
+									installPlatform === "steamdeck"
+										? setDeckInstall(true)
+										: promptInstall()
+								}
 								title={t.home.install}
 								aria-label={t.home.install}
 								data-selectable=""
@@ -269,6 +276,9 @@ export function HomeScreen() {
 					<a href={`/terms?lang=${language}`}>{t.home.terms}</a>
 					<a href={`/privacy?lang=${language}`}>{t.home.privacy}</a>
 				</nav>
+			) : null}
+			{deckInstall ? (
+				<SteamDeckInstall onClose={() => setDeckInstall(false)} />
 			) : null}
 		</main>
 	);

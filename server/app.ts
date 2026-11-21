@@ -154,7 +154,7 @@ export function createApp(
 		"/download/steamdeck",
 		steamDeckInstall(
 			steamDeckLauncher,
-			"application/x-desktop",
+			"application/octet-stream",
 			"Installer-Moldius.desktop",
 		),
 	);

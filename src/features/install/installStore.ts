@@ -6,7 +6,10 @@ import {
 	downloadUrl,
 } from "./platform";
 
-export const installStore = createStore({ available: false });
+export const installStore = createStore<{
+	available: boolean;
+	platform: DownloadPlatform | null;
+}>({ available: false, platform: null });
 
 const platform = detectDownloadPlatform();
 
@@ -56,7 +59,7 @@ export function initInstall(): void {
 		chosen = available;
 
 		if (available) {
-			installStore.set({ available: true });
+			installStore.set({ available: true, platform: available });
 		}
 	});
 }
@@ -65,4 +68,8 @@ export function promptInstall(): void {
 	if (chosen) {
 		window.location.href = downloadUrl(chosen);
 	}
+}
+
+export function steamDeckCommand(origin: string, insecure: boolean): string {
+	return `curl -fsSL${insecure ? "k" : ""} ${origin}/download/steamdeck.sh | bash`;
 }

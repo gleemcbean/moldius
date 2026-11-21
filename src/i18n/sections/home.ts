@@ -47,6 +47,21 @@ export const homeFr = {
 	signIn: "Se connecter",
 	settings: "Paramètres",
 	install: "Télécharger",
+	steamDeck: {
+		title: "Installer sur Steam Deck",
+		intro:
+			"En mode Bureau, une seule commande télécharge Moldius, le rend exécutable et l'ajoute à Steam.",
+		openKonsole:
+			"Ouvre Konsole depuis le menu des applications (Système → Konsole).",
+		paste:
+			"Copie la commande ci-dessous, colle-la dans Konsole avec Ctrl+Maj+V puis appuie sur Entrée.",
+		play: "Retourne en mode Jeu : Moldius t'attend dans la catégorie « Non-Steam ».",
+		copy: "Copier la commande",
+		copied: "Commande copiée",
+		fallback:
+			"Sans clavier ? Télécharge le lanceur, retire « .download » à la fin de son nom dans Dolphin, puis double-clique dessus.",
+		launcher: "Télécharger le lanceur",
+	},
 	quitGame: "Quitter le jeu",
 	connecting: "Connexion au serveur…",
 	offline: "Serveur injoignable, nouvelle tentative…",
@@ -100,6 +115,20 @@ export const homeEn: typeof homeFr = {
 	signIn: "Sign in",
 	settings: "Settings",
 	install: "Download",
+	steamDeck: {
+		title: "Install on Steam Deck",
+		intro:
+			"In Desktop Mode, a single command downloads Moldius, makes it executable and adds it to Steam.",
+		openKonsole: "Open Konsole from the application menu (System → Konsole).",
+		paste:
+			"Copy the command below, paste it into Konsole with Ctrl+Shift+V and press Enter.",
+		play: "Go back to Game Mode: Moldius is waiting in the “Non-Steam” collection.",
+		copy: "Copy the command",
+		copied: "Command copied",
+		fallback:
+			"No keyboard? Download the launcher, remove “.download” from the end of its name in Dolphin, then double-click it.",
+		launcher: "Download the launcher",
+	},
 	quitGame: "Quit game",
 	connecting: "Connecting to the server…",
 	offline: "Server unreachable, retrying…",
