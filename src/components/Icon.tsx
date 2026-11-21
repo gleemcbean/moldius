@@ -22,7 +22,13 @@ export type IconName =
 	| "skull"
 	| "speaker"
 	| "discord"
-	| "download";
+	| "download"
+	| "more"
+	| "ban"
+	| "speakerOff"
+	| "userPlus"
+	| "fullscreen"
+	| "flag";
 
 export const ICON_PATHS: Record<IconName, string> = {
 	walkie: "M10 0h1v4h2v12H3V4h7zM5 6v3h6V6zM5 11v1h6v-1zM5 13v1h6v-1z",
@@ -53,6 +59,15 @@ export const ICON_PATHS: Record<IconName, string> = {
 	speaker:
 		"M1 5h3l5-4v14l-5-4H1zm10 0c1 .8 1.5 1.8 1.5 3s-.5 2.2-1.5 3l-1-1c.6-.5 1-1.2 1-2s-.4-1.5-1-2z",
 	download: "M7 1h2v7.2l2.6-2.6L13 7l-5 5-5-5 1.4-1.4L7 8.2zM2 13h12v2H2z",
+	more: "M1.5 6.5h3v3h-3zm5 0h3v3h-3zm5 0h3v3h-3z",
+	ban: "M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1zM5.24 3.83A5 5 0 0 1 12.17 10.76zM10.76 12.17A5 5 0 0 1 3.83 5.24z",
+	speakerOff:
+		"M1 5h3l5-4v14l-5-4H1zm10.3.3L13 7l1.7-1.7 1 1L14 8l1.7 1.7-1 1L13 9l-1.7 1.7-1-1L12 8l-1.7-1.7z",
+	userPlus:
+		"M6 1a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM0 15c0-3.6 2.5-6 6-6s6 2.4 6 6zM12 3h2v2h2v2h-2v2h-2V7h-2V5h2z",
+	fullscreen:
+		"M1 1h5v2H3v3H1zm9 0h5v5h-2V3h-3zM1 10h2v3h3v2H1zm12 0h2v5h-5v-2h3z",
+	flag: "M3 1h2v14H3zm3 1h8l-2 3 2 3H6z",
 };
 
 export function Icon({

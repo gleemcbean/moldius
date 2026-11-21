@@ -1,0 +1,26 @@
+@use '../../styles/tokens' as *;
+
+.button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: $ink-muted;
+  cursor: pointer;
+  transition: color $fast $ease;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover,
+  &:focus-visible,
+  &[aria-expanded='true'] {
+    color: $accent;
+  }
+}

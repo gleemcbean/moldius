@@ -6,6 +6,7 @@ import { waitForArrival } from "../loading/approachArrival";
 import { lobbyStore } from "../lobby/lobbyStore";
 import { sessionStore } from "../network/sessionStore";
 import { getSocket } from "../network/socket";
+import { leaveVoice } from "../voice/voiceController";
 import { matchStore, resetMatchState } from "./matchStore";
 import { resetReplay } from "./replayStore";
 import { GameSession } from "./session/GameSession";
@@ -150,6 +151,28 @@ export function initMatchController(): void {
 		if (!session.playHighlights(results.highlights, showResults)) {
 			showResults();
 		}
+	});
+
+	socket.on("lobby:kicked", ({ lobbyId, banned }) => {
+		const lobby = lobbyStore.get().lobby;
+
+		if (lobby && lobby.id !== lobbyId) {
+			return;
+		}
+
+		const labels = currentMessages().contextMenu;
+
+		disposeSession();
+		resetMatchState();
+		leaveVoice();
+		lobbyStore.set({ lobby: null });
+		navigate("home");
+
+		showToast(
+			banned ? labels.youWereBanned : labels.youWereKicked,
+			"error",
+			7000,
+		);
 	});
 
 	socket.on("game:aborted", ({ reason }) => {

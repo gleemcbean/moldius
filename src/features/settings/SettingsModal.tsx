@@ -11,14 +11,15 @@ import { DevSettings } from "./DevSettings";
 import { DisplaySettings } from "./DisplaySettings";
 import styles from "./SettingsModal.module.scss";
 import { StatsSettings } from "./StatsSettings";
+import { type SettingsTab, takeRequestedTab } from "./settingsTab";
 
-type Tab = "controls" | "display" | "stats" | "audio" | "dev";
+type Tab = SettingsTab;
 
 const TABS: readonly Tab[] = ["controls", "display", "stats", "audio", "dev"];
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
 	const t = useT();
-	const [tab, setTab] = useState<Tab>("controls");
+	const [tab, setTab] = useState<Tab>(() => takeRequestedTab() ?? "controls");
 	const dev = useStore(sessionStore, (state) => state.dev);
 
 	return (

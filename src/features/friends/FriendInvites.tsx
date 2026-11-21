@@ -1,6 +1,8 @@
 import { Button } from "../../components/Button";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
+import { openContextMenu } from "../contextMenu/contextMenuStore";
+import { invitationMenu } from "../contextMenu/socialMenus";
 import styles from "./FriendInvites.module.scss";
 import { acceptInvite, dismissInvite, friendsStore } from "./friendsStore";
 
@@ -18,6 +20,12 @@ export function FriendInvites() {
 				<div
 					className={styles.card}
 					key={invite.lobbyId + invite.fromAccountId}
+					role="group"
+					aria-label={t.friends.inviteFrom(invite.fromName)}
+					onContextMenu={(event) =>
+						openContextMenu(event, invitationMenu(invite))
+					}
+					data-context-menu=""
 				>
 					<p>{t.friends.inviteFrom(invite.fromName)}</p>
 					<div className={styles.actions}>

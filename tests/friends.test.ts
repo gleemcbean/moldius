@@ -279,6 +279,53 @@ describe("amis, invitations et admin", () => {
 		expect(code(await invite(aliceSocket, carol.id))).toBe("friend-not-found");
 	});
 
+	it("envoie une demande d'ami à un joueur du même lobby, sans code", async () => {
+		const alice = await createAccount("Alice");
+		const bob = await createAccount("Bob");
+		const carol = await createAccount("Carol");
+		const aliceSocket = await connect(alice.cookie);
+		const bobSocket = await connect(bob.cookie);
+
+		await connect(carol.cookie);
+
+		const request = (client: Client, accountId: string) =>
+			new Promise<Reply<FriendsOverview>>((resolve) =>
+				client.emit("friends:request", { accountId }, resolve),
+			);
+
+		const created = (await new Promise((resolve) =>
+			aliceSocket.emit("lobby:createPrivate", { name: "Alice" }, resolve),
+		)) as Reply<LobbyState>;
+
+		await new Promise((resolve) =>
+			bobSocket.emit(
+				"lobby:joinPrivate",
+				{ name: "Bob", code: value(created).code as string },
+				resolve,
+			),
+		);
+
+		expect(code(await request(aliceSocket, carol.id))).toBe(
+			"friend-not-nearby",
+		);
+
+		expect(code(await request(aliceSocket, alice.id))).toBe("friend-self");
+
+		const changed = new Promise<void>((resolve) =>
+			bobSocket.once("friends:changed", () => resolve()),
+		);
+
+		const sent = value(await request(aliceSocket, bob.id));
+
+		expect(sent.outgoing.map((person) => person.name)).toEqual(["Bob"]);
+		await changed;
+		expect(code(await request(aliceSocket, bob.id))).toBe("friend-exists");
+
+		const accepted = value(await request(bobSocket, alice.id));
+
+		expect(accepted.friends.map((person) => person.name)).toEqual(["Alice"]);
+	});
+
 	const linkDiscord = (accountId: string, discordId: string) =>
 		database.query("UPDATE accounts SET discord_id = $2 WHERE id = $1", [
 			accountId,

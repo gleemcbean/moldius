@@ -191,7 +191,7 @@
 .slot {
   min-height: 0;
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) 24px 124px;
+  grid-template-columns: 56px minmax(0, 1fr) 24px 124px 32px;
   align-items: center;
   gap: 16px;
   padding: 0 16px;
@@ -217,7 +217,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 
   .slot {
-    grid-template-columns: 52px minmax(0, 1fr) 14px auto;
+    grid-template-columns: 52px minmax(0, 1fr) 14px auto 32px;
     gap: 12px;
     padding: 8px 16px;
   }
@@ -303,7 +303,8 @@
 
 .slotMeta {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 2px 16px;
   @include label;
   font-size: 14px;
 

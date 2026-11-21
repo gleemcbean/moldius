@@ -8,6 +8,7 @@ import { createStore } from "../../utils/store";
 import { audioEngine, setPannerPosition } from "../audio/audioEngine";
 import { getSocket } from "../network/socket";
 import { createRadioFilter, type RadioFilter } from "./radioEffect";
+import { peerGain, voicePrefsStore } from "./voicePrefs";
 import { VoiceRelayCapture, VoiceRelayPlayback } from "./voiceRelay";
 
 export type VoiceMode = "lobby" | "game";
@@ -23,6 +24,7 @@ interface PeerLink {
 	stream: MediaStream | null;
 	source: AudioNode | null;
 	gain: GainNode;
+	personal: GainNode;
 	filter: BiquadFilterNode;
 	panner: PannerNode;
 	analyser: AnalyserNode;
@@ -95,6 +97,8 @@ class VoiceChat {
 		getSocket().on("voice:relay", ({ peerId, data }) =>
 			this.receiveRelay(peerId, data),
 		);
+
+		voicePrefsStore.subscribe(() => this.applyPersonalGains());
 	}
 
 	start(myId: string, iceServers: IceServerConfig[]): void {
@@ -248,7 +252,12 @@ class VoiceChat {
 			: null;
 
 		const gain = context.createGain();
+		const personal = context.createGain();
 		const filter = context.createBiquadFilter();
+
+		personal.gain.value = peerGain(peerId);
+
+		personal.connect(audioEngine.bus("voice"));
 
 		filter.type = "lowpass";
 		filter.frequency.value = 18000;
@@ -271,7 +280,7 @@ class VoiceChat {
 		radioGain.gain.value = 0;
 
 		radio.output.connect(radioGain);
-		radioGain.connect(audioEngine.bus("voice"));
+		radioGain.connect(personal);
 
 		const link: PeerLink = {
 			id: peerId,
@@ -284,6 +293,7 @@ class VoiceChat {
 			stream: null,
 			source: null,
 			gain,
+			personal,
 			filter,
 			panner,
 			analyser,
@@ -365,16 +375,14 @@ class VoiceChat {
 		link.gain.disconnect();
 		link.panner.disconnect();
 
-		const bus = audioEngine.bus("voice");
-
 		if (this.mode === "game") {
-			link.gain.connect(link.panner).connect(bus);
+			link.gain.connect(link.panner).connect(link.personal);
 		} else {
 			link.gain.gain.setTargetAtTime(1, audioEngine.ctx.currentTime, 0.05);
 
 			link.filter.frequency.value = 18000;
 
-			link.gain.connect(bus);
+			link.gain.connect(link.personal);
 		}
 	}
 
@@ -639,6 +647,7 @@ class VoiceChat {
 		link.source?.disconnect();
 		link.gain.disconnect();
 		link.panner.disconnect();
+		link.personal.disconnect();
 		link.radio.dispose();
 		link.radioGain.disconnect();
 		link.relayPlayback?.dispose();
@@ -649,6 +658,14 @@ class VoiceChat {
 
 		this.peers.delete(peerId);
 		this.updateRelayCapture();
+	}
+
+	private applyPersonalGains(): void {
+		const now = audioEngine.ctx.currentTime;
+
+		for (const link of this.peers.values()) {
+			link.personal.gain.setTargetAtTime(peerGain(link.id), now, 0.05);
+		}
 	}
 
 	private publishLevels(): void {

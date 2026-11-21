@@ -1,4 +1,8 @@
 import { createStore } from "../../utils/store";
+import {
+	closeContextMenu,
+	contextMenuOpen,
+} from "../contextMenu/contextMenuStore";
 import { settingsStore } from "../settings/settingsStore";
 import {
 	inputDeviceStore,
@@ -30,6 +34,7 @@ const MOUSE_TRAVEL_THRESHOLD = 12;
 const MOUSE_TRAVEL_WINDOW_MS = 250;
 const TABS = "[data-pad-tabs]";
 const RADIO = '[role="radio"]:not([disabled])';
+const CONTEXT_MENU = "[data-context-menu]";
 
 type Direction = "up" | "down" | "left" | "right";
 
@@ -53,9 +58,14 @@ let nextScopeCheck = 0;
 let mouseTravel = 0;
 let mouseTravelAt = 0;
 
-export const padHintsStore = createStore<{ visible: boolean; tabs: boolean }>({
+export const padHintsStore = createStore<{
+	visible: boolean;
+	tabs: boolean;
+	options: boolean;
+}>({
 	visible: false,
 	tabs: false,
+	options: false,
 });
 
 function visible(element: HTMLElement): boolean {
@@ -360,10 +370,15 @@ function checkScope(now: number): void {
 	}
 
 	const tabs = [...scope.querySelectorAll<HTMLElement>(TABS)].some(visible);
+	const options = Boolean(current?.closest(CONTEXT_MENU));
 	const hints = padHintsStore.get();
 
-	if (hints.visible !== usingPad || hints.tabs !== tabs) {
-		padHintsStore.set({ visible: usingPad, tabs });
+	if (
+		hints.visible !== usingPad ||
+		hints.tabs !== tabs ||
+		hints.options !== options
+	) {
+		padHintsStore.set({ visible: usingPad, tabs, options });
 	}
 }
 
@@ -402,6 +417,28 @@ function activate(): void {
 	}
 
 	current.click();
+}
+
+function openFocusedMenu(): void {
+	const current = currentFocus(activeScope());
+
+	if (!current) {
+		return;
+	}
+
+	const rect = current.getBoundingClientRect();
+
+	rumble("select");
+
+	current.dispatchEvent(
+		new MouseEvent("contextmenu", {
+			bubbles: true,
+			cancelable: true,
+			button: 2,
+			clientX: rect.left + Math.min(rect.width / 2, 24),
+			clientY: rect.bottom,
+		}),
+	);
 }
 
 function back(): void {
@@ -535,8 +572,16 @@ function tick(now: number): void {
 		) {
 			rumble("back");
 
-			if (!padFocus.onMenu?.()) {
+			if (contextMenuOpen()) {
+				closeContextMenu();
+			} else if (!padFocus.onMenu?.()) {
 				back();
+			}
+		} else if (edge.code === padCode(PAD_BUTTON.y, false)) {
+			if (contextMenuOpen()) {
+				closeContextMenu();
+			} else {
+				openFocusedMenu();
 			}
 		} else if (
 			edge.code === padCode(PAD_BUTTON.lb, false) ||

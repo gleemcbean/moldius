@@ -65,6 +65,15 @@ export function addFriend(code: string, done: (ok: boolean) => void): void {
 	);
 }
 
+export function requestFriend(
+	accountId: string,
+	done: (ok: boolean) => void,
+): void {
+	getSocket().emit("friends:request", { accountId }, (reply) =>
+		done(applyOverview(reply)),
+	);
+}
+
 export function respondToFriend(accountId: string, accept: boolean): void {
 	getSocket().emit("friends:respond", { accountId, accept }, (reply) =>
 		applyOverview(reply),

@@ -41,6 +41,16 @@ const ALREADY_PLAYING: LobbyError = {
 	message: "Ce compte est déjà dans une partie, dans un autre onglet.",
 };
 
+const BANNED: LobbyError = {
+	code: "banned",
+	message: "L'hôte vous a banni de ce lobby.",
+};
+
+const NOT_IN_LOBBY: LobbyError = {
+	code: "not-in-lobby",
+	message: "Vous n'êtes dans aucun lobby.",
+};
+
 export interface LobbyManagerOptions {
 	minPlayers: number;
 	dev?: boolean;
@@ -201,6 +211,10 @@ export class LobbyManager {
 			};
 		}
 
+		if (this.bannedFrom(lobby, session)) {
+			return { ok: false, error: BANNED };
+		}
+
 		if (session.lobbyId !== lobby.id) {
 			this.leave(session);
 		}
@@ -256,6 +270,10 @@ export class LobbyManager {
 
 		if (session.lobbyId === lobby.id) {
 			return this.join(session, lobby, name, look);
+		}
+
+		if (this.bannedFrom(lobby, session)) {
+			return { ok: false, error: BANNED };
 		}
 
 		const allowed =
@@ -382,6 +400,10 @@ export class LobbyManager {
 		return lobby;
 	}
 
+	private bannedFrom(lobby: Lobby, session: Session): boolean {
+		return lobby.isBanned(session.playerId, session.account?.accountId ?? null);
+	}
+
 	private accountBusy(session: Session): boolean {
 		const accountId = session.account?.accountId;
 
@@ -412,6 +434,10 @@ export class LobbyManager {
 		name: string,
 		look: LookPreference,
 	): LobbyResult {
+		if (this.bannedFrom(lobby, session)) {
+			return { ok: false, error: BANNED };
+		}
+
 		const result = lobby.add(session.playerId, name, this.clock(), look);
 
 		if (!result.ok) {
@@ -555,6 +581,82 @@ export class LobbyManager {
 		if (lobby?.setTeam(session.playerId, team).ok) {
 			this.broadcastState(lobby);
 		}
+	}
+
+	kick(session: Session, targetId: string, ban: boolean): LobbyError | null {
+		const lobby = this.lobbyOf(session);
+
+		if (!lobby) {
+			return NOT_IN_LOBBY;
+		}
+
+		const check = lobby.canModerate(session.playerId, targetId);
+
+		if (!check.ok) {
+			return lobbyErrorOf(check);
+		}
+
+		const target = this.sessions.fromPlayer(targetId);
+
+		if (ban) {
+			lobby.ban(targetId, target?.account?.accountId ?? null);
+		}
+
+		if (target?.socketId) {
+			this.io
+				.to(target.socketId)
+				.emit("lobby:kicked", { lobbyId: lobby.id, banned: ban });
+		}
+
+		if (target?.lobbyId === lobby.id) {
+			this.leave(target);
+			this.sessions.forget(target);
+		} else {
+			lobby.remove(targetId);
+			this.broadcastState(lobby);
+		}
+
+		return null;
+	}
+
+	promote(session: Session, targetId: string): LobbyError | null {
+		const lobby = this.lobbyOf(session);
+
+		if (!lobby) {
+			return NOT_IN_LOBBY;
+		}
+
+		const result = lobby.promote(session.playerId, targetId);
+
+		if (!result.ok) {
+			return lobbyErrorOf(result);
+		}
+
+		this.broadcastState(lobby);
+
+		return null;
+	}
+
+	assignTeam(
+		session: Session,
+		targetId: string,
+		team: number,
+	): LobbyError | null {
+		const lobby = this.lobbyOf(session);
+
+		if (!lobby) {
+			return NOT_IN_LOBBY;
+		}
+
+		const result = lobby.assignTeam(session.playerId, targetId, team);
+
+		if (!result.ok) {
+			return lobbyErrorOf(result);
+		}
+
+		this.broadcastState(lobby);
+
+		return null;
 	}
 
 	start(session: Session): LobbyError | null {

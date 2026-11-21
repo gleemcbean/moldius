@@ -78,6 +78,10 @@ export interface ClientToServerEvents {
 		ack: Ack<FriendsOverview>,
 	) => void;
 	"friends:invite": (payload: { accountId: string }, ack: Ack<null>) => void;
+	"friends:request": (
+		payload: { accountId: string },
+		ack: Ack<FriendsOverview>,
+	) => void;
 	"friends:discordSync": (
 		payload: { discordId: string; friendIds: string[] },
 		ack: Ack<FriendsOverview>,
@@ -98,6 +102,15 @@ export interface ClientToServerEvents {
 		ack: Ack<LobbyState>,
 	) => void;
 	"lobby:team": (payload: { team: number }) => void;
+	"lobby:kick": (
+		payload: { playerId: string; ban: boolean },
+		ack: Ack<null>,
+	) => void;
+	"lobby:promote": (payload: { playerId: string }, ack: Ack<null>) => void;
+	"lobby:assignTeam": (
+		payload: { playerId: string; team: number },
+		ack: Ack<null>,
+	) => void;
 	"lobby:start": (ack: Ack<null>) => void;
 	"voice:signal": (payload: VoiceSignalEnvelope) => void;
 	"voice:relay": (payload: VoiceRelayRequest) => void;
@@ -138,6 +151,7 @@ export type AbortReason = "all-left" | "all-disconnected" | "layout-mismatch";
 
 export interface ServerToClientEvents {
 	"lobby:state": (state: LobbyState) => void;
+	"lobby:kicked": (payload: { lobbyId: string; banned: boolean }) => void;
 	"friends:changed": () => void;
 	"friends:invited": (invite: FriendInvite) => void;
 	"voice:signal": (payload: VoiceSignalEnvelope) => void;

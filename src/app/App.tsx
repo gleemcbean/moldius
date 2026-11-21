@@ -8,6 +8,8 @@ import { soundBank } from "../features/audio/soundBank";
 import { installHoverSounds } from "../features/audio/uiSounds";
 import { BestiaryModal } from "../features/bestiary/BestiaryModal";
 import { ChallengesModal } from "../features/challenges/ChallengesModal";
+import { installContextMenus } from "../features/contextMenu/appMenu";
+import { ContextMenu } from "../features/contextMenu/ContextMenu";
 import { DailyModal } from "../features/daily/DailyModal";
 import { initDiscord } from "../features/discord/discordStore";
 import { FriendInvites } from "../features/friends/FriendInvites";
@@ -96,10 +98,12 @@ function useGlobalSetup(): void {
 		window.addEventListener("keydown", unlockAudio);
 
 		const stopHoverSounds = installHoverSounds();
+		const stopContextMenus = installContextMenus();
 
 		return () => {
 			unsubscribe();
 			stopHoverSounds();
+			stopContextMenus();
 			stopLanguage();
 			stopScreen();
 			window.removeEventListener("pointerdown", unlockAudio);
@@ -227,6 +231,7 @@ function GameApp() {
 			) : null}
 			<PlayerProfileModal />
 			{screen === "home" || screen === "lobby" ? <FriendInvites /> : null}
+			<ContextMenu />
 			<Toasts />
 			<PadHints />
 			<PadKeyboard />

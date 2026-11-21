@@ -7,9 +7,14 @@ import { TaglineBadge } from "../../components/TaglineBadge";
 import { useStore } from "../../hooks/useStore";
 import { type Messages, useT } from "../../i18n";
 import { hexColor } from "../../utils/format";
+import { openContextMenu } from "../contextMenu/contextMenuStore";
+import { inviteMenu } from "../contextMenu/lobbyMenus";
+import { MenuButton } from "../contextMenu/MenuButton";
+import { playerMenu } from "../contextMenu/playerMenu";
 import { ProfileLink } from "../profile/ProfileLink";
 import { micStore } from "../voice/micManager";
 import { voiceStore } from "../voice/voiceChat";
+import { voicePrefsStore } from "../voice/voicePrefs";
 import styles from "./LobbyScreen.module.scss";
 import { chooseTeam } from "./lobbyClient";
 
@@ -88,10 +93,27 @@ function Occupied({
 }) {
 	const t = useT();
 
+	const muted = useStore(
+		voicePrefsStore,
+		(state) => state.muted[player.id] ?? false,
+	);
+
+	const menu = playerMenu(
+		{
+			playerId: player.id,
+			name: player.name,
+			profileId: player.profileId,
+			color: player.color,
+		},
+		"lobby",
+	);
+
 	return (
 		<li
 			className={[styles.slot, self ? styles.self : ""].join(" ")}
+			onContextMenu={(event) => openContextMenu(event, menu)}
 			data-selector-row=""
+			data-context-menu=""
 		>
 			<span className={styles.capPreview}>
 				<HatPreview color={player.color} pattern={player.pattern} />
@@ -133,6 +155,11 @@ function Occupied({
 					{!self && player.connected ? (
 						<VoiceLink playerId={player.id} />
 					) : null}
+					{!self && muted ? (
+						<span className={styles.micMissing}>
+							<Icon name="speakerOff" /> {t.contextMenu.mutedTag}
+						</span>
+					) : null}
 					{!player.connected ? (
 						<span className={styles.micMissing}>{t.lobby.disconnected}</span>
 					) : null}
@@ -146,6 +173,7 @@ function Occupied({
 			>
 				{player.ready ? t.lobby.ready : t.lobby.waiting}
 			</span>
+			<MenuButton build={menu} label={t.contextMenu.more(player.name)} />
 		</li>
 	);
 }
@@ -211,6 +239,8 @@ export function PlayerSlots({
 					<li
 						key={`free-${index.toString()}`}
 						className={[styles.slot, styles.free].join(" ")}
+						onContextMenu={(event) => openContextMenu(event, inviteMenu())}
+						data-context-menu=""
 					>
 						<span className={[styles.cap, styles.capEmpty].join(" ")} />
 						<span className={styles.slotBody}>
@@ -219,6 +249,10 @@ export function PlayerSlots({
 						</span>
 						<span className={styles.speaking} style={{ opacity: 0 }} />
 						<span className={styles.readyTag}>-</span>
+						<MenuButton
+							build={inviteMenu()}
+							label={t.contextMenu.invite.heading}
+						/>
 					</li>
 				))}
 			</ul>

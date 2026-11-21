@@ -6,6 +6,8 @@ import { Button } from "../../components/Button";
 import { Checkbox } from "../../components/Checkbox";
 import { Icon } from "../../components/Icon";
 import { useT } from "../../i18n";
+import { openContextMenu } from "../contextMenu/contextMenuStore";
+import { inviteMenu } from "../contextMenu/lobbyMenus";
 import styles from "./LobbyScreen.module.scss";
 import { setOpenToFriends } from "./lobbyClient";
 
@@ -40,7 +42,13 @@ export function InvitePanel({
 	};
 
 	return (
-		<section className={[styles.card, styles.invite].join(" ")}>
+		<section
+			className={[styles.card, styles.invite].join(" ")}
+			role="group"
+			aria-label={t.lobby.inviteTitle}
+			onContextMenu={(event) => openContextMenu(event, inviteMenu())}
+			data-context-menu=""
+		>
 			<h2 className={styles.cardTitle}>{t.lobby.inviteTitle}</h2>
 			<div className={styles.codeRow}>
 				<span className={styles.codeBlock}>

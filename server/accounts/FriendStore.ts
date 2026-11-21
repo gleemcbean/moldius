@@ -278,8 +278,21 @@ export class FriendStore {
 			return { ok: false, reason: "unknown" };
 		}
 
+		return this.request(accountId, target);
+	}
+
+	async request(accountId: string, target: string): Promise<AddFriendOutcome> {
 		if (target === accountId) {
 			return { ok: false, reason: "self" };
+		}
+
+		const known = await this.database.query<{ id: string }>(
+			"SELECT id FROM accounts WHERE id = $1",
+			[target],
+		);
+
+		if (known.rows.length === 0) {
+			return { ok: false, reason: "unknown" };
 		}
 
 		const links = await this.links(accountId);

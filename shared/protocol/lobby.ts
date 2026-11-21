@@ -98,7 +98,12 @@ export type LobbyErrorCode =
 	| "unknown-player"
 	| "invalid-code"
 	| "session-missing"
-	| "join-sign-in-required";
+	| "join-sign-in-required"
+	| "banned"
+	| "player-not-found"
+	| "public-host"
+	| "self-target"
+	| "friend-not-nearby";
 
 export interface LobbyError {
 	code: LobbyErrorCode;

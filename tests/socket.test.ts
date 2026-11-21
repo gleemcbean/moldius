@@ -556,6 +556,204 @@ describe("lobbies Socket.IO", () => {
 	});
 });
 
+describe("modération du lobby par l'hôte", () => {
+	async function privateLobby() {
+		const host = await client();
+		const guest = await client();
+
+		const created = (await request<LobbyState>((ack) =>
+			host.socket.emit("lobby:createPrivate", { name: "Hôte" }, ack),
+		)) as { value: LobbyState };
+
+		const code = created.value.code as string;
+
+		await request<LobbyState>((ack) =>
+			guest.socket.emit("lobby:joinPrivate", { name: "Invité", code }, ack),
+		);
+
+		return {
+			host,
+			guest,
+			code,
+			lobbyId: created.value.id,
+			config: created.value.config,
+		};
+	}
+
+	it("réserve la modération à l'hôte d'un lobby privé", async () => {
+		const { host, guest } = await privateLobby();
+		const stranger = await client();
+
+		const byGuest = await request<null>((ack) =>
+			guest.socket.emit(
+				"lobby:kick",
+				{ playerId: host.session.playerId, ban: false },
+				ack,
+			),
+		);
+
+		expect(byGuest).toMatchObject({ ok: false, error: { code: "not-host" } });
+
+		const onSelf = await request<null>((ack) =>
+			host.socket.emit(
+				"lobby:kick",
+				{ playerId: host.session.playerId, ban: false },
+				ack,
+			),
+		);
+
+		expect(onSelf).toMatchObject({ ok: false, error: { code: "self-target" } });
+
+		const outsider = await request<null>((ack) =>
+			host.socket.emit(
+				"lobby:kick",
+				{ playerId: stranger.session.playerId, ban: false },
+				ack,
+			),
+		);
+
+		expect(outsider).toMatchObject({
+			ok: false,
+			error: { code: "player-not-found" },
+		});
+
+		await request<LobbyState>((ack) =>
+			stranger.socket.emit("lobby:quickJoin", { name: "Passant" }, ack),
+		);
+
+		const inPublic = await request<null>((ack) =>
+			stranger.socket.emit(
+				"lobby:promote",
+				{ playerId: host.session.playerId },
+				ack,
+			),
+		);
+
+		expect(inPublic).toMatchObject({
+			ok: false,
+			error: { code: "public-host" },
+		});
+	});
+
+	it("exclut un joueur, qui peut revenir avec le code", async () => {
+		const { host, guest, code, lobbyId } = await privateLobby();
+		const kicked = waitFor(guest.socket, "lobby:kicked", 3000);
+
+		const departed = waitForState(
+			host.socket,
+			(state) =>
+				!state.players.some((player) => player.id === guest.session.playerId),
+		);
+
+		const result = await request<null>((ack) =>
+			host.socket.emit(
+				"lobby:kick",
+				{ playerId: guest.session.playerId, ban: false },
+				ack,
+			),
+		);
+
+		expect(result.ok).toBe(true);
+		expect(await kicked).toEqual({ lobbyId, banned: false });
+		await departed;
+
+		const back = await request<LobbyState>((ack) =>
+			guest.socket.emit("lobby:joinPrivate", { name: "Invité", code }, ack),
+		);
+
+		expect(back.ok).toBe(true);
+	});
+
+	it("bannit un joueur, qui ne peut plus revenir", async () => {
+		const { host, guest, code, lobbyId } = await privateLobby();
+		const kicked = waitFor(guest.socket, "lobby:kicked", 3000);
+
+		const result = await request<null>((ack) =>
+			host.socket.emit(
+				"lobby:kick",
+				{ playerId: guest.session.playerId, ban: true },
+				ack,
+			),
+		);
+
+		expect(result.ok).toBe(true);
+		expect(await kicked).toEqual({ lobbyId, banned: true });
+
+		const back = await request<LobbyState>((ack) =>
+			guest.socket.emit("lobby:joinPrivate", { name: "Invité", code }, ack),
+		);
+
+		expect(back).toMatchObject({ ok: false, error: { code: "banned" } });
+	});
+
+	it("cède l'hôte et place un joueur dans une équipe", async () => {
+		const { host, guest, config } = await privateLobby();
+
+		const configured = await request<LobbyState>((ack) =>
+			host.socket.emit(
+				"lobby:config",
+				{ config: { ...config, teamCount: 2 } },
+				ack,
+			),
+		);
+
+		expect(configured.ok).toBe(true);
+
+		const guestTeam = (configured as { value: LobbyState }).value.players.find(
+			(player) => player.id === guest.session.playerId,
+		)?.team;
+
+		const target = guestTeam === 0 ? 1 : 0;
+
+		const moved = waitForState(host.socket, (state) =>
+			state.players.some(
+				(player) =>
+					player.id === guest.session.playerId && player.team === target,
+			),
+		);
+
+		const assigned = await request<null>((ack) =>
+			host.socket.emit(
+				"lobby:assignTeam",
+				{ playerId: guest.session.playerId, team: target },
+				ack,
+			),
+		);
+
+		expect(assigned.ok).toBe(true);
+		await moved;
+
+		const promoted = waitForState(
+			guest.socket,
+			(state) => state.hostId === guest.session.playerId,
+		);
+
+		const result = await request<null>((ack) =>
+			host.socket.emit(
+				"lobby:promote",
+				{ playerId: guest.session.playerId },
+				ack,
+			),
+		);
+
+		expect(result.ok).toBe(true);
+		await promoted;
+
+		const formerHost = await request<null>((ack) =>
+			host.socket.emit(
+				"lobby:kick",
+				{ playerId: guest.session.playerId, ban: false },
+				ack,
+			),
+		);
+
+		expect(formerHost).toMatchObject({
+			ok: false,
+			error: { code: "not-host" },
+		});
+	});
+});
+
 describe("nombre minimal de joueurs", () => {
 	async function readyAlone(port?: number) {
 		const host = await client(port);

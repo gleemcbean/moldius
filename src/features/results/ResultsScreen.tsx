@@ -19,6 +19,8 @@ import { hexColor } from "../../utils/format";
 import { accountStore, refreshAccount } from "../account/accountStore";
 import { challengeLabel } from "../challenges/challengeStore";
 import { rewardName } from "../challenges/rewardLabels";
+import { openContextMenu } from "../contextMenu/contextMenuStore";
+import { playerMenu } from "../contextMenu/playerMenu";
 import { closeResults } from "../game/matchController";
 import { matchStore } from "../game/matchStore";
 import { lobbyStore } from "../lobby/lobbyStore";
@@ -32,6 +34,18 @@ type LobbyLookup = (playerId: string) => LobbyPlayerInfo | undefined;
 
 function reveal(order: number): CSSProperties {
 	return { "--reveal": order } as CSSProperties;
+}
+
+function entryMenu(entry: MatchResultEntry, lookup: LobbyLookup) {
+	return playerMenu(
+		{
+			playerId: entry.playerId,
+			name: entry.name,
+			profileId: lookup(entry.playerId)?.profileId,
+			color: entry.color,
+		},
+		"results",
+	);
 }
 
 function placeOf(results: MatchResults, entry: MatchResultEntry): number {
@@ -97,7 +111,11 @@ function Podium({
 						key={entry.playerId}
 						className={styles.step}
 						data-place={Math.min(place, 3)}
+						onContextMenu={(event) =>
+							openContextMenu(event, entryMenu(entry, lookup))
+						}
 						data-selector-row=""
+						data-context-menu=""
 					>
 						<span className={styles.stepHat}>
 							{place === 1 ? (
@@ -180,7 +198,11 @@ function Standings({
 				entry.playerId === selfId ? styles.self : "",
 				place === 1 ? styles.first : "",
 			].join(" ")}
+			onContextMenu={(event) =>
+				openContextMenu(event, entryMenu(entry, lookup))
+			}
 			data-selector-row=""
+			data-context-menu=""
 		>
 			<span className={styles.rank}>{place ?? ""}</span>
 			<span className={styles.rowHat}>

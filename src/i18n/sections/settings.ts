@@ -24,6 +24,7 @@ export const settingsFr = {
 		padHintSelect: "Valider",
 		padHintBack: "Retour",
 		padHintTabs: "Onglets",
+		padHintOptions: "Options",
 		padKeyboard: {
 			title: "Clavier",
 			shift: "Maj",
@@ -225,6 +226,7 @@ export const settingsEn: typeof settingsFr = {
 		padHintSelect: "Select",
 		padHintBack: "Back",
 		padHintTabs: "Tabs",
+		padHintOptions: "Options",
 		padKeyboard: {
 			title: "Keyboard",
 			shift: "Shift",

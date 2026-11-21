@@ -114,6 +114,15 @@ function preferredLantern(
 		: null;
 }
 
+function targetPlayer(payload: unknown): string | null {
+	return isRecord(payload) &&
+		typeof payload.playerId === "string" &&
+		payload.playerId.length > 0 &&
+		payload.playerId.length <= 64
+		? payload.playerId
+		: null;
+}
+
 function preferredLook(payload: unknown, session: Session): LookPreference {
 	return {
 		color: preferredColor(payload),
@@ -489,6 +498,61 @@ function handleConnection(socket: GameSocket, deps: HandlerDependencies): void {
 		) {
 			deps.lobbies.setTeam(current, payload.team);
 		}
+	});
+
+	socket.on("lobby:kick", (payload, ack) => {
+		respond(ack, allow("lobby:moderate"), session(), (current) => {
+			const targetId = targetPlayer(payload);
+
+			if (!targetId || !isRecord(payload) || typeof payload.ban !== "boolean") {
+				return { ok: false, error: INVALID };
+			}
+
+			const error = deps.lobbies.kick(current, targetId, payload.ban);
+
+			return error ? { ok: false, error } : { ok: true, value: null };
+		});
+	});
+
+	socket.on("lobby:promote", (payload, ack) => {
+		respond(ack, allow("lobby:moderate"), session(), (current) => {
+			const targetId = targetPlayer(payload);
+
+			if (!targetId) {
+				return { ok: false, error: INVALID };
+			}
+
+			const error = deps.lobbies.promote(current, targetId);
+
+			if (error) {
+				return { ok: false, error };
+			}
+
+			const previousHost = current.account?.accountId;
+			const nextHost = deps.lobbies.hostAccountOf(current);
+
+			for (const accountId of new Set([previousHost, nextHost])) {
+				if (accountId) {
+					notifyFriendsOf(deps, accountId);
+				}
+			}
+
+			return { ok: true, value: null };
+		});
+	});
+
+	socket.on("lobby:assignTeam", (payload, ack) => {
+		respond(ack, allow("lobby:moderate"), session(), (current) => {
+			const targetId = targetPlayer(payload);
+
+			if (!targetId || !isRecord(payload) || typeof payload.team !== "number") {
+				return { ok: false, error: INVALID };
+			}
+
+			const error = deps.lobbies.assignTeam(current, targetId, payload.team);
+
+			return error ? { ok: false, error } : { ok: true, value: null };
+		});
 	});
 
 	socket.on("lobby:start", (ack) => {

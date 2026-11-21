@@ -5,6 +5,7 @@ import { accountEn, accountFr } from "./sections/account";
 import { bestiaryEn, bestiaryFr } from "./sections/bestiary";
 import { challengesEn, challengesFr } from "./sections/challenges";
 import { commonEn, commonFr } from "./sections/common";
+import { contextMenuEn, contextMenuFr } from "./sections/contextMenu";
 import { dailyEn, dailyFr } from "./sections/daily";
 import { discordEn, discordFr } from "./sections/discord";
 import { friendsEn, friendsFr } from "./sections/friends";
@@ -36,6 +37,7 @@ const fr = {
 	progression: progressionFr,
 	party: partyFr,
 	title: titleFr,
+	contextMenu: contextMenuFr,
 };
 
 export type Messages = typeof fr;
@@ -58,6 +60,7 @@ const en: Messages = {
 	progression: progressionEn,
 	party: partyEn,
 	title: titleEn,
+	contextMenu: contextMenuEn,
 };
 
 const MESSAGES: Record<Language, Messages> = { fr, en };

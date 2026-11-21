@@ -7,6 +7,7 @@ import { keyboardLockSupported } from "../../utils/fullscreen";
 import { leaveMatch } from "../game/matchController";
 import type { GameSession } from "../game/session/GameSession";
 import styles from "./HudParts.module.scss";
+import { PausePlayers } from "./PausePlayers";
 
 export function PauseOverlay({ session }: { session: GameSession }) {
 	const t = useT();
@@ -29,6 +30,7 @@ export function PauseOverlay({ session }: { session: GameSession }) {
 				<Button variant="danger" wide onClick={leaveMatch}>
 					{t.game.pause.leave}
 				</Button>
+				<PausePlayers />
 				{!desktopApp ? (
 					<p className={styles.pauseHint}>
 						{keyboardLockSupported()

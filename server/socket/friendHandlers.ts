@@ -32,6 +32,7 @@ const MESSAGES: Partial<Record<LobbyErrorCode, string>> = {
 	"friend-offline": "Cet ami n'est pas en ligne.",
 	"friend-busy": "Cet ami est déjà en partie ou dans ce lobby.",
 	"lobby-not-invitable": "Rejoignez un lobby en attente pour inviter un ami.",
+	"friend-not-nearby": "Ce joueur n'est plus dans votre lobby.",
 	"discord-not-linked":
 		"Liez votre compte Discord à votre compte de jeu pour synchroniser vos amis.",
 	"discord-mismatch":
@@ -39,6 +40,13 @@ const MESSAGES: Partial<Record<LobbyErrorCode, string>> = {
 	"invalid-request": "Requête invalide : rechargez la page.",
 	"rate-limited": "Trop de requêtes, patientez un instant.",
 };
+
+const ADD_FAILURES = {
+	unknown: "friend-not-found",
+	self: "friend-self",
+	exists: "friend-exists",
+	limit: "friend-limit",
+} as const satisfies Record<string, LobbyErrorCode>;
 
 function failure(code: LobbyErrorCode): { ok: false; error: LobbyError } {
 	return { ok: false, error: { code, message: MESSAGES[code] ?? code } };
@@ -251,14 +259,39 @@ export function registerFriendHandlers(
 			const added = await store.add(accountId, code);
 
 			if (!added.ok) {
-				const codes = {
-					unknown: "friend-not-found",
-					self: "friend-self",
-					exists: "friend-exists",
-					limit: "friend-limit",
-				} as const;
+				return failure(ADD_FAILURES[added.reason]);
+			}
 
-				return failure(codes[added.reason]);
+			emitChanged(deps, added.accountId);
+
+			return overview(store, accountId);
+		});
+	});
+
+	socket.on("friends:request", (payload, ack) => {
+		void run(ack, "friends:write", async (store, accountId, current) => {
+			const other = otherAccount(payload);
+
+			if (!other) {
+				return failure("invalid-request");
+			}
+
+			const lobby = deps.lobbies.lobbyOf(current);
+
+			const nearby =
+				lobby !== null &&
+				deps.sessions
+					.withAccount(other)
+					.some((target) => target.lobbyId === lobby.id);
+
+			if (!nearby) {
+				return failure("friend-not-nearby");
+			}
+
+			const added = await store.request(accountId, other);
+
+			if (!added.ok) {
+				return failure(ADD_FAILURES[added.reason]);
 			}
 
 			emitChanged(deps, added.accountId);

@@ -18,6 +18,7 @@ const SECTIONS: [string, string, string][] = [
 	["grimoire", "grimoireFr", "grimoireEn"],
 	["world", "worldFr", "worldEn"],
 	["party", "partyFr", "partyEn"],
+	["contextMenu", "contextMenuFr", "contextMenuEn"],
 ];
 
 async function section(file: string): Promise<Tree> {

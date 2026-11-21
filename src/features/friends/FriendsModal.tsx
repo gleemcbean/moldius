@@ -15,6 +15,16 @@ import { TaglineBadge } from "../../components/TaglineBadge";
 import { useStore } from "../../hooks/useStore";
 import { useT } from "../../i18n";
 import { accountStore } from "../account/accountStore";
+import {
+	type MenuBuilder,
+	openContextMenu,
+} from "../contextMenu/contextMenuStore";
+import { MenuButton } from "../contextMenu/MenuButton";
+import {
+	friendCodeMenu,
+	friendMenu,
+	requestMenu,
+} from "../contextMenu/socialMenus";
 import { lobbyStore } from "../lobby/lobbyStore";
 import { ProfileLink } from "../profile/ProfileLink";
 import { DiscordFriendsSection, DiscordPanel } from "./DiscordSection";
@@ -38,18 +48,25 @@ function Person({
 	detail,
 	dot,
 	discord = false,
+	menu,
 	children,
 }: {
 	person: FriendPerson;
 	detail?: string;
 	dot?: string;
 	discord?: boolean;
+	menu: MenuBuilder;
 	children?: React.ReactNode;
 }) {
 	const t = useT();
 
 	return (
-		<li className={styles.person} data-selector-row="">
+		<li
+			className={styles.person}
+			onContextMenu={(event) => openContextMenu(event, menu)}
+			data-selector-row=""
+			data-context-menu=""
+		>
 			<HatPreview
 				color={person.color}
 				pattern={person.pattern}
@@ -77,7 +94,10 @@ function Person({
 					</span>
 				) : null}
 			</span>
-			<span className={styles.actions}>{children}</span>
+			<span className={styles.actions}>
+				{children}
+				<MenuButton build={menu} label={t.contextMenu.more(person.name)} />
+			</span>
 		</li>
 	);
 }
@@ -111,6 +131,7 @@ function Friend({
 			detail={t.friends.status[friend.status]}
 			dot={styles[friend.status]}
 			discord={friend.discord}
+			menu={friendMenu(friend.accountId)}
 		>
 			{canJoin && friend.lobbyId ? (
 				<Button onClick={() => friend.lobbyId && joinFriend(friend.lobbyId)}>
@@ -227,6 +248,10 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 						type="button"
 						className={styles.code}
 						onClick={copy}
+						onContextMenu={(event) =>
+							overview &&
+							openContextMenu(event, friendCodeMenu(overview.friendCode))
+						}
 						title={t.friends.copyCode}
 						data-selectable=""
 					>
@@ -277,7 +302,11 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 						<h3 className={styles.heading}>{t.friends.requests}</h3>
 						<ul className={styles.list}>
 							{overview.incoming.map((person) => (
-								<Person key={person.accountId} person={person}>
+								<Person
+									key={person.accountId}
+									person={person}
+									menu={requestMenu(person, "incoming")}
+								>
 									<Button
 										onClick={() => respondToFriend(person.accountId, true)}
 									>
@@ -325,7 +354,11 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
 						<h3 className={styles.heading}>{t.friends.sent}</h3>
 						<ul className={styles.list}>
 							{overview.outgoing.map((person) => (
-								<Person key={person.accountId} person={person}>
+								<Person
+									key={person.accountId}
+									person={person}
+									menu={requestMenu(person, "outgoing")}
+								>
 									<Button
 										variant="ghost"
 										onClick={() => removeFriend(person.accountId)}

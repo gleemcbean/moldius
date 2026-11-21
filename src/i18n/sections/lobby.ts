@@ -169,6 +169,11 @@ export const lobbyFr = {
 		"invalid-code": "Le code doit contenir 5 caractères.",
 		"session-missing": "Session absente : rechargez la page.",
 		"join-sign-in-required": "Connectez-vous pour rejoindre le lobby d'un ami.",
+		banned: "L'hôte vous a banni de ce lobby.",
+		"player-not-found": "Ce joueur n'est plus dans le lobby.",
+		"public-host": "Les lobbies publics n'ont pas d'hôte pour faire cela.",
+		"self-target": "Impossible de faire cela sur vous-même.",
+		"friend-not-nearby": "Ce joueur n'est plus dans votre lobby.",
 	} satisfies Record<LobbyErrorCode, string>,
 	notEnoughPlayers: (count: number) =>
 		`Il faut au moins ${count} joueurs pour lancer une partie.`,
@@ -339,6 +344,11 @@ export const lobbyEn: typeof lobbyFr = {
 		"invalid-code": "The code must be 5 characters long.",
 		"session-missing": "Session missing: please reload the page.",
 		"join-sign-in-required": "Sign in to join a friend's lobby.",
+		banned: "The host banned you from this lobby.",
+		"player-not-found": "This player is no longer in the lobby.",
+		"public-host": "Public lobbies have no host who can do that.",
+		"self-target": "You can't do that to yourself.",
+		"friend-not-nearby": "This player is no longer in your lobby.",
 	},
 	notEnoughPlayers: (count) =>
 		`At least ${count} players are needed to start a game.`,

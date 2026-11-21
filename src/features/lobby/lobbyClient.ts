@@ -224,6 +224,32 @@ function flushLobbyConfig(): void {
 	});
 }
 
+function afterModeration(done?: () => void) {
+	return (response: { ok: true } | { ok: false; error: LobbyError }) => {
+		if (response.ok) {
+			done?.();
+		} else {
+			showToast(lobbyErrorText(response.error), "error");
+		}
+	};
+}
+
+export function kickPlayer(
+	playerId: string,
+	ban: boolean,
+	done?: () => void,
+): void {
+	getSocket().emit("lobby:kick", { playerId, ban }, afterModeration(done));
+}
+
+export function promotePlayer(playerId: string, done?: () => void): void {
+	getSocket().emit("lobby:promote", { playerId }, afterModeration(done));
+}
+
+export function assignPlayerTeam(playerId: string, team: number): void {
+	getSocket().emit("lobby:assignTeam", { playerId, team }, afterModeration());
+}
+
 export function startMatch(): void {
 	getSocket().emit("lobby:start", (response) => {
 		if (!response.ok) {

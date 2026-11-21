@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef } from "react";
+import { contextMenuOpen } from "../features/contextMenu/contextMenuStore";
 import { padKeyboardOpen } from "../features/gamepad/textEntry";
 import { useT } from "../i18n";
 import { Icon } from "./Icon";
@@ -40,7 +41,8 @@ export function Modal({
 			if (
 				event.code === "Escape" &&
 				openModals.at(-1) === token &&
-				!padKeyboardOpen()
+				!padKeyboardOpen() &&
+				!contextMenuOpen()
 			) {
 				event.stopPropagation();
 				closeRef.current();

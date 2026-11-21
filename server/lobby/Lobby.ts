@@ -61,6 +61,8 @@ export class Lobby {
 	previousFormulaWords = new Set<string>();
 	daily: string | null = null;
 	openToFriends = false;
+	private readonly bannedPlayers = new Set<string>();
+	private readonly bannedAccounts = new Set<string>();
 
 	constructor(
 		readonly id: string,
@@ -319,6 +321,87 @@ export class Lobby {
 		member.team = team;
 
 		return { ok: true };
+	}
+
+	canModerate(playerId: string, targetId: string): LobbyActionResult {
+		if (this.visibility !== "private") {
+			return {
+				ok: false,
+				code: "public-host",
+				message: "Les lobbies publics n'ont pas d'hôte pour faire cela.",
+			};
+		}
+
+		if (playerId !== this.hostId) {
+			return {
+				ok: false,
+				code: "not-host",
+				message: "Seul l'hôte peut faire cela.",
+			};
+		}
+
+		if (playerId === targetId) {
+			return {
+				ok: false,
+				code: "self-target",
+				message: "Impossible de faire cela sur vous-même.",
+			};
+		}
+
+		if (!this.member(targetId)) {
+			return {
+				ok: false,
+				code: "player-not-found",
+				message: "Ce joueur n'est plus dans le lobby.",
+			};
+		}
+
+		return { ok: true };
+	}
+
+	promote(playerId: string, targetId: string): LobbyActionResult {
+		const check = this.canModerate(playerId, targetId);
+
+		if (!check.ok) {
+			return check;
+		}
+
+		if (!this.member(targetId)?.connected) {
+			return {
+				ok: false,
+				code: "player-not-found",
+				message: "Ce joueur n'est plus connecté.",
+			};
+		}
+
+		this.hostId = targetId;
+
+		return { ok: true };
+	}
+
+	assignTeam(
+		playerId: string,
+		targetId: string,
+		team: number,
+	): LobbyActionResult {
+		const check = this.canModerate(playerId, targetId);
+
+		return check.ok ? this.setTeam(targetId, team) : check;
+	}
+
+	ban(playerId: string, accountId: string | null): void {
+		this.bannedPlayers.add(playerId);
+
+		if (accountId) {
+			this.bannedAccounts.add(accountId);
+		}
+	}
+
+	isBanned(playerId: string, accountId: string | null): boolean {
+		return (
+			this.bannedPlayers.has(playerId) ||
+			(accountId !== null && this.bannedAccounts.has(accountId))
+		);
 	}
 
 	private assignTeams(): void {
