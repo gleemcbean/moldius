@@ -1,4 +1,4 @@
-const SAFE_ORIGIN = /^https?:\/\/[a-z0-9.-]+(:\d+)?$/i;
+const SAFE_ORIGIN = /^https?:\/\/(\[[0-9a-f:]+\]|[a-z0-9.-]+)(:\d+)?$/i;
 
 export function safeOrigin(candidate: string): string | null {
 	try {
@@ -10,7 +10,9 @@ export function safeOrigin(candidate: string): string | null {
 	}
 }
 
-export function steamDeckLauncher(origin: string): string {
+export function steamDeckLauncher(origin: string, insecure = false): string {
+	const flags = insecure ? "-fsSLk" : "-fsSL";
+
 	return [
 		"[Desktop Entry]",
 		"Type=Application",
@@ -20,14 +22,14 @@ export function steamDeckLauncher(origin: string): string {
 		"Comment=Installe Moldius et l'ajoute à Steam",
 		"Comment[en]=Installs Moldius and adds it to Steam",
 		"Icon=steam",
-		`Exec=bash -c "curl -fsSL ${origin}/download/steamdeck.sh | bash; read -r -p '[Entrée / Enter]' _"`,
+		`Exec=bash -c "curl ${flags} ${origin}/download/steamdeck.sh | bash; read -r -p '[Entrée / Enter]' _"`,
 		"Terminal=true",
 		"Categories=Game;",
 		"",
 	].join("\n");
 }
 
-export function steamDeckScript(origin: string): string {
+export function steamDeckScript(origin: string, insecure = false): string {
 	return `#!/usr/bin/env bash
 set -euo pipefail
 
@@ -39,6 +41,7 @@ say() {
 }
 
 ORIGIN="${origin}"
+CURL=(curl -f${insecure ? " -k" : ""})
 APP_DIR="$HOME/Applications"
 APP="$APP_DIR/Moldius.AppImage"
 ENTRIES="$HOME/.local/share/applications"
@@ -47,11 +50,11 @@ ICONS="$HOME/.local/share/icons/hicolor/512x512/apps"
 mkdir -p "$APP_DIR" "$ENTRIES" "$ICONS"
 
 say "Téléchargement de Moldius…" "Downloading Moldius…"
-curl -fL --progress-bar "$ORIGIN/download/appimage" -o "$APP.part"
+"\${CURL[@]}" -L --progress-bar "$ORIGIN/download/appimage" -o "$APP.part"
 mv -f "$APP.part" "$APP"
 chmod +x "$APP"
 
-curl -fsSL "$ORIGIN/icons/icon-512.png" -o "$ICONS/moldius.png" || true
+"\${CURL[@]}" -sSL "$ORIGIN/icons/icon-512.png" -o "$ICONS/moldius.png" || true
 
 cat > "$ENTRIES/moldius.desktop" <<ENTRY
 [Desktop Entry]

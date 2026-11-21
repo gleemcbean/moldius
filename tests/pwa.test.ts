@@ -119,6 +119,7 @@ describe("installation sur Steam Deck", () => {
 
 		expect(safeOrigin('https://a"b.fr')).toBeNull();
 		expect(safeOrigin("pas une url")).toBeNull();
+		expect(safeOrigin("http://[::1]:5173")).toBe("http://[::1]:5173");
 	});
 
 	it("prépare un lanceur qui installe l'AppImage et l'ajoute à Steam", () => {
@@ -131,5 +132,15 @@ describe("installation sur Steam Deck", () => {
 		expect(script).toContain("chmod +x");
 		expect(script).toContain("steamos-add-to-steam");
 		expect(script).toContain("LANG:-");
+		expect(script).toContain('CURL[@]}" -L');
+		expect(script).not.toContain(" -k");
+
+		expect(steamDeckScript("https://192.168.1.4:5173", true)).toContain(
+			"curl -f -k",
+		);
+
+		expect(steamDeckLauncher("https://192.168.1.4:5173", true)).toContain(
+			"curl -fsSLk",
+		);
 	});
 });

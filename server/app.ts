@@ -118,11 +118,15 @@ export function createApp(
 	});
 
 	const steamDeckInstall =
-		(render: (origin: string) => string, type: string, filename?: string) =>
+		(
+			render: (origin: string, insecure: boolean) => string,
+			type: string,
+			filename?: string,
+		) =>
 		(request: Request, response: Response) => {
-			const origin = safeOrigin(
-				config.publicUrl ?? `${request.protocol}://${request.get("host")}`,
-			);
+			const origin =
+				safeOrigin(`${request.protocol}://${request.get("host")}`) ??
+				safeOrigin(config.publicUrl ?? "");
 
 			if (
 				!origin ||
@@ -143,7 +147,7 @@ export function createApp(
 			}
 
 			response.setHeader("Cache-Control", "no-cache");
-			response.send(render(origin));
+			response.send(render(origin, config.dev));
 		};
 
 	app.get(

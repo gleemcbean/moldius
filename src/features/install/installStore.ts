@@ -1,10 +1,35 @@
 import { desktopApp } from "../../app/desktopApp";
 import { createStore } from "../../utils/store";
-import { detectDownloadPlatform, downloadUrl } from "./platform";
+import {
+	type DownloadPlatform,
+	detectDownloadPlatform,
+	downloadUrl,
+} from "./platform";
 
 export const installStore = createStore({ available: false });
 
 const platform = detectDownloadPlatform();
+
+let chosen: DownloadPlatform | null = null;
+
+async function firstAvailable(
+	candidates: DownloadPlatform[],
+): Promise<DownloadPlatform | null> {
+	for (const candidate of candidates) {
+		try {
+			const response = await fetch(downloadUrl(candidate), {
+				method: "HEAD",
+				cache: "no-store",
+			});
+
+			if (response.ok) {
+				return candidate;
+			}
+		} catch {}
+	}
+
+	return null;
+}
 
 export function initInstall(): void {
 	if ("serviceWorker" in navigator) {
@@ -22,17 +47,22 @@ export function initInstall(): void {
 		return;
 	}
 
-	void fetch(downloadUrl(platform), { method: "HEAD", cache: "no-store" })
-		.then((response) => {
-			if (response.ok) {
-				installStore.set({ available: true });
-			}
-		})
-		.catch(() => undefined);
+	const candidates: DownloadPlatform[] =
+		platform === "win" || platform === "linux"
+			? [platform]
+			: [platform, "linux"];
+
+	void firstAvailable(candidates).then((available) => {
+		chosen = available;
+
+		if (available) {
+			installStore.set({ available: true });
+		}
+	});
 }
 
 export function promptInstall(): void {
-	if (platform) {
-		window.location.href = downloadUrl(platform);
+	if (chosen) {
+		window.location.href = downloadUrl(chosen);
 	}
 }
