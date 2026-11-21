@@ -13,6 +13,8 @@ const FILE_URLS = import.meta.glob<string>(
 
 const PREFIX = "../../../assets/textures/";
 const LOAD_CONCURRENCY = 8;
+const LOAD_ATTEMPTS = 3;
+const RETRY_DELAY = 300;
 
 export interface PixelSurfaceInfo {
 	category: string;
@@ -74,6 +76,41 @@ function hurry(file: string): void {
 	}
 }
 
+function fetchImage(url: string): Promise<HTMLImageElement> {
+	return new Promise((resolve, reject) => {
+		const image = new Image();
+
+		image.decoding = "async";
+
+		image.onload = () => {
+			image
+				.decode()
+				.catch(() => undefined)
+				.then(() => resolve(image));
+		};
+
+		image.onerror = () => reject(new Error(url));
+		image.src = url;
+	});
+}
+
+async function fetchWithRetry(
+	file: string,
+	url: string,
+): Promise<HTMLImageElement> {
+	for (let attempt = 1; ; attempt += 1) {
+		try {
+			return await fetchImage(url);
+		} catch {
+			if (attempt >= LOAD_ATTEMPTS) {
+				throw new Error(`Texture illisible : ${file}`);
+			}
+
+			await new Promise((wake) => setTimeout(wake, RETRY_DELAY * attempt));
+		}
+	}
+}
+
 function decode(
 	file: string,
 	url: string,
@@ -83,14 +120,8 @@ function decode(
 		const job = () => {
 			waiting.delete(file);
 
-			const image = new Image();
-
-			image.decoding = "async";
-			image.src = url;
-
-			image
-				.decode()
-				.then(() => resolve(image), reject)
+			fetchWithRetry(file, url)
+				.then(resolve, reject)
 				.finally(() => {
 					running -= 1;
 
@@ -143,11 +174,18 @@ export function loadImage(
 			return Promise.reject(new Error("Chargement d'images indisponible"));
 		}
 
-		pending = decode(file, url, priority).then((image) => {
-			ready.set(file, image);
+		pending = decode(file, url, priority).then(
+			(image) => {
+				ready.set(file, image);
 
-			return image;
-		});
+				return image;
+			},
+			(error: unknown) => {
+				images.delete(file);
+
+				throw error;
+			},
+		);
 
 		images.set(file, pending);
 	}

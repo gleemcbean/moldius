@@ -45,6 +45,7 @@ export const settingsFr = {
 		padHint:
 			"Joystick gauche : se déplacer. Joystick droit : regarder et choisir dans les roues. Croix ←/→ : changer d'objet tenu, tourner les pages, zoomer sur la carte. Start : pause (maintenir : valider dans le tutoriel). La course (L3) et l'accroupissement (B) fonctionnent en bascule. Un appui long sur un bouton peut déclencher une seconde action. Dans les menus : croix ou joystick pour naviguer (←/→ change directement la valeur d'un sélecteur), A pour valider, B pour revenir ou reprendre la partie, LB/RB pour changer d'onglet, joystick droit pour faire défiler.",
 		padStick: "Joystick gauche",
+		padRightStick: "Joystick droit",
 		padButtons: [
 			"A",
 			"B",
@@ -247,6 +248,7 @@ export const settingsEn: typeof settingsFr = {
 		padHint:
 			"Left stick: move. Right stick: look around and pick in the wheels. D-pad ←/→: switch the held item, turn pages, zoom the map. Start: pause (hold: confirm in the tutorial). Sprint (L3) and crouch (B) are toggles. A long press on a button can trigger a second action. In menus: D-pad or stick to move (←/→ changes a selector's value directly), A to confirm, B to go back or resume the match, LB/RB to switch tabs, right stick to scroll.",
 		padStick: "Left stick",
+		padRightStick: "Right stick",
 		padButtons: [
 			"A",
 			"B",

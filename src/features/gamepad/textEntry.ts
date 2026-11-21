@@ -1,4 +1,5 @@
 import { createStore } from "../../utils/store";
+import { inputDeviceStore } from "./gamepad";
 
 export type TextTarget = HTMLInputElement | HTMLTextAreaElement;
 
@@ -41,7 +42,7 @@ export function closePadKeyboard(): void {
 
 	padKeyboardStore.set({ target: null });
 
-	if (target?.isConnected) {
+	if (target?.isConnected && inputDeviceStore.get().device !== "pad") {
 		target.focus({ preventScroll: true });
 	}
 }

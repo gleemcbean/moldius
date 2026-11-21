@@ -20,7 +20,12 @@ import type { Level } from "@shared/manor/types";
 import { TEAM_COLORS, teamStandings } from "@shared/teams";
 import * as THREE from "three";
 import { ICON_PATHS } from "../../components/Icon";
-import { activeBindings, backCode, keyLabel } from "../../config/controls";
+import {
+	activeBindings,
+	backCode,
+	keyLabel,
+	padActive,
+} from "../../config/controls";
 import { currentMessages } from "../../i18n";
 import { formatClock, hexColor } from "../../utils/format";
 import {
@@ -30,6 +35,7 @@ import {
 	POST_EFFECTS,
 	type ScreenVeil,
 } from "../engine/render/PostEffects";
+import { PAD_BUTTON, PAD_STICK_CODE, padCode } from "../gamepad/gamepad";
 import {
 	drawPadGlyph,
 	FACE_GLYPHS,
@@ -49,6 +55,7 @@ import { type HudState, hudStore, type LeaderboardRow } from "./hudStore";
 export const MINIMAP_SIZE = 224;
 
 const RESOLUTION = 0.82;
+const SHARP_ROWS = 900;
 const REFERENCE_WIDTH = 1500;
 const REFERENCE_HEIGHT = 790;
 const MIN_SCALE = 1.12;
@@ -380,6 +387,15 @@ export function ensureHudFonts(): Promise<unknown> {
 	);
 }
 
+function hudResolution(height: number): number {
+	const device = window.devicePixelRatio || 1;
+
+	return Math.max(
+		RESOLUTION,
+		Math.min(device, SHARP_ROWS / Math.max(1, height)),
+	);
+}
+
 function layerTexture(canvas: HTMLCanvasElement): THREE.CanvasTexture {
 	const texture = new THREE.CanvasTexture(canvas);
 
@@ -457,8 +473,9 @@ export class HudCanvas {
 	}
 
 	resize(width: number, height: number): void {
-		const pixelWidth = Math.max(1, Math.round(width * RESOLUTION));
-		const pixelHeight = Math.max(1, Math.round(height * RESOLUTION));
+		const resolution = hudResolution(height);
+		const pixelWidth = Math.max(1, Math.round(width * resolution));
+		const pixelHeight = Math.max(1, Math.round(height * resolution));
 
 		const scale = Math.min(
 			MAX_SCALE,
@@ -468,7 +485,7 @@ export class HudCanvas {
 			),
 		);
 
-		this.drawScale = RESOLUTION * scale;
+		this.drawScale = resolution * scale;
 		this.width = Math.max(1, width / scale);
 		this.height = Math.max(1, height / scale);
 
@@ -1426,14 +1443,22 @@ export class HudCanvas {
 		const top = frame.y + (MAP_HEADER - 36) / 2;
 		let right = frame.x + frame.width - 14;
 
-		right = this.mapButton("close", messages.close, right, top, {
+		const keys = this.mapKeys();
+
+		right = this.mapButton("close", messages.close(keys.close), right, top, {
 			primary: true,
 			run: () => this.onMapClose?.(),
 		});
 
-		right = this.mapButton("recenter", messages.recenter, right - 8, top, {
-			run: () => resetMap(),
-		});
+		right = this.mapButton(
+			"recenter",
+			messages.recenter(keys.recenter),
+			right - 8,
+			top,
+			{
+				run: () => resetMap(),
+			},
+		);
 
 		right = this.mapButton("zoomIn", "+", right - 8, top, {
 			disabled: state.zoom >= MAP_MAX_ZOOM,
@@ -1492,6 +1517,17 @@ export class HudCanvas {
 		context.fillRect(area.x, area.y - 2, area.width, 2);
 		context.fillRect(area.x, area.y + area.height, area.width, 2);
 		this.paintMapLegend(frame, area.y + area.height);
+	}
+
+	private mapKeys(): { close: string; recenter: string } {
+		if (padActive()) {
+			return {
+				close: keyLabel(padCode(PAD_BUTTON.b, false)),
+				recenter: keyLabel(padCode(PAD_BUTTON.r3, false)),
+			};
+		}
+
+		return { close: keyLabel(activeBindings().map), recenter: "0" };
 	}
 
 	private mapButton(
@@ -1630,11 +1666,20 @@ export class HudCanvas {
 
 		const hintFont = `500 14px ${BODY}`;
 
-		const lines = this.wrap(
-			currentMessages().game.map.footer,
-			hintFont,
-			frame.width - 36,
-		);
+		const messages = currentMessages().game.map;
+		const keys = this.mapKeys();
+
+		const hint = padActive()
+			? messages.padFooter(
+					currentMessages().settings.controls.padRightStick,
+					keyLabel(PAD_STICK_CODE),
+					`${keyLabel(padCode(PAD_BUTTON.up, false))}${keyLabel(padCode(PAD_BUTTON.down, false))}`,
+					keys.recenter,
+					keys.close,
+				)
+			: messages.footer;
+
+		const lines = this.wrap(hint, hintFont, frame.width - 36);
 
 		lines.slice(0, 2).forEach((line, index) => {
 			this.text(line, frame.x + 18, top + 42 + index * 16, {

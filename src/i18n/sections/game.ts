@@ -447,10 +447,18 @@ export const gameFr = {
 		title: "Plan du manoir",
 		levelName: (level: number) =>
 			level === 0 ? "Rez-de-chaussée" : `Étage ${level}`,
-		recenter: "Recentrer (0)",
-		close: "Fermer (M)",
+		recenter: (key: string) => `Recentrer (${key})`,
+		close: (key: string) => `Fermer (${key})`,
 		footer:
 			"Molette ou +/− : zoom · Glisser ou flèches : déplacer · 0 : recentrer · M ou Échap : fermer · Les anomalies n'apparaissent jamais sur le plan.",
+		padFooter: (
+			zoom: string,
+			move: string,
+			level: string,
+			recenter: string,
+			close: string,
+		) =>
+			`${zoom} : zoom · ${move} : déplacer · ${level} : étage · ${recenter} : recentrer · ${close} : fermer · Les anomalies n'apparaissent jamais sur le plan.`,
 		north: "N",
 		legend: {
 			you: "Vous",
@@ -1000,10 +1008,18 @@ export const gameEn: typeof gameFr = {
 		title: "Manor map",
 		levelName: (level: number) =>
 			level === 0 ? "Ground floor" : `Floor ${level}`,
-		recenter: "Recenter (0)",
-		close: "Close (M)",
+		recenter: (key: string) => `Recenter (${key})`,
+		close: (key: string) => `Close (${key})`,
 		footer:
 			"Wheel or +/−: zoom · Drag or arrows: move · 0: recenter · M or Esc: close · Anomalies never appear on the map.",
+		padFooter: (
+			zoom: string,
+			move: string,
+			level: string,
+			recenter: string,
+			close: string,
+		) =>
+			`${zoom}: zoom · ${move}: move · ${level}: floor · ${recenter}: recenter · ${close}: close · Anomalies never appear on the map.`,
 		north: "N",
 		legend: {
 			you: "You",

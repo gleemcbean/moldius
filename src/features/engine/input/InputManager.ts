@@ -3,9 +3,11 @@ import { ACTION_IDS, type ActionId } from "../../../types/settings";
 import {
 	markDevice,
 	PAD_BUTTON,
+	PAD_HOLD_MS,
 	PadButtons,
 	padCode,
 	padFocus,
+	parsePadCode,
 	readPad,
 	stick,
 } from "../../gamepad/gamepad";
@@ -28,6 +30,9 @@ export interface FrameInput {
 	padLook: { x: number; y: number };
 	menu: boolean;
 	confirm: boolean;
+	mapZoom: number;
+	mapLevel: number;
+	mapRecenter: boolean;
 }
 
 const PAD_YAW_RATE = 3.4;
@@ -40,6 +45,13 @@ const PAD_MENU_HOLD = padCode(PAD_BUTTON.start, true);
 const PAD_CYCLE_PREVIOUS = padCode(PAD_BUTTON.left, false);
 const PAD_CYCLE_NEXT = padCode(PAD_BUTTON.right, false);
 const PAD_TOGGLES: ReadonlySet<ActionId> = new Set(["sprint", "crouch"]);
+
+const PAD_MAP_BUTTONS: ReadonlySet<number> = new Set([
+	PAD_BUTTON.b,
+	PAD_BUTTON.up,
+	PAD_BUTTON.down,
+	PAD_BUTTON.r3,
+]);
 
 const BROWSER_SENSITIVE = new Set([
 	"Tab",
@@ -93,11 +105,15 @@ export class InputManager {
 	private padEngaged = false;
 	private padSprint = false;
 	private padCrouch = false;
+	private readonly toggleHeldSince = new Map<ActionId, number>();
 	private lastPadPoll = 0;
 	private move = { x: 0, y: 0 };
 	private padLook = { x: 0, y: 0 };
 	private menu = false;
 	private confirm = false;
+	private mapZoom = 0;
+	private mapLevel = 0;
+	private mapRecenter = false;
 	private unsubscribe: (() => void) | null = null;
 	pointerLocked = false;
 	freePlay = false;
@@ -180,6 +196,7 @@ export class InputManager {
 		this.held.clear();
 		this.arrowsHeld.clear();
 		this.padHeld.clear();
+		this.toggleHeldSince.clear();
 
 		this.padSprint = false;
 		this.padCrouch = false;
@@ -212,6 +229,9 @@ export class InputManager {
 			padLook: { ...this.padLook },
 			menu: this.menu,
 			confirm: this.confirm,
+			mapZoom: this.mapZoom,
+			mapLevel: this.mapLevel,
+			mapRecenter: this.mapRecenter,
 		};
 
 		this.pressed.clear();
@@ -225,6 +245,9 @@ export class InputManager {
 		this.escape = false;
 		this.menu = false;
 		this.confirm = false;
+		this.mapZoom = 0;
+		this.mapLevel = 0;
+		this.mapRecenter = false;
 
 		return result;
 	}
@@ -288,6 +311,8 @@ export class InputManager {
 			this.setPadHeld(action, false);
 		}
 
+		this.toggleHeldSince.clear();
+
 		this.padSprint = false;
 		this.padCrouch = false;
 		this.move = { x: 0, y: 0 };
@@ -323,12 +348,13 @@ export class InputManager {
 			now,
 			(button) =>
 				button === PAD_BUTTON.start ||
-				this.codeToAction.has(padCode(button, true)),
+				(!(this.mode === "map" && PAD_MAP_BUTTONS.has(button)) &&
+					this.codeToAction.has(padCode(button, true))),
 		);
 
 		for (const edge of edges) {
 			markDevice("pad");
-			this.padEdge(edge.code, edge.down);
+			this.padEdge(edge.code, edge.down, now);
 		}
 
 		const left = stick(
@@ -357,6 +383,12 @@ export class InputManager {
 		this.setPadHeld("sprint", this.padSprint);
 		this.setPadHeld("crouch", this.padCrouch);
 
+		if (this.mode === "map") {
+			this.mapZoom -= right.y * dt;
+
+			return;
+		}
+
 		if (right.magnitude > 0) {
 			const curve = right.magnitude ** (PAD_LOOK_EXPONENT - 1);
 			const aiming = this.held.has("aim") ? PAD_AIM_FACTOR : 1;
@@ -370,7 +402,80 @@ export class InputManager {
 		}
 	}
 
-	private padEdge(code: string, down: boolean): void {
+	private setPadToggle(action: ActionId, on: boolean): void {
+		if (action === "sprint") {
+			this.padSprint = on;
+
+			if (on) {
+				this.padCrouch = false;
+			}
+		} else {
+			this.padCrouch = on;
+
+			if (on) {
+				this.padSprint = false;
+			}
+		}
+	}
+
+	private padToggleEdge(action: ActionId, down: boolean, now: number): void {
+		if (down) {
+			const wasOn = action === "sprint" ? this.padSprint : this.padCrouch;
+
+			this.setPadToggle(action, !wasOn);
+
+			if (wasOn) {
+				this.toggleHeldSince.delete(action);
+			} else {
+				this.toggleHeldSince.set(action, now);
+			}
+
+			return;
+		}
+
+		const since = this.toggleHeldSince.get(action);
+
+		this.toggleHeldSince.delete(action);
+
+		if (since !== undefined && now - since >= PAD_HOLD_MS) {
+			this.setPadToggle(action, false);
+		}
+	}
+
+	private mapEdge(code: string, down: boolean): boolean {
+		const pad = parsePadCode(code);
+
+		if (
+			this.mode !== "map" ||
+			!pad ||
+			pad.hold ||
+			!PAD_MAP_BUTTONS.has(pad.button)
+		) {
+			return false;
+		}
+
+		const { button } = pad;
+
+		if (!down) {
+			return true;
+		}
+
+		if (button === PAD_BUTTON.b) {
+			this.escape = true;
+		} else if (button === PAD_BUTTON.r3) {
+			this.mapRecenter = true;
+		} else {
+			this.mapLevel += button === PAD_BUTTON.up ? 1 : -1;
+		}
+
+		return true;
+	}
+
+	private padEdge(code: string, down: boolean, now: number): void {
+		if (this.mapEdge(code, down)) {
+			return;
+		}
+
 		if (code === PAD_MENU_TAP) {
 			if (down) {
 				this.escape = true;
@@ -403,23 +508,7 @@ export class InputManager {
 		}
 
 		if (PAD_TOGGLES.has(action)) {
-			if (!down) {
-				return;
-			}
-
-			if (action === "sprint") {
-				this.padSprint = !this.padSprint;
-
-				if (this.padSprint) {
-					this.padCrouch = false;
-				}
-			} else {
-				this.padCrouch = !this.padCrouch;
-
-				if (this.padCrouch) {
-					this.padSprint = false;
-				}
-			}
+			this.padToggleEdge(action, down, now);
 
 			return;
 		}

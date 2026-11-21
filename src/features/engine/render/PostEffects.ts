@@ -65,6 +65,9 @@ void main() {
 
 const FRAGMENT = `
 uniform sampler2D scene;
+uniform vec2 sceneSize;
+uniform float sceneCrisp;
+uniform float pixel;
 uniform sampler2D hud;
 uniform vec2 hudSize;
 uniform float hudOn;
@@ -131,6 +134,10 @@ vec2 crispTexel(vec2 point, vec2 size) {
   return (seam + clamp((texel - seam) / spread, -0.5, 0.5)) / size;
 }
 
+vec2 sceneTexel(vec2 point) {
+  return sceneCrisp > 0.5 ? crispTexel(point, sceneSize) : point;
+}
+
 vec2 hudTexel(vec2 point) {
   vec2 texel = crispTexel(point, hudSize);
   return vec2(texel.x, 1.0 - texel.y);
@@ -173,17 +180,17 @@ void main() {
     doubled = vec2(sin(time * 0.9), cos(time * 0.7)) * 0.016 * nausea;
   }
   vec3 color = vec3(
-    texture2D(scene, uv + shift).r,
-    texture2D(scene, uv).g,
-    texture2D(scene, uv - shift).b
+    texture2D(scene, sceneTexel(uv + shift)).r,
+    texture2D(scene, sceneTexel(uv)).g,
+    texture2D(scene, sceneTexel(uv - shift)).b
   );
   if (bleed > 0.001) {
     vec2 smear = vec2(1.6 / resolution.x, 0.0);
-    vec3 smeared = (color + texture2D(scene, uv - smear).rgb + texture2D(scene, uv - smear * 2.0).rgb) / 3.0;
+    vec3 smeared = (color + texture2D(scene, sceneTexel(uv - smear)).rgb + texture2D(scene, sceneTexel(uv - smear * 2.0)).rgb) / 3.0;
     color = mix(color, smeared - dot(smeared, LUMA) + dot(color, LUMA), 0.7 * bleed);
   }
   if (nausea > 0.001) {
-    color = mix(color, texture2D(scene, uv + doubled).rgb, 0.38 * nausea);
+    color = mix(color, texture2D(scene, sceneTexel(uv + doubled)).rgb, 0.38 * nausea);
     color *= mix(vec3(1.0), vec3(0.86, 1.08, 0.78), nausea * 0.6);
   }
 
@@ -203,9 +210,10 @@ void main() {
 
   gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(dot(gl_FragColor.rgb, LUMA)), desaturate);
 
-  float pattern = bayer4(gl_FragCoord.xy);
+  vec2 cell = floor(gl_FragCoord.xy / pixel);
+  float pattern = bayer4(cell);
   float sceneLuminance = dot(gl_FragColor.rgb, LUMA);
-  float noise = hash(floor(gl_FragCoord.xy) + grainTime * 131.0) - 0.5;
+  float noise = hash(cell + grainTime * 131.0) - 0.5;
   float grainShift = noise * (0.022 + 0.03 * (1.0 - sceneLuminance)) * grainAmount;
   gl_FragColor.rgb += grainShift;
   float distant = depthOn > 0.5 ? smoothstep(${DITHER_NEAR.toFixed(2)}, ${DITHER_FAR.toFixed(2)}, viewDistance(uv)) : 1.0;
@@ -265,6 +273,7 @@ export class PostEffects {
 	private readonly camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 	private readonly size = new THREE.Vector2();
 	private supersample = 1;
+	private fraction = 1;
 	private time = 0;
 	private tension = 0;
 	private nausea = 0;
@@ -286,6 +295,9 @@ export class PostEffects {
 			fragmentShader: FRAGMENT,
 			uniforms: {
 				scene: { value: this.target.texture },
+				sceneSize: { value: new THREE.Vector2(1, 1) },
+				sceneCrisp: { value: 0 },
+				pixel: { value: 1 },
 				hud: { value: null },
 				hudSize: { value: new THREE.Vector2(1, 1) },
 				hudOn: { value: 0 },
@@ -348,6 +360,14 @@ export class PostEffects {
 		uniforms.hudSize.value.set(width, height);
 
 		uniforms.hudOn.value = 1;
+	}
+
+	setSceneFraction(fraction: number): void {
+		this.fraction = Math.min(1, Math.max(0.05, fraction));
+	}
+
+	get sceneFraction(): number {
+		return this.fraction;
 	}
 
 	clearHud(): void {
@@ -433,7 +453,7 @@ export class PostEffects {
 		const limit = this.renderer.capabilities.maxTextureSize;
 
 		const scale = Math.min(
-			this.sharpenCurvature ? zoom : 1,
+			(this.sharpenCurvature ? zoom : 1) * this.fraction,
 			limit / Math.max(1, this.size.x),
 			limit / Math.max(1, this.size.y),
 		);
@@ -452,10 +472,15 @@ export class PostEffects {
 		uniforms.zoom.value = zoom;
 
 		const cssHeight = this.size.y / this.renderer.getPixelRatio();
+		const virtualWidth = this.size.x * this.fraction;
+		const virtualHeight = this.size.y * this.fraction;
 
-		uniforms.resolution.value.set(this.size.x, this.size.y);
+		uniforms.resolution.value.set(virtualWidth, virtualHeight);
+		uniforms.sceneSize.value.set(width, height);
 
-		uniforms.lines.value = Math.min(cssHeight / 3, this.size.y / 2.5);
+		uniforms.lines.value = Math.min(cssHeight / 3, virtualHeight / 2.5);
+		uniforms.pixel.value = 1 / this.fraction;
+		uniforms.sceneCrisp.value = this.fraction < 0.999 ? 1 : 0;
 		uniforms.time.value = this.time;
 		uniforms.grainTime.value = Math.floor(this.time * 24) / 24;
 		uniforms.tension.value = this.tension * POST_EFFECTS.danger;
@@ -512,6 +537,8 @@ export class PostEffects {
 			tension: uniforms.tension.value,
 			lines: uniforms.lines.value,
 			zoom: uniforms.zoom.value,
+			pixel: uniforms.pixel.value,
+			sceneCrisp: uniforms.sceneCrisp.value,
 			resolution: uniforms.resolution.value.clone(),
 			sceneDepth: uniforms.sceneDepth.value,
 			depthOn: uniforms.depthOn.value,
@@ -527,6 +554,8 @@ export class PostEffects {
 
 		uniforms.lines.value = side / 3;
 		uniforms.zoom.value = this.squareScale;
+		uniforms.pixel.value = 1;
+		uniforms.sceneCrisp.value = 0;
 
 		this.applyDepth(depth);
 		this.renderer.render(this.scene, this.camera);
@@ -542,6 +571,8 @@ export class PostEffects {
 		uniforms.tension.value = saved.tension;
 		uniforms.lines.value = saved.lines;
 		uniforms.zoom.value = saved.zoom;
+		uniforms.pixel.value = saved.pixel;
+		uniforms.sceneCrisp.value = saved.sceneCrisp;
 
 		uniforms.resolution.value.copy(saved.resolution);
 	}

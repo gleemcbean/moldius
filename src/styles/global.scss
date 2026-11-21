@@ -82,9 +82,14 @@ html[data-pad-active] * {
 }
 
 :focus-visible,
-[data-pad-focus]:focus {
+[data-pad-focus]:focus,
+[data-pad-focus]:not(:focus) {
   outline: 2px solid $accent;
   outline-offset: 3px;
+}
+
+html[data-pad-active] [data-pad-ring] {
+  outline-color: transparent !important;
 }
 
 .visually-hidden {

@@ -82,7 +82,11 @@ export class PhotoCamera {
 		const pixelRatio = renderer.getPixelRatio();
 
 		const side = Math.floor(
-			Math.min(PHOTO_SIZE, this.bufferSize.x, this.bufferSize.y),
+			Math.min(
+				PHOTO_SIZE,
+				this.bufferSize.x * post.sceneFraction,
+				this.bufferSize.y * post.sceneFraction,
+			),
 		);
 
 		const detail = Math.round(side * post.squareScale);

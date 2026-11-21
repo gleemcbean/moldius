@@ -3,6 +3,7 @@ const {
 	BrowserWindow,
 	Menu,
 	ipcMain,
+	screen,
 	session,
 	shell,
 } = require("electron");
@@ -33,6 +34,9 @@ const PERMISSIONS = new Set([
 ]);
 
 const SMOKE_TEST = process.env.MOLDIUS_SMOKE_TEST || null;
+const UI_WIDTH = 1500;
+const UI_HEIGHT = 900;
+const UI_MIN_ZOOM = 0.75;
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 app.setAppUserModelId("fr.moldius.game");
@@ -99,6 +103,23 @@ function showOffline() {
 	});
 }
 
+function uiZoom() {
+	const display = window
+		? screen.getDisplayMatching(window.getBounds())
+		: screen.getPrimaryDisplay();
+
+	const { width, height } = display.size;
+	const fit = Math.min(width / UI_WIDTH, height / UI_HEIGHT);
+
+	return Math.min(1, Math.max(UI_MIN_ZOOM, fit));
+}
+
+function applyZoom() {
+	if (window && !window.isDestroyed()) {
+		window.webContents.setZoomFactor(uiZoom());
+	}
+}
+
 function createWindow() {
 	window = new BrowserWindow({
 		width: 1600,
@@ -140,6 +161,8 @@ function createWindow() {
 	window.on("enter-full-screen", sendFullscreen);
 	window.on("leave-full-screen", sendFullscreen);
 	contents.on("did-finish-load", sendFullscreen);
+	contents.on("did-finish-load", applyZoom);
+	window.on("moved", applyZoom);
 
 	window.on("closed", () => {
 		window = null;
@@ -427,6 +450,8 @@ app.whenReady().then(() => {
 	});
 
 	createWindow();
+
+	screen.on("display-metrics-changed", applyZoom);
 
 	if (!SMOKE_TEST) {
 		discord.start();

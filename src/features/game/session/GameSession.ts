@@ -83,7 +83,7 @@ import {
 	LANTERN_COLOR,
 	STAIR_PRELOAD_RANGE,
 } from "../../../config/feel";
-import { renderPixelRatio } from "../../../config/graphics";
+import { outputPixelRatio, renderPixelRatio } from "../../../config/graphics";
 import { currentMessages } from "../../../i18n";
 import type { ActionId } from "../../../types/settings";
 import { romanNumeral } from "../../../utils/format";
@@ -127,7 +127,13 @@ import {
 	MapRenderer,
 	roomLabel,
 } from "../../map/MapRenderer";
-import { mapStore, panMap, resetMap, zoomMap } from "../../map/mapStore";
+import {
+	mapStore,
+	panMap,
+	resetMap,
+	scaleMap,
+	zoomMap,
+} from "../../map/mapStore";
 import { clockSync } from "../../network/clockSync";
 import { type GameSocket, getSocket } from "../../network/socket";
 import { addPhoto, clearPhotos, photoStore } from "../../photos/photoStore";
@@ -160,6 +166,7 @@ const RADIO_GHOST_EXTRA_MS = 30_000;
 const REPLAY_FOV = 62;
 const VOICE_CLIPS_GRACE_MS = 5_000;
 const MENU_ESCAPE_GRACE_MS = 400;
+const MAP_PAD_ZOOM_RATE = 4;
 
 function wrapIndex(index: number, length: number): number {
 	return ((index % length) + length) % length;
@@ -773,6 +780,15 @@ export class GameSession {
 				: "default";
 	}
 
+	private pixelRatios(height: number): { scene: number; output: number } {
+		const { quality, renderScale } = settingsStore.get();
+
+		return {
+			scene: renderPixelRatio(quality, renderScale, height),
+			output: outputPixelRatio(quality, renderScale, height),
+		};
+	}
+
 	private readonly resize = () => {
 		const loaded = this.loadedWorld;
 
@@ -780,14 +796,13 @@ export class GameSession {
 			return;
 		}
 
-		const settings = settingsStore.get();
 		const width = this.container.clientWidth || window.innerWidth;
 		const height = this.container.clientHeight || window.innerHeight;
 
-		loaded.renderer.setPixelRatio(
-			renderPixelRatio(settings.quality, settings.renderScale),
-		);
+		const ratios = this.pixelRatios(height);
 
+		loaded.renderer.setPixelRatio(ratios.output);
+		loaded.post.setSceneFraction(ratios.scene / ratios.output);
 		loaded.renderer.setSize(width, height, false);
 
 		loaded.renderer.domElement.style.width = "100%";
@@ -1875,8 +1890,32 @@ export class GameSession {
 			zoomMap(frame.zoomKeys);
 		}
 
-		if (frame.digits.includes(0)) {
+		if (frame.mapZoom !== 0) {
+			scaleMap(MAP_PAD_ZOOM_RATE ** frame.mapZoom);
+		}
+
+		if (frame.digits.includes(0) || frame.mapRecenter) {
 			resetMap();
+		}
+
+		if (frame.mapLevel !== 0) {
+			this.stepMapLevel(frame.mapLevel);
+		}
+	}
+
+	private stepMapLevel(step: number): void {
+		const levels = [...(this.loadedWorld?.hud.mapLevels ?? [])].sort(
+			(a, b) => a - b,
+		);
+
+		const current = levels.indexOf(mapStore.get().level);
+
+		const next =
+			levels[Math.min(levels.length - 1, Math.max(0, current + step))];
+
+		if (next !== undefined && next !== mapStore.get().level) {
+			resetMap(next);
+			playHoverTick(1.1);
 		}
 	}
 
@@ -2029,9 +2068,13 @@ export class GameSession {
 
 		loaded.renderer.toneMappingExposure = settings.brightness;
 
+		const ratios = this.pixelRatios(
+			this.container?.clientHeight || window.innerHeight,
+		);
+
 		if (
-			loaded.renderer.getPixelRatio() !==
-			renderPixelRatio(settings.quality, settings.renderScale)
+			loaded.renderer.getPixelRatio() !== ratios.output ||
+			loaded.post.sceneFraction !== ratios.scene / ratios.output
 		) {
 			this.resize();
 		}

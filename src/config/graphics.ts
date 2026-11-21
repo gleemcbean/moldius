@@ -59,20 +59,42 @@ export function surfaceQuality(quality: GraphicsQuality): SurfaceQuality {
 	return { detail: preset.surfaceDetail, parallax: preset.parallaxSteps };
 }
 
+const REFERENCE_ROWS = 1080;
+const MAX_OUTPUT_ROWS = 1440;
+
+function deviceRatio(): number {
+	return typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+}
+
+function viewportHeight(): number {
+	return typeof window === "undefined"
+		? REFERENCE_ROWS
+		: window.innerHeight || REFERENCE_ROWS;
+}
+
 export function renderPixelRatio(
 	quality: GraphicsQuality,
 	renderScale: number,
+	cssHeight: number = viewportHeight(),
 ): number {
 	const preset = QUALITY_PRESETS[quality];
+	const device = Math.min(deviceRatio(), preset.maxDevicePixelRatio);
+	const scale = preset.pixelRatio * renderScale;
+	const smallScreenFloor = (scale * REFERENCE_ROWS) / Math.max(1, cssHeight);
 
-	const device =
-		typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+	return Math.min(device, Math.max(device * scale, smallScreenFloor));
+}
 
-	return (
-		Math.min(device, preset.maxDevicePixelRatio) *
-		preset.pixelRatio *
-		renderScale
-	);
+export function outputPixelRatio(
+	quality: GraphicsQuality,
+	renderScale: number,
+	cssHeight: number = viewportHeight(),
+): number {
+	const preset = QUALITY_PRESETS[quality];
+	const device = Math.min(deviceRatio(), preset.maxDevicePixelRatio);
+	const sharp = Math.min(device, MAX_OUTPUT_ROWS / Math.max(1, cssHeight));
+
+	return Math.max(renderPixelRatio(quality, renderScale, cssHeight), sharp);
 }
 
 export const FPS_LIMITS = [0, 30, 60, 90, 120, 144] as const;

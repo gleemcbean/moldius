@@ -201,6 +201,27 @@
   color: $ink;
 }
 
+@media (max-height: 900px) {
+  .art {
+    aspect-ratio: 168 / 104;
+  }
+
+  .choose {
+    gap: 6px;
+    padding-bottom: 12px;
+  }
+
+  .title {
+    padding-top: 8px;
+    @include heading(24px);
+  }
+
+  .text {
+    @include body(15px);
+    line-height: 1.35;
+  }
+}
+
 @include enter-keyframes;
 
 .private {

@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import styles from "./SelectorGroup.module.scss";
 
 interface Box {
@@ -9,8 +10,10 @@ interface Box {
 }
 
 const PADDING = 6;
+const CORNER = 6;
+const REACH = PADDING + CORNER;
+const SCROLLING = /(auto|scroll|overlay)/;
 const SLIDE_MS = 260;
-const SETTLE_FRAMES = 10;
 const EMPTY: Box = { x: 0, y: 0, width: 0, height: 0 };
 
 function frameOf(element: HTMLElement, root: HTMLElement): HTMLElement {
@@ -38,13 +41,45 @@ function blend(from: Box, to: Box, amount: number): Box {
 	};
 }
 
-function sameBox(a: Box, b: Box): boolean {
-	return (
-		Math.abs(a.x - b.x) < 0.01 &&
-		Math.abs(a.y - b.y) < 0.01 &&
-		Math.abs(a.width - b.width) < 0.01 &&
-		Math.abs(a.height - b.height) < 0.01
-	);
+function clipBox(element: HTMLElement): Box {
+	let left = -REACH;
+	let top = -REACH;
+	let right = window.innerWidth + REACH;
+	let bottom = window.innerHeight + REACH;
+
+	for (
+		let parent = element.parentElement;
+		parent && parent !== document.body;
+		parent = parent.parentElement
+	) {
+		const style = getComputedStyle(parent);
+
+		if (!SCROLLING.test(style.overflowX) && !SCROLLING.test(style.overflowY)) {
+			continue;
+		}
+
+		const rect = parent.getBoundingClientRect();
+
+		left = Math.max(left, rect.left - REACH);
+		top = Math.max(top, rect.top - REACH);
+		right = Math.min(right, rect.right + REACH);
+		bottom = Math.min(bottom, rect.bottom + REACH);
+	}
+
+	return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+function uncovered(element: HTMLElement, box: Box): boolean {
+	const x = box.x + box.width / 2;
+	const y = box.y + box.height / 2;
+
+	if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) {
+		return true;
+	}
+
+	const top = document.elementFromPoint(x, y);
+
+	return !top || element.contains(top) || top.contains(element);
 }
 
 export function SelectorGroup({
@@ -70,26 +105,43 @@ export function SelectorGroup({
 		let slideFrom: Box | null = null;
 		let slideStart = 0;
 		let frame = 0;
-		let stillFrames = 0;
 
 		const setVisible = (visible: boolean) => {
 			outline.style.opacity = visible ? "1" : "0";
 		};
 
-		const paint = (box: Box) => {
+		const paint = (box: Box, clip: Box) => {
 			shown = box;
-			outline.style.transform = `translate(${box.x}px, ${box.y}px)`;
-			outline.style.width = `${box.width}px`;
-			outline.style.height = `${box.height}px`;
+
+			const outer = {
+				x: box.x - CORNER,
+				y: box.y - CORNER,
+				width: box.width + CORNER * 2,
+				height: box.height + CORNER * 2,
+			};
+
+			const inset = [
+				Math.max(0, clip.y - outer.y),
+				Math.max(0, outer.x + outer.width - (clip.x + clip.width)),
+				Math.max(0, outer.y + outer.height - (clip.y + clip.height)),
+				Math.max(0, clip.x - outer.x),
+			];
+
+			outline.style.transform = `translate(${outer.x}px, ${outer.y}px)`;
+			outline.style.width = `${outer.width}px`;
+			outline.style.height = `${outer.height}px`;
+
+			outline.style.clipPath = inset.some((value) => value > 0)
+				? `inset(${inset.map((value) => `${value}px`).join(" ")})`
+				: "none";
 		};
 
 		const measure = (element: HTMLElement): Box => {
-			const bounds = root.getBoundingClientRect();
 			const target = frameOf(element, root).getBoundingClientRect();
 
 			return {
-				x: target.left - bounds.left - PADDING,
-				y: target.top - bounds.top - PADDING,
+				x: target.left - PADDING,
+				y: target.top - PADDING,
 				width: target.width + PADDING * 2,
 				height: target.height + PADDING * 2,
 			};
@@ -118,7 +170,9 @@ export function SelectorGroup({
 				return;
 			}
 
-			let next = measure(element);
+			const framed = frameOf(element, root);
+			const target = measure(element);
+			let next = target;
 
 			if (slideFrom) {
 				const progress = Math.min(
@@ -133,19 +187,13 @@ export function SelectorGroup({
 				}
 			}
 
-			stillFrames = sameBox(shown, next) ? stillFrames + 1 : 0;
+			paint(next, clipBox(framed));
+			setVisible(uncovered(framed, target));
 
-			paint(next);
-			setVisible(true);
-
-			if (slideFrom || stillFrames < SETTLE_FRAMES) {
-				frame = requestAnimationFrame(tick);
-			}
+			frame = requestAnimationFrame(tick);
 		};
 
 		const wake = () => {
-			stillFrames = 0;
-
 			if (!frame) {
 				frame = requestAnimationFrame(tick);
 			}
@@ -205,9 +253,10 @@ export function SelectorGroup({
 
 		root.addEventListener("pointerover", onOver);
 		root.addEventListener("focusin", onOver);
+		root.addEventListener("padmark", onOver);
 		root.addEventListener("pointerleave", onLeave);
 		root.addEventListener("click", wake);
-		root.addEventListener("scroll", wake, true);
+		window.addEventListener("scroll", wake, true);
 		window.addEventListener("resize", wake);
 
 		return () => {
@@ -216,21 +265,26 @@ export function SelectorGroup({
 			mutations.disconnect();
 			root.removeEventListener("pointerover", onOver);
 			root.removeEventListener("focusin", onOver);
+			root.removeEventListener("padmark", onOver);
 			root.removeEventListener("pointerleave", onLeave);
 			root.removeEventListener("click", wake);
-			root.removeEventListener("scroll", wake, true);
+			window.removeEventListener("scroll", wake, true);
 			window.removeEventListener("resize", wake);
 		};
 	}, []);
 
 	return (
 		<div ref={container} className={[styles.group, className ?? ""].join(" ")}>
-			<div ref={selector} className={styles.selector} aria-hidden="true">
-				<span className={styles.cornerTopLeft} />
-				<span className={styles.cornerTopRight} />
-				<span className={styles.cornerBottomLeft} />
-				<span className={styles.cornerBottomRight} />
-			</div>
+			{createPortal(
+				<div ref={selector} className={styles.selector} aria-hidden="true">
+					<span className={styles.frame} />
+					<span className={styles.cornerTopLeft} />
+					<span className={styles.cornerTopRight} />
+					<span className={styles.cornerBottomLeft} />
+					<span className={styles.cornerBottomRight} />
+				</div>,
+				document.body,
+			)}
 			{children}
 		</div>
 	);

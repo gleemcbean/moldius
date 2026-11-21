@@ -16,7 +16,12 @@ import {
 	stick,
 } from "./gamepad";
 import { rumble } from "./rumble";
-import { isTextTarget, openPadKeyboard } from "./textEntry";
+import {
+	isTextTarget,
+	openPadKeyboard,
+	padKeyboardOpen,
+	padKeyboardStore,
+} from "./textEntry";
 
 const FOCUSABLE =
 	'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -35,6 +40,9 @@ const MOUSE_TRAVEL_WINDOW_MS = 250;
 const TABS = "[data-pad-tabs]";
 const RADIO = '[role="radio"]:not([disabled])';
 const CONTEXT_MENU = "[data-context-menu]";
+const RING_ATTRIBUTE = "data-pad-ring";
+const RING_LAYER = 2_000_000;
+const SCROLLING = /(auto|scroll|overlay)/;
 
 type Direction = "up" | "down" | "left" | "right";
 
@@ -54,6 +62,9 @@ let nextRepeat = 0;
 let repeatButton: number | null = null;
 let nextButtonRepeat = 0;
 let marked: HTMLElement | null = null;
+let virtual: HTMLElement | null = null;
+let ring: HTMLDivElement | null = null;
+let ringStyle: { color: string; width: number; offset: number } | null = null;
 let nextScopeCheck = 0;
 let mouseTravel = 0;
 let mouseTravelAt = 0;
@@ -123,18 +134,176 @@ function center(element: HTMLElement): { x: number; y: number } {
 	return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
 
+function measureRing(element: HTMLElement): void {
+	element.removeAttribute(RING_ATTRIBUTE);
+
+	const style = getComputedStyle(element);
+	const width = Number.parseFloat(style.outlineWidth) || 0;
+
+	if (style.outlineStyle === "none" || width <= 0) {
+		ringStyle = null;
+
+		return;
+	}
+
+	ringStyle = {
+		color: style.outlineColor,
+		width,
+		offset: Number.parseFloat(style.outlineOffset) || 0,
+	};
+
+	element.setAttribute(RING_ATTRIBUTE, "");
+}
+
 function mark(element: HTMLElement | null): void {
 	if (marked && marked !== element) {
 		marked.removeAttribute(FOCUS_ATTRIBUTE);
+		marked.removeAttribute(RING_ATTRIBUTE);
 	}
+
+	const changed = marked !== element;
 
 	marked = element;
 
-	element?.setAttribute(FOCUS_ATTRIBUTE, "");
+	if (!element) {
+		ringStyle = null;
+
+		return;
+	}
+
+	element.setAttribute(FOCUS_ATTRIBUTE, "");
+
+	if (changed) {
+		measureRing(element);
+		element.dispatchEvent(new Event("padmark", { bubbles: true }));
+	}
+}
+
+function ringLayer(): HTMLDivElement {
+	if (!ring) {
+		ring = document.createElement("div");
+
+		ring.setAttribute("aria-hidden", "true");
+
+		Object.assign(ring.style, {
+			position: "fixed",
+			left: "0",
+			top: "0",
+			pointerEvents: "none",
+			zIndex: String(RING_LAYER),
+			boxSizing: "border-box",
+			display: "none",
+		});
+
+		document.body.appendChild(ring);
+	}
+
+	return ring;
+}
+
+function hideRing(): void {
+	if (ring && ring.style.display !== "none") {
+		ring.style.display = "none";
+	}
+}
+
+function ringClip(
+	element: HTMLElement,
+	reach: number,
+): { left: number; top: number; right: number; bottom: number } {
+	const clip = {
+		left: 0,
+		top: 0,
+		right: window.innerWidth,
+		bottom: window.innerHeight,
+	};
+
+	for (
+		let parent = element.parentElement;
+		parent && parent !== document.body;
+		parent = parent.parentElement
+	) {
+		const style = getComputedStyle(parent);
+
+		if (!SCROLLING.test(style.overflowX) && !SCROLLING.test(style.overflowY)) {
+			continue;
+		}
+
+		const rect = parent.getBoundingClientRect();
+
+		clip.left = Math.max(clip.left, rect.left - reach);
+		clip.top = Math.max(clip.top, rect.top - reach);
+		clip.right = Math.min(clip.right, rect.right + reach);
+		clip.bottom = Math.min(clip.bottom, rect.bottom + reach);
+	}
+
+	return clip;
+}
+
+function updateRing(): void {
+	const style = ringStyle;
+
+	if (
+		!marked ||
+		!style ||
+		!marked.isConnected ||
+		inputDeviceStore.get().device !== "pad" ||
+		!visible(marked)
+	) {
+		hideRing();
+
+		return;
+	}
+
+	const layer = ringLayer();
+	const rect = marked.getBoundingClientRect();
+	const reach = style.offset + style.width;
+	const left = rect.left - reach;
+	const top = rect.top - reach;
+	const width = rect.width + reach * 2;
+	const height = rect.height + reach * 2;
+	const clip = ringClip(marked, reach);
+
+	const inset = [
+		Math.max(0, clip.top - top),
+		Math.max(0, left + width - clip.right),
+		Math.max(0, top + height - clip.bottom),
+		Math.max(0, clip.left - left),
+	];
+
+	if (inset[0] + inset[2] >= height || inset[1] + inset[3] >= width) {
+		hideRing();
+
+		return;
+	}
+
+	Object.assign(layer.style, {
+		display: "block",
+		transform: `translate(${left}px, ${top}px)`,
+		width: `${width}px`,
+		height: `${height}px`,
+		border: `${style.width}px solid ${style.color}`,
+		clipPath: inset.some((value) => value > 0)
+			? `inset(${inset.map((value) => `${value}px`).join(" ")})`
+			: "none",
+	});
 }
 
 function focus(element: HTMLElement): void {
-	element.focus({ preventScroll: true });
+	if (isTextTarget(element)) {
+		const active = document.activeElement;
+
+		if (active instanceof HTMLElement && active !== document.body) {
+			active.blur();
+		}
+
+		virtual = element;
+	} else {
+		virtual = null;
+
+		element.focus({ preventScroll: true });
+	}
+
 	element.scrollIntoView({ block: "nearest", inline: "nearest" });
 	mark(element);
 }
@@ -142,11 +311,17 @@ function focus(element: HTMLElement): void {
 function currentFocus(scope: HTMLElement): HTMLElement | null {
 	const active = document.activeElement;
 
-	return active instanceof HTMLElement &&
+	if (
+		active instanceof HTMLElement &&
 		active !== document.body &&
 		scope.contains(active) &&
 		visible(active)
-		? active
+	) {
+		return active;
+	}
+
+	return virtual?.isConnected && scope.contains(virtual) && visible(virtual)
+		? virtual
 		: null;
 }
 
@@ -405,6 +580,12 @@ function activate(): void {
 	rumble("select");
 
 	if (isTextTarget(current)) {
+		if (document.activeElement === current) {
+			current.blur();
+		}
+
+		virtual = current;
+
 		openPadKeyboard(current);
 
 		return;
@@ -542,6 +723,7 @@ function tick(now: number): void {
 		repeatButton = null;
 
 		hideHints();
+		hideRing();
 
 		return;
 	}
@@ -632,6 +814,8 @@ function tick(now: number): void {
 		markDevice("pad");
 		scrollTarget()?.scrollBy({ top: scroll.y * SCROLL_SPEED * dt });
 	}
+
+	updateRing();
 }
 
 function onConnection(): void {
@@ -651,6 +835,7 @@ function onConnection(): void {
 
 		markDevice("keyboard");
 		hideHints();
+		hideRing();
 	}
 }
 
@@ -658,6 +843,25 @@ function onDesktopInput(event: Event): void {
 	if (event.isTrusted && inputDeviceStore.get().device === "pad") {
 		markDevice("keyboard");
 	}
+}
+
+function onFocusIn(event: FocusEvent): void {
+	const target = event.target;
+
+	if (
+		inputDeviceStore.get().device !== "pad" ||
+		!(target instanceof HTMLElement) ||
+		!isTextTarget(target) ||
+		padKeyboardOpen()
+	) {
+		return;
+	}
+
+	target.blur();
+
+	virtual = target;
+
+	mark(target);
 }
 
 function onPointerMove(event: PointerEvent): void {
@@ -707,6 +911,20 @@ export function startMenuNavigator(): void {
 		passive: true,
 	});
 
+	document.addEventListener("focusin", onFocusIn, true);
+
+	padKeyboardStore.subscribe((state, previous) => {
+		const closed = previous.target;
+
+		if (
+			!state.target &&
+			closed?.isConnected &&
+			inputDeviceStore.get().device === "pad"
+		) {
+			focus(closed);
+		}
+	});
+
 	inputDeviceStore.subscribe((state) => {
 		document.documentElement.toggleAttribute(
 			"data-pad-active",
@@ -714,8 +932,11 @@ export function startMenuNavigator(): void {
 		);
 
 		if (state.device !== "pad") {
+			virtual = null;
+
 			mark(null);
 			hideHints();
+			hideRing();
 		}
 	});
 

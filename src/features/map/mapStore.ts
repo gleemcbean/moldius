@@ -18,13 +18,17 @@ export const mapStore = createStore<MapState>({
 	level: 0,
 });
 
-export function zoomMap(delta: number): void {
-	const zoom = Math.min(
-		MAP_MAX_ZOOM,
-		Math.max(MAP_MIN_ZOOM, mapStore.get().zoom * (delta > 0 ? 1.25 : 0.8)),
-	);
+export function scaleMap(factor: number): void {
+	const current = mapStore.get().zoom;
+	const zoom = Math.min(MAP_MAX_ZOOM, Math.max(MAP_MIN_ZOOM, current * factor));
 
-	mapStore.set({ zoom });
+	if (zoom !== current) {
+		mapStore.set({ zoom });
+	}
+}
+
+export function zoomMap(delta: number): void {
+	scaleMap(delta > 0 ? 1.25 : 0.8);
 }
 
 export function panMap(dx: number, dz: number): void {
