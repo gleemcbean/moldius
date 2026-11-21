@@ -15,6 +15,7 @@
 		"shared",
 		"scripts",
 		"src/features/audio/musicLoop.ts",
+		"src/features/install/platform.ts",
 		"vite.config.ts",
 		"vitest.config.ts"
 	],

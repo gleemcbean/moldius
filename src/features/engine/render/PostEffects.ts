@@ -272,6 +272,7 @@ export class PostEffects {
 	constructor(
 		private readonly renderer: THREE.WebGLRenderer,
 		samples: number,
+		private readonly sharpenCurvature = true,
 	) {
 		this.target = new THREE.WebGLRenderTarget(1, 1, {
 			type: THREE.HalfFloatType,
@@ -432,7 +433,7 @@ export class PostEffects {
 		const limit = this.renderer.capabilities.maxTextureSize;
 
 		const scale = Math.min(
-			zoom,
+			this.sharpenCurvature ? zoom : 1,
 			limit / Math.max(1, this.size.x),
 			limit / Math.max(1, this.size.y),
 		);

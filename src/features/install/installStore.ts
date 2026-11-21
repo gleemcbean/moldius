@@ -1,13 +1,10 @@
 import { desktopApp } from "../../app/desktopApp";
 import { createStore } from "../../utils/store";
-
-export const DESKTOP_DOWNLOAD_URL = "/download/win";
+import { detectDownloadPlatform, downloadUrl } from "./platform";
 
 export const installStore = createStore({ available: false });
 
-function onWindows(): boolean {
-	return /Windows/i.test(navigator.userAgent);
-}
+const platform = detectDownloadPlatform();
 
 export function initInstall(): void {
 	if ("serviceWorker" in navigator) {
@@ -21,11 +18,11 @@ export function initInstall(): void {
 			.catch(() => undefined);
 	}
 
-	if (desktopApp || !onWindows()) {
+	if (desktopApp || !platform) {
 		return;
 	}
 
-	void fetch(DESKTOP_DOWNLOAD_URL, { method: "HEAD", cache: "no-store" })
+	void fetch(downloadUrl(platform), { method: "HEAD", cache: "no-store" })
 		.then((response) => {
 			if (response.ok) {
 				installStore.set({ available: true });
@@ -35,5 +32,7 @@ export function initInstall(): void {
 }
 
 export function promptInstall(): void {
-	window.location.href = DESKTOP_DOWNLOAD_URL;
+	if (platform) {
+		window.location.href = downloadUrl(platform);
+	}
 }

@@ -27,17 +27,18 @@ import {
 } from "../world/textures/textureFiles";
 import { buildGrounds } from "./approach/grounds";
 import {
+	CAMERA_TRAIL,
+	ENTRANCE_Z,
 	MOON_DIRECTION,
 	MOON_LIGHT_FROM,
+	MOON_LIGHT_TARGET,
 	PATH_LENGTH,
 	SECOND_MOON_DIRECTION,
 	SKY_RADIUS,
 	START_Z,
-	TOWER_FRONT_Z,
 	TOWER_TOP,
 } from "./approach/layout";
 import { buildManor } from "./approach/manor";
-import { MysticDecor } from "./approach/mystic";
 import { SCENE_SURFACES } from "./approach/palette";
 import { moonTexture, skyMaterial, softDotTexture } from "./approach/sky";
 
@@ -78,10 +79,13 @@ const ROW_GAP = 1.05;
 const COLUMN_GAP = 0.85;
 const MAX_LANTERN_LIGHTS = 2;
 const DEFAULT_LANTERN_LIGHT = 0xffb060;
-const PITCH_START = THREE.MathUtils.degToRad(12);
-const PITCH_END = THREE.MathUtils.degToRad(19);
+const PITCH_START = THREE.MathUtils.degToRad(17.5);
+const PITCH_END = THREE.MathUtils.degToRad(21);
 const LOOK_DISTANCE = 20;
-const BAT_COUNT = 4;
+const BAT_COUNT = 5;
+const BAT_SCALE = 1.5;
+const SHADOW_EXTENT = 55;
+const MUSHROOM_LIGHT_COLOR = 0x5affd0;
 const DOOR_LIGHT_COLOR = 0xc98aff;
 const NIGHT_COLOR = 0x0b0918;
 const FOG_COLOR = 0x191330;
@@ -134,7 +138,6 @@ export class ManorApproachScene {
 	private readonly doorLight = new THREE.PointLight(DOOR_LIGHT_COLOR, 12, 9, 2);
 	private readonly ownedTextures: THREE.Texture[] = [];
 	private readonly glowTexture: THREE.Texture;
-	private readonly mystic: MysticDecor;
 	private progress = 0;
 	private loaded = false;
 	private groupAdvance = 0;
@@ -220,9 +223,7 @@ export class ManorApproachScene {
 		this.addMoons();
 		this.addLights(settings.quality);
 		this.addManor();
-
-		this.mystic = this.addGrounds();
-
+		this.addGrounds();
 		this.addBats();
 		this.addWalkers(walkers);
 		this.scene.add(this.motes.points);
@@ -362,23 +363,23 @@ export class ManorApproachScene {
 
 		this.scene.add(new THREE.HemisphereLight(0x7a68d0, 0x1e1824, 1.9));
 		moon.position.copy(MOON_LIGHT_FROM);
-		moon.target.position.set(0, 0, -14);
+		moon.target.position.copy(MOON_LIGHT_TARGET);
 
 		moon.castShadow = true;
 
 		moon.shadow.mapSize.set(size, size);
 
-		moon.shadow.camera.left = -30;
-		moon.shadow.camera.right = 30;
-		moon.shadow.camera.top = 30;
-		moon.shadow.camera.bottom = -30;
+		moon.shadow.camera.left = -SHADOW_EXTENT;
+		moon.shadow.camera.right = SHADOW_EXTENT;
+		moon.shadow.camera.top = SHADOW_EXTENT;
+		moon.shadow.camera.bottom = -SHADOW_EXTENT;
 		moon.shadow.camera.near = 1;
-		moon.shadow.camera.far = 110;
+		moon.shadow.camera.far = 180;
 		moon.shadow.bias = -0.002;
 		moon.shadow.normalBias = 0.06;
 
 		this.scene.add(moon, moon.target);
-		this.doorLight.position.set(0, 2.1, TOWER_FRONT_Z + 1.2);
+		this.doorLight.position.set(0, 2.6, ENTRANCE_Z + 1.3);
 		this.scene.add(this.doorLight);
 	}
 
@@ -389,24 +390,22 @@ export class ManorApproachScene {
 		this.doors.push(...manor.doors);
 	}
 
-	private addGrounds(): MysticDecor {
+	private addGrounds(): void {
 		const grounds = buildGrounds(
 			this.materials,
 			this.kit,
 			this.ownTexture(softDotTexture(0.4)),
 		);
 
-		const mystic = new MysticDecor(
-			this.materials,
-			this.glowTexture,
-			grounds.glowSpots,
-		);
-
 		this.scene.add(...grounds.statics, ...grounds.gates, ...grounds.mist);
-		this.scene.add(mystic.root);
 		this.mist.push(...grounds.mist);
 
-		return mystic;
+		for (const spot of grounds.glowSpots) {
+			const light = new THREE.PointLight(MUSHROOM_LIGHT_COLOR, 2.2, 7, 2);
+
+			light.position.copy(spot);
+			this.scene.add(light);
+		}
 	}
 
 	private addBats(): void {
@@ -450,14 +449,15 @@ export class ManorApproachScene {
 
 			body.scale.z = 1.8;
 
+			root.scale.setScalar(BAT_SCALE);
 			root.add(body);
 			this.scene.add(root);
 
 			this.bats.push({
 				root,
 				wings,
-				radius: rng.range(4.5, 8),
-				height: rng.range(-2.5, 2.5),
+				radius: rng.range(8, 13),
+				height: rng.range(-1, 7),
 				speed: rng.range(0.35, 0.6) * (rng.chance(0.5) ? 1 : -1),
 				phase: rng.range(0, Math.PI * 2),
 			});
@@ -680,7 +680,7 @@ export class ManorApproachScene {
 		this.camera.position.set(
 			0.6 + (animated ? Math.sin(this.time * 0.13) * 0.2 : 0),
 			0.45 + (animated ? Math.sin(this.time * 0.9) * 0.015 : 0),
-			leadZ + 6.8 + rows * ROW_GAP,
+			leadZ + CAMERA_TRAIL + rows * ROW_GAP,
 		);
 
 		this.camera.lookAt(
@@ -706,7 +706,6 @@ export class ManorApproachScene {
 		this.updateWalkers(step, dt, topSpeed);
 		this.updateBats();
 		this.updateMist(dt);
-		this.mystic.update(this.time, animated);
 		this.updateCamera(animated);
 
 		this.sky.uniforms.time.value = this.time;
@@ -751,7 +750,6 @@ export class ManorApproachScene {
 		}
 
 		this.motes.dispose();
-		this.mystic.dispose();
 
 		this.scene.traverse((object) => {
 			if (object instanceof THREE.Mesh || object instanceof THREE.Sprite) {

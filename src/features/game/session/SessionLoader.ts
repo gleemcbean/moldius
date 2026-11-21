@@ -358,7 +358,7 @@ export async function loadSession(
 	await nextFrame();
 
 	const renderer = new THREE.WebGLRenderer({
-		antialias: preset.antialias,
+		antialias: false,
 		powerPreference: "high-performance",
 		stencil: false,
 	});
@@ -370,7 +370,12 @@ export async function loadSession(
 	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 	renderer.autoClear = false;
 
-	const post = new PostEffects(renderer, preset.antialias ? 4 : 0);
+	const post = new PostEffects(
+		renderer,
+		preset.msaaSamples,
+		preset.supersample,
+	);
+
 	const scene = new THREE.Scene();
 
 	scene.background = new THREE.Color(MANOR_AIR_COLOR);

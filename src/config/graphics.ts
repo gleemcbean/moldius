@@ -6,7 +6,8 @@ export interface QualityPreset {
 	shadowMapSize: number;
 	pixelRatio: number;
 	maxDevicePixelRatio: number;
-	antialias: boolean;
+	msaaSamples: number;
+	supersample: boolean;
 	particleScale: number;
 	textureAnisotropy: number;
 	surfaceDetail: number;
@@ -15,22 +16,24 @@ export interface QualityPreset {
 
 export const QUALITY_PRESETS: Record<GraphicsQuality, QualityPreset> = {
 	low: {
-		lightPool: 6,
+		lightPool: 4,
 		shadowMapSize: 256,
 		pixelRatio: 0.5,
 		maxDevicePixelRatio: 2,
-		antialias: false,
+		msaaSamples: 0,
+		supersample: false,
 		particleScale: 0.5,
 		textureAnisotropy: 1,
 		surfaceDetail: 0.5,
 		parallaxSteps: 0,
 	},
 	medium: {
-		lightPool: 8,
+		lightPool: 6,
 		shadowMapSize: 512,
 		pixelRatio: 0.6,
 		maxDevicePixelRatio: 2,
-		antialias: true,
+		msaaSamples: 2,
+		supersample: false,
 		particleScale: 0.8,
 		textureAnisotropy: 4,
 		surfaceDetail: 0.5,
@@ -41,7 +44,8 @@ export const QUALITY_PRESETS: Record<GraphicsQuality, QualityPreset> = {
 		shadowMapSize: 1024,
 		pixelRatio: 0.8,
 		maxDevicePixelRatio: 2,
-		antialias: true,
+		msaaSamples: 4,
+		supersample: true,
 		particleScale: 1,
 		textureAnisotropy: 8,
 		surfaceDetail: 1,

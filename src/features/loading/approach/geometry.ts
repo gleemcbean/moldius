@@ -12,18 +12,36 @@ import type {
 	MaterialOptions,
 } from "../../world/MaterialLibrary";
 
+const center = new THREE.Vector3();
+
 export class Batch {
 	private readonly parts = new Map<
 		string,
 		{ options: MaterialOptions; geometries: THREE.BufferGeometry[] }
 	>();
 
+	constructor(private readonly cellSize = 0) {}
+
 	add(options: MaterialOptions, geometry: THREE.BufferGeometry): void {
-		const key = JSON.stringify(options);
+		const key = `${JSON.stringify(options)}${this.cell(geometry)}`;
 		const entry = this.parts.get(key) ?? { options, geometries: [] };
 
 		entry.geometries.push(geometry);
 		this.parts.set(key, entry);
+	}
+
+	private cell(geometry: THREE.BufferGeometry): string {
+		if (this.cellSize <= 0) {
+			return "";
+		}
+
+		geometry.computeBoundingBox();
+		geometry.boundingBox?.getCenter(center);
+
+		const x = Math.floor(center.x / this.cellSize);
+		const z = Math.floor(center.z / this.cellSize);
+
+		return `@${x},${z}`;
 	}
 
 	build(
@@ -44,8 +62,16 @@ export class Batch {
 				continue;
 			}
 
+			merged.computeBoundingBox();
+			merged.boundingBox?.getCenter(center);
+			merged.translate(-center.x, -center.y, -center.z);
+
 			const mesh = new THREE.Mesh(merged, materials.get(options));
 
+			mesh.position.copy(center);
+			mesh.updateMatrix();
+
+			mesh.matrixAutoUpdate = false;
 			mesh.castShadow = cast && !options.unlit;
 			mesh.receiveShadow = receive && !options.unlit;
 
@@ -94,40 +120,19 @@ export function pyramid(
 	return placed(geometry, x, y, z);
 }
 
-export function twistedSpire(
+export function spire(
 	radius: number,
 	height: number,
-	turns: number,
+	sides: number,
 	x: number,
-	y: number,
+	baseY: number,
 	z: number,
 ): THREE.BufferGeometry {
-	const geometry = scaleUv(
-		new THREE.CylinderGeometry(0, radius, height, 8, 12),
-		Math.PI * 2 * radius,
-		height,
-	);
+	const geometry = meterCylinder(0, radius, height, sides, true);
 
-	const position = geometry.getAttribute("position") as THREE.BufferAttribute;
+	geometry.rotateY(Math.PI / sides);
 
-	for (let index = 0; index < position.count; index += 1) {
-		const rise = position.getY(index) / height + 0.5;
-		const angle = rise * turns * Math.PI * 2;
-		const curl = Math.sin(rise * Math.PI) * radius * 0.25;
-		const px = position.getX(index);
-		const pz = position.getZ(index);
-
-		position.setXYZ(
-			index,
-			px * Math.cos(angle) - pz * Math.sin(angle) + curl,
-			position.getY(index),
-			px * Math.sin(angle) + pz * Math.cos(angle),
-		);
-	}
-
-	geometry.computeVertexNormals();
-
-	return placed(geometry, x, y, z);
+	return placed(geometry, x, baseY + height / 2, z);
 }
 
 export function gable(
@@ -156,26 +161,84 @@ export function halfDisc(radius: number): THREE.BufferGeometry {
 	);
 }
 
-export function segment(
-	from: THREE.Vector3,
-	to: THREE.Vector3,
-	radiusFrom: number,
-	radiusTo: number,
+export function taperedTube(
+	points: readonly THREE.Vector3[],
+	radii: readonly number[],
+	sides: number,
 ): THREE.BufferGeometry {
-	const direction = to.clone().sub(from);
-	const length = direction.length();
-	const geometry = meterCylinder(radiusTo, radiusFrom, length, 6);
+	const ring = sides + 1;
+	const positions = new Float32Array(points.length * ring * 3);
+	const normals = new Float32Array(points.length * ring * 3);
+	const uvs = new Float32Array(points.length * ring * 2);
+	const indices: number[] = [];
+	const tangent = new THREE.Vector3();
+	const previous = new THREE.Vector3();
+	const normal = new THREE.Vector3();
+	const binormal = new THREE.Vector3();
+	const around = new THREE.Vector3();
+	const turn = new THREE.Quaternion();
+	const girth = Math.PI * 2 * radii[0];
+	let travelled = 0;
 
-	geometry.translate(0, length / 2, 0);
+	for (const [index, point] of points.entries()) {
+		const before = points[Math.max(0, index - 1)];
+		const after = points[Math.min(points.length - 1, index + 1)];
 
-	geometry.applyQuaternion(
-		new THREE.Quaternion().setFromUnitVectors(
-			new THREE.Vector3(0, 1, 0),
-			direction.normalize(),
-		),
-	);
+		tangent.subVectors(after, before).normalize();
 
-	geometry.translate(from.x, from.y, from.z);
+		if (index === 0) {
+			const upright = Math.abs(tangent.y) > 0.9;
+
+			normal
+				.set(upright ? 1 : 0, upright ? 0 : 1, 0)
+				.cross(tangent)
+				.normalize();
+		} else {
+			travelled += point.distanceTo(points[index - 1]);
+
+			turn.setFromUnitVectors(previous, tangent);
+			normal.applyQuaternion(turn);
+			normal.addScaledVector(tangent, -normal.dot(tangent)).normalize();
+		}
+
+		binormal.crossVectors(tangent, normal);
+		previous.copy(tangent);
+
+		for (let side = 0; side <= sides; side += 1) {
+			const angle = (side / sides) * Math.PI * 2;
+			const vertex = index * ring + side;
+
+			around
+				.copy(normal)
+				.multiplyScalar(Math.cos(angle))
+				.addScaledVector(binormal, Math.sin(angle));
+
+			positions[vertex * 3] = point.x + around.x * radii[index];
+			positions[vertex * 3 + 1] = point.y + around.y * radii[index];
+			positions[vertex * 3 + 2] = point.z + around.z * radii[index];
+			normals[vertex * 3] = around.x;
+			normals[vertex * 3 + 1] = around.y;
+			normals[vertex * 3 + 2] = around.z;
+			uvs[vertex * 2] = (side / sides) * girth;
+			uvs[vertex * 2 + 1] = travelled;
+		}
+	}
+
+	for (let index = 0; index < points.length - 1; index += 1) {
+		for (let side = 0; side < sides; side += 1) {
+			const a = index * ring + side;
+			const b = a + ring;
+
+			indices.push(a, a + 1, b, a + 1, b + 1, b);
+		}
+	}
+
+	const geometry = new THREE.BufferGeometry();
+
+	geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+	geometry.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+	geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+	geometry.setIndex(indices);
 
 	return geometry;
 }
@@ -189,19 +252,8 @@ export function mushroomCap(radius: number): THREE.BufferGeometry {
 			new THREE.Vector2(radius * 0.45, radius * 0.58),
 			new THREE.Vector2(0.001, radius * 0.64),
 		],
-		14,
+		10,
 	);
-}
-
-export function crystalGeometry(
-	radius: number,
-	length: number,
-): THREE.BufferGeometry {
-	const geometry = new THREE.OctahedronGeometry(radius, 0);
-
-	geometry.scale(1, length / (radius * 2), 1);
-
-	return geometry;
 }
 
 export function fitted(object: THREE.Object3D, height: number): THREE.Group {

@@ -1,29 +1,36 @@
 import * as THREE from "three";
 
-export const FACADE_Z = -26;
-export const TOWER_FRONT_Z = -23;
-export const TOWER_Z = TOWER_FRONT_Z - 2.5;
 export const START_Z = 5;
-export const PORCH_Z = -20.6;
 export const GATE_Z = 2;
+export const PORCH_Z = -20.6;
+export const ENTRANCE_Z = -23;
+export const FACADE_Z = -30;
+export const MAIN_Z = FACADE_Z - 8;
 export const PATH_LENGTH = START_Z - PORCH_Z;
+export const CAMERA_TRAIL = 6.8;
 
-export const MAIN_DEPTH = 10;
-export const MAIN_Z = FACADE_Z - MAIN_DEPTH / 2;
-export const TURRET_X = 9;
-export const WING_X = 13;
+export const DOOR_HALF_WIDTH = 1.4;
+export const DOOR_HEIGHT = 4.4;
+export const TOWER_WALL = 33;
+export const MANOR_HALF_WIDTH = 37.5;
 
-export const TOWER_TOP = new THREE.Vector3(0, 19.5, -25.5);
-export const SPIRE_TIP = new THREE.Vector3(0, 30.2, TOWER_Z);
-export const SIGIL_CENTER = new THREE.Vector3(0, 15, TOWER_FRONT_Z + 0.08);
+export const TOWER_TOP = new THREE.Vector3(0, TOWER_WALL, MAIN_Z);
 
-export const MOON_DIRECTION = new THREE.Vector3(0.36, 0.4, -1).normalize();
+export const FAIRY_RING = { x: 7.2, z: -10.5, radius: 2.1 };
+
+export const GRAVEYARDS = [
+	{ minX: -12, maxX: -5, minZ: -15, maxZ: -7, stones: 7 },
+	{ minX: 5, maxX: 10, minZ: -12, maxZ: -7, stones: 4 },
+] as const;
+
+export const MOON_DIRECTION = new THREE.Vector3(0.23, 0.77, -1).normalize();
 
 export const SECOND_MOON_DIRECTION = new THREE.Vector3(
-	-0.55,
-	0.62,
+	-0.65,
+	0.78,
 	-1,
 ).normalize();
 
-export const MOON_LIGHT_FROM = new THREE.Vector3(24, 30, 16);
+export const MOON_LIGHT_FROM = new THREE.Vector3(39.4, 49.3, 31.3);
+export const MOON_LIGHT_TARGET = new THREE.Vector3(0, 0, -18);
 export const SKY_RADIUS = 160;

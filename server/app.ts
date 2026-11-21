@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { parseLanguage } from "../shared/i18n/languages.js";
 import type { AdminLiveStats } from "../shared/protocol/admin.js";
 import type { AccountModule } from "./accounts/AccountModule.js";
@@ -8,6 +8,7 @@ import { createAdminRouter } from "./accounts/adminRoutes.js";
 import { createAccountRouter } from "./accounts/routes.js";
 import type { ServerConfig } from "./config.js";
 import type { LobbyManager } from "./lobby/LobbyManager.js";
+import { safeOrigin, steamDeckLauncher, steamDeckScript } from "./steamDeck.js";
 
 export enum InstallerType {
 	WIN = "exe",
@@ -15,6 +16,23 @@ export enum InstallerType {
 	DEB = "deb",
 	RPM = "rpm",
 }
+
+const DOWNLOAD_PLATFORMS: Record<string, InstallerType[]> = {
+	win: [InstallerType.WIN],
+	linux: [InstallerType.APPIMAGE, InstallerType.DEB, InstallerType.RPM],
+	debian: [InstallerType.DEB, InstallerType.APPIMAGE, InstallerType.RPM],
+	redhat: [InstallerType.RPM, InstallerType.APPIMAGE, InstallerType.DEB],
+	appimage: [InstallerType.APPIMAGE],
+	deb: [InstallerType.DEB],
+	rpm: [InstallerType.RPM],
+};
+
+const INSTALLER_CONTENT_TYPES: Record<InstallerType, string> = {
+	[InstallerType.WIN]: "application/vnd.microsoft.portable-executable",
+	[InstallerType.APPIMAGE]: "application/vnd.appimage",
+	[InstallerType.DEB]: "application/vnd.debian.binary-package",
+	[InstallerType.RPM]: "application/x-rpm",
+};
 
 const CONTENT_SECURITY_POLICY = [
 	"default-src 'self'",
@@ -99,16 +117,57 @@ export function createApp(
 		});
 	});
 
-	app.get("/download/:type", (request, response) => {
-		const installer = latestInstaller(
-			config.desktopReleaseDir,
-			{
-				win: InstallerType.WIN,
-				appimage: InstallerType.APPIMAGE,
-				deb: InstallerType.DEB,
-				rpm: InstallerType.RPM,
-			}[request.params.type] as InstallerType,
-		);
+	const steamDeckInstall =
+		(render: (origin: string) => string, type: string, filename?: string) =>
+		(request: Request, response: Response) => {
+			const origin = safeOrigin(
+				config.publicUrl ?? `${request.protocol}://${request.get("host")}`,
+			);
+
+			if (
+				!origin ||
+				!latestInstaller(config.desktopReleaseDir, InstallerType.APPIMAGE)
+			) {
+				response.status(404).json({ error: "Installateur indisponible." });
+
+				return;
+			}
+
+			response.setHeader("Content-Type", type);
+
+			if (filename) {
+				response.setHeader(
+					"Content-Disposition",
+					`attachment; filename="${filename}"`,
+				);
+			}
+
+			response.setHeader("Cache-Control", "no-cache");
+			response.send(render(origin));
+		};
+
+	app.get(
+		"/download/steamdeck",
+		steamDeckInstall(
+			steamDeckLauncher,
+			"application/x-desktop",
+			"Installer-Moldius.desktop",
+		),
+	);
+
+	app.get(
+		"/download/steamdeck.sh",
+		steamDeckInstall(steamDeckScript, "text/x-shellscript; charset=utf-8"),
+	);
+
+	app.get("/download/:platform", (request, response) => {
+		const types = DOWNLOAD_PLATFORMS[request.params.platform];
+
+		const installer = types
+			? types
+					.map((type) => latestInstaller(config.desktopReleaseDir, type))
+					.find((path) => path !== null)
+			: undefined;
 
 		if (!installer) {
 			response.status(404).json({ error: "Installateur indisponible." });
@@ -116,10 +175,7 @@ export function createApp(
 			return;
 		}
 
-		response.setHeader(
-			"Content-Type",
-			"application/vnd.microsoft.portable-executable",
-		);
+		response.setHeader("Content-Type", installerContentType(installer));
 
 		response.setHeader(
 			"Content-Disposition",
@@ -201,7 +257,7 @@ export function latestInstaller(
 		return null;
 	}
 
-	const regex = new RegExp(`^Moldius-Setup-.*\\.${type}$`, "i");
+	const regex = new RegExp(`^Moldius-(Setup-)?\\d.*\\.${type}$`, "i");
 
 	const candidates = readdirSync(directory)
 		.filter((name) => regex.test(name))
@@ -209,4 +265,12 @@ export function latestInstaller(
 		.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
 
 	return candidates[0] ?? null;
+}
+
+function installerContentType(path: string): string {
+	const type = Object.values(InstallerType).find((value) =>
+		path.toLowerCase().endsWith(`.${value.toLowerCase()}`),
+	);
+
+	return type ? INSTALLER_CONTENT_TYPES[type] : "application/octet-stream";
 }
