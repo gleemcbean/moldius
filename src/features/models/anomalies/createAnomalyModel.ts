@@ -13,6 +13,7 @@ import {
 	SuinteurModel,
 } from "./creatures";
 import { CordycepsModel } from "./fungi";
+import { PhaleneModel } from "./insects";
 import { CinematographeModel } from "./machines";
 import {
 	BrumeModel,
@@ -64,5 +65,7 @@ export function createAnomalyModel(
 			return new CordycepsModel(kit);
 		case "cinematographe":
 			return new CinematographeModel(kit);
+		case "phalene":
+			return new PhaleneModel(kit);
 	}
 }

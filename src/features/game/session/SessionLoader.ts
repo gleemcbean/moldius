@@ -52,6 +52,7 @@ import { GrimoireController } from "../../grimoire/GrimoireController";
 import { renderIllustrations } from "../../grimoire/illustrations";
 import { renderObjectArt } from "../../grimoire/objectArt";
 import { ensurePageFonts } from "../../grimoire/pageRenderer";
+import { Phantoms } from "../../hallucination/Phantoms";
 import { ensureHudFonts, HudCanvas } from "../../hud/HudCanvas";
 import { createAnomalyModel } from "../../models/anomalies/createAnomalyModel";
 import { createCameraModel } from "../../models/cameraModel";
@@ -115,6 +116,7 @@ export interface LoadedWorld {
 	body: FirstPersonBody;
 	remotePlayers: RemotePlayers;
 	anomalies: AnomalyViews;
+	phantoms: Phantoms;
 	grimoire: GrimoireController;
 	worldLantern: THREE.PointLight;
 	ambient: THREE.HemisphereLight;
@@ -606,6 +608,10 @@ export async function loadSession(
 	);
 
 	scene.add(anomalies.group);
+
+	const phantoms = new Phantoms(state, kit, world, particles, remotePlayers);
+
+	scene.add(phantoms.group);
 	progress("models", 1);
 	await nextFrame();
 
@@ -743,6 +749,7 @@ export async function loadSession(
 		body,
 		remotePlayers,
 		anomalies,
+		phantoms,
 		grimoire,
 		worldLantern,
 		ambient,

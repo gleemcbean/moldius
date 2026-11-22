@@ -128,6 +128,7 @@ export const PLAYER_FLAG = {
 	infected: 524288,
 	compelled: 1048576,
 	entranced: 2097152,
+	hallucinating: 4194304,
 } as const;
 
 export interface PlayerSnapshot {
@@ -493,6 +494,12 @@ export type GameEvent =
 	| { type: "voteCast"; voterId: string }
 	| {
 			type: "infection";
+			playerId: string;
+			anomalyId: number | null;
+			until: number;
+	  }
+	| {
+			type: "hallucination";
 			playerId: string;
 			anomalyId: number | null;
 			until: number;

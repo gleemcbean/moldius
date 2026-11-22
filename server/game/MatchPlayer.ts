@@ -138,6 +138,8 @@ export class MatchPlayer {
 	compulsion: CompulsionState | null = null;
 	lastCompulsion: CompulsionKind | null = null;
 	entrancedBy = -1;
+	hallucinatingUntil = 0;
+	hallucinatedBy: number | null = null;
 	filmLevel = FILM_BASE_LEVEL;
 	filmsPlayed = 0;
 
@@ -179,6 +181,10 @@ export class MatchPlayer {
 
 	compelled(now: number): boolean {
 		return this.compulsion !== null && this.compulsion.until > now;
+	}
+
+	hallucinating(now: number): boolean {
+		return this.hallucinatingUntil > now;
 	}
 
 	get active(): boolean {
@@ -360,6 +366,10 @@ export class MatchPlayer {
 
 		if (this.alive && this.entranced) {
 			flags |= PLAYER_FLAG.entranced;
+		}
+
+		if (this.alive && this.hallucinating(now)) {
+			flags |= PLAYER_FLAG.hallucinating;
 		}
 
 		return flags;

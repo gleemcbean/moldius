@@ -18,6 +18,7 @@ import { gazeFraction, updateGorgone } from "./species/gorgone.js";
 import { isScreaming, updateHurleur } from "./species/hurleur.js";
 import { updateLuciole } from "./species/luciole.js";
 import { updateMurmure } from "./species/murmure.js";
+import { phaleneExtra, updatePhalene } from "./species/phalene.js";
 import { updateCracheCendre, updateSuinteur } from "./species/ranged.js";
 import { updateRatRoi } from "./species/ratRoi.js";
 import { updateVeilleur } from "./species/veilleur.js";
@@ -42,6 +43,7 @@ const UPDATERS: Record<SpeciesId, Updater> = {
 	"rat-roi": updateRatRoi,
 	cordyceps: updateCordyceps,
 	cinematographe: updateCinematographe,
+	phalene: updatePhalene,
 };
 
 export function updateAnomaly(
@@ -100,6 +102,8 @@ export function anomalyExtra(entity: AnomalyEntity, now: number): number {
 			return cordycepsRipeness(entity, now);
 		case "cinematographe":
 			return cinematographeExtra(entity, now);
+		case "phalene":
+			return phaleneExtra(entity);
 		default:
 			return 0;
 	}

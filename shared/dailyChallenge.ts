@@ -37,7 +37,7 @@ const THEME_RULES: Record<
 		manorSize: "medium",
 		floors: 1,
 		simultaneousAnomalies: 4,
-		species: ["double", "murmure", "brume", "hurleur"],
+		species: ["double", "murmure", "brume", "hurleur", "phalene"],
 	},
 	famine: {
 		manorSize: "medium",

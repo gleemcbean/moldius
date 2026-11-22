@@ -16,6 +16,7 @@ export const SPECIES_IDS = [
 	"rat-roi",
 	"cordyceps",
 	"cinematographe",
+	"phalene",
 ] as const;
 
 export type SpeciesId = (typeof SPECIES_IDS)[number];
@@ -30,6 +31,7 @@ export type AttackKind =
 	| "throw"
 	| "laser"
 	| "film"
+	| "visions"
 	| "none";
 
 export type SpeciesTier = 1 | 2 | 3;
@@ -499,6 +501,32 @@ export const SPECIES: Record<SpeciesId, SpeciesDefinition> = {
 		flying: false,
 		bodyHeight: 2.1,
 		aimRadius: 0.6,
+	},
+	phalene: {
+		id: "phalene",
+		page: 18,
+		tier: 2,
+		name: "La Phalène",
+		points: 400,
+		description:
+			"Papillon de nuit géant aux ailes poudrées de suie, marquées de grands yeux qui chatoient dans le noir. Elle volette sans un bruit et secoue ses ailes au visage de ceux qu'elle approche, puis s'éloigne en attendant que leurs visions les égarent.",
+		danger:
+			"Sa première attaque ne blesse pas : sa poudre vous fait voir pendant 24 s des anomalies, des joueurs, des objets et des bruits qui n'existent pas. Sa deuxième attaque, tant que durent les visions, vous transperce de sa trompe (30 dégâts). La capturer dissipe ses visions.",
+		hostile: true,
+		calmSpeed: 1.8,
+		hostileSpeed: 4.4,
+		damage: 30,
+		attack: "visions",
+		attackRange: 1.7,
+		windupMs: 900,
+		recoveryMs: 1200,
+		viewRange: 14,
+		fieldOfView: (200 * Math.PI) / 180,
+		hearing: 0.9,
+		canOpenDoors: false,
+		flying: true,
+		bodyHeight: 1.75,
+		aimRadius: 0.7,
 	},
 };
 

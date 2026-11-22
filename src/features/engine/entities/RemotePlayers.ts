@@ -63,6 +63,13 @@ interface RemoteView {
 	corpseYaw: number;
 	absorb: number;
 	lens: THREE.Vector3 | null;
+	present: boolean;
+}
+
+export interface RemotePose {
+	position: THREE.Vector3;
+	yaw: number;
+	speed: number;
 }
 
 const ABSORB_SECONDS = 0.7;
@@ -73,6 +80,7 @@ export class RemotePlayers {
 	readonly group = new THREE.Group();
 	private readonly views = new Map<string, RemoteView>();
 	private readonly replayVoices = new Map<string, number>();
+	private readonly masked = new Set<string>();
 	private spectating = false;
 	private time = 0;
 	private readonly ghosts: boolean;
@@ -137,6 +145,7 @@ export class RemotePlayers {
 				absorb: 0,
 				lens: null,
 				corpseYaw: 0,
+				present: false,
 			});
 
 			if (player.id === state.selfId) {
@@ -235,6 +244,22 @@ export class RemotePlayers {
 		return view?.visible ? view.position : null;
 	}
 
+	poseOf(playerId: string): RemotePose | null {
+		const view = this.views.get(playerId);
+
+		return view?.present
+			? { position: view.position, yaw: view.pose.yaw, speed: view.pose.speed }
+			: null;
+	}
+
+	mask(playerId: string, hidden: boolean): void {
+		if (hidden) {
+			this.masked.add(playerId);
+		} else {
+			this.masked.delete(playerId);
+		}
+	}
+
 	update(
 		dt: number,
 		renderTime: number,
@@ -258,6 +283,8 @@ export class RemotePlayers {
 			const sample = player.buffer.sample(renderTime);
 
 			if (!sample) {
+				view.present = false;
+
 				this.setVisible(view, false);
 
 				if (!this.spectating) {
@@ -321,8 +348,12 @@ export class RemotePlayers {
 				view.position.set(view.pose.x, view.pose.y, view.pose.z);
 			}
 
+			const masked = this.masked.has(view.id) && !dead;
+
+			view.present = !hidden && !absorbed && !dead;
+
 			view.model.setGhost(ghostVisible);
-			this.setVisible(view, !hidden && !absorbed);
+			this.setVisible(view, !hidden && !absorbed && !masked);
 			view.model.root.position.copy(view.position);
 
 			view.model.root.rotation.y = modelYaw(
@@ -386,6 +417,7 @@ export class RemotePlayers {
 
 			view.tag.visible =
 				!hidden &&
+				!masked &&
 				view.absorb === 0 &&
 				(!dead || ghostVisible) &&
 				distance < 11 &&
@@ -400,12 +432,13 @@ export class RemotePlayers {
 			view.crown.visible =
 				(flags & PLAYER_FLAG.bounty) !== 0 &&
 				!hidden &&
+				!masked &&
 				view.absorb === 0 &&
 				!dead &&
 				distance < 32 &&
 				lineOfSight(this.world, eye, view.crown.position);
 
-			if (!hidden && !absorbed && lanternOpen) {
+			if (!hidden && !absorbed && !masked && lanternOpen) {
 				view.model.root.updateMatrixWorld(true);
 
 				const held = view.model.lanternLightPosition;

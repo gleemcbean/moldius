@@ -37,6 +37,7 @@ const POSES: Partial<
 	"rat-roi": { state: "idle", extra: 0 },
 	cordyceps: { state: "windup", extra: 1, time: 2.3 },
 	cinematographe: { state: "windup", extra: 0.8 },
+	phalene: { state: "windup", extra: 0, time: 1.3 },
 };
 
 function mix(from: Rgb, to: Rgb, t: number): Rgb {

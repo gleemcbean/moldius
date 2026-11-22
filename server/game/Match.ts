@@ -132,6 +132,10 @@ import { validateCast } from "./systems/captures.js";
 import { type DoorState, DoorSystem } from "./systems/doors.js";
 import { drainEnergy, pauseEnergyRegen, stepEnergy } from "./systems/energy.js";
 import { ghostAction, isGhost } from "./systems/ghosts.js";
+import {
+	dispelVisionsOf,
+	updateHallucinations,
+} from "./systems/hallucination.js";
 import { HazardSystem } from "./systems/hazards.js";
 import { cureVictimsOf, updateInfections } from "./systems/infection.js";
 import { LightingMap } from "./systems/lighting.js";
@@ -542,6 +546,7 @@ export class Match {
 		this.manorEvents.update(this);
 		this.updateChaosBrews();
 		updateInfections(this);
+		updateHallucinations(this);
 		this.updateAnomalies(dt);
 		checkVoiceSabotage(this);
 		this.updateCasting();
@@ -2202,6 +2207,7 @@ export class Match {
 
 		if (reason === "captured") {
 			cureVictimsOf(this, entity);
+			dispelVisionsOf(this, entity);
 		}
 
 		entity.active = false;

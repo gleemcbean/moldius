@@ -1,6 +1,7 @@
 import {
 	ANOMALY_DOOR_FORCE_DELAY_MS,
 	ANOMALY_DOOR_OPEN_DELAY_MS,
+	HOVER_HEIGHTS,
 	NAV_PORTAL_RADIUS,
 	NAV_WAYPOINT_RADIUS,
 	SHOUT_LURE_DOOR_DELAY_MS,
@@ -150,19 +151,7 @@ function stepTowards(
 }
 
 export function hoverHeight(entity: AnomalyEntity): number {
-	if (entity.species === "luciole") {
-		return 1.35;
-	}
-
-	if (entity.species === "hurleur") {
-		return 1.05;
-	}
-
-	if (entity.species === "brume") {
-		return 0.45;
-	}
-
-	return 0;
+	return HOVER_HEIGHTS[entity.species] ?? 0;
 }
 
 export function faceTowards(

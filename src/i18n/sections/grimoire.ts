@@ -159,6 +159,13 @@ export const grimoireEn: typeof grimoireFr = {
 			danger:
 				"If its beam holds you for 2 seconds, it pulls you into its film, out of reach of every other anomaly: guide the little mushroom to the end of the reel (jump, duck). Win: the machine stalls and lets itself be captured. Lose: instant death. While it rolls, no formula can hold it.",
 		},
+		phalene: {
+			name: "The Moth",
+			description:
+				"A giant night moth with soot-dusted wings marked with great eyes that shimmer in the dark. It flutters without a sound, shakes its wings in the face of anyone it reaches, then drifts away while their visions lead them astray.",
+			danger:
+				"Its first attack does not hurt: its dust makes you see anomalies, players, objects and noises that do not exist for 24 s. Its second attack, while the visions last, pierces you with its proboscis (30 damage). Capturing it dispels its visions.",
+		},
 	},
 	points: (points: number) => `${points} points`,
 	inPool: "Present in this hunt",

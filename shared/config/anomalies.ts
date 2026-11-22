@@ -1,3 +1,5 @@
+import type { SpeciesId } from "./species.js";
+
 export const HIDE_EXTRACTION_RANGE = 3;
 export const HIDE_EXTRACTION_MEMORY_MS = 1_500;
 export const HIDE_EXTRACTION_TELEGRAPH_MS = 1_100;
@@ -131,6 +133,18 @@ export const CINEMA_REARM_MS = 3_000;
 export const CINEMA_STALL_MS = 45_000;
 export const CINEMA_RESULT_GRACE_MS = 3_000;
 export const CINEMA_BREAK_DISTANCE = 1.2;
+
+export const HALLUCINATION_MS = 24_000;
+export const PHALENE_VISIONS_REACH = 0.9;
+export const PHALENE_RETREAT_MS = 3_200;
+export const PHALENE_RETREAT_DISTANCE = 6;
+
+export const HOVER_HEIGHTS: Partial<Record<SpeciesId, number>> = {
+	luciole: 1.35,
+	hurleur: 1.05,
+	brume: 0.45,
+	phalene: 0.5,
+};
 
 export const WISP_HOME_RADIUS = 3.5;
 export const WISP_FLEE_DISTANCE = 1.7;

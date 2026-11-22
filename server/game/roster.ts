@@ -29,6 +29,7 @@ const SPECIES_CAPS: Partial<Record<SpeciesId, number>> = {
 	gorgone: 2,
 	cordyceps: 2,
 	cinematographe: 1,
+	phalene: 2,
 };
 
 export function planRoster(

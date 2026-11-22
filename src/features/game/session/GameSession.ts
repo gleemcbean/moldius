@@ -112,6 +112,7 @@ import { PingViews } from "../../engine/world/PingViews";
 import { RoomVisibility } from "../../engine/world/RoomVisibility";
 import { inputDeviceStore, padFocus } from "../../gamepad/gamepad";
 import { rumble } from "../../gamepad/rumble";
+import { HallucinationController } from "../../hallucination/HallucinationController";
 import { type HudMarker, MINIMAP_SIZE } from "../../hud/HudCanvas";
 import {
 	hudStore,
@@ -328,6 +329,7 @@ export class GameSession {
 	private statsPublishedAt = 0;
 	private stats: StatsHud | null = null;
 	private readonly infection: InfectionController;
+	private readonly visions: HallucinationController;
 	private readonly film: FilmController;
 	private filmArrowUp = false;
 
@@ -363,6 +365,7 @@ export class GameSession {
 		}
 
 		this.infection = new InfectionController(selfId);
+		this.visions = new HallucinationController(selfId);
 
 		this.film = new FilmController(
 			init.players.find((player) => player.id === selfId)?.color ?? 0xd8442f,
@@ -1270,6 +1273,25 @@ export class GameSession {
 		loaded.remotePlayers.update(dt, renderTime, eye, eye, this.dynamicLights);
 		loaded.anomalies.update(dt, renderTime, eye, this.dynamicLights);
 
+		this.visions.update(serverNow);
+
+		const visions = alive ? this.visions.strength(serverNow) : 0;
+
+		loaded.phantoms.update({
+			dt,
+			strength: visions,
+			eye,
+			forward,
+			feet: {
+				x: player.character.x,
+				y: player.character.y,
+				z: player.character.z,
+			},
+			yaw: player.yaw,
+			selfId: this.selfId,
+			lights: this.dynamicLights,
+		});
+
 		this.heldResonance = loaded.anomalies.resonate(
 			alive && this.hideSpot < 0 ? this.heldObject() : null,
 			eye,
@@ -1353,7 +1375,7 @@ export class GameSession {
 			dt,
 			loaded.camera,
 			this.selfId,
-			loaded.anomalies.infos(),
+			[...loaded.anomalies.infos(), ...loaded.phantoms.infos(this.selfId)],
 			serverNow - loaded.state.latestSnapshotTime,
 			performance.now(),
 		);
@@ -3840,6 +3862,8 @@ export class GameSession {
 			});
 		}
 
+		markers.push(...loaded.phantoms.mapMarkers(top));
+
 		return markers;
 	}
 
@@ -3971,6 +3995,8 @@ export class GameSession {
 		this.closeMap();
 		loaded.grimoire.setOpen(false);
 		loaded.anomalies.silenceVoices();
+		loaded.phantoms.clear();
+		this.visions.reset(clockSync.serverNow());
 		momentVoices.stopCapture();
 		loaded.remotePlayers.spectate();
 		this.pingViews?.clear();
@@ -4616,6 +4642,10 @@ export class GameSession {
 				this.infection.handle(event, clockSync.serverNow());
 				break;
 
+			case "hallucination":
+				this.visions.handle(event, clockSync.serverNow());
+				break;
+
 			case "compulsion":
 				this.infection.handle(event, clockSync.serverNow());
 				this.onCompulsion(event, clockSync.serverNow());
@@ -4701,6 +4731,7 @@ export class GameSession {
 		this.pingViews = null;
 
 		loaded.ambientAudio.dispose();
+		loaded.phantoms.clear();
 		loaded.anomalies.dispose();
 		loaded.remotePlayers.dispose();
 		loaded.hazards.dispose();

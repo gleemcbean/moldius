@@ -12,6 +12,7 @@ import { PARTY_SOUNDS } from "./sounds/recipes/partySounds.js";
 import { PLAYER_SOUNDS } from "./sounds/recipes/playerSounds.js";
 import type { SoundRecipe } from "./sounds/recipes/types.js";
 import { UI_SOUNDS } from "./sounds/recipes/uiSounds.js";
+import { VISION_SOUNDS } from "./sounds/recipes/visionSounds.js";
 import { SynthKit } from "./sounds/synthKit.js";
 
 const SAMPLE_RATE = 48000;
@@ -24,6 +25,7 @@ const RECIPES: SoundRecipe[] = [
 	...ANOMALY_SOUNDS,
 	...INFECTION_SOUNDS,
 	...CINEMA_SOUNDS,
+	...VISION_SOUNDS,
 	...AMBIENCE_SOUNDS,
 	...PARTY_SOUNDS,
 ];

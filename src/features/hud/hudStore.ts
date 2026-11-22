@@ -160,12 +160,17 @@ export interface HudState {
 	stats: StatsHud | null;
 	pushCooldownMs: number;
 	infection: InfectionHud | null;
+	visions: VisionsHud | null;
 	film: boolean;
 }
 
 export interface InfectionHud {
 	until: number;
 	compelled: boolean;
+}
+
+export interface VisionsHud {
+	until: number;
 }
 
 export interface DevCastEntry {
@@ -248,6 +253,7 @@ export function initialHud(): HudState {
 		stats: null,
 		pushCooldownMs: 0,
 		infection: null,
+		visions: null,
 		film: false,
 	};
 }

@@ -27,7 +27,7 @@ export const dailyFr = {
 		paranoia: {
 			name: "Paranoïa",
 			description:
-				"Doubles, murmures et brume : ne croyez personne, surtout pas vos amis.",
+				"Doubles, murmures, brume et visions : ne croyez personne, surtout pas vos amis.",
 		},
 		famine: {
 			name: "La disette",
@@ -73,7 +73,7 @@ export const dailyEn: typeof dailyFr = {
 		paranoia: {
 			name: "Paranoia",
 			description:
-				"Doppelgängers, whispers and haze: trust nobody, least of all your friends.",
+				"Doppelgängers, whispers, haze and visions: trust nobody, least of all your friends.",
 		},
 		famine: {
 			name: "The famine",

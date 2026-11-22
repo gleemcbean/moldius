@@ -54,6 +54,7 @@ import { ProjectorBeam } from "../effects/ProjectorBeam";
 import type { DynamicLight } from "../lighting/LightPool";
 import { occultColor } from "../player/OccultAura";
 import type { ClientWorldState } from "../state/ClientWorldState";
+import { ANOMALY_IDLE_SOUNDS, ANOMALY_WINDUP_SOUNDS } from "./anomalySounds";
 import { nameTag } from "./nameTag";
 
 export interface PlayerAppearance {
@@ -63,41 +64,6 @@ export interface PlayerAppearance {
 }
 
 import type { ParticleSystem } from "../effects/Particles";
-
-const IDLE_SOUNDS: Partial<Record<SpeciesId, string>> = {
-	murmure: "murmure-idle",
-	veilleur: "veilleur-idle",
-	"crache-cendre": "cendre-idle",
-	collecteur: "collecteur-idle",
-	archiviste: "archiviste-idle",
-	luciole: "luciole-idle",
-	hurleur: "hurleur-wings",
-	suinteur: "suinteur-idle",
-	boursoufle: "boursoufle-idle",
-	colosse: "colosse-idle",
-	fulgurant: "fulgurant-idle",
-	gorgone: "gorgone-idle",
-	brume: "brume-idle",
-	"rat-roi": "ratroi-idle",
-	cordyceps: "cordyceps-idle",
-	cinematographe: "cinema-idle",
-};
-
-const WINDUP_SOUNDS: Partial<Record<SpeciesId, string>> = {
-	murmure: "murmure-attack",
-	veilleur: "veilleur-windup",
-	"crache-cendre": "cendre-windup",
-	collecteur: "collecteur-windup",
-	suinteur: "suinteur-windup",
-	boursoufle: "boursoufle-inflate",
-	double: "melee-swing",
-	colosse: "colosse-windup",
-	fulgurant: "fulgurant-charge",
-	gorgone: "melee-swing",
-	"rat-roi": "ratroi-bite",
-	cordyceps: "cordyceps-windup",
-	cinematographe: "cinema-charge",
-};
 
 const STATE_SOUNDS: Partial<
 	Record<SpeciesId, Partial<Record<AnomalyState, string>>>
@@ -185,6 +151,7 @@ export class AnomalyViews {
 	private time = 0;
 	private voicesSilenced = false;
 	private readonly standIns = new Map<number, string>();
+	private readonly dusting = new Set<number>();
 
 	private readonly swarms = new Map<
 		number,
@@ -1035,7 +1002,7 @@ export class AnomalyViews {
 				distance < 30 ? countWallsBetween(this.world, center, listener, 3) : 3;
 		}
 
-		const idleKey = IDLE_SOUNDS[view.species];
+		const idleKey = ANOMALY_IDLE_SOUNDS[view.species];
 
 		if (idleKey && distance < 26) {
 			if (!view.idle || view.idle.ended) {
@@ -1066,7 +1033,7 @@ export class AnomalyViews {
 			};
 
 			if (state === "windup") {
-				const windup = WINDUP_SOUNDS[view.species];
+				const windup = ANOMALY_WINDUP_SOUNDS[view.species];
 
 				if (windup) {
 					soundBank.play(windup, options);
@@ -1123,6 +1090,42 @@ export class AnomalyViews {
 					`chase-${view.id}`,
 				);
 			}
+		}
+	}
+
+	private mothStrike(
+		info: AnomalyRenderInfo,
+		dust: boolean,
+		hit: boolean,
+	): void {
+		const options = {
+			position: info.center,
+			refDistance: 2,
+			maxDistance: 30,
+		};
+
+		if (!dust) {
+			soundBank.play("phalene-sting", options);
+
+			if (hit) {
+				soundBank.play("melee-hit", { position: info.center });
+			}
+
+			return;
+		}
+
+		soundBank.play("phalene-dust", { ...options, volume: 1.1 });
+
+		for (const color of [0xc8b8ff, 0x9ae8ff, 0xffb8e8]) {
+			this.particles.emit(info.center, 26, {
+				color,
+				speed: 2.2,
+				up: 0.2,
+				life: 1.6,
+				size: 0.035,
+				gravity: 0.4,
+				spread: 0.8,
+			});
 		}
 	}
 
@@ -1352,11 +1355,22 @@ export class AnomalyViews {
 			}
 		}
 
+		if (event.type === "hallucination" && event.anomalyId !== null) {
+			this.dusting.add(event.anomalyId);
+		}
+
 		if (event.type === "attack" && event.phase === "strike") {
 			const view = this.views.get(event.anomalyId);
+			const dusted = this.dusting.delete(event.anomalyId);
 
 			if (view?.info) {
-				if (view.species === "crache-cendre") {
+				if (view.species === "phalene") {
+					this.mothStrike(
+						view.info,
+						dusted || view.info.extra < 0.5,
+						event.hit,
+					);
+				} else if (view.species === "crache-cendre") {
 					soundBank.play("cendre-spit", {
 						position: view.info.center,
 						occlusion: view.occlusion,

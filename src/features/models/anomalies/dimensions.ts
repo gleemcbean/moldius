@@ -67,6 +67,9 @@ export const ANT_LEGS: AntLeg[] = [0, 1, 2].flatMap((pair) =>
 	})),
 );
 
+export const PHALENE_BODY = 0.95;
+export const PHALENE_STINGER = 0.5;
+
 export const CINEMA_BODY_HEIGHT = 1.42;
 export const CINEMA_HIP_RADIUS = 0.2;
 export const CINEMA_LEG_ANGLES = [Math.PI / 6, (Math.PI * 5) / 6, -Math.PI / 2];

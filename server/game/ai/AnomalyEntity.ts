@@ -95,6 +95,8 @@ export class AnomalyEntity {
 	litAt = -Infinity;
 	nextBiteAt = 0;
 	ripenSince = 0;
+	stingReady = false;
+	retreatPoint: Vec3 | null = null;
 	seance: Seance | null = null;
 	readonly gaze = new Map<string, number>();
 	readonly doorCooldowns = new Map<number, number>();
@@ -161,6 +163,8 @@ export class AnomalyEntity {
 		this.litAt = -Infinity;
 		this.nextBiteAt = 0;
 		this.ripenSince = now;
+		this.stingReady = false;
+		this.retreatPoint = null;
 		this.seance = null;
 		this.screamUntil = 0;
 		this.hostId = -1;

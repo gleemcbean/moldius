@@ -1,5 +1,5 @@
 {
-	"totalModels": 378,
+	"totalModels": 379,
 	"models": [
 		{
 			"path": "anomalies/archiviste.glb",
@@ -464,6 +464,46 @@
 					0.55,
 					1.8057,
 					0.419
+				]
+			}
+		},
+		{
+			"path": "anomalies/phalene.glb",
+			"category": "anomalies",
+			"bytes": 244820,
+			"nodes": [
+				"abdomen",
+				"antenna_0",
+				"antenna_1",
+				"body",
+				"coil",
+				"dust_0",
+				"dust_1",
+				"gaze",
+				"head",
+				"leg_0",
+				"leg_1",
+				"leg_2",
+				"leg_3",
+				"leg_4",
+				"leg_5",
+				"proboscis",
+				"stinger",
+				"wing_0",
+				"wing_1",
+				"wing_2",
+				"wing_3"
+			],
+			"bbox": {
+				"min": [
+					-1.3644,
+					0.6367,
+					-0.79
+				],
+				"max": [
+					1.3644,
+					1.3741,
+					0.4236
 				]
 			}
 		},

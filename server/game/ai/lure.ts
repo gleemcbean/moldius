@@ -21,6 +21,7 @@ const LURED_SPECIES: ReadonlySet<SpeciesId> = new Set([
 	"colosse",
 	"rat-roi",
 	"cordyceps",
+	"phalene",
 ]);
 
 const INTERRUPTIBLE = new Set([

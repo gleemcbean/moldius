@@ -18,6 +18,7 @@ import {
 	buildSuinteur,
 } from "./models/anomalies/creatures";
 import { buildCordyceps } from "./models/anomalies/fungi";
+import { buildPhalene } from "./models/anomalies/insects";
 import { buildCinematographe } from "./models/anomalies/machines";
 import {
 	buildBrume,
@@ -93,6 +94,7 @@ function entityModels(kit: BuildKit): [string, () => THREE.Object3D][] {
 		["anomalies/rat-roi", () => buildRatRoi(kit)],
 		["anomalies/cordyceps", () => buildCordyceps(kit)],
 		["anomalies/cinematographe", () => buildCinematographe(kit)],
+		["anomalies/phalene", () => buildPhalene(kit)],
 		["player/mushroom", () => buildMushroom(kit)],
 		["player/first_person_body", () => buildFirstPersonBody(kit)],
 		["player/first_person_arms", () => buildFirstPersonArms(kit)],

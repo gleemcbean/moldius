@@ -410,6 +410,12 @@ export const gameFr = {
 			cured: "Les spores se dessèchent : vous êtes guéri.",
 			status: (seconds: number) => `Infecté · ${seconds} s`,
 		},
+		visions: {
+			started:
+				"La poudre de la Phalène vous brouille l'esprit : méfiez-vous de ce que vous voyez !",
+			ended: "Les visions se dissipent.",
+			status: (seconds: number) => `Visions · ${seconds} s`,
+		},
 		film: {
 			presents: "Le Cinématographe présente",
 			title: "« Le Petit Champignon »",
@@ -970,6 +976,11 @@ export const gameEn: typeof gameFr = {
 			freed: "A shove: you take back control!",
 			cured: "The spores dry out: you are cured.",
 			status: (seconds: number) => `Infected · ${seconds} s`,
+		},
+		visions: {
+			started: "The Moth's dust clouds your mind: don't trust what you see!",
+			ended: "The visions fade away.",
+			status: (seconds: number) => `Visions · ${seconds} s`,
 		},
 		film: {
 			presents: "The Cinematograph presents",
