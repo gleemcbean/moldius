@@ -481,7 +481,6 @@ export class GameSession {
 
 		hudStore.set({
 			remainingMs: this.init.durationMs,
-			anomaliesInMs: this.init.anomalySpawnDelayMs,
 			health: 100,
 			energy: 100,
 			occultInPlay: OCCULT_IDS.filter((object) => this.inPlay(object)),
@@ -3619,7 +3618,6 @@ export class GameSession {
 		this.hudPublishedAt = now;
 
 		const loaded = this.loadedWorld as LoadedWorld;
-		const startedAt = this.beginInfo?.startedAt ?? serverNow;
 		const howlerNearby = this.howlerNearby(serverNow);
 		const respawnAt = this.respawnAt;
 
@@ -3628,10 +3626,6 @@ export class GameSession {
 			remainingMs: this.beginInfo
 				? Math.max(0, this.beginInfo.endsAt - serverNow)
 				: loaded.state.remainingMs,
-			anomaliesInMs: Math.max(
-				0,
-				startedAt + this.init.anomalySpawnDelayMs - serverNow,
-			),
 			health,
 			energy,
 			sprintLocked: (flags & PLAYER_FLAG.sprintLocked) !== 0,
@@ -3996,7 +3990,7 @@ export class GameSession {
 		loaded.grimoire.setOpen(false);
 		loaded.anomalies.silenceVoices();
 		loaded.phantoms.clear();
-		this.visions.reset(clockSync.serverNow());
+		this.visions.reset();
 		momentVoices.stopCapture();
 		loaded.remotePlayers.spectate();
 		this.pingViews?.clear();

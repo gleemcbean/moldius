@@ -202,13 +202,6 @@ const INFECTION_VEIL = screenVeil(
 	tint(90, 30, 0, 0.5),
 );
 
-const VISIONS_VEIL = screenVeil(
-	0.42,
-	tint(90, 60, 200, 0),
-	1,
-	tint(70, 20, 120, 0.5),
-);
-
 const COMPELLED_VEIL = screenVeil(
 	0.3,
 	tint(255, 140, 40, 0.06),
@@ -542,7 +535,6 @@ export class HudCanvas {
 		this.updateVeils(hud, now);
 		context.section();
 		this.paintInfection(hud, now);
-		this.paintVisions(hud, now);
 		context.section();
 		this.paintLookAway(hud);
 		context.section();
@@ -1268,10 +1260,6 @@ export class HudCanvas {
 				this.infectionPulse(hud, now),
 			);
 		}
-
-		if (hud.visions) {
-			this.addVeil(VISIONS_VEIL, 0.8 + Math.sin(now / 420) * 0.2);
-		}
 	}
 
 	private infectionPulse(hud: HudState, now: number): number {
@@ -1343,35 +1331,6 @@ export class HudCanvas {
 			at.x,
 			at.y,
 			{ font: `600 16px ${TITLE}`, color: "#ffb066", align: "center" },
-		);
-	}
-
-	private paintVisions(hud: HudState, now: number): void {
-		const visions = hud.visions;
-
-		if (!visions) {
-			return;
-		}
-
-		const seconds = Math.max(
-			0,
-			Math.ceil((visions.until - hud.serverNow) / 1000),
-		);
-
-		const at = this.at(
-			this.width / 2,
-			this.height * (hud.infection ? 0.86 : 0.82),
-		);
-
-		this.text(
-			currentMessages().game.hud.visions.status(seconds).toUpperCase(),
-			at.x,
-			at.y,
-			{
-				font: `600 16px ${TITLE}`,
-				color: `hsl(${Math.round((now / 18) % 360)}, 85%, 78%)`,
-				align: "center",
-			},
 		);
 	}
 
@@ -1754,7 +1713,6 @@ export class HudCanvas {
 	}
 
 	private paintTopBar(hud: HudState, now: number): void {
-		const messages = currentMessages().game;
 		const urgent = hud.remainingMs < 60_000;
 		const clock = formatClock(hud.remainingMs);
 		const font = `700 40px ${FIGURES}`;
@@ -1781,17 +1739,6 @@ export class HudCanvas {
 		this.context.globalAlpha = 1;
 
 		let below = y + 66;
-
-		if (hud.anomaliesInMs > 0) {
-			this.text(
-				messages.hud.awakening(Math.ceil(hud.anomaliesInMs / 1000)),
-				x,
-				below,
-				{ font: `700 18px ${UI}`, color: TEXT_MUTED, align: "center" },
-			);
-
-			below += 26;
-		}
 
 		const party = currentMessages().party;
 

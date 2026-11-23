@@ -54,7 +54,7 @@ import {
 	type Viewpoint,
 } from "./phantomPlacement";
 
-type Mood = "stalk" | "watch" | "wander" | "beckon" | "flee" | "glint";
+type Mood = "stalk" | "watch" | "wander" | "approach" | "pass" | "glint";
 
 export interface PhantomFrame {
 	dt: number;
@@ -103,7 +103,6 @@ interface Phantom {
 	occlusionAt: number;
 	stepPhase: number;
 	emitted: number[];
-	emoteTime: number;
 }
 
 interface Mask {
@@ -145,8 +144,8 @@ const RULES: Record<Mood, SpawnRule> = {
 	stalk: { near: 6, far: 11, sight: "hidden", walk: true },
 	watch: { near: 7, far: 13, sight: "hidden", walk: false },
 	wander: { near: 5, far: 11, sight: "any", walk: false },
-	beckon: { near: 5, far: 10, sight: "hidden", walk: false },
-	flee: { near: 4, far: 8, sight: "any", walk: false },
+	approach: { near: 7, far: 12, sight: "hidden", walk: true },
+	pass: { near: 5, far: 10, sight: "any", walk: false },
 	glint: { near: 2.5, far: 6, sight: "visible", walk: false },
 };
 
@@ -154,8 +153,8 @@ const MOODS: readonly [Mood, number][] = [
 	["stalk", 3],
 	["watch", 2],
 	["wander", 1.5],
-	["beckon", 2.5],
-	["flee", 1.2],
+	["approach", 2.5],
+	["pass", 1.2],
 	["glint", 1],
 ];
 
@@ -163,8 +162,8 @@ const LIVES: Record<Mood, number> = {
 	stalk: 9,
 	watch: 10,
 	wander: 9,
-	beckon: 11,
-	flee: 6,
+	approach: 11,
+	pass: 8,
 	glint: 14,
 };
 
@@ -337,7 +336,7 @@ export class Phantoms {
 		const phantom =
 			mood === "glint"
 				? this.relicAt(spot, view)
-				: mood === "beckon" || mood === "flee"
+				: mood === "approach" || mood === "pass"
 					? this.figureAt(spot, mood, view, frame.selfId)
 					: this.monsterAt(spot, mood, view);
 
@@ -401,7 +400,6 @@ export class Phantoms {
 			occlusionAt: -1,
 			stepPhase: 0,
 			emitted: [],
-			emoteTime: 0,
 		};
 	}
 
@@ -414,6 +412,24 @@ export class Phantoms {
 		return {
 			x: spot.x + (-dz / length) * side * reach + (dx / length) * 1.5,
 			z: spot.z + (dx / length) * side * reach + (dz / length) * 1.5,
+		};
+	}
+
+	private away(spot: Vec3, view: Viewpoint, reach: number) {
+		if (Math.random() < 0.5) {
+			return this.across(spot, view, reach);
+		}
+
+		const dx = spot.x - view.feet.x;
+		const dz = spot.z - view.feet.z;
+		const length = Math.hypot(dx, dz) || 1;
+		const swerve = (Math.random() - 0.5) * 0.8;
+		const cos = Math.cos(swerve);
+		const sin = Math.sin(swerve);
+
+		return {
+			x: spot.x + ((dx * cos - dz * sin) / length) * reach,
+			z: spot.z + ((dx * sin + dz * cos) / length) * reach,
 		};
 	}
 
@@ -505,9 +521,10 @@ export class Phantoms {
 			flicker: 0.12,
 		};
 
-		if (mood === "flee") {
-			phantom.pace = 4.6;
-			phantom.goal = this.across(spot, view, 9);
+		phantom.pace = WALK_SPEED * (0.85 + Math.random() * 0.15);
+
+		if (mood === "pass") {
+			phantom.goal = this.away(spot, view, 9);
 		}
 
 		return phantom;
@@ -573,7 +590,7 @@ export class Phantoms {
 			? phantom.watched + frame.dt
 			: Math.max(0, phantom.watched - frame.dt * 0.5);
 
-		this.behave(phantom, view, distance, frame.dt);
+		this.behave(phantom, view, distance);
 
 		if (phantom.vanishing < 0 && !phantom.relic) {
 			this.walk(phantom, frame.dt);
@@ -591,12 +608,7 @@ export class Phantoms {
 		}
 	}
 
-	private behave(
-		phantom: Phantom,
-		view: Viewpoint,
-		distance: number,
-		dt: number,
-	): void {
+	private behave(phantom: Phantom, view: Viewpoint, distance: number): void {
 		const toward = directionToYaw({
 			x: view.feet.x - phantom.body.x,
 			z: view.feet.z - phantom.body.z,
@@ -616,22 +628,17 @@ export class Phantoms {
 
 				break;
 
-			case "beckon":
+			case "approach":
 				phantom.heading = toward;
-				phantom.emoteTime += dt;
 
-				if (phantom.emoteTime > 3.2) {
-					phantom.emoteTime = 0;
-				}
-
-				if (distance < 3.2) {
+				if (distance < 3.2 || this.stuck(phantom)) {
 					this.vanish(phantom, false);
 				}
 
 				break;
 
 			case "wander":
-			case "flee":
+			case "pass":
 				this.roam(phantom, distance);
 				break;
 
@@ -830,13 +837,11 @@ export class Phantoms {
 			speed,
 			crouch: 0,
 			grounded: true,
-			sprinting: phantom.mood === "flee",
+			sprinting: false,
 			lanternOpen: true,
 			grimoireOpen: false,
 			dead: false,
 			talking: phantom.voice ? 0.5 + Math.sin(this.time * 14) * 0.3 : 0,
-			emote: phantom.mood === "beckon" ? "wave" : null,
-			emoteTime: phantom.emoteTime,
 		});
 
 		const visible = phantom.vanishing < 0;
@@ -952,7 +957,7 @@ export class Phantoms {
 
 		if (
 			!phantom.spoke &&
-			phantom.mood === "beckon" &&
+			phantom.mood === "approach" &&
 			phantom.age > 1.2 &&
 			phantom.playerId
 		) {

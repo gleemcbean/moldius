@@ -86,7 +86,6 @@ export interface StatsHud {
 
 export interface HudState {
 	remainingMs: number;
-	anomaliesInMs: number;
 	health: number;
 	energy: number;
 	sprintLocked: boolean;
@@ -160,17 +159,12 @@ export interface HudState {
 	stats: StatsHud | null;
 	pushCooldownMs: number;
 	infection: InfectionHud | null;
-	visions: VisionsHud | null;
 	film: boolean;
 }
 
 export interface InfectionHud {
 	until: number;
 	compelled: boolean;
-}
-
-export interface VisionsHud {
-	until: number;
 }
 
 export interface DevCastEntry {
@@ -184,7 +178,6 @@ export interface DevCastEntry {
 export function initialHud(): HudState {
 	return {
 		remainingMs: 0,
-		anomaliesInMs: 0,
 		health: 100,
 		energy: 100,
 		sprintLocked: false,
@@ -253,7 +246,6 @@ export function initialHud(): HudState {
 		stats: null,
 		pushCooldownMs: 0,
 		infection: null,
-		visions: null,
 		film: false,
 	};
 }
